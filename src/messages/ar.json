@@ -1,0 +1,70 @@
+{
+  "common": {
+    "appName": "لوحة DPD",
+    "loading": "جاري التحميل...",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "comingSoon": "قريباً",
+    "logout": "تسجيل الخروج",
+    "theme": "المظهر",
+    "language": "اللغة"
+  },
+  "nav": {
+    "dashboard": "لوحة التحكم",
+    "users": "المستخدمون",
+    "orders": "الطلبات",
+    "reports": "التقارير",
+    "settings": "الإعدادات"
+  },
+  "auth": {
+    "title": "تسجيل الدخول إلى لوحة DPD",
+    "subtitle": "لوحة العمليات الداخلية",
+    "google": "المتابعة مع Google",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "signIn": "تسجيل الدخول",
+    "signingIn": "جاري تسجيل الدخول...",
+    "orContinueWith": "أو المتابعة بالبريد الإلكتروني",
+    "invalidCredentials": "البريد الإلكتروني أو كلمة المرور غير صحيحة",
+    "notAuthorized": "حسابك غير مصرح له بالوصول إلى لوحة الإدارة",
+    "allowlistRequired": "تواصل مع المسؤول لإضافتك إلى قائمة السماح"
+  },
+  "pages": {
+    "dashboard": {
+      "title": "لوحة التحكم",
+      "subtitle": "نظرة عامة على العمليات",
+      "kpiDeliveries": "التسليمات اليوم",
+      "kpiActiveRiders": "السائقون النشطون",
+      "kpiPendingFuel": "مطالبات الوقود المعلقة",
+      "kpiZones": "المناطق النشطة",
+      "chartPlaceholder": "ستظهر مخططات التحليلات هنا"
+    },
+    "users": {
+      "title": "المستخدمون",
+      "subtitle": "إدارة السائقين والموظفين",
+      "placeholder": "جدول إدارة المستخدمين قريباً"
+    },
+    "orders": {
+      "title": "الطلبات",
+      "subtitle": "سجلات التسليم والتحقق",
+      "placeholder": "إدارة الطلبات قريباً"
+    },
+    "reports": {
+      "title": "التقارير",
+      "subtitle": "التصدير والتحليلات",
+      "placeholder": "أدوات التقارير قريباً"
+    },
+    "settings": {
+      "title": "الإعدادات",
+      "subtitle": "التفضيلات والحساب",
+      "localeLabel": "لغة الواجهة",
+      "themeLabel": "المظهر",
+      "profileLabel": "مسجل الدخول كـ"
+    },
+    "unauthorized": {
+      "title": "تم رفض الوصول",
+      "subtitle": "ليس لديك إذن لعرض هذه الصفحة",
+      "back": "العودة إلى لوحة التحكم"
+    }
+  }
+}

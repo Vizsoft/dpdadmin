@@ -1,0 +1,70 @@
+{
+  "common": {
+    "appName": "DPD Admin",
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "comingSoon": "Coming soon",
+    "logout": "Log out",
+    "theme": "Theme",
+    "language": "Language"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "users": "Users",
+    "orders": "Orders",
+    "reports": "Reports",
+    "settings": "Settings"
+  },
+  "auth": {
+    "title": "Sign in to DPD Admin",
+    "subtitle": "Internal operations panel",
+    "google": "Continue with Google",
+    "email": "Email",
+    "password": "Password",
+    "signIn": "Sign in",
+    "signingIn": "Signing in...",
+    "orContinueWith": "Or continue with email",
+    "invalidCredentials": "Invalid email or password",
+    "notAuthorized": "Your account is not authorized for the admin panel",
+    "allowlistRequired": "Contact an administrator to be added to the allowlist"
+  },
+  "pages": {
+    "dashboard": {
+      "title": "Dashboard",
+      "subtitle": "Overview of operations",
+      "kpiDeliveries": "Deliveries today",
+      "kpiActiveRiders": "Active riders",
+      "kpiPendingFuel": "Pending fuel claims",
+      "kpiZones": "Active zones",
+      "chartPlaceholder": "Analytics charts will appear here"
+    },
+    "users": {
+      "title": "Users",
+      "subtitle": "Manage riders and staff",
+      "placeholder": "User management table coming soon"
+    },
+    "orders": {
+      "title": "Orders",
+      "subtitle": "Delivery records and verification",
+      "placeholder": "Order management coming soon"
+    },
+    "reports": {
+      "title": "Reports",
+      "subtitle": "Exports and analytics",
+      "placeholder": "Reporting tools coming soon"
+    },
+    "settings": {
+      "title": "Settings",
+      "subtitle": "Preferences and account",
+      "localeLabel": "Interface language",
+      "themeLabel": "Appearance",
+      "profileLabel": "Signed in as"
+    },
+    "unauthorized": {
+      "title": "Access denied",
+      "subtitle": "You do not have permission to view this page",
+      "back": "Back to dashboard"
+    }
+  }
+}
