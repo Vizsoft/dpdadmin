@@ -21,6 +21,16 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  {
+    files: [
+      "src/app/**/route.ts",
+      "src/features/**/actions.ts",
+      "src/lib/auth/**",
+    ],
+    rules: {
+      "no-restricted-imports": "off",
+    },
+  },
   globalIgnores([
     ".next/**",
     "out/**",

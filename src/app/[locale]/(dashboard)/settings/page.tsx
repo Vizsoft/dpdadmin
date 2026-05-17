@@ -17,9 +17,9 @@ export default async function SettingsPage({
   const session = await getSessionUser();
 
   return (
-    <div className="space-y-6">
+    <>
       <PageHeader title={t("title")} subtitle={t("subtitle")} />
-      <Card>
+      <Card className="rounded-xl border-border shadow-sm">
         <CardHeader>
           <CardTitle>{t("profileLabel")}</CardTitle>
         </CardHeader>
@@ -30,6 +30,6 @@ export default async function SettingsPage({
         </CardContent>
       </Card>
       <SettingsPanels />
-    </div>
+    </>
   );
 }

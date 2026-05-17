@@ -3,8 +3,16 @@ import type { Permission } from "@/lib/auth/permissions";
 export type NavIcon =
   | "LayoutDashboard"
   | "Users"
+  | "Truck"
   | "Package"
-  | "BarChart3"
+  | "MapPin"
+  | "Bike"
+  | "ClipboardCheck"
+  | "Inbox"
+  | "AlertTriangle"
+  | "Wallet"
+  | "Bell"
+  | "LifeBuoy"
   | "Settings";
 
 export type NavItem = {
@@ -22,22 +30,58 @@ export const NAV_ITEMS: NavItem[] = [
     permission: "dashboard.view",
   },
   {
-    href: "/users",
-    labelKey: "nav.users",
+    href: "/drivers",
+    labelKey: "nav.drivers",
     icon: "Users",
-    permission: "users.view",
+    permission: "drivers.view",
   },
   {
-    href: "/orders",
-    labelKey: "nav.orders",
+    href: "/deliveries",
+    labelKey: "nav.deliveries",
     icon: "Package",
-    permission: "orders.view",
+    permission: "deliveries.view",
   },
   {
-    href: "/reports",
-    labelKey: "nav.reports",
-    icon: "BarChart3",
-    permission: "reports.view",
+    href: "/vehicles",
+    labelKey: "nav.vehicles",
+    icon: "Bike",
+    permission: "vehicles.view",
+  },
+  {
+    href: "/attendance",
+    labelKey: "nav.attendance",
+    icon: "ClipboardCheck",
+    permission: "attendance.view",
+  },
+  {
+    href: "/requests",
+    labelKey: "nav.requests",
+    icon: "Inbox",
+    permission: "requests.view",
+  },
+  {
+    href: "/wrong-actions",
+    labelKey: "nav.wrongActions",
+    icon: "AlertTriangle",
+    permission: "wrong_actions.view",
+  },
+  {
+    href: "/earnings",
+    labelKey: "nav.earnings",
+    icon: "Wallet",
+    permission: "earnings.view",
+  },
+  {
+    href: "/notifications",
+    labelKey: "nav.notifications",
+    icon: "Bell",
+    permission: "notifications.view",
+  },
+  {
+    href: "/support",
+    labelKey: "nav.support",
+    icon: "LifeBuoy",
+    permission: "support.view",
   },
   {
     href: "/settings",

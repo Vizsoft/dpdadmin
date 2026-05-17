@@ -1,16 +1,19 @@
+"use client";
+
+import type { ReactNode } from "react";
+import { useRegisterPageHeader } from "@/contexts/page-header-context";
+
 export function PageHeader({
   title,
   subtitle,
+  actions,
+  tabs,
 }: {
   title: string;
   subtitle?: string;
+  actions?: ReactNode;
+  tabs?: ReactNode;
 }) {
-  return (
-    <div className="space-y-1">
-      <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-      {subtitle ? (
-        <p className="text-sm text-muted-foreground">{subtitle}</p>
-      ) : null}
-    </div>
-  );
+  useRegisterPageHeader({ title, subtitle, actions, tabs });
+  return null;
 }

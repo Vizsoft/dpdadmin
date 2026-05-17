@@ -1,14 +1,14 @@
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
-import { Fira_Code, Fira_Sans } from "next/font/google";
+import { Fira_Code, Inter } from "next/font/google";
 import { routing } from "@/i18n/routing";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import "../globals.css";
 
-const firaSans = Fira_Sans({
+const inter = Inter({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
   variable: "--font-sans",
@@ -50,7 +50,7 @@ export default async function LocaleLayout({
       lang={locale}
       dir={locale === "ar" ? "rtl" : "ltr"}
       suppressHydrationWarning
-      className={`${firaSans.variable} ${firaCode.variable} h-full`}
+      className={`${inter.variable} ${firaCode.variable} h-full`}
     >
       <body className="min-h-full font-sans antialiased">
         <ThemeProvider>

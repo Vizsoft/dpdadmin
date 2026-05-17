@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
+import { Package } from "lucide-react";
 import { NAV_ITEMS } from "@/config/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { NAV_ICON_MAP } from "@/components/layout/nav-icons";
@@ -10,7 +11,6 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -26,18 +26,24 @@ export function AppSidebar() {
   const visibleItems = NAV_ITEMS.filter((item) => can(item.permission));
 
   return (
-    <Sidebar>
-      <SidebarHeader className="border-b px-4 py-4">
-        <Link href="/dashboard" className="flex flex-col gap-0.5">
-          <span className="text-sm font-semibold tracking-tight">
-            {tCommon("appName")}
-          </span>
-          <span className="text-xs text-muted-foreground">Operations</span>
+    <Sidebar className="border-sidebar-border bg-sidebar">
+      <SidebarHeader className="border-b border-sidebar-border px-4 py-5">
+        <Link href="/dashboard" className="flex items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sidebar-accent text-sidebar-accent-foreground">
+            <Package className="h-5 w-5" />
+          </div>
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <span className="truncate text-sm font-semibold tracking-tight text-foreground">
+              {tCommon("appName")}
+            </span>
+            <span className="truncate text-xs text-muted-foreground">
+              Delivery Panel
+            </span>
+          </div>
         </Link>
       </SidebarHeader>
-      <SidebarContent>
+      <SidebarContent className="px-2 py-3">
         <SidebarGroup>
-          <SidebarGroupLabel>Menu</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {visibleItems.map((item) => {
@@ -49,10 +55,10 @@ export function AppSidebar() {
                   <SidebarMenuItem key={item.href}>
                     <SidebarMenuButton
                       isActive={isActive}
-                      className="cursor-pointer"
+                      className="h-10 cursor-pointer rounded-lg px-3"
                       render={
                         <Link href={item.href}>
-                          <Icon className="h-4 w-4" />
+                          <Icon className="h-4 w-4 shrink-0" />
                           <span>{t(item.labelKey)}</span>
                         </Link>
                       }

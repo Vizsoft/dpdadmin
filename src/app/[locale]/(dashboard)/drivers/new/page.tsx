@@ -3,24 +3,24 @@ import { requirePermission } from "@/lib/auth/require-permission";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 
-export default async function ReportsPage({
+export default async function NewDriverPage({
   params,
 }: {
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  await requirePermission(locale, "reports.view");
-  const t = await getTranslations("pages.reports");
+  await requirePermission(locale, "drivers.manage");
+  const t = await getTranslations("pages.driverNew");
 
   return (
-    <div className="space-y-6">
+    <>
       <PageHeader title={t("title")} subtitle={t("subtitle")} />
-      <Card>
+      <Card className="rounded-xl border-border shadow-sm">
         <CardContent className="pt-6">
-          <p className="text-sm text-muted-foreground">{t("placeholder")}</p>
+          <p className="text-sm text-muted-foreground">{t("emptyTitle")}</p>
         </CardContent>
       </Card>
-    </div>
+    </>
   );
 }

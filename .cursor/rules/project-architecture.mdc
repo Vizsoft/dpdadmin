@@ -1,0 +1,161 @@
+---
+description: DPD Control Tower — living architecture reference. Read before structural changes; update on every module PR.
+alwaysApply: true
+---
+
+# DPD Control Tower — Architecture (living reference)
+
+> **Maintain this file.** Append to **Change log** on every structural change. Tag entries `[admin+app]` when mobile handoff must update too.
+
+**Product:** Enterprise rider workforce Control Tower (Musallam / DPD).  
+**Admin:** Next.js 16 · `dpdadmin/` · https://dpdadmin.vercel.app  
+**Driver app:** Separate repo/session — paste [`docs/DRIVER_APP_HANDOFF.md`](../docs/DRIVER_APP_HANDOFF.md)  
+**Backend:** Supabase `ytfmsgckjatiserpgdbz` (Postgres + Auth + Storage + Realtime)
+
+---
+
+## System context
+
+```mermaid
+flowchart LR
+  DriverApp["Driver App mobile"] -->|"OTP auth, deliveries, requests, chat"| Supabase["Supabase"]
+  AdminPanel["Admin Panel web"] -->|"verify, approve, monitor"| Supabase
+  Partners["Talabat / DoorDash / UberEats"] -->|"external orders"| DriverApp
+  Supabase -->|"realtime"| AdminPanel
+  Supabase -->|"push"| DriverApp
+```
+
+Order allocation is **external** (partner apps). We own: monitoring, compliance, payroll, support.
+
+---
+
+## Admin modules (build order)
+
+| # | Route | Permission | Driver app counterpart |
+|---|-------|------------|----------------------|
+| 1 | `/dashboard` | `dashboard.view` | Home |
+| 2 | `/drivers`, `/drivers/[id]`, `/drivers/new` | `drivers.view` / `drivers.manage` | Profile |
+| 3 | `/deliveries`, `/deliveries/zones` | `deliveries.view`, `zones.view` | Deliveries + zone geofence |
+| 4 | `/vehicles`, `/vehicles/[id]` | `vehicles.view` | Vehicle |
+| 5 | `/attendance` | `attendance.view` | Auto check-in / geofence |
+| 6 | `/requests` | `requests.view` / `requests.manage` | Loan, Leave, Fuel, Complaint |
+| 7 | `/wrong-actions` | `wrong_actions.view` | Wrong action details |
+| 8 | `/earnings` | `earnings.view` / `earnings.manage` | Earnings + bumper bonus |
+| 9 | `/notifications` | `notifications.view` | Notifications + hygiene tasks |
+| 10 | `/support` | `support.view` | Chat, SOS, Appointments |
+| — | `/settings` | `settings.view` | — |
+
+**Next implementation:** Drivers → Vehicles & Zones → Live Deliveries (ops first).
+
+---
+
+## Directory map
+
+| Path | Purpose |
+|------|---------|
+| `src/app/[locale]/(dashboard)/` | All admin routes |
+| `src/features/<domain>/` | Domain actions + forms |
+| `src/components/dashboard/` | `PageHeader`, `KpiCard`, `ModuleListShell`, `TabBar`, `DataTableShell` |
+| `src/lib/auth/` | Session, permissions, sync-profile |
+| `src/config/navigation.ts` | Sidebar + permission per item |
+| `design-system/dpd-admin/` | TOKENS, COMPONENTS, MASTER |
+| `docs/DRIVER_APP_HANDOFF.md` | **Mobile app single-file handoff** |
+| `supabase/migrations/` | Schema |
+
+---
+
+## Auth (do not bypass)
+
+1. `src/middleware.ts` — intl + session; protected routes listed there
+2. `(dashboard)/layout.tsx` — `requireAuth` → `staff` + not archived
+3. Each page — `requirePermission(locale, "...")`
+
+**Admin users:** `admin_allowlist` + `profiles.role = staff`.  
+**Drivers:** `profiles.role = rider` + row in `drivers` — **no admin panel access**.
+
+---
+
+## Permissions (`src/lib/auth/permissions.ts`)
+
+Pattern: `<module>.view` and `<module>.manage` where applicable.
+
+`staff` → all permissions. `rider` → blocked from panel.
+
+When adding a permission: update `PERMISSIONS`, `ROLE_PERMISSIONS`, `navigation.ts`, messages, middleware if new top-level route, **and** `DRIVER_APP_HANDOFF.md` if app-facing.
+
+---
+
+## Database schema (core tables)
+
+Migration: `supabase/migrations/20260518000000_dpd_core_schema.sql`
+
+| Group | Tables |
+|-------|--------|
+| Workforce | `partners`, `zones`, `drivers`, `driver_documents`, `driver_assets` |
+| Fleet | `vehicles` |
+| Ops | `deliveries`, `attendance_logs`, `driver_sessions` |
+| Compliance | `wrong_actions`, `hygiene_tasks`, `hygiene_submissions` |
+| HR | `requests`, `loan_terms` |
+| Payroll | `offers`, `driver_earnings_daily` |
+| Comms | `notifications`, `support_*`, `appointment_slots`, `appointments` |
+
+**RLS:** Staff = `is_admin_panel_user()` on all tables. Driver policies added per mobile module (see handoff doc).
+
+**Enums:** `driver_status`, `delivery_status`, `request_type`, `request_status`, `severity_level`, etc. — see migration file.
+
+---
+
+## UI conventions
+
+- Design: `design-system/dpd-admin/TOKENS.md`, `COMPONENTS.md`
+- List pages: `<ModuleListShell>` = PageHeader + KpiGrid + TabBar + DataTableShell
+- Theme tokens only — no raw hex
+- Table headers: `text-xs font-semibold text-accent`
+- i18n: `en` + `ar`, keys under `pages.<module>`
+
+---
+
+## Realtime channels (documented, wire per module)
+
+| Channel | Use |
+|---------|-----|
+| `deliveries:live` | Admin live map + verify queue |
+| `driver_sessions` | On/off duty status |
+| `support:thread:{id}` | Chat |
+| `notifications:driver:{id}` | In-app notification feed |
+
+---
+
+## Storage buckets (create in Supabase dashboard)
+
+| Bucket | App path pattern |
+|--------|------------------|
+| `delivery-proofs` | `{driver_id}/{delivery_id}.jpg` |
+| `fuel-receipts` | `{driver_id}/{request_id}.jpg` |
+| `hygiene-photos` | `{driver_id}/{task_id}.jpg` |
+| `driver-documents` | `{driver_id}/{doc_type}.pdf` |
+| `support-attachments` | `{thread_id}/{message_id}` |
+
+---
+
+## Mobile app synergy (required)
+
+Any change to **schema, enum, RLS, storage bucket, realtime channel, or push payload** must update [`docs/DRIVER_APP_HANDOFF.md`](../docs/DRIVER_APP_HANDOFF.md) in the **same change**.
+
+Change-log format:
+- `[admin+app] 2026-05-18 — Added deliveries.rejection_reason`
+- `[admin only] 2026-05-18 — Dashboard chart layout`
+
+---
+
+## Local dev
+
+- Node **20 LTS** (`.nvmrc`) — Node 25 breaks Next
+- `npm run dev` · `npm run bootstrap:admin` · `npm run new:page`
+
+---
+
+## Change log
+
+- `[admin+app] 2026-05-18` — Base scaffold: 10 admin modules, core schema migration, nav/permissions/i18n, page shells, DRIVER_APP_HANDOFF.md
+- `2026-05-17` — Initial warm cream/coral design language + auth foundation

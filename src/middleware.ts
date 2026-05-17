@@ -7,7 +7,19 @@ import type { Database } from "@/types/database";
 
 const intlMiddleware = createIntlMiddleware(routing);
 
-const protectedPrefixes = ["/dashboard", "/users", "/orders", "/reports", "/settings"];
+const protectedPrefixes = [
+  "/dashboard",
+  "/drivers",
+  "/deliveries",
+  "/vehicles",
+  "/attendance",
+  "/requests",
+  "/wrong-actions",
+  "/earnings",
+  "/notifications",
+  "/support",
+  "/settings",
+];
 
 function isProtectedPath(pathname: string): boolean {
   const pathWithoutLocale = pathname.replace(/^\/(en|ar)/, "") || "/";
