@@ -25,7 +25,9 @@ const eslintConfig = defineConfig([
     files: [
       "src/app/**/route.ts",
       "src/features/**/actions.ts",
+      "src/features/**/branding-actions.ts",
       "src/lib/auth/**",
+      "src/lib/branding/**",
     ],
     rules: {
       "no-restricted-imports": "off",

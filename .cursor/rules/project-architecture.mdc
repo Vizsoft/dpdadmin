@@ -157,5 +157,6 @@ Change-log format:
 
 ## Change log
 
+- `[admin only] 2026-05-18` — Full-width dashboard shell, dark sidebar tokens, `app_settings` branding table + Settings branding UI (name, logo PNG/SVG, font)
 - `[admin+app] 2026-05-18` — Base scaffold: 10 admin modules, core schema migration, nav/permissions/i18n, page shells, DRIVER_APP_HANDOFF.md
 - `2026-05-17` — Initial warm cream/coral design language + auth foundation

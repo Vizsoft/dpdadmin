@@ -1,5 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
+import { Logo } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -13,7 +14,8 @@ export default async function UnauthorizedPage({
   const t = await getTranslations("pages.unauthorized");
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
+    <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-4">
+      <Logo size="lg" />
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>{t("title")}</CardTitle>

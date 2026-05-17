@@ -1,6 +1,7 @@
 {
   "common": {
     "appName": "لوحة DPD",
+    "appSubtitle": "لوحة التوصيل",
     "loading": "جاري التحميل...",
     "save": "حفظ",
     "cancel": "إلغاء",
@@ -266,7 +267,29 @@
       "subtitle": "التفضيلات والحساب",
       "localeLabel": "لغة الواجهة",
       "themeLabel": "المظهر",
-      "profileLabel": "مسجل الدخول كـ"
+      "profileLabel": "مسجل الدخول كـ",
+      "branding": {
+        "title": "الهوية البصرية",
+        "subtitle": "اسم التطبيق والشعار والخط في لوحة الإدارة",
+        "appName": "اسم التطبيق",
+        "appSubtitle": "العنوان الفرعي",
+        "font": "خط الموقع",
+        "logo": "الشعار",
+        "logoHint": "PNG أو JPG أو WebP أو SVG. يُفضّل 128×128 أو أكبر. SVG أوضح على جميع الشاشات.",
+        "uploadLogo": "رفع الشعار",
+        "save": "حفظ الهوية",
+        "saving": "جاري الحفظ…",
+        "reset": "استعادة الافتراضي",
+        "errors": {
+          "missingFields": "اسم التطبيق والعنوان الفرعي مطلوبان.",
+          "invalidFont": "اختر خطاً مدعوماً.",
+          "missingFile": "اختر ملف شعار للرفع.",
+          "fileTooLarge": "يجب ألا يتجاوز الشعار 2 ميجابايت.",
+          "invalidType": "استخدم PNG أو JPG أو WebP أو SVG فقط.",
+          "saveFailed": "تعذر حفظ الهوية. حاول مرة أخرى.",
+          "notAuthorized": "ليس لديك صلاحية تغيير الهوية."
+        }
+      }
     },
     "unauthorized": {
       "title": "تم رفض الوصول",

@@ -9,6 +9,39 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          id: number;
+          app_name: string;
+          app_subtitle: string;
+          font_family: string;
+          logo_url: string | null;
+          logo_type: string;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: {
+          id?: number;
+          app_name?: string;
+          app_subtitle?: string;
+          font_family?: string;
+          logo_url?: string | null;
+          logo_type?: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: {
+          id?: number;
+          app_name?: string;
+          app_subtitle?: string;
+          font_family?: string;
+          logo_url?: string | null;
+          logo_type?: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Relationships: [];
+      };
       admin_allowlist: {
         Row: {
           created_at: string;

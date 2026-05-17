@@ -1,6 +1,7 @@
 {
   "common": {
     "appName": "DPD Admin",
+    "appSubtitle": "Delivery Panel",
     "loading": "Loading...",
     "save": "Save",
     "cancel": "Cancel",
@@ -266,7 +267,29 @@
       "subtitle": "Preferences and account",
       "localeLabel": "Interface language",
       "themeLabel": "Appearance",
-      "profileLabel": "Signed in as"
+      "profileLabel": "Signed in as",
+      "branding": {
+        "title": "Branding",
+        "subtitle": "Application name, logo, and font used across the admin panel",
+        "appName": "Application name",
+        "appSubtitle": "Subtitle",
+        "font": "Site font",
+        "logo": "Logo",
+        "logoHint": "PNG, JPG, WebP, or SVG. Recommended 128×128 or larger. SVG scales best on all screens.",
+        "uploadLogo": "Upload logo",
+        "save": "Save branding",
+        "saving": "Saving…",
+        "reset": "Reset to defaults",
+        "errors": {
+          "missingFields": "Application name and subtitle are required.",
+          "invalidFont": "Please choose a supported font.",
+          "missingFile": "Choose a logo file to upload.",
+          "fileTooLarge": "Logo must be 2 MB or smaller.",
+          "invalidType": "Use PNG, JPG, WebP, or SVG only.",
+          "saveFailed": "Could not save branding. Try again.",
+          "notAuthorized": "You do not have permission to change branding."
+        }
+      }
     },
     "unauthorized": {
       "title": "Access denied",

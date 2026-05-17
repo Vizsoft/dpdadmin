@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { Package } from "lucide-react";
+import { BrandMark } from "@/components/brand/brand-mark";
 import { signInWithEmail } from "@/features/auth/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,15 +35,7 @@ export function LoginForm() {
 
   return (
     <div className="flex w-full max-w-md flex-col items-center gap-6">
-      <div className="flex flex-col items-center gap-3 text-center">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-sidebar-accent text-sidebar-accent-foreground">
-          <Package className="h-6 w-6" />
-        </div>
-        <div>
-          <p className="text-lg font-semibold text-foreground">DPD Admin</p>
-          <p className="text-sm text-muted-foreground">Delivery Panel</p>
-        </div>
-      </div>
+      <BrandMark size="lg" layout="stack" priority />
       <Card className="w-full border-border shadow-[0_4px_24px_rgba(15,15,15,0.08)]">
         <CardHeader className="space-y-1">
           <CardTitle className="text-xl">{t("title")}</CardTitle>

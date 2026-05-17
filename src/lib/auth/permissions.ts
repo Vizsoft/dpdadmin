@@ -22,6 +22,7 @@ export const PERMISSIONS = {
   "support.view": "support.view",
   "support.manage": "support.manage",
   "settings.view": "settings.view",
+  "settings.manage": "settings.manage",
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

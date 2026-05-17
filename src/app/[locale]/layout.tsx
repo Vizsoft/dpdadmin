@@ -1,7 +1,17 @@
+import type { Metadata } from "next";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
-import { Fira_Code, Inter } from "next/font/google";
+import {
+  DM_Sans,
+  Inter,
+  Open_Sans,
+  Plus_Jakarta_Sans,
+  Roboto,
+} from "next/font/google";
+import { BrandingProvider } from "@/contexts/branding-context";
+import { getAppSettings } from "@/lib/branding/get-app-settings";
+import { siteConfig } from "@/config/site";
 import { routing } from "@/i18n/routing";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,25 +19,65 @@ import { Toaster } from "@/components/ui/sonner";
 import "../globals.css";
 
 const inter = Inter({
-  subsets: ["latin"],
+  subsets: ["latin", "latin-ext"],
   weight: ["400", "500", "600", "700"],
-  variable: "--font-sans",
+  variable: "--font-inter",
+  display: "swap",
 });
 
-const firaCode = Fira_Code({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-geist-mono",
+const roboto = Roboto({
+  subsets: ["latin", "latin-ext"],
+  weight: ["400", "500", "700"],
+  variable: "--font-roboto",
+  display: "swap",
 });
+
+const openSans = Open_Sans({
+  subsets: ["latin", "latin-ext"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-open-sans",
+  display: "swap",
+});
+
+const dmSans = DM_Sans({
+  subsets: ["latin", "latin-ext"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-dm-sans",
+  display: "swap",
+});
+
+const plusJakarta = Plus_Jakarta_Sans({
+  subsets: ["latin", "latin-ext"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-plus-jakarta-sans",
+  display: "swap",
+});
+
+const fontVariables = [
+  inter.variable,
+  roboto.variable,
+  openSans.variable,
+  dmSans.variable,
+  plusJakarta.variable,
+].join(" ");
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
 }
 
-export const metadata = {
-  title: "DPD Admin",
-  description: "Internal administration panel for DPD operations",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getAppSettings();
+  const icon = settings.logoUrl ?? siteConfig.logo;
+
+  return {
+    title: settings.appName,
+    description: siteConfig.description,
+    icons: {
+      icon,
+      apple: icon,
+    },
+  };
+}
 
 export default async function LocaleLayout({
   children,
@@ -44,22 +94,26 @@ export default async function LocaleLayout({
 
   setRequestLocale(locale);
   const messages = await getMessages();
+  const branding = await getAppSettings();
 
   return (
     <html
       lang={locale}
       dir={locale === "ar" ? "rtl" : "ltr"}
       suppressHydrationWarning
-      className={`${inter.variable} ${firaCode.variable} h-full`}
+      data-font={branding.fontFamily}
+      className={`${fontVariables} h-full`}
     >
       <body className="min-h-full font-sans antialiased">
         <ThemeProvider>
-          <NextIntlClientProvider messages={messages}>
-            <TooltipProvider>
-              {children}
-              <Toaster richColors position="top-center" />
-            </TooltipProvider>
-          </NextIntlClientProvider>
+          <BrandingProvider value={branding}>
+            <NextIntlClientProvider messages={messages}>
+              <TooltipProvider>
+                {children}
+                <Toaster richColors position="top-center" />
+              </TooltipProvider>
+            </NextIntlClientProvider>
+          </BrandingProvider>
         </ThemeProvider>
       </body>
     </html>

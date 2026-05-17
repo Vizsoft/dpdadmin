@@ -4,12 +4,14 @@ import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LocaleSwitcher } from "@/components/layout/locale-switcher";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
+import { BrandingSettingsPanel } from "@/features/settings/branding-settings-panel";
 
 export function SettingsPanels() {
   const t = useTranslations("pages.settings");
 
   return (
     <div className="grid gap-4 md:grid-cols-2">
+      <BrandingSettingsPanel />
       <Card>
         <CardHeader>
           <CardTitle className="text-base">{t("localeLabel")}</CardTitle>

@@ -20,6 +20,7 @@ export type NavItem = {
   labelKey: string;
   icon: NavIcon;
   permission: Permission;
+  footer?: boolean;
 };
 
 export const NAV_ITEMS: NavItem[] = [
@@ -88,5 +89,9 @@ export const NAV_ITEMS: NavItem[] = [
     labelKey: "nav.settings",
     icon: "Settings",
     permission: "settings.view",
+    footer: true,
   },
 ];
+
+export const MAIN_NAV_ITEMS = NAV_ITEMS.filter((item) => !item.footer);
+export const FOOTER_NAV_ITEMS = NAV_ITEMS.filter((item) => item.footer);

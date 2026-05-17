@@ -30,15 +30,13 @@ export default async function DashboardLayout({
       }}
     >
       <PageHeaderProvider>
-        <div className="min-h-svh bg-background p-3">
-          <SidebarProvider>
-            <div className="flex min-h-[calc(100svh-1.5rem)] overflow-hidden rounded-2xl border border-border bg-card shadow-[0_4px_24px_rgba(15,15,15,0.06)]">
-              <AppSidebar />
-              <SidebarInset className="flex flex-col bg-card">
-                <AppHeader />
-                <main className="flex-1 space-y-6 overflow-auto p-6">{children}</main>
-              </SidebarInset>
-            </div>
+        <div className="flex min-h-svh w-full bg-background">
+          <SidebarProvider className="flex min-h-svh w-full">
+            <AppSidebar />
+            <SidebarInset className="flex min-h-svh min-w-0 flex-1 flex-col bg-card shadow-[0_0_24px_rgba(15,15,15,0.04)]">
+              <AppHeader />
+              <main className="flex-1 space-y-6 overflow-auto p-6">{children}</main>
+            </SidebarInset>
           </SidebarProvider>
         </div>
       </PageHeaderProvider>

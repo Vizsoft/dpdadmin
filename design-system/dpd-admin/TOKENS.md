@@ -26,9 +26,10 @@
 | Warning bg | `#FEF1D6` | `oklch(0.96 0.04 85)` | Status pill |
 | Danger | `#EF5B4D` | `oklch(0.65 0.19 25)` | Suspended, alerts |
 | Danger bg | `#FCE0DC` | `oklch(0.94 0.04 25)` | Status pill |
-| Sidebar | `#FFFFFF` | `oklch(1 0 0)` | Nav background |
-| Sidebar accent | `#FCEAE6` | `oklch(0.95 0.03 25)` | Active nav item bg |
-| Sidebar accent fg | `#EF5B4D` | `oklch(0.65 0.19 25)` | Active nav label |
+| Sidebar | `#1E1E2D` | `oklch(0.24 0.02 280)` | Nav background (dark) |
+| Sidebar foreground | `#F5F5F7` | `oklch(0.97 0 0)` | Nav labels |
+| Sidebar accent | `#E8DFD4` | `oklch(0.9 0.03 75)` | Active nav item bg (tan) |
+| Sidebar accent fg | `#1A1A1A` | `oklch(0.21 0 0)` | Active nav label |
 
 ### Chart palette (warm)
 
