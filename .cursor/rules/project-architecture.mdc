@@ -130,6 +130,7 @@ Migration: `supabase/migrations/20260518000000_dpd_core_schema.sql`
 
 | Bucket | App path pattern |
 |--------|------------------|
+| `branding` | `logo.{png\|jpg\|webp\|svg}` (admin panel logo; public read) |
 | `delivery-proofs` | `{driver_id}/{delivery_id}.jpg` |
 | `fuel-receipts` | `{driver_id}/{request_id}.jpg` |
 | `hygiene-photos` | `{driver_id}/{task_id}.jpg` |
@@ -157,6 +158,7 @@ Change-log format:
 
 ## Change log
 
+- `[infra] 2026-05-18` — `docs/CHANGELOG.md`, RUN_NOW migration/branding steps, README prod URL
 - `[admin only] 2026-05-18` — Full-width dashboard shell, dark sidebar tokens, `app_settings` branding table + Settings branding UI (name, logo PNG/SVG, font)
 - `[admin+app] 2026-05-18` — Base scaffold: 10 admin modules, core schema migration, nav/permissions/i18n, page shells, DRIVER_APP_HANDOFF.md
 - `2026-05-17` — Initial warm cream/coral design language + auth foundation

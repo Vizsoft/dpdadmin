@@ -66,8 +66,13 @@ npm run new:page -- analytics reports.view
 
 ## Deploy (Vercel)
 
+Production: **https://dpdadmin.vercel.app**
+
 1. Link project: `vercel link` → name **dpdadmin**
 2. Add environment variables from `.env.example`
-3. Deploy: `vercel` or push to Git
+3. Apply migrations: `npx supabase link --project-ref ytfmsgckjatiserpgdbz` then `npx supabase db push`
+4. Deploy: `vercel deploy --prod` or push to Git
 
 Add production URL to Supabase Auth redirect allowlist.
+
+**Branding:** Settings → Branding (app name, logo PNG/JPG/WebP/SVG, site font). Requires `app_settings` migration and `branding` storage bucket.
