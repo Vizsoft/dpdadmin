@@ -209,6 +209,69 @@ export type Database = {
           },
         ];
       };
+      locales: {
+        Row: {
+          code: string;
+          name: string;
+          native_name: string;
+          dir: string;
+          enabled: boolean;
+          is_default: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          code: string;
+          name: string;
+          native_name: string;
+          dir?: string;
+          enabled?: boolean;
+          is_default?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          code?: string;
+          name?: string;
+          native_name?: string;
+          dir?: string;
+          enabled?: boolean;
+          is_default?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      menu_configs: {
+        Row: {
+          id: string;
+          role: string;
+          scope: string;
+          site_id: string | null;
+          config: Json;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          role: string;
+          scope?: string;
+          site_id?: string | null;
+          config?: Json;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          role?: string;
+          scope?: string;
+          site_id?: string | null;
+          config?: Json;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {

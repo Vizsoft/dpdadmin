@@ -14,6 +14,7 @@ export type SessionUser = {
   profile: EnrichedProfile;
   permissions: Set<string>;
   isSuperAdmin: boolean;
+  adminRoleSlug: string;
 };
 
 async function loadSessionUser(): Promise<SessionUser | null> {
@@ -65,6 +66,7 @@ async function loadSessionUser(): Promise<SessionUser | null> {
     profile: enriched,
     permissions,
     isSuperAdmin,
+    adminRoleSlug: profileRow.admin_roles?.slug ?? "operator",
   };
 }
 

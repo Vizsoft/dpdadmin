@@ -26,7 +26,15 @@
     "earnings": "الأرباح والحوافز",
     "notifications": "الإشعارات",
     "support": "الدعم",
-    "settings": "الإعدادات"
+    "settings": "الإعدادات",
+    "menuEditor": "محرر القائمة",
+    "languages": "اللغات"
+  },
+  "appNavGroups": {
+    "overview": "نظرة عامة",
+    "operations": "العمليات",
+    "system": "النظام",
+    "unassigned": "غير معيّن (جديد)"
   },
   "auth": {
     "title": "تسجيل الدخول إلى DPD",
@@ -350,6 +358,65 @@
         "turnedOn": "تم تفعيل الصيانة",
         "turnedOff": "تم إيقاف الصيانة",
         "errors": { "saveFailed": "تعذر تحديث وضع الصيانة." }
+      },
+      "adminTools": {
+        "title": "أدوات المنصة",
+        "menuEditor": "محرر القائمة",
+        "languages": "اللغات"
+      },
+      "menuEditor": {
+        "title": "محرر القائمة",
+        "subtitle": "إعادة تسمية وترتيب وإخفاء وتجميع عناصر الشريط الجانبي لكل دور.",
+        "save": "حفظ",
+        "saving": "جاري الحفظ…",
+        "saved": "تم حفظ القائمة",
+        "savedDesc": "تم تحديث الشريط الجانبي لـ {role}.",
+        "saveFailed": "تعذر حفظ القائمة",
+        "resetAll": "إعادة التعيين للافتراضي",
+        "resetConfirm": "إعادة تعيين قائمة {role} للافتراضي؟",
+        "resetDone": "تمت إعادة التعيين",
+        "addGroup": "إضافة مجموعة",
+        "newGroupLabel": "مجموعة جديدة",
+        "noGroup": "بدون مجموعة",
+        "topLevel": "المستوى الأعلى",
+        "panel": "لوحة",
+        "inline": "مضمّن",
+        "show": "إظهار",
+        "hide": "إخفاء",
+        "resetDefault": "إعادة للافتراضي",
+        "unsavedChanges": "تغييرات غير محفوظة",
+        "noRoles": "لا توجد أدوار"
+      },
+      "languages": {
+        "title": "اللغات",
+        "subtitle": "إدارة اللغات المتاحة والترجمات",
+        "colCode": "الرمز",
+        "colLanguage": "اللغة",
+        "colDirection": "الاتجاه",
+        "colTranslations": "الترجمات",
+        "colEnabled": "مفعّل",
+        "colDefault": "افتراضي",
+        "colActions": "إجراءات",
+        "keys": "مفتاح",
+        "needReview": "تحتاج مراجعة",
+        "default": "افتراضي",
+        "setDefault": "تعيين افتراضي",
+        "editTranslations": "تعديل الترجمات",
+        "loadFailed": "تعذر تحميل اللغات",
+        "updateFailed": "تعذر تحديث اللغة",
+        "updated": "تم التحديث"
+      },
+      "translationEditor": {
+        "title": "تعديل الترجمات — {locale}",
+        "subtitle": "الإنجليزية هي المصدر. الحفظ يحدّث ملف الرسائل.",
+        "back": "العودة للغات",
+        "searchPlaceholder": "بحث في المفاتيح…",
+        "needReview": "تحتاج مراجعة",
+        "save": "حفظ الترجمات",
+        "saved": "تم حفظ الترجمات",
+        "saveFailed": "تعذر الحفظ",
+        "loadFailed": "تعذر التحميل",
+        "englishReadOnly": "نصوص الإنجليزية تُحرَّر في src/messages/en.json."
       },
       "branding": {
         "title": "الهوية البصرية",

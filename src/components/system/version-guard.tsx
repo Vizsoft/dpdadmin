@@ -1,38 +1,32 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { UpdateRequiredDialog } from "@/components/system/update-required-dialog";
+import { queryKeys } from "@/lib/query/query-keys";
 
 const CLIENT_BUILD_ID = process.env.NEXT_PUBLIC_BUILD_ID ?? "development";
 const POLL_MS = 60_000;
 
+async function fetchBuildId(): Promise<{ buildId: string }> {
+  const res = await fetch("/api/build-id", { cache: "no-store" });
+  if (!res.ok) throw new Error(`build-id ${res.status}`);
+  return res.json() as Promise<{ buildId: string }>;
+}
+
 export function VersionGuard() {
-  const [updateRequired, setUpdateRequired] = useState(false);
+  const { data, isSuccess } = useQuery({
+    queryKey: queryKeys.app.buildId(),
+    queryFn: fetchBuildId,
+    staleTime: 30_000,
+    refetchInterval: POLL_MS,
+    refetchOnWindowFocus: true,
+    retry: 1,
+  });
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function check() {
-      try {
-        const res = await fetch("/api/build-id", { cache: "no-store" });
-        if (!res.ok) return;
-        const data = (await res.json()) as { buildId?: string };
-        if (!cancelled && data.buildId && data.buildId !== CLIENT_BUILD_ID) {
-          setUpdateRequired(true);
-        }
-      } catch {
-        // ignore network errors during polling
-      }
-    }
-
-    void check();
-    const interval = window.setInterval(check, POLL_MS);
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(interval);
-    };
-  }, []);
+  const updateRequired =
+    isSuccess &&
+    Boolean(data?.buildId) &&
+    data.buildId !== CLIENT_BUILD_ID;
 
   if (!updateRequired) {
     return null;

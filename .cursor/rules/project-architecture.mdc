@@ -44,6 +44,8 @@ Order allocation is **external** (partner apps). We own: monitoring, compliance,
 | 9 | `/notifications` | `notifications.view` | Notifications + hygiene tasks |
 | 10 | `/support` | `support.view` | Chat, SOS, Appointments |
 | — | `/settings` | `settings.view` | — |
+| — | `/settings/menu-editor` | super admin | Per-role sidebar layout (DB + registry merge) |
+| — | `/settings/languages` | super admin | Locales table + translation editor |
 
 **Next implementation:** Drivers → Vehicles & Zones → Live Deliveries (ops first).
 
@@ -57,10 +59,37 @@ Order allocation is **external** (partner apps). We own: monitoring, compliance,
 | `src/features/<domain>/` | Domain actions + forms |
 | `src/components/dashboard/` | `PageHeader`, `KpiCard`, `ModuleListShell`, `TabBar`, `DataTableShell` |
 | `src/lib/auth/` | Session, permissions, sync-profile |
-| `src/config/navigation.ts` | Sidebar + permission per item |
+| `src/lib/query/` | TanStack Query: `makeQueryClient`, `queryKeys`, server `getServerQueryClient` |
+| `src/components/providers/` | `QueryProvider`, devtools (dev only) |
+| `src/config/navigation.ts` | Legacy nav seeds (superseded at runtime by menu merge) |
+| `src/lib/menu/menu-registry.ts` | `MENU_REGISTRY`, icons, default groups |
+| `src/lib/menu/menu-merge.ts` | `mergeMenu`, `resolveForSidebar` |
+| `src/services/menu-config-service.ts` | Supabase CRUD for `menu_configs` |
+| `src/hooks/use-sidebar-menu.ts` | Sidebar menu load + cache invalidation |
 | `design-system/dpd-admin/` | TOKENS, COMPONENTS, MASTER |
 | `docs/DRIVER_APP_HANDOFF.md` | **Mobile app single-file handoff** |
 | `supabase/migrations/` | Schema |
+
+---
+
+## Data fetching (RSC + TanStack Query)
+
+| Layer | Use when |
+|-------|-----------|
+| **Server Components** | Auth, static shells, first paint, SEO-safe reads (Supabase server client) |
+| **TanStack Query** (`@tanstack/react-query`) | Live lists, filters, pagination, polling, mutations + cache invalidation in **Client Components** |
+| **Server Actions** | Mutations that must stay on server (already used for settings/auth) |
+
+- Provider: `QueryProvider` in `src/app/[locale]/layout.tsx` (one client per browser tab).
+- Defaults: `staleTime` 60s, `gcTime` 5m, `refetchOnWindowFocus: false` (override per query for realtime UIs).
+- Keys: `src/lib/query/query-keys.ts` — always invalidate via factories, not raw arrays.
+- SSR prefetch (optional later): `getServerQueryClient` + `dehydrate` / `HydrationBoundary` around a client subtree.
+
+**Future-friendly adds (evaluate when building data-heavy modules):**
+
+- **TanStack Table** — large sortable/filterable admin grids (pairs well with Query).
+- **nuqs** — URL-backed filter state (shareable/bookmarkable list views).
+- **Supabase Realtime** — subscribe in a client hook; invalidate relevant `queryKeys` on events.
 
 ---
 
@@ -99,13 +128,15 @@ When adding a permission: seed slug in migration, add to `PERMISSIONS`, `navigat
 
 ## Database schema (core tables)
 
-Migrations: `20260518000000_dpd_core_schema.sql`, `20260518120000_app_settings.sql`, `20260519000000_rbac_approval_setup.sql`
+Migrations: `20260518000000_dpd_core_schema.sql`, `20260518120000_app_settings.sql`, `20260519000000_rbac_approval_setup.sql`, `20260520120000_menu_configs_locales.sql`
 
 | Admin / ops | Tables / columns |
 |-------------|------------------|
 | RBAC | `admin_permissions`, `admin_roles`, `admin_role_permissions` |
 | Approval | `profiles.approval_status`, `approved_at`, `approved_by` |
 | Ops flags | `app_settings.maintenance_mode`, `super_admin_claimed`, `super_admin_user_id` |
+| Menu editor | `menu_configs` (per `admin_roles.slug`, JSON tree) |
+| Locales | `locales` (enabled/default/dir; translations in `src/messages/{locale}.json`) |
 
 | Group | Tables |
 |-------|--------|
@@ -176,6 +207,8 @@ Change-log format:
 
 ## Change log
 
+- `[admin only] 2026-05-18` — Menu editor + Languages admin: `menu_configs` / `locales` tables; `/settings/menu-editor`, `/settings/languages`, `/settings/languages/[code]`; DB-driven grouped sidebar with per-role overrides; translation API writes `src/messages/{locale}.json`
+- `[admin only] 2026-05-18` — TanStack Query (`QueryProvider` in locale layout, `queryKeys`, server prefetch helpers); build-id polling via `useQuery`; devtools in development
 - `[admin only] 2026-05-18` — RBAC tables, sign-up approval, super-admin claim, maintenance mode, version refresh gate, password reset routes
 - `[infra] 2026-05-18` — `docs/CHANGELOG.md`, RUN_NOW migration/branding steps, README prod URL
 - `[admin only] 2026-05-18` — Full-width dashboard shell, dark sidebar tokens, `app_settings` branding table + Settings branding UI (name, logo PNG/SVG, font)

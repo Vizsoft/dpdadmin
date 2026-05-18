@@ -17,6 +17,7 @@ type AuthContextValue = {
   adminRoleId: string | null;
   approvalStatus: AdminApprovalStatus;
   isSuperAdmin: boolean;
+  adminRoleSlug: string;
   permissions: string[];
   can: (permission: Permission) => boolean;
 };

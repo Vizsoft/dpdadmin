@@ -26,7 +26,15 @@
     "earnings": "Earnings & Incentives",
     "notifications": "Notifications",
     "support": "Support",
-    "settings": "Settings"
+    "settings": "Settings",
+    "menuEditor": "Menu Editor",
+    "languages": "Languages"
+  },
+  "appNavGroups": {
+    "overview": "Overview",
+    "operations": "Operations",
+    "system": "System",
+    "unassigned": "Unassigned (new)"
   },
   "auth": {
     "title": "Sign in to DPD Admin",
@@ -356,6 +364,65 @@
         "errors": {
           "saveFailed": "Could not update maintenance mode."
         }
+      },
+      "adminTools": {
+        "title": "Platform tools",
+        "menuEditor": "Menu Editor",
+        "languages": "Languages"
+      },
+      "menuEditor": {
+        "title": "Menu Editor",
+        "subtitle": "Rename, reorder, hide, and group sidebar items per role. Ungrouped items can sit anywhere between groups.",
+        "save": "Save",
+        "saving": "Saving…",
+        "saved": "Menu saved",
+        "savedDesc": "Sidebar updated for {role}.",
+        "saveFailed": "Could not save menu",
+        "resetAll": "Reset to defaults",
+        "resetConfirm": "Reset menu for {role} to registry defaults?",
+        "resetDone": "Menu reset",
+        "addGroup": "Add group",
+        "newGroupLabel": "New group",
+        "noGroup": "No group",
+        "topLevel": "Top level",
+        "panel": "Panel",
+        "inline": "Inline",
+        "show": "Show",
+        "hide": "Hide",
+        "resetDefault": "Reset to default",
+        "unsavedChanges": "Unsaved changes",
+        "noRoles": "No roles available"
+      },
+      "languages": {
+        "title": "Languages",
+        "subtitle": "Manage available locales and translations",
+        "colCode": "Code",
+        "colLanguage": "Language",
+        "colDirection": "Direction",
+        "colTranslations": "Translations",
+        "colEnabled": "Enabled",
+        "colDefault": "Default",
+        "colActions": "Actions",
+        "keys": "keys",
+        "needReview": "need review",
+        "default": "Default",
+        "setDefault": "Set default",
+        "editTranslations": "Edit translations",
+        "loadFailed": "Failed to load locales",
+        "updateFailed": "Could not update locale",
+        "updated": "Locale updated"
+      },
+      "translationEditor": {
+        "title": "Edit translations — {locale}",
+        "subtitle": "English is the source of truth. Save updates the locale message file.",
+        "back": "Back to languages",
+        "searchPlaceholder": "Search keys…",
+        "needReview": "need review",
+        "save": "Save translations",
+        "saved": "Translations saved",
+        "saveFailed": "Could not save translations",
+        "loadFailed": "Failed to load translations",
+        "englishReadOnly": "English source strings are edited in src/messages/en.json."
       },
       "branding": {
         "title": "Branding",

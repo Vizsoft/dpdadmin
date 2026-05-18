@@ -14,6 +14,7 @@ import {
   type PermissionRow,
 } from "@/features/settings/roles-permissions-panel";
 import { MaintenancePanel } from "@/features/settings/maintenance-panel";
+import { SettingsAdminLinks } from "@/features/settings/settings-admin-links";
 import type { AdminRoleRow } from "@/lib/auth/get-role-permissions";
 
 export function SettingsPanels({
@@ -33,6 +34,7 @@ export function SettingsPanels({
 
   return (
     <div className="grid gap-4 md:grid-cols-2">
+      <SettingsAdminLinks />
       <MaintenancePanel maintenanceMode={maintenanceMode} />
       <AccessRequestsPanel pendingUsers={pendingUsers} assignableRoles={assignableRoles} />
       <RolesPermissionsPanel roles={allRoles} permissions={permissions} />

@@ -16,6 +16,7 @@ import { routing } from "@/i18n/routing";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
+import { QueryProvider } from "@/components/providers/query-provider";
 import { VersionGuard } from "@/components/system/version-guard";
 import "../globals.css";
 
@@ -109,11 +110,13 @@ export default async function LocaleLayout({
         <ThemeProvider>
           <BrandingProvider value={branding}>
             <NextIntlClientProvider messages={messages}>
-              <TooltipProvider>
-                {children}
-                <VersionGuard />
-                <Toaster richColors position="top-center" />
-              </TooltipProvider>
+              <QueryProvider>
+                <TooltipProvider>
+                  {children}
+                  <VersionGuard />
+                  <Toaster richColors position="top-center" />
+                </TooltipProvider>
+              </QueryProvider>
             </NextIntlClientProvider>
           </BrandingProvider>
         </ThemeProvider>

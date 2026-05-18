@@ -37,6 +37,7 @@ export default async function DashboardLayout({
         adminRoleId: session.profile.admin_role_id,
         approvalStatus: session.profile.approval_status,
         isSuperAdmin: session.isSuperAdmin,
+        adminRoleSlug: session.adminRoleSlug,
         permissions: Array.from(session.permissions),
       }}
     >

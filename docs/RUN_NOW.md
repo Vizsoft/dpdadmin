@@ -21,6 +21,7 @@ If CLI is unavailable, run SQL from `supabase/migrations/` in the [SQL editor](h
 
 - `20260518120000_app_settings.sql` — branding
 - `20260519000000_rbac_approval_setup.sql` — roles, permissions, sign-up approval, super-admin claim, maintenance mode
+- `20260520120000_menu_configs_locales.sql` — menu editor (`menu_configs`) + locales table (en/ar seed)
 
 Ensure a public **`branding`** storage bucket exists for logo uploads (Settings → Branding).
 
