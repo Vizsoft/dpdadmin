@@ -2,18 +2,18 @@
 
 Master ship log for DPD Admin. Newest entries at the top.
 
-## 2026-05-18 — ship `27a20a6`
+## 2026-05-18 — ship `6c5098c`
 
 ### ✨ Features
-- `27a20a6` — Database-driven RBAC (`admin_roles`, `admin_permissions`, `admin_role_permissions`) with Settings → Roles & permissions matrix (super admin)
-- `27a20a6` — Sign up → pending approval; super admin approves with assignable role (not super admin)
-- `27a20a6` — One-time first-user **claim super admin** at `/setup/claim-super-admin` when `super_admin_claimed` is false
-- `27a20a6` — Maintenance mode toggle (super admin only) + `/maintenance` page
-- `27a20a6` — Forgot / reset password flows via Supabase
-- `27a20a6` — Deploy update gate: `NEXT_PUBLIC_BUILD_ID`, `/api/build-id`, non-dismissable refresh dialog
+- `6c5098c` — Database-driven RBAC (`admin_roles`, `admin_permissions`, `admin_role_permissions`) with Settings → Roles & permissions matrix (super admin)
+- `6c5098c` — Sign up → pending approval; super admin approves with assignable role (not super admin)
+- `6c5098c` — One-time first-user **claim super admin** at `/setup/claim-super-admin` when `super_admin_claimed` is false
+- `6c5098c` — Maintenance mode toggle (super admin only) + `/maintenance` page
+- `6c5098c` — Forgot / reset password flows via Supabase
+- `6c5098c` — Deploy update gate: `NEXT_PUBLIC_BUILD_ID`, `/api/build-id`, non-dismissable refresh dialog
 
 ### 🔧 Remaining enhancements
-- `27a20a6` — Migration `rbac_approval_setup` on remote Supabase `ytfmsgckjatiserpgdbz`; staff → Administrator, chethan → Super Admin
+- `6c5098c` — Migration `rbac_approval_setup` on remote Supabase `ytfmsgckjatiserpgdbz`; staff → Administrator, chethan → Super Admin
 
 ---
 
