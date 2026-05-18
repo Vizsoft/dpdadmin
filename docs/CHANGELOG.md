@@ -2,13 +2,13 @@
 
 Master ship log for DPD Admin. Newest entries at the top.
 
-## 2026-05-18 — ship `d936ca4`
+## 2026-05-18 — ship `2432854`
 
 ### ✨ Features
-- `d936ca4` — Menu editor at `/settings/menu-editor`: per-role sidebar layout (rename, reorder, hide, groups, inline/panel)
-- `d936ca4` — Languages at `/settings/languages` + translation editor at `/settings/languages/[code]` (en source, ar editable via API)
-- `d936ca4` — DB-driven sidebar: `menu_configs` merged with `MENU_REGISTRY`; cache + `menu-config-updated` event on save
-- `d936ca4` — Migration `menu_configs_locales` applied on Supabase `ytfmsgckjatiserpgdbz`
+- `2432854` — Menu editor at `/settings/menu-editor`: per-role sidebar layout (rename, reorder, hide, groups, inline/panel)
+- `2432854` — Languages at `/settings/languages` + translation editor at `/settings/languages/[code]` (en source, ar editable via API)
+- `2432854` — DB-driven sidebar: `menu_configs` merged with `MENU_REGISTRY`; cache + `menu-config-updated` event on save
+- `2432854` — Migration `menu_configs_locales` applied on Supabase `ytfmsgckjatiserpgdbz`
 
 ### 🎨 UI / UX & performance
 - — shadcn Switch, Tabs, Select, Popover for admin tools UI
