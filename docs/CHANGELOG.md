@@ -2,6 +2,21 @@
 
 Master ship log for DPD Admin. Newest entries at the top.
 
+## 2026-05-20 — ship `59508b8`
+
+### ✨ Features
+- `59508b8` — Zones management at `/zones`: split list + Leaflet/OSM map, polygon and circle geofences, full CRUD with `zones.manage`
+- `59508b8` — Shared geofence helpers in `src/lib/geo/zone-geometry.ts` (`isPointInZone`, validation); `DRIVER_APP_HANDOFF.md` §8 updated
+- `59508b8` — Supabase migration `zones_geometry`: `zone_type`, `geometry` jsonb, `code` on `zones` (applied via MCP on `ytfmsgckjatiserpgdbz`)
+
+### 🎨 UI / UX & performance
+- `59508b8` — Zone cards with driver expand, map overlay + floating action card; en/ar i18n for zones module
+
+### 🔧 Remaining enhancements
+- `59508b8` — `/deliveries/zones` redirects to `/zones`; add `/zones` in menu editor; install `supabase` CLI locally for `db push`
+
+---
+
 ## 2026-05-18 — ship `2432854`
 
 ### ✨ Features
