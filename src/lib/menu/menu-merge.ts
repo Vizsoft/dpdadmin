@@ -103,17 +103,21 @@ export function mergeMenu(config: MenuNode[]): {
         hidden: false,
       };
     });
-    const idx = pruned.findIndex((n) => n.id === "group-unassigned");
+    const idx = pruned.findIndex(
+      (n) => n.id === "group-unorganised" || n.id === "group-unassigned",
+    );
     if (idx >= 0) {
       pruned[idx] = {
         ...pruned[idx],
+        id: "group-unorganised",
+        label: "Unorganised",
         children: [...(pruned[idx].children || []), ...newChildren],
       };
     } else {
       pruned.push({
-        id: "group-unassigned",
+        id: "group-unorganised",
         type: "group",
-        label: "Unassigned (new)",
+        label: "Unorganised",
         icon: "Folder",
         children: newChildren,
       });

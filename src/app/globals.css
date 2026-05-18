@@ -171,3 +171,18 @@ html[data-font="plus-jakarta-sans"] {
     @apply font-sans;
   }
 }
+
+/* Zones map: keep Geoman toolbar above sheet chrome */
+.zones-leaflet-map .leaflet-top.leaflet-right {
+  z-index: 1000;
+}
+
+.zones-draw-map-wrapper {
+  position: relative;
+  min-height: 320px;
+  overflow: visible;
+}
+
+.zones-draw-map-wrapper .zones-leaflet-map {
+  min-height: 320px;
+}

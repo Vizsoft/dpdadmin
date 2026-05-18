@@ -163,7 +163,7 @@ function ZoneFormBody({
         <div className="space-y-2">
           <Label>{t("drawOnMap")}</Label>
           <p className="text-xs text-muted-foreground">{t("drawHint")}</p>
-          <div className="h-[320px] overflow-hidden rounded-xl border border-border">
+          <div className="zones-draw-map-wrapper rounded-xl border border-border">
             <ZoneMap
               zones={[]}
               selectedId={null}

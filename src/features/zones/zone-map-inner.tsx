@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import {
   Circle,
   MapContainer,
@@ -19,9 +19,8 @@ import {
 } from "@/lib/geo/zone-geometry";
 import {
   DEFAULT_MAP_ZOOM,
+  getZoneMapTileProps,
   KUWAIT_MAP_CENTER,
-  OSM_ATTRIBUTION,
-  OSM_TILE_URL,
   ZONE_FILL_COLOR,
   ZONE_STROKE_COLOR,
 } from "./constants";
@@ -102,14 +101,17 @@ export type ZoneMapDrawMode = "polygon" | "circle" | null;
 
 function GeomanDrawControl({
   drawMode,
-  geometry,
   onGeometryChange,
 }: {
   drawMode: ZoneMapDrawMode;
-  geometry: ZoneGeoFeature | null;
   onGeometryChange: (geometry: ZoneGeoFeature, zoneType: ZoneGeometryType) => void;
 }) {
   const map = useMap();
+  const onGeometryChangeRef = useRef(onGeometryChange);
+
+  useEffect(() => {
+    onGeometryChangeRef.current = onGeometryChange;
+  });
 
   useEffect(() => {
     if (!drawMode) return;
@@ -134,6 +136,10 @@ function GeomanDrawControl({
       removalMode: true,
     });
 
+    const emitGeometry = (geometry: ZoneGeoFeature, zoneType: ZoneGeometryType) => {
+      onGeometryChangeRef.current(geometry, zoneType);
+    };
+
     const handleCreate = (e: L.LeafletEvent & { layer: L.Layer }) => {
       const layer = e.layer;
       map.eachLayer((l) => {
@@ -145,7 +151,7 @@ function GeomanDrawControl({
       if (layer instanceof L.Circle) {
         const center = layer.getLatLng();
         const radiusMeters = layer.getRadius();
-        onGeometryChange(
+        emitGeometry(
           {
             type: "Feature",
             properties: { radiusMeters },
@@ -166,7 +172,7 @@ function GeomanDrawControl({
             coordinates.push([...first]);
           }
         }
-        onGeometryChange(
+        emitGeometry(
           {
             type: "Feature",
             properties: {},
@@ -181,7 +187,7 @@ function GeomanDrawControl({
       map.eachLayer((layer) => {
         if (layer instanceof L.Circle) {
           const center = layer.getLatLng();
-          onGeometryChange(
+          emitGeometry(
             {
               type: "Feature",
               properties: { radiusMeters: layer.getRadius() },
@@ -202,7 +208,7 @@ function GeomanDrawControl({
               coordinates.push([...first]);
             }
           }
-          onGeometryChange(
+          emitGeometry(
             {
               type: "Feature",
               properties: {},
@@ -222,11 +228,7 @@ function GeomanDrawControl({
       map.off("pm:edit", handleEdit);
       map.pm.removeControls();
     };
-  }, [map, drawMode, onGeometryChange]);
-
-  useEffect(() => {
-    if (!geometry || drawMode) return;
-  }, [geometry, drawMode, map]);
+  }, [map, drawMode]);
 
   return null;
 }
@@ -295,14 +297,16 @@ export function ZoneMapInner({
     [drawMode, zones],
   );
 
+  const tile = useMemo(() => getZoneMapTileProps(), []);
+
   return (
     <MapContainer
       center={KUWAIT_MAP_CENTER}
       zoom={DEFAULT_MAP_ZOOM}
-      className={className ?? "h-full w-full rounded-xl"}
+      className={className ?? "zones-leaflet-map h-full w-full rounded-xl"}
       scrollWheelZoom
     >
-      <TileLayer attribution={OSM_ATTRIBUTION} url={OSM_TILE_URL} />
+      <TileLayer attribution={tile.attribution} url={tile.url} />
       {!drawMode &&
         displayZones.map((zone) => (
           <ZoneOverlay
@@ -314,7 +318,6 @@ export function ZoneMapInner({
       {drawMode && onDraftGeometryChange && (
         <GeomanDrawControl
           drawMode={drawMode}
-          geometry={draftGeometry ?? null}
           onGeometryChange={onDraftGeometryChange}
         />
       )}

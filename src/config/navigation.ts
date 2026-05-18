@@ -43,6 +43,12 @@ export const NAV_ITEMS: NavItem[] = [
     permission: "deliveries.view",
   },
   {
+    href: "/zones",
+    labelKey: "nav.zones",
+    icon: "MapPin",
+    permission: "zones.view",
+  },
+  {
     href: "/vehicles",
     labelKey: "nav.vehicles",
     icon: "Bike",

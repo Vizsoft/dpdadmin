@@ -28,13 +28,15 @@
     "support": "Support",
     "settings": "Settings",
     "menuEditor": "Menu Editor",
-    "languages": "Languages"
+    "languages": "Languages",
+    "zones": "Zones"
   },
   "appNavGroups": {
     "overview": "Overview",
     "operations": "Operations",
     "system": "System",
-    "unassigned": "Unassigned (new)"
+    "unorganised": "Unorganised",
+    "unassigned": "Unorganised"
   },
   "auth": {
     "title": "Sign in to DPD Admin",
@@ -196,7 +198,7 @@
       "fieldRadius": "Radius (meters)",
       "radiusHint": "Between 50 m and 50 km. Draw a circle on the map or adjust after drawing.",
       "drawOnMap": "Draw on map",
-      "drawHint": "Use the toolbar on the map to draw. Only one shape per zone.",
+      "drawHint": "Use the drawing toolbar (top-right of the map): pick polygon or circle, click the map to outline your zone. Only one shape per zone.",
       "cancel": "Cancel",
       "saveChanges": "Save changes",
       "createZone": "Create zone",

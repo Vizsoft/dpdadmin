@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   LifeBuoy,
   ListTree,
+  MapPin,
   Package,
   Settings as SettingsIcon,
   Users,
@@ -44,6 +45,7 @@ export const ICON_MAP: Record<string, LucideIcon> = {
   Languages,
   ListTree,
   Folder,
+  MapPin,
 };
 
 export const ICON_NAMES = Object.keys(ICON_MAP);
@@ -52,7 +54,7 @@ export function resolveIcon(name: string): LucideIcon {
   return ICON_MAP[name] ?? LayoutDashboard;
 }
 
-export const DEFAULT_GROUPS = ["Overview", "Operations", "System"];
+export const DEFAULT_GROUPS = ["Overview", "Operations", "System", "Unorganised"];
 
 export const MENU_REGISTRY: MenuRegistryItem[] = [
   {
@@ -175,6 +177,15 @@ export const MENU_REGISTRY: MenuRegistryItem[] = [
     superAdminOnly: true,
     footer: true,
   },
+  {
+    id: "zones",
+    defaultLabel: "Zones",
+    defaultIcon: "MapPin",
+    href: "/zones",
+    defaultGroup: "Unorganised",
+    defaultOrder: 0,
+    permission: "zones.view",
+  },
 ];
 
 /** Map menu item id → next-intl nav key (without `nav.` prefix). */
@@ -192,4 +203,5 @@ export const APP_NAV_KEY_BY_ID: Record<string, string> = {
   settings: "settings",
   "menu-editor": "menuEditor",
   languages: "languages",
+  zones: "zones",
 };

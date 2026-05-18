@@ -43,7 +43,8 @@ const GROUP_LABEL_KEYS: Record<string, string> = {
   Overview: "overview",
   Operations: "operations",
   System: "system",
-  "Unassigned (new)": "unassigned",
+  Unorganised: "unorganised",
+  "Unassigned (new)": "unorganised",
 };
 
 function useGroupLabel() {
