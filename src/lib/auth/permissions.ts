@@ -1,5 +1,3 @@
-import type { AppRole } from "@/types/database";
-
 export const PERMISSIONS = {
   "dashboard.view": "dashboard.view",
   "drivers.view": "drivers.view",
@@ -23,21 +21,45 @@ export const PERMISSIONS = {
   "support.manage": "support.manage",
   "settings.view": "settings.view",
   "settings.manage": "settings.manage",
+  "users.manage": "users.manage",
+  "roles.manage": "roles.manage",
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
 
-const STAFF_PERMISSIONS: Permission[] = Object.values(PERMISSIONS);
+export type AdminApprovalStatus = "pending" | "approved" | "rejected";
 
-export const ROLE_PERMISSIONS: Record<AppRole, Permission[]> = {
-  staff: STAFF_PERMISSIONS,
-  rider: [PERMISSIONS["dashboard.view"]],
+export type AuthProfile = {
+  id: string;
+  role: "rider" | "staff";
+  adminRoleId: string | null;
+  approvalStatus: AdminApprovalStatus;
+  isSuperAdmin: boolean;
+  archivedAt: string | null;
 };
 
-export function hasPermission(role: AppRole, permission: Permission): boolean {
-  return ROLE_PERMISSIONS[role]?.includes(permission) ?? false;
+export function hasPermissionInSet(
+  permissions: ReadonlySet<string>,
+  permission: Permission,
+  isSuperAdmin: boolean,
+): boolean {
+  if (isSuperAdmin) return true;
+  return permissions.has(permission);
 }
 
-export function canAccessAdminPanel(role: AppRole, archivedAt: string | null): boolean {
-  return role === "staff" && archivedAt === null;
+export function canAccessAdminPanel(profile: AuthProfile): boolean {
+  return (
+    profile.role === "staff" &&
+    profile.archivedAt === null &&
+    profile.approvalStatus === "approved" &&
+    profile.adminRoleId !== null
+  );
+}
+
+export function needsPendingApproval(profile: AuthProfile): boolean {
+  return profile.approvalStatus === "pending";
+}
+
+export function isRejected(profile: AuthProfile): boolean {
+  return profile.approvalStatus === "rejected";
 }

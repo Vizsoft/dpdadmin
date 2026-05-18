@@ -1,6 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
-import { canAccessAdminPanel } from "./permissions";
+import { canAccessAdminPanel } from "@/lib/auth/permissions";
+import {
+  resolveIsSuperAdmin,
+  toAuthProfile,
+  type EnrichedProfile,
+} from "@/lib/auth/profile-auth";
+import { getAppOpsSettings } from "@/lib/auth/app-settings";
 
 type Supabase = SupabaseClient<Database>;
 
@@ -8,12 +14,29 @@ export async function syncAdminProfile(
   supabase: Supabase,
   user: { id: string; email?: string | null },
   locale = "en",
-): Promise<{ ok: true } | { ok: false; reason: "not_authorized" | "no_profile" }> {
+  fullName?: string | null,
+): Promise<
+  | { ok: true; approvalStatus: "pending" | "approved" | "rejected" }
+  | { ok: false; reason: "not_authorized" | "no_profile" }
+> {
   if (!user.email) {
     return { ok: false, reason: "not_authorized" };
   }
 
   const email = user.email.toLowerCase();
+  const ops = await getAppOpsSettings();
+
+  const { data: existingProfile } = await supabase
+    .from("profiles")
+    .select("*, admin_role_id, approval_status, approved_at, approved_by")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const existing = existingProfile as EnrichedProfile | null;
+
+  if (existing?.approval_status === "rejected") {
+    return { ok: false, reason: "not_authorized" };
+  }
 
   const { data: allowlist } = await supabase
     .from("admin_allowlist")
@@ -21,27 +44,41 @@ export async function syncAdminProfile(
     .eq("email", email)
     .maybeSingle();
 
-  const { data: existingProfile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .maybeSingle();
+  const isExistingApproved =
+    existing?.approval_status === "approved" && existing.admin_role_id;
 
-  if (!allowlist && existingProfile?.role !== "staff") {
-    return { ok: false, reason: "not_authorized" };
+  if (!allowlist && !isExistingApproved && ops.superAdminClaimed) {
+    if (!existing) {
+      const { error: insertError } = await supabase.from("profiles").upsert({
+        id: user.id,
+        email,
+        full_name: fullName ?? null,
+        role: "staff",
+        locale: locale,
+        approval_status: "pending",
+        updated_at: new Date().toISOString(),
+      } as never);
+
+      if (insertError) {
+        return { ok: false, reason: "no_profile" };
+      }
+      return { ok: true, approvalStatus: "pending" };
+    }
   }
 
-  const role = allowlist?.role ?? existingProfile?.role ?? "staff";
+  const role = allowlist?.role ?? existing?.role ?? "staff";
 
   const { error: upsertError } = await supabase.from("profiles").upsert({
     id: user.id,
     email,
-    full_name: existingProfile?.full_name ?? null,
-    avatar_url: existingProfile?.avatar_url ?? null,
+    full_name: fullName ?? existing?.full_name ?? null,
+    avatar_url: existing?.avatar_url ?? null,
     role,
-    locale: existingProfile?.locale ?? locale,
+    locale: existing?.locale ?? locale,
+    admin_role_id: existing?.admin_role_id ?? null,
+    approval_status: existing?.approval_status ?? "pending",
     updated_at: new Date().toISOString(),
-  });
+  } as never);
 
   if (upsertError) {
     return { ok: false, reason: "no_profile" };
@@ -49,13 +86,25 @@ export async function syncAdminProfile(
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role, archived_at")
+    .select("*, admin_role_id, approval_status, approved_at, approved_by")
     .eq("id", user.id)
     .single();
 
-  if (!profile || !canAccessAdminPanel(profile.role, profile.archived_at)) {
+  if (!profile) {
+    return { ok: false, reason: "no_profile" };
+  }
+
+  const enriched = profile as EnrichedProfile;
+  const isSuperAdmin = await resolveIsSuperAdmin(enriched.admin_role_id);
+  const authProfile = toAuthProfile(enriched, isSuperAdmin);
+
+  if (enriched.approval_status === "pending") {
+    return { ok: true, approvalStatus: "pending" };
+  }
+
+  if (!canAccessAdminPanel(authProfile)) {
     return { ok: false, reason: "not_authorized" };
   }
 
-  return { ok: true };
+  return { ok: true, approvalStatus: "approved" };
 }

@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { setRequestLocale } from "next-intl/server";
 import { requireAuth } from "@/lib/auth/require-permission";
+import { getAppOpsSettings } from "@/lib/auth/app-settings";
+import { redirect } from "@/i18n/navigation";
 import { AuthProvider } from "@/contexts/auth-context";
 import { PageHeaderProvider } from "@/contexts/page-header-context";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
@@ -18,6 +20,11 @@ export default async function DashboardLayout({
   setRequestLocale(locale);
 
   const session = await requireAuth(locale);
+  const ops = await getAppOpsSettings();
+
+  if (ops.maintenanceMode && !session.isSuperAdmin) {
+    redirect({ href: "/maintenance", locale });
+  }
 
   return (
     <AuthProvider
@@ -27,6 +34,10 @@ export default async function DashboardLayout({
         fullName: session.profile.full_name,
         role: session.profile.role,
         locale: session.profile.locale,
+        adminRoleId: session.profile.admin_role_id,
+        approvalStatus: session.profile.approval_status,
+        isSuperAdmin: session.isSuperAdmin,
+        permissions: Array.from(session.permissions),
       }}
     >
       <PageHeaderProvider>

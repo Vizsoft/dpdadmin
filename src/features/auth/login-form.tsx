@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useTranslations, useLocale } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { BrandMark } from "@/components/brand/brand-mark";
@@ -66,7 +67,15 @@ export function LoginForm() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">{t("password")}</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">{t("password")}</Label>
+                <Link
+                  href={`/${locale}/forgot-password`}
+                  className="text-xs font-medium text-accent hover:underline"
+                >
+                  {t("forgotPassword")}
+                </Link>
+              </div>
               <Input
                 id="password"
                 name="password"
@@ -90,6 +99,12 @@ export function LoginForm() {
               {isPending ? t("signingIn") : t("signIn")}
             </Button>
           </form>
+          <p className="mt-4 text-center text-sm text-muted-foreground">
+            {t("noAccount")}{" "}
+            <Link href={`/${locale}/signup`} className="font-medium text-accent hover:underline">
+              {t("signUp")}
+            </Link>
+          </p>
         </CardContent>
       </Card>
     </div>

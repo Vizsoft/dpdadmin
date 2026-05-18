@@ -16,6 +16,7 @@ import { routing } from "@/i18n/routing";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
+import { VersionGuard } from "@/components/system/version-guard";
 import "../globals.css";
 
 const inter = Inter({
@@ -110,6 +111,7 @@ export default async function LocaleLayout({
             <NextIntlClientProvider messages={messages}>
               <TooltipProvider>
                 {children}
+                <VersionGuard />
                 <Toaster richColors position="top-center" />
               </TooltipProvider>
             </NextIntlClientProvider>

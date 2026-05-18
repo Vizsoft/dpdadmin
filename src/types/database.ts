@@ -17,6 +17,9 @@ export type Database = {
           font_family: string;
           logo_url: string | null;
           logo_type: string;
+          maintenance_mode: boolean;
+          super_admin_claimed: boolean;
+          super_admin_user_id: string | null;
           updated_at: string;
           updated_by: string | null;
         };
@@ -27,6 +30,9 @@ export type Database = {
           font_family?: string;
           logo_url?: string | null;
           logo_type?: string;
+          maintenance_mode?: boolean;
+          super_admin_claimed?: boolean;
+          super_admin_user_id?: string | null;
           updated_at?: string;
           updated_by?: string | null;
         };
@@ -37,6 +43,9 @@ export type Database = {
           font_family?: string;
           logo_url?: string | null;
           logo_type?: string;
+          maintenance_mode?: boolean;
+          super_admin_claimed?: boolean;
+          super_admin_user_id?: string | null;
           updated_at?: string;
           updated_by?: string | null;
         };
@@ -60,6 +69,81 @@ export type Database = {
         };
         Relationships: [];
       };
+      admin_permissions: {
+        Row: {
+          slug: string;
+          label: string;
+          category: string;
+        };
+        Insert: {
+          slug: string;
+          label: string;
+          category?: string;
+        };
+        Update: {
+          slug?: string;
+          label?: string;
+          category?: string;
+        };
+        Relationships: [];
+      };
+      admin_roles: {
+        Row: {
+          id: string;
+          slug: string;
+          name: string;
+          is_system: boolean;
+          is_super_admin: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          slug: string;
+          name: string;
+          is_system?: boolean;
+          is_super_admin?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          slug?: string;
+          name?: string;
+          is_system?: boolean;
+          is_super_admin?: boolean;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      admin_role_permissions: {
+        Row: {
+          role_id: string;
+          permission_slug: string;
+        };
+        Insert: {
+          role_id: string;
+          permission_slug: string;
+        };
+        Update: {
+          role_id?: string;
+          permission_slug?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "admin_role_permissions_role_id_fkey";
+            columns: ["role_id"];
+            isOneToOne: false;
+            referencedRelation: "admin_roles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "admin_role_permissions_permission_slug_fkey";
+            columns: ["permission_slug"];
+            isOneToOne: false;
+            referencedRelation: "admin_permissions";
+            referencedColumns: ["slug"];
+          },
+        ];
+      };
       profiles: {
         Row: {
           archived_at: string | null;
@@ -72,6 +156,10 @@ export type Database = {
           locale: string;
           phone: string | null;
           role: Database["public"]["Enums"]["app_role"];
+          admin_role_id: string | null;
+          approval_status: Database["public"]["Enums"]["admin_approval_status"];
+          approved_at: string | null;
+          approved_by: string | null;
           updated_at: string;
           zone_id: string | null;
         };
@@ -86,6 +174,10 @@ export type Database = {
           locale?: string;
           phone?: string | null;
           role?: Database["public"]["Enums"]["app_role"];
+          admin_role_id?: string | null;
+          approval_status?: Database["public"]["Enums"]["admin_approval_status"];
+          approved_at?: string | null;
+          approved_by?: string | null;
           updated_at?: string;
           zone_id?: string | null;
         };
@@ -100,23 +192,39 @@ export type Database = {
           locale?: string;
           phone?: string | null;
           role?: Database["public"]["Enums"]["app_role"];
+          admin_role_id?: string | null;
+          approval_status?: Database["public"]["Enums"]["admin_approval_status"];
+          approved_at?: string | null;
+          approved_by?: string | null;
           updated_at?: string;
           zone_id?: string | null;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "profiles_admin_role_id_fkey";
+            columns: ["admin_role_id"];
+            isOneToOne: false;
+            referencedRelation: "admin_roles";
+            referencedColumns: ["id"];
+          },
+        ];
       };
     };
     Views: Record<string, never>;
     Functions: {
+      claim_super_admin: { Args: { p_user_id: string }; Returns: boolean };
       is_admin_panel_user: { Args: never; Returns: boolean };
       is_staff: { Args: never; Returns: boolean };
+      is_super_admin_user: { Args: never; Returns: boolean };
     };
     Enums: {
       app_role: "rider" | "staff";
+      admin_approval_status: "pending" | "approved" | "rejected";
     };
     CompositeTypes: Record<string, never>;
   };
 };
 
 export type AppRole = Database["public"]["Enums"]["app_role"];
+export type AdminApprovalStatus = Database["public"]["Enums"]["admin_approval_status"];
 export type Profile = Database["public"]["Tables"]["profiles"]["Row"];

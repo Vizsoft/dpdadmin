@@ -9,7 +9,7 @@
 
 ## Step 2 — Apply database migrations
 
-Link Supabase CLI (one time) and push migrations (includes `app_settings` for branding):
+Link Supabase CLI (one time) and push migrations (includes `app_settings`, RBAC tables, approval flow):
 
 ```bash
 cd dpdadmin
@@ -17,7 +17,12 @@ npx supabase link --project-ref ytfmsgckjatiserpgdbz
 npx supabase db push
 ```
 
-If CLI is unavailable, run SQL from `supabase/migrations/` in the [SQL editor](https://supabase.com/dashboard/project/ytfmsgckjatiserpgdbz/sql). Ensure a public **`branding`** storage bucket exists for logo uploads (Settings → Branding).
+If CLI is unavailable, run SQL from `supabase/migrations/` in the [SQL editor](https://supabase.com/dashboard/project/ytfmsgckjatiserpgdbz/sql). Required migrations:
+
+- `20260518120000_app_settings.sql` — branding
+- `20260519000000_rbac_approval_setup.sql` — roles, permissions, sign-up approval, super-admin claim, maintenance mode
+
+Ensure a public **`branding`** storage bucket exists for logo uploads (Settings → Branding).
 
 ## Step 3 — Create the admin user (one time)
 
@@ -35,6 +40,16 @@ npm run dev
 ```
 
 Open http://localhost:3000/en/login and sign in with your `ADMIN_EMAIL` / `ADMIN_PASSWORD`.
+
+### First install (no super admin yet)
+
+1. Go to `/en/signup` and create the first account.
+2. You are redirected to `/en/setup/claim-super-admin` — confirm once to become super admin.
+3. Further sign-ups go to **pending approval** until you approve them in **Settings → Access requests**.
+
+### Existing production
+
+Migration seeds `chethan@vizsoft.in` as super admin and sets `super_admin_claimed = true`. The claim page is hidden; existing staff are migrated to the **Administrator** role.
 
 ## Step 5 — Supabase Auth settings
 
@@ -67,7 +82,10 @@ Sign in at https://dpdadmin.vercel.app/en/login (same email/password as bootstra
 | Problem | Fix |
 |---------|-----|
 | “Invalid email or password” | Run `npm run bootstrap:admin` again |
-| “Not authorized” | Email must be in `admin_allowlist` and profile role `staff` |
+| “Not authorized” | Profile must be `approved` with an `admin_role_id`, or on allowlist |
+| Stuck on pending | Super admin must approve in Settings → Access requests |
+| Maintenance screen | Super admin can disable maintenance in Settings; others are blocked |
+| “Update required” dialog | Refresh the page after a new deploy (`NEXT_PUBLIC_BUILD_ID` / Vercel commit SHA) |
 | Blank page / env error | Check all `NEXT_PUBLIC_*` vars in `.env.local` or Vercel |
 | Login works locally but not on Vercel | Set `NEXT_PUBLIC_APP_URL` to production URL and redeploy |
 | Branding save/upload fails | Run `npx supabase db push`; confirm `branding` bucket in Storage |

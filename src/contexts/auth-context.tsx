@@ -1,8 +1,12 @@
 "use client";
 
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useMemo, type ReactNode } from "react";
 import type { AppRole } from "@/types/database";
-import { hasPermission, type Permission } from "@/lib/auth/permissions";
+import {
+  hasPermissionInSet,
+  type Permission,
+  type AdminApprovalStatus,
+} from "@/lib/auth/permissions";
 
 type AuthContextValue = {
   userId: string;
@@ -10,6 +14,10 @@ type AuthContextValue = {
   fullName: string | null;
   role: AppRole;
   locale: string;
+  adminRoleId: string | null;
+  approvalStatus: AdminApprovalStatus;
+  isSuperAdmin: boolean;
+  permissions: string[];
   can: (permission: Permission) => boolean;
 };
 
@@ -22,7 +30,10 @@ export function AuthProvider({
   children: ReactNode;
   value: Omit<AuthContextValue, "can">;
 }) {
-  const can = (permission: Permission) => hasPermission(value.role, permission);
+  const permissionSet = useMemo(() => new Set(value.permissions), [value.permissions]);
+
+  const can = (permission: Permission) =>
+    hasPermissionInSet(permissionSet, permission, value.isSuperAdmin);
 
   return (
     <AuthContext.Provider value={{ ...value, can }}>{children}</AuthContext.Provider>

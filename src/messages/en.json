@@ -33,11 +33,60 @@
     "subtitle": "Control Tower — internal operations",
     "email": "Email",
     "password": "Password",
+    "fullName": "Full name",
     "signIn": "Sign in",
     "signingIn": "Signing in...",
+    "signUp": "Sign up",
+    "signUpTitle": "Create an account",
+    "signUpSubtitle": "Request access to the admin panel",
+    "signingUp": "Creating account...",
+    "hasAccount": "Already have an account?",
+    "noAccount": "Need an account?",
+    "forgotPassword": "Forgot password?",
+    "forgotTitle": "Reset your password",
+    "forgotSubtitle": "We will email you a reset link",
+    "sendResetLink": "Send reset link",
+    "sendingReset": "Sending...",
+    "resetEmailSent": "If an account exists for that email, you will receive a reset link shortly.",
+    "backToSignIn": "Back to sign in",
+    "resetTitle": "Choose a new password",
+    "resetSubtitle": "Enter a new password for your account",
+    "newPassword": "New password",
+    "updatePassword": "Update password",
+    "updatingPassword": "Updating...",
+    "weakPassword": "Password must be at least 8 characters",
+    "resetFailed": "Could not send reset email. Try again.",
+    "updatePasswordFailed": "Could not update password. Try again.",
+    "missingFields": "Please fill in all required fields",
+    "signupFailed": "Could not create account. Try again.",
     "invalidCredentials": "Invalid email or password",
     "notAuthorized": "Your account is not authorized for the admin panel",
-    "allowlistRequired": "Contact an administrator to be added to the allowlist"
+    "allowlistRequired": "Contact an administrator to be added to the allowlist",
+    "claim": {
+      "title": "Set up this installation",
+      "subtitle": "You will be the super administrator",
+      "body": "Confirm to claim super admin access for this environment. This can only be done once.",
+      "confirm": "Claim super admin",
+      "claiming": "Setting up..."
+    },
+    "pending": {
+      "title": "Awaiting approval",
+      "subtitle": "Your account is pending review by a super administrator. You will receive access once approved.",
+      "signOut": "Sign out"
+    },
+    "maintenance": {
+      "title": "Maintenance in progress",
+      "subtitle": "The admin panel is temporarily unavailable. Please try again later.",
+      "signOut": "Sign out"
+    }
+  },
+  "system": {
+    "update": {
+      "title": "Update required",
+      "subtitle": "A new version of the admin panel is available",
+      "body": "Refresh the page to load the latest version. Your session will continue after reload.",
+      "refresh": "Refresh now"
+    }
   },
   "pages": {
     "dashboard": {
@@ -268,6 +317,46 @@
       "localeLabel": "Interface language",
       "themeLabel": "Appearance",
       "profileLabel": "Signed in as",
+      "accessRequests": {
+        "title": "Access requests",
+        "subtitle": "Approve or reject new sign-ups",
+        "empty": "No pending access requests",
+        "name": "Name",
+        "email": "Email",
+        "role": "Role",
+        "actions": "Actions",
+        "approve": "Approve",
+        "reject": "Reject",
+        "approved": "User approved",
+        "rejected": "User rejected",
+        "errors": {
+          "saveFailed": "Could not save. Try again."
+        }
+      },
+      "roles": {
+        "title": "Roles & permissions",
+        "subtitle": "Control what each role can access in the panel",
+        "selectRole": "Role",
+        "save": "Save permissions",
+        "saving": "Saving…",
+        "saved": "Permissions saved",
+        "errors": {
+          "saveFailed": "Could not save permissions. Try again."
+        }
+      },
+      "maintenance": {
+        "title": "Maintenance mode",
+        "subtitle": "Block panel access for all users except super admin",
+        "enabled": "Maintenance mode is ON — only super admin can sign in.",
+        "disabled": "Maintenance mode is OFF.",
+        "enable": "Enable maintenance",
+        "disable": "Disable maintenance",
+        "turnedOn": "Maintenance mode enabled",
+        "turnedOff": "Maintenance mode disabled",
+        "errors": {
+          "saveFailed": "Could not update maintenance mode."
+        }
+      },
       "branding": {
         "title": "Branding",
         "subtitle": "Application name, logo, and font used across the admin panel",

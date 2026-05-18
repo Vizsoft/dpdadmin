@@ -3,7 +3,7 @@
 import { updateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/auth/get-session";
-import { hasPermission } from "@/lib/auth/permissions";
+import { hasPermissionInSet } from "@/lib/auth/permissions";
 import {
   ALLOWED_LOGO_EXTENSIONS,
   DEFAULT_APP_SETTINGS,
@@ -18,7 +18,10 @@ function revalidateBranding() {
 
 async function requireSettingsManager() {
   const session = await getSessionUser();
-  if (!session || !hasPermission(session.profile.role, "settings.manage")) {
+  if (
+    !session ||
+    !hasPermissionInSet(session.permissions, "settings.manage", session.isSuperAdmin)
+  ) {
     return { error: "not_authorized" as const };
   }
   return { session };

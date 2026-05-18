@@ -24,8 +24,9 @@ const eslintConfig = defineConfig([
   {
     files: [
       "src/app/**/route.ts",
+      "src/app/**/page.tsx",
       "src/features/**/actions.ts",
-      "src/features/**/branding-actions.ts",
+      "src/features/**/*-actions.ts",
       "src/lib/auth/**",
       "src/lib/branding/**",
     ],

@@ -1,6 +1,6 @@
 import { redirect } from "@/i18n/navigation";
 import { getSessionUser } from "./get-session";
-import { hasPermission, type Permission } from "./permissions";
+import { hasPermissionInSet, type Permission } from "./permissions";
 
 export async function requireAuth(locale: string) {
   const session = await getSessionUser();
@@ -8,12 +8,20 @@ export async function requireAuth(locale: string) {
     redirect({ href: "/login", locale });
     throw new Error("Unauthenticated");
   }
+  if (session.profile.approval_status === "pending") {
+    redirect({ href: "/pending-approval", locale });
+  }
+  if (session.profile.approval_status === "rejected") {
+    redirect({ href: "/login?error=not_authorized", locale });
+  }
   return session;
 }
 
 export async function requirePermission(locale: string, permission: Permission) {
   const session = await requireAuth(locale);
-  if (!hasPermission(session.profile.role, permission)) {
+  if (
+    !hasPermissionInSet(session.permissions, permission, session.isSuperAdmin)
+  ) {
     redirect({ href: "/unauthorized", locale });
   }
   return session;

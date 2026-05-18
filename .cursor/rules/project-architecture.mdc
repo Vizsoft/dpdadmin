@@ -66,28 +66,46 @@ Order allocation is **external** (partner apps). We own: monitoring, compliance,
 
 ## Auth (do not bypass)
 
-1. `src/middleware.ts` — intl + session; protected routes listed there
-2. `(dashboard)/layout.tsx` — `requireAuth` → `staff` + not archived
-3. Each page — `requirePermission(locale, "...")`
+1. `src/middleware.ts` — intl + session; maintenance; pending; claim redirect
+2. `(dashboard)/layout.tsx` — `requireAuth` → approved + `admin_role_id`
+3. Each page — `requirePermission(locale, "...")` (DB-backed permission set)
 
-**Admin users:** `admin_allowlist` + `profiles.role = staff`.  
-**Drivers:** `profiles.role = rider` + row in `drivers` — **no admin panel access**.
+**Panel access:** `profiles.role = staff`, `approval_status = approved`, `admin_role_id` set, not archived.  
+**Sign up:** `/signup` → pending (or `/setup/claim-super-admin` if `app_settings.super_admin_claimed` is false).  
+**Super admin:** `admin_roles.is_super_admin` — claim once via `claim_super_admin()` or seeded on existing prod.  
+**Drivers:** `profiles.role = rider` — **no admin panel access**.
+
+Auth routes: `/login`, `/signup`, `/forgot-password`, `/reset-password`, `/pending-approval`, `/maintenance`, `/setup/claim-super-admin`.
 
 ---
 
 ## Permissions (`src/lib/auth/permissions.ts`)
 
-Pattern: `<module>.view` and `<module>.manage` where applicable.
+Pattern: `<module>.view` and `<module>.manage` where applicable. Slugs in TypeScript; **assignments in DB**.
 
-`staff` → all permissions. `rider` → blocked from panel.
+| Table | Purpose |
+|-------|---------|
+| `admin_permissions` | Slug, label, category (seeded) |
+| `admin_roles` | `super_admin`, `administrator`, `operator` + custom |
+| `admin_role_permissions` | Role ↔ permission junction |
+| `profiles.admin_role_id` | Panel role per user |
 
-When adding a permission: update `PERMISSIONS`, `ROLE_PERMISSIONS`, `navigation.ts`, messages, middleware if new top-level route, **and** `DRIVER_APP_HANDOFF.md` if app-facing.
+`hasPermissionInSet(permissions, slug, isSuperAdmin)` — super admin bypasses all checks.  
+Cache: `getAllAdminRoles()` tag `admin-roles`. Settings matrix invalidates on save.
+
+When adding a permission: seed slug in migration, add to `PERMISSIONS`, `navigation.ts`, messages, **and** `DRIVER_APP_HANDOFF.md` if app-facing.
 
 ---
 
 ## Database schema (core tables)
 
-Migration: `supabase/migrations/20260518000000_dpd_core_schema.sql`
+Migrations: `20260518000000_dpd_core_schema.sql`, `20260518120000_app_settings.sql`, `20260519000000_rbac_approval_setup.sql`
+
+| Admin / ops | Tables / columns |
+|-------------|------------------|
+| RBAC | `admin_permissions`, `admin_roles`, `admin_role_permissions` |
+| Approval | `profiles.approval_status`, `approved_at`, `approved_by` |
+| Ops flags | `app_settings.maintenance_mode`, `super_admin_claimed`, `super_admin_user_id` |
 
 | Group | Tables |
 |-------|--------|
@@ -158,6 +176,7 @@ Change-log format:
 
 ## Change log
 
+- `[admin only] 2026-05-18` — RBAC tables, sign-up approval, super-admin claim, maintenance mode, version refresh gate, password reset routes
 - `[infra] 2026-05-18` — `docs/CHANGELOG.md`, RUN_NOW migration/branding steps, README prod URL
 - `[admin only] 2026-05-18` — Full-width dashboard shell, dark sidebar tokens, `app_settings` branding table + Settings branding UI (name, logo PNG/SVG, font)
 - `[admin+app] 2026-05-18` — Base scaffold: 10 admin modules, core schema migration, nav/permissions/i18n, page shells, DRIVER_APP_HANDOFF.md
