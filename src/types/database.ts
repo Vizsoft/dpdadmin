@@ -272,6 +272,101 @@ export type Database = {
         };
         Relationships: [];
       };
+      zones: {
+        Row: {
+          id: string;
+          name: string;
+          code: string;
+          zone_type: "polygon" | "circle";
+          geometry: Json | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          code: string;
+          zone_type?: "polygon" | "circle";
+          geometry?: Json | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          code?: string;
+          zone_type?: "polygon" | "circle";
+          geometry?: Json | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "drivers_zone_id_fkey";
+            columns: ["id"];
+            isOneToOne: false;
+            referencedRelation: "drivers";
+            referencedColumns: ["zone_id"];
+          },
+        ];
+      };
+      drivers: {
+        Row: {
+          id: string;
+          driver_code: string;
+          zone_id: string | null;
+          partner_id: string | null;
+        };
+        Insert: {
+          id: string;
+          driver_code: string;
+          zone_id?: string | null;
+          partner_id?: string | null;
+        };
+        Update: {
+          id?: string;
+          driver_code?: string;
+          zone_id?: string | null;
+          partner_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "drivers_zone_id_fkey";
+            columns: ["zone_id"];
+            isOneToOne: false;
+            referencedRelation: "zones";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "drivers_partner_id_fkey";
+            columns: ["partner_id"];
+            isOneToOne: false;
+            referencedRelation: "partners";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      partners: {
+        Row: {
+          id: string;
+          name: string;
+          slug: string;
+          logo_url: string | null;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          slug: string;
+          logo_url?: string | null;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          slug?: string;
+          logo_url?: string | null;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -283,6 +378,7 @@ export type Database = {
     Enums: {
       app_role: "rider" | "staff";
       admin_approval_status: "pending" | "approved" | "rejected";
+      zone_geometry_type: "polygon" | "circle";
     };
     CompositeTypes: Record<string, never>;
   };

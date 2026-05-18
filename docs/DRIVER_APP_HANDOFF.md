@@ -186,12 +186,16 @@ Scheme: `musallam://` (configure in app)
 
 ## 8. Geofencing
 
-1. Admin defines `zones.polygon` (GeoJSON) in `/deliveries/zones`
+1. Admin defines zones in `/zones` with `zone_type` + `geometry` (GeoJSON Feature):
+   - **polygon:** `{ type: "Feature", geometry: { type: "Polygon", coordinates: [[[lng,lat],...]] } }`
+   - **circle:** `{ type: "Feature", geometry: { type: "Point", coordinates: [lng,lat] }, properties: { radiusMeters: 1500 } }`
 2. Driver assigned `drivers.zone_id`
 3. While online, app posts `current_lat/lng` to `drivers` every N seconds
-4. Client checks point-in-polygon; if outside → show countdown banner (Home screen)
+4. Client checks point-in-zone (polygon: `booleanPointInPolygon`; circle: distance ≤ `radiusMeters`); if outside → show countdown banner (Home screen)
 5. Server writes `attendance_logs.zone_compliance = outside` for reporting
 6. Admin **Outside Zone** tab lists drivers in violation
+
+Shared validation logic (admin): `src/lib/geo/zone-geometry.ts` — mirror in mobile app.
 
 ---
 

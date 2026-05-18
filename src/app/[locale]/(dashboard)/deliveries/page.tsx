@@ -19,7 +19,7 @@ export default async function DeliveriesPage({
       title={t("title")}
       subtitle={t("subtitle")}
       actions={
-        <Button variant="outline" className="cursor-pointer rounded-lg" render={<Link href="/deliveries/zones" />}>
+        <Button variant="outline" className="cursor-pointer rounded-lg" render={<Link href="/zones" />}>
           Zones
         </Button>
       }

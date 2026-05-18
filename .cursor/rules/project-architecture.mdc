@@ -35,7 +35,7 @@ Order allocation is **external** (partner apps). We own: monitoring, compliance,
 |---|-------|------------|----------------------|
 | 1 | `/dashboard` | `dashboard.view` | Home |
 | 2 | `/drivers`, `/drivers/[id]`, `/drivers/new` | `drivers.view` / `drivers.manage` | Profile |
-| 3 | `/deliveries`, `/deliveries/zones` | `deliveries.view`, `zones.view` | Deliveries + zone geofence |
+| 3 | `/deliveries`, `/zones` | `deliveries.view`, `zones.view` | Deliveries + zone geofence (map CRUD at `/zones`) |
 | 4 | `/vehicles`, `/vehicles/[id]` | `vehicles.view` | Vehicle |
 | 5 | `/attendance` | `attendance.view` | Auto check-in / geofence |
 | 6 | `/requests` | `requests.view` / `requests.manage` | Loan, Leave, Fuel, Complaint |
@@ -207,6 +207,7 @@ Change-log format:
 
 ## Change log
 
+- `[admin+app] 2026-05-20` — Zones module at `/zones`: `zone_type` + `geometry` GeoJSON (polygon/circle), Leaflet map UI, shared `zone-geometry` validation; migration `20260520140000_zones_geometry.sql`
 - `[admin only] 2026-05-18` — Menu editor + Languages admin: `menu_configs` / `locales` tables; `/settings/menu-editor`, `/settings/languages`, `/settings/languages/[code]`; DB-driven grouped sidebar with per-role overrides; translation API writes `src/messages/{locale}.json`
 - `[admin only] 2026-05-18` — TanStack Query (`QueryProvider` in locale layout, `queryKeys`, server prefetch helpers); build-id polling via `useQuery`; devtools in development
 - `[admin only] 2026-05-18` — RBAC tables, sign-up approval, super-admin claim, maintenance mode, version refresh gate, password reset routes
