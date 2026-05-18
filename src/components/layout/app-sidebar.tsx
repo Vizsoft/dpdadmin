@@ -38,7 +38,7 @@ function NavList({ items }: { items: typeof MAIN_NAV_ITEMS }) {
               isActive={isActive}
               className="h-10 cursor-pointer rounded-lg px-3 text-sidebar-foreground hover:bg-sidebar-accent/80 hover:text-sidebar-accent-foreground data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground"
               render={
-                <Link href={item.href}>
+                <Link href={item.href} prefetch>
                   <Icon className="h-4 w-4 shrink-0" />
                   <span>{t(item.labelKey)}</span>
                 </Link>

@@ -15,7 +15,11 @@
 
 # next.js
 /.next/
+/.next-old-*/
 /out/
+
+# stale git copy (do not commit)
+/.git.broken/
 
 # production
 /build

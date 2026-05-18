@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import type { Profile } from "@/types/database";
 import { canAccessAdminPanel, type AdminApprovalStatus } from "@/lib/auth/permissions";
@@ -15,7 +16,7 @@ export type SessionUser = {
   isSuperAdmin: boolean;
 };
 
-export async function getSessionUser(): Promise<SessionUser | null> {
+async function loadSessionUser(): Promise<SessionUser | null> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -66,6 +67,8 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     isSuperAdmin,
   };
 }
+
+export const getSessionUser = cache(loadSessionUser);
 
 export async function getProfileForUser(userId: string): Promise<EnrichedProfile | null> {
   const supabase = await createClient();

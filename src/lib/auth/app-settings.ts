@@ -1,4 +1,4 @@
-import { unstable_cache } from "next/cache";
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 
 export type AppOpsSettings = {
@@ -38,8 +38,4 @@ async function fetchAppOpsSettings(): Promise<AppOpsSettings> {
   }
 }
 
-export const getAppOpsSettings = unstable_cache(
-  fetchAppOpsSettings,
-  ["app-ops-settings"],
-  { tags: ["app-settings", "app-ops-settings"] },
-);
+export const getAppOpsSettings = cache(fetchAppOpsSettings);
