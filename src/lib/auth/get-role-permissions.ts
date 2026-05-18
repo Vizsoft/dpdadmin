@@ -1,4 +1,3 @@
-import { unstable_cache } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
 export type AdminRoleRow = {
@@ -44,9 +43,10 @@ async function fetchAllRoles(): Promise<AdminRoleRow[]> {
   }
 }
 
-export const getAllAdminRoles = unstable_cache(fetchAllRoles, ["admin-roles"], {
-  tags: ["admin-roles"],
-});
+/** Loaded per request with the caller's session (not globally cached — RLS needs auth). */
+export async function getAllAdminRoles(): Promise<AdminRoleRow[]> {
+  return fetchAllRoles();
+}
 
 export async function getRoleById(roleId: string): Promise<AdminRoleRow | null> {
   const roles = await getAllAdminRoles();

@@ -1,10 +1,11 @@
-import type { Profile } from "@/types/database";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database, Profile } from "@/types/database";
 import {
+  PERMISSIONS,
   type AdminApprovalStatus,
   type AuthProfile,
   canAccessAdminPanel,
 } from "@/lib/auth/permissions";
-import { getPermissionsForRole, getRoleById } from "@/lib/auth/get-role-permissions";
 
 export type EnrichedProfile = Profile & {
   admin_role_id: string | null;
@@ -27,21 +28,29 @@ export function toAuthProfile(
   };
 }
 
-export async function enrichSessionPermissions(adminRoleId: string | null, isSuperAdmin: boolean) {
+export async function enrichSessionPermissions(
+  supabase: SupabaseClient<Database>,
+  adminRoleId: string | null,
+  isSuperAdmin: boolean,
+) {
   if (!adminRoleId) {
     return new Set<string>();
   }
-  const perms = await getPermissionsForRole(adminRoleId);
-  if (isSuperAdmin) {
-    return new Set(perms);
-  }
-  return new Set(perms);
-}
 
-export async function resolveIsSuperAdmin(adminRoleId: string | null): Promise<boolean> {
-  if (!adminRoleId) return false;
-  const role = await getRoleById(adminRoleId);
-  return role?.isSuperAdmin ?? false;
+  if (isSuperAdmin) {
+    const { data } = await supabase.from("admin_permissions").select("slug");
+    if (data?.length) {
+      return new Set(data.map((row) => row.slug));
+    }
+    return new Set(Object.values(PERMISSIONS));
+  }
+
+  const { data } = await supabase
+    .from("admin_role_permissions")
+    .select("permission_slug")
+    .eq("role_id", adminRoleId);
+
+  return new Set(data?.map((row) => row.permission_slug) ?? []);
 }
 
 export { canAccessAdminPanel };

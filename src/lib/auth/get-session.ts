@@ -3,7 +3,6 @@ import type { Profile } from "@/types/database";
 import { canAccessAdminPanel, type AdminApprovalStatus } from "@/lib/auth/permissions";
 import {
   enrichSessionPermissions,
-  resolveIsSuperAdmin,
   toAuthProfile,
   type EnrichedProfile,
 } from "@/lib/auth/profile-auth";
@@ -29,7 +28,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "*, admin_role_id, approval_status, approved_at, approved_by",
+      "*, admin_role_id, approval_status, approved_at, approved_by, admin_roles(is_super_admin, slug)",
     )
     .eq("id", user.id)
     .single();
@@ -38,8 +37,13 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     return null;
   }
 
-  const enriched = profile as EnrichedProfile & Profile;
-  const isSuperAdmin = await resolveIsSuperAdmin(enriched.admin_role_id);
+  const profileRow = profile as EnrichedProfile &
+    Profile & {
+      admin_roles: { is_super_admin: boolean; slug: string } | null;
+    };
+
+  const enriched = profileRow;
+  const isSuperAdmin = profileRow.admin_roles?.is_super_admin === true;
   const authProfile = toAuthProfile(enriched, isSuperAdmin);
 
   if (!canAccessAdminPanel(authProfile) && enriched.approval_status !== "pending") {
@@ -49,6 +53,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   }
 
   const permissions = await enrichSessionPermissions(
+    supabase,
     enriched.admin_role_id,
     isSuperAdmin,
   );

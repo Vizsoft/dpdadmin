@@ -1,11 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 import { canAccessAdminPanel } from "@/lib/auth/permissions";
-import {
-  resolveIsSuperAdmin,
-  toAuthProfile,
-  type EnrichedProfile,
-} from "@/lib/auth/profile-auth";
+import { toAuthProfile, type EnrichedProfile } from "@/lib/auth/profile-auth";
 import { getAppOpsSettings } from "@/lib/auth/app-settings";
 
 type Supabase = SupabaseClient<Database>;
@@ -86,7 +82,9 @@ export async function syncAdminProfile(
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("*, admin_role_id, approval_status, approved_at, approved_by")
+    .select(
+      "*, admin_role_id, approval_status, approved_at, approved_by, admin_roles(is_super_admin)",
+    )
     .eq("id", user.id)
     .single();
 
@@ -94,8 +92,10 @@ export async function syncAdminProfile(
     return { ok: false, reason: "no_profile" };
   }
 
-  const enriched = profile as EnrichedProfile;
-  const isSuperAdmin = await resolveIsSuperAdmin(enriched.admin_role_id);
+  const enriched = profile as EnrichedProfile & {
+    admin_roles: { is_super_admin: boolean } | null;
+  };
+  const isSuperAdmin = enriched.admin_roles?.is_super_admin === true;
   const authProfile = toAuthProfile(enriched, isSuperAdmin);
 
   if (enriched.approval_status === "pending") {
