@@ -1,4 +1,6 @@
+import bbox from "@turf/bbox";
 import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
+import turfCircle from "@turf/circle";
 import distance from "@turf/distance";
 import kinks from "@turf/kinks";
 import { point } from "@turf/helpers";
@@ -82,6 +84,63 @@ export function circleFromFeature(geometry: ZoneGeoFeature): {
   const [lng, lat] = geometry.geometry.coordinates;
   const radiusMeters = geometry.properties?.radiusMeters ?? 0;
   return { center: [lat, lng], radiusMeters };
+}
+
+/** South-west and north-east corners for Leaflet `fitBounds` (lat, lng). */
+export type ZoneMapBounds = [[number, number], [number, number]];
+
+function isFiniteLatLng([lat, lng]: [number, number]): boolean {
+  return Number.isFinite(lat) && Number.isFinite(lng);
+}
+
+/** Map-fit bounds without attaching layers to a Leaflet map. */
+export function zoneMapBoundsFromShape(
+  zoneType: ZoneGeometryType,
+  geometry: ZoneGeoFeature,
+): ZoneMapBounds | null {
+  if (zoneType === "circle") {
+    const circle = circleFromFeature(geometry);
+    if (!circle || circle.radiusMeters <= 0 || !isFiniteLatLng(circle.center)) {
+      return null;
+    }
+    const [lat, lng] = circle.center;
+    const ring = turfCircle(point([lng, lat]), circle.radiusMeters / 1000, {
+      units: "kilometers",
+      steps: 64,
+    });
+    const [minLng, minLat, maxLng, maxLat] = bbox(ring);
+    if (
+      !Number.isFinite(minLat) ||
+      !Number.isFinite(minLng) ||
+      !Number.isFinite(maxLat) ||
+      !Number.isFinite(maxLng)
+    ) {
+      return null;
+    }
+    return [
+      [minLat, minLng],
+      [maxLat, maxLng],
+    ];
+  }
+
+  const positions = polygonPositionsFromFeature(geometry);
+  if (positions.length < 3 || !positions.every(isFiniteLatLng)) return null;
+
+  let minLat = Infinity;
+  let maxLat = -Infinity;
+  let minLng = Infinity;
+  let maxLng = -Infinity;
+  for (const [lat, lng] of positions) {
+    minLat = Math.min(minLat, lat);
+    maxLat = Math.max(maxLat, lat);
+    minLng = Math.min(minLng, lng);
+    maxLng = Math.max(maxLng, lng);
+  }
+  if (!Number.isFinite(minLat)) return null;
+  return [
+    [minLat, minLng],
+    [maxLat, maxLng],
+  ];
 }
 
 export function buildPolygonFeature(positions: [number, number][]): ZoneGeoFeature {

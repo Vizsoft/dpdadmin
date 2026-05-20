@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import {
   ArrowDown,
   ArrowUp,
+  ArrowRight,
+  Copy,
   Eye,
   EyeOff,
   FolderPlus,
@@ -16,6 +18,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -27,6 +30,7 @@ import {
 } from "@/components/ui/select";
 import { IconPicker } from "@/components/menu-editor/icon-picker";
 import {
+  copyMenuConfig,
   getMenuConfig,
   resetMenuConfig,
   saveMenuConfig,
@@ -44,6 +48,22 @@ function humanizeRole(slug: string): string {
     .split("_")
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(" ");
+}
+
+function roleLabel(roles: AdminRoleRow[], slug: string): string {
+  return roles.find((r) => r.slug === slug)?.name ?? humanizeRole(slug);
+}
+
+function notifyMenuConfigUpdated(targetRole: string) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(`sidebar-menu-cache:v3:${targetRole}`);
+    window.dispatchEvent(
+      new CustomEvent("menu-config-updated", { detail: { role: targetRole } }),
+    );
+  } catch {
+    /* ignore */
+  }
 }
 
 type FlatRow = {
@@ -160,7 +180,10 @@ export function MenuEditorPanel({ roles }: { roles: AdminRoleRow[] }) {
   const [order, setOrder] = useState<OrderEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [copying, setCopying] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [copyFromRole, setCopyFromRole] = useState("");
+  const [copyToRole, setCopyToRole] = useState("");
 
   useEffect(() => {
     if (roles.length > 0 && !role) {
@@ -169,21 +192,39 @@ export function MenuEditorPanel({ roles }: { roles: AdminRoleRow[] }) {
     }
   }, [roles, role]);
 
+  useEffect(() => {
+    if (role) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- keep copy target in sync with active tab
+      setCopyToRole(role);
+    }
+  }, [role]);
+
+  useEffect(() => {
+    if (roles.length === 0 || copyFromRole) return;
+    const other = roles.find((r) => r.slug !== role);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- default copy source to a different role
+    setCopyFromRole(other?.slug ?? roles[0]!.slug);
+  }, [roles, role, copyFromRole]);
+
+  const applyMenuTree = useCallback((tree: MenuNode[], markDirty: boolean) => {
+    const flat = flattenTree(tree);
+    setRows(flat.rows);
+    setGroups(flat.groups);
+    setOrder(flat.order);
+    setDirty(markDirty);
+  }, []);
+
   const load = useCallback(async (r: string) => {
     if (!r) return;
     setLoading(true);
     try {
       const cfg = await getMenuConfig(r);
       const { tree } = mergeMenu(cfg);
-      const flat = flattenTree(tree);
-      setRows(flat.rows);
-      setGroups(flat.groups);
-      setOrder(flat.order);
-      setDirty(false);
+      applyMenuTree(tree, false);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [applyMenuTree]);
 
   useEffect(() => {
     if (role) {
@@ -309,17 +350,10 @@ export function MenuEditorPanel({ roles }: { roles: AdminRoleRow[] }) {
       const tree = rebuildTree(rows, groups, order);
       await saveMenuConfig(role, tree);
       setDirty(false);
-      if (typeof window !== "undefined") {
-        try {
-          localStorage.removeItem(`sidebar-menu-cache:v3:${role}`);
-          window.dispatchEvent(
-            new CustomEvent("menu-config-updated", { detail: { role } }),
-          );
-        } catch {
-          /* ignore */
-        }
-      }
-      toast.success(t("saved"), { description: t("savedDesc", { role: humanizeRole(role) }) });
+      notifyMenuConfigUpdated(role);
+      toast.success(t("saved"), {
+        description: t("savedDesc", { role: roleLabel(roles, role) }),
+      });
     } catch (err) {
       toast.error(t("saveFailed"), {
         description: err instanceof Error ? err.message : undefined,
@@ -330,11 +364,70 @@ export function MenuEditorPanel({ roles }: { roles: AdminRoleRow[] }) {
   };
 
   const handleReset = async () => {
-    if (!confirm(t("resetConfirm", { role: humanizeRole(role) }))) return;
+    if (!confirm(t("resetConfirm", { role: roleLabel(roles, role) }))) return;
     await resetMenuConfig(role);
     await load(role);
     toast.success(t("resetDone"));
   };
+
+  const handleCopySettings = async () => {
+    if (!copyFromRole || !copyToRole || copyFromRole === copyToRole) return;
+    if (
+      !confirm(
+        t("copyConfirm", {
+          from: roleLabel(roles, copyFromRole),
+          to: roleLabel(roles, copyToRole),
+        }),
+      )
+    ) {
+      return;
+    }
+
+    setCopying(true);
+    try {
+      await copyMenuConfig(copyFromRole, copyToRole);
+      notifyMenuConfigUpdated(copyToRole);
+      if (copyToRole === role) {
+        await load(role);
+      }
+      toast.success(t("copyDone"), {
+        description: t("copyDoneDesc", {
+          from: roleLabel(roles, copyFromRole),
+          to: roleLabel(roles, copyToRole),
+        }),
+      });
+    } catch (err) {
+      toast.error(t("copyFailed"), {
+        description: err instanceof Error ? err.message : undefined,
+      });
+    } finally {
+      setCopying(false);
+    }
+  };
+
+  const handleLoadFromRole = async () => {
+    if (!copyFromRole || copyFromRole === role) return;
+    if (dirty && !confirm(t("loadFromDiscard"))) return;
+
+    setLoading(true);
+    try {
+      const cfg = await getMenuConfig(copyFromRole);
+      const { tree } = mergeMenu(cfg);
+      applyMenuTree(tree, true);
+      toast.success(t("loadedFrom"), {
+        description: t("loadedFromDesc", { role: roleLabel(roles, copyFromRole) }),
+      });
+    } catch (err) {
+      toast.error(t("copyFailed"), {
+        description: err instanceof Error ? err.message : undefined,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const copyRolesDisabled =
+    !copyFromRole || !copyToRole || copyFromRole === copyToRole;
 
   const toggleGroupMode = (gid: string) => {
     setGroups((gs) =>
@@ -457,6 +550,75 @@ export function MenuEditorPanel({ roles }: { roles: AdminRoleRow[] }) {
             ))}
           </TabsList>
         </Tabs>
+      )}
+
+      {roles.length > 1 && (
+        <div className="rounded-xl border border-border bg-muted/30 p-4">
+          <p className="mb-3 text-sm font-medium text-foreground">{t("copySectionTitle")}</p>
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="min-w-[140px] flex-1 space-y-1.5">
+              <Label className="text-xs text-muted-foreground">{t("copyFrom")}</Label>
+              <Select
+                value={copyFromRole}
+                onValueChange={(v) => v && setCopyFromRole(v)}
+              >
+                <SelectTrigger className="h-9 w-full">
+                  <SelectValue placeholder={t("copyFrom")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {roles.map((r) => (
+                    <SelectItem key={r.id} value={r.slug}>
+                      {r.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <ArrowRight className="mb-2 hidden h-4 w-4 shrink-0 text-muted-foreground sm:block" />
+            <div className="min-w-[140px] flex-1 space-y-1.5">
+              <Label className="text-xs text-muted-foreground">{t("copyTo")}</Label>
+              <Select value={copyToRole} onValueChange={(v) => v && setCopyToRole(v)}>
+                <SelectTrigger className="h-9 w-full">
+                  <SelectValue placeholder={t("copyTo")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {roles.map((r) => (
+                    <SelectItem key={r.id} value={r.slug}>
+                      {r.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              className="h-9 cursor-pointer"
+              disabled={copyRolesDisabled || copying || saving}
+              onClick={() => void handleCopySettings()}
+            >
+              {copying ? (
+                <Loader2 className="me-1.5 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Copy className="me-1.5 h-3.5 w-3.5" />
+              )}
+              {copying ? t("copying") : t("copySettings")}
+            </Button>
+            {copyFromRole && copyFromRole !== role && copyToRole === role && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-9 cursor-pointer"
+                disabled={loading || copying || saving}
+                onClick={() => void handleLoadFromRole()}
+              >
+                {t("loadIntoEditor")}
+              </Button>
+            )}
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">{t("copySectionHint")}</p>
+        </div>
       )}
 
       <Card className="rounded-xl border-border shadow-sm">

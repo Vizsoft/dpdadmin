@@ -14,7 +14,7 @@ import {
 const cacheByRole = new Map<string, ResolvedMenuNode[]>();
 
 function menuStorageKey(role: string) {
-  return `sidebar-menu-cache:v4:${role}`;
+  return `sidebar-menu-cache:v5:${role}`;
 }
 
 function loadCachedMenu(role: string): ResolvedMenuNode[] {
@@ -50,10 +50,7 @@ export function useSidebarMenu() {
 
   const { data: tree = [], isLoading: loading } = useQuery({
     queryKey: ["sidebar-menu", adminRoleSlug, isSuperAdmin],
-  queryFn: async () => {
-      const cached = loadCachedMenu(adminRoleSlug);
-      if (cached.length > 0) return cached;
-
+    queryFn: async () => {
       try {
         const cfg = await getMenuConfig(adminRoleSlug);
         const { tree: merged } = mergeMenu(cfg);
@@ -73,6 +70,16 @@ export function useSidebarMenu() {
     },
     staleTime: 60_000,
   });
+
+  useEffect(() => {
+    const cached = loadCachedMenu(adminRoleSlug);
+    if (cached.length > 0) {
+      queryClient.setQueryData(
+        ["sidebar-menu", adminRoleSlug, isSuperAdmin],
+        cached,
+      );
+    }
+  }, [adminRoleSlug, isSuperAdmin, queryClient]);
 
   useEffect(() => {
     const onUpdate = (e: Event) => {

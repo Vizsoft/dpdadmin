@@ -1,6 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { requirePermission } from "@/lib/auth/require-permission";
-import { PageHeader } from "@/components/dashboard/page-header";
+import { PageContentHeader } from "@/components/dashboard/page-content-header";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -26,7 +26,7 @@ export default async function DashboardPage({
 
   return (
     <>
-      <PageHeader title={t("title")} subtitle={t("subtitle")} />
+      <PageContentHeader title={t("title")} subtitle={t("subtitle")} />
       <div className="space-y-6">
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
           {kpis.map((kpi) => (

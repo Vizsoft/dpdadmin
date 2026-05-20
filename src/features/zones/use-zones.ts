@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { queryKeys } from "@/lib/query/query-keys";
 import type { ZoneGeoFeature } from "@/lib/geo/zone-geometry";
+import { normalizeZoneColor } from "./zone-colors";
 import type { ZoneDriverRow, ZoneRow } from "./types";
 
 export async function fetchZones(): Promise<ZoneRow[]> {
@@ -11,7 +12,7 @@ export async function fetchZones(): Promise<ZoneRow[]> {
 
   const { data: zones, error } = await supabase
     .from("zones")
-    .select("id, name, code, zone_type, geometry, created_at")
+    .select("id, name, code, color, zone_type, geometry, created_at")
     .order("name");
 
   if (error) throw new Error(error.message);
@@ -32,6 +33,7 @@ export async function fetchZones(): Promise<ZoneRow[]> {
     id: z.id,
     name: z.name,
     code: z.code,
+    color: normalizeZoneColor(z.color),
     zone_type: z.zone_type,
     geometry: z.geometry as ZoneGeoFeature | null,
     created_at: z.created_at,

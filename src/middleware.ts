@@ -3,6 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { routing } from "@/i18n/routing";
 import { updateSession } from "@/lib/supabase/middleware";
 import { createServerClient } from "@supabase/ssr";
+import { getSupabaseAnonKey, getSupabaseUrl } from "@/lib/supabase/env";
 
 const intlMiddleware = createIntlMiddleware(routing);
 
@@ -58,10 +59,8 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key =
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const url = getSupabaseUrl();
+  const key = getSupabaseAnonKey();
 
   if (!url || !key) {
     return response;

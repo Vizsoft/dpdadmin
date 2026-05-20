@@ -4,7 +4,6 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { useAuth } from "@/contexts/auth-context";
 import { approveUser, rejectUser } from "@/features/settings/access-requests-actions";
 import type { AdminRoleRow } from "@/lib/auth/get-role-permissions";
 import { Button } from "@/components/ui/button";
@@ -33,18 +32,13 @@ export function AccessRequestsPanel({
   assignableRoles: AdminRoleRow[];
 }) {
   const t = useTranslations("pages.settings.accessRequests");
-  const { isSuperAdmin } = useAuth();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [selectedRoles, setSelectedRoles] = useState<Record<string, string>>({});
 
-  if (!isSuperAdmin) {
-    return null;
-  }
-
   if (pendingUsers.length === 0) {
     return (
-      <Card className="md:col-span-2">
+      <Card>
         <CardHeader>
           <CardTitle className="text-base">{t("title")}</CardTitle>
           <CardDescription>{t("subtitle")}</CardDescription>
@@ -57,7 +51,7 @@ export function AccessRequestsPanel({
   }
 
   return (
-    <Card className="md:col-span-2">
+    <Card>
       <CardHeader>
         <CardTitle className="text-base">{t("title")}</CardTitle>
         <CardDescription>{t("subtitle")}</CardDescription>

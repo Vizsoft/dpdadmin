@@ -1,15 +1,19 @@
 import { createBrowserClient } from "@supabase/ssr";
 import type { Database } from "@/types/database";
+import { requireSupabaseEnv } from "@/lib/supabase/env";
 
+let browserClient: ReturnType<typeof createBrowserClient<Database>> | undefined;
+
+/**
+ * Single browser Supabase client — avoids multiple auth refresh loops that cause
+ * "Failed to fetch" noise in the console.
+ */
 export function createClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key =
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!url || !key) {
-    throw new Error("Missing Supabase environment variables");
+  if (browserClient) {
+    return browserClient;
   }
 
-  return createBrowserClient<Database>(url, key);
+  const { url, key } = requireSupabaseEnv();
+  browserClient = createBrowserClient<Database>(url, key);
+  return browserClient;
 }

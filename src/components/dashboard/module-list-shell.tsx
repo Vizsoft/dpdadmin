@@ -1,4 +1,4 @@
-import { PageHeader } from "@/components/dashboard/page-header";
+import { PageContentHeader } from "@/components/dashboard/page-content-header";
 import { KpiGrid } from "@/components/dashboard/kpi-grid";
 import { DataTableShell } from "@/components/dashboard/data-table-shell";
 import { TabBar, type TabItem } from "@/components/dashboard/tab-bar";
@@ -28,8 +28,8 @@ export function ModuleListShell({
   children?: ReactNode;
 }) {
   return (
-    <>
-      <PageHeader
+    <div className="space-y-4">
+      <PageContentHeader
         title={title}
         subtitle={subtitle}
         actions={actions}
@@ -39,15 +39,13 @@ export function ModuleListShell({
           ) : undefined
         }
       />
-      <div className="space-y-6">
-        <KpiGrid items={kpis} />
-        {children}
-        <DataTableShell
-          columns={columns}
-          emptyTitle={emptyTitle}
-          emptyDescription={emptyDescription}
-        />
-      </div>
-    </>
+      <KpiGrid items={kpis} />
+      {children}
+      <DataTableShell
+        columns={columns}
+        emptyTitle={emptyTitle}
+        emptyDescription={emptyDescription}
+      />
+    </div>
   );
 }

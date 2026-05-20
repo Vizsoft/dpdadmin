@@ -4,7 +4,6 @@ import { useRef, useState, useTransition } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useBranding } from "@/contexts/branding-context";
-import { useAuth } from "@/contexts/auth-context";
 import { FONT_OPTIONS } from "@/lib/branding/constants";
 import {
   resetBranding,
@@ -15,21 +14,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ThemeSettingsSection } from "@/features/settings/theme-settings-section";
 
 export function BrandingSettingsPanel() {
   const t = useTranslations("pages.settings.branding");
   const locale = useLocale();
   const router = useRouter();
-  const { can } = useAuth();
   const branding = useBranding();
   const fileRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-
-  if (!can("settings.manage")) {
-    return null;
-  }
 
   const logoPreview = preview ?? branding.logoUrl ?? "/logo.png";
 
@@ -51,7 +46,9 @@ export function BrandingSettingsPanel() {
                   : null;
 
   return (
-    <Card className="md:col-span-2">
+    <div className="space-y-6">
+      <ThemeSettingsSection />
+    <Card>
       <CardHeader>
         <CardTitle className="text-base">{t("title")}</CardTitle>
         <CardDescription>{t("subtitle")}</CardDescription>
@@ -197,5 +194,6 @@ export function BrandingSettingsPanel() {
         ) : null}
       </CardContent>
     </Card>
+    </div>
   );
 }

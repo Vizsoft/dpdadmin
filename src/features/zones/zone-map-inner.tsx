@@ -7,6 +7,7 @@ import {
   Polygon,
   TileLayer,
   useMap,
+  ZoomControl,
 } from "react-leaflet";
 import L from "leaflet";
 import "@geoman-io/leaflet-geoman-free";
@@ -16,37 +17,59 @@ import type { ZoneGeoFeature, ZoneGeometryType } from "@/lib/geo/zone-geometry";
 import {
   circleFromFeature,
   polygonPositionsFromFeature,
+  zoneMapBoundsFromShape,
 } from "@/lib/geo/zone-geometry";
+import {
+  addZoneLayerToMap,
+  applyZoneLayerStyle,
+  geomanDrawOptions,
+  isPmVectorLayer,
+  isZoneDraftLayer,
+  markZoneDraftLayer,
+  parseLayerToZone,
+  removeZoneDraftLayers,
+} from "./zone-map-geoman";
 import {
   DEFAULT_MAP_ZOOM,
   getZoneMapTileProps,
   KUWAIT_MAP_CENTER,
-  ZONE_FILL_COLOR,
-  ZONE_STROKE_COLOR,
+  ZONE_REFERENCE_FILL_OPACITY,
+  ZONE_REFERENCE_STROKE_OPACITY,
 } from "./constants";
+import { normalizeZoneColor, zonePathStyle } from "./zone-colors";
 import type { ZoneRow } from "./types";
 
 function FitBounds({ zones, selectedId }: { zones: ZoneRow[]; selectedId: string | null }) {
   const map = useMap();
 
   useEffect(() => {
-    const target = selectedId
-      ? zones.find((z) => z.id === selectedId)
-      : zones.find((z) => z.geometry);
+    let cancelled = false;
 
-    if (!target?.geometry) return;
+    const fit = () => {
+      if (cancelled) return;
 
-    if (target.zone_type === "circle") {
-      const circle = circleFromFeature(target.geometry);
-      if (!circle) return;
-      const bounds = L.circle(circle.center, { radius: circle.radiusMeters }).getBounds();
+      const { x, y } = map.getSize();
+      if (x === 0 || y === 0) return;
+
+      const target = selectedId
+        ? zones.find((z) => z.id === selectedId)
+        : zones.find((z) => z.geometry);
+
+      if (!target?.geometry) return;
+
+      const corners = zoneMapBoundsFromShape(target.zone_type, target.geometry);
+      if (!corners) return;
+
+      const bounds = L.latLngBounds(corners);
+      if (!bounds.isValid()) return;
+
       map.fitBounds(bounds, { padding: [48, 48], maxZoom: 15 });
-      return;
-    }
+    };
 
-    const positions = polygonPositionsFromFeature(target.geometry);
-    if (positions.length < 3) return;
-    map.fitBounds(L.latLngBounds(positions), { padding: [48, 48], maxZoom: 15 });
+    map.whenReady(fit);
+    return () => {
+      cancelled = true;
+    };
   }, [map, zones, selectedId]);
 
   return null;
@@ -55,14 +78,29 @@ function FitBounds({ zones, selectedId }: { zones: ZoneRow[]; selectedId: string
 function ZoneOverlay({
   zone,
   selected,
+  variant = "default",
 }: {
   zone: ZoneRow;
   selected: boolean;
+  variant?: "default" | "reference";
 }) {
   if (!zone.geometry) return null;
 
-  const opacity = selected ? 0.35 : 0.15;
-  const weight = selected ? 3 : 2;
+  const isReference = variant === "reference";
+  const zoneColor = normalizeZoneColor(zone.color);
+  const pathOptions = {
+    ...zonePathStyle(zoneColor, {
+      fillOpacity: isReference
+        ? ZONE_REFERENCE_FILL_OPACITY
+        : selected
+          ? 0.35
+          : 0.2,
+      weight: isReference ? 1.5 : selected ? 3 : 2,
+      strokeOpacity: isReference ? ZONE_REFERENCE_STROKE_OPACITY : 1,
+      dashArray: isReference ? "6 4" : undefined,
+    }),
+    ...(isReference ? { pmIgnore: true } : {}),
+  } as L.PathOptions;
 
   if (zone.zone_type === "circle") {
     const circle = circleFromFeature(zone.geometry);
@@ -71,12 +109,8 @@ function ZoneOverlay({
       <Circle
         center={circle.center}
         radius={circle.radiusMeters}
-        pathOptions={{
-          color: ZONE_STROKE_COLOR,
-          fillColor: ZONE_FILL_COLOR,
-          fillOpacity: opacity,
-          weight,
-        }}
+        interactive={!isReference}
+        pathOptions={pathOptions}
       />
     );
   }
@@ -87,192 +121,321 @@ function ZoneOverlay({
   return (
     <Polygon
       positions={positions}
-      pathOptions={{
-        color: ZONE_STROKE_COLOR,
-        fillColor: ZONE_FILL_COLOR,
-        fillOpacity: opacity,
-        weight,
-      }}
+      interactive={!isReference}
+      pathOptions={pathOptions}
     />
   );
 }
 
 export type ZoneMapDrawMode = "polygon" | "circle" | null;
 
+function MapInvalidateSize({ active }: { active?: boolean }) {
+  const map = useMap();
+
+  useEffect(() => {
+    const resize = () => {
+      map.invalidateSize({ animate: false });
+    };
+
+    resize();
+    const t1 = window.setTimeout(resize, 100);
+    const t2 = window.setTimeout(resize, 400);
+    const t3 = window.setTimeout(resize, 800);
+
+    const container = map.getContainer();
+    const observeTarget = container.parentElement ?? container;
+    let observer: ResizeObserver | undefined;
+
+    if (typeof ResizeObserver !== "undefined") {
+      observer = new ResizeObserver(() => resize());
+      observer.observe(observeTarget);
+    }
+
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+      window.clearTimeout(t3);
+      observer?.disconnect();
+    };
+  }, [map, active]);
+
+  return null;
+}
+
 function GeomanDrawControl({
   drawMode,
+  draftColor,
+  draftGeometry,
+  draftZoneType,
   onGeometryChange,
+  onMapReady,
 }: {
   drawMode: ZoneMapDrawMode;
-  onGeometryChange: (geometry: ZoneGeoFeature, zoneType: ZoneGeometryType) => void;
+  draftColor: string;
+  draftGeometry: ZoneGeoFeature | null;
+  draftZoneType: ZoneGeometryType;
+  onGeometryChange: (
+    geometry: ZoneGeoFeature | null,
+    zoneType: ZoneGeometryType,
+  ) => void;
+  onMapReady?: (map: L.Map) => void;
 }) {
   const map = useMap();
   const onGeometryChangeRef = useRef(onGeometryChange);
+  const activeLayerRef = useRef<L.Layer | null>(null);
+  const drawModeRef = useRef(drawMode);
+  const detachAttachedLayerHandlersRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    drawModeRef.current = drawMode;
+  }, [drawMode]);
 
   useEffect(() => {
     onGeometryChangeRef.current = onGeometryChange;
   });
 
   useEffect(() => {
+    onMapReady?.(map);
+  }, [map, onMapReady]);
+
+  const syncLayerGeometry = (layer: L.Layer, shape: string) => {
+    const parsed = parseLayerToZone(layer, shape);
+    if (parsed) {
+      onGeometryChangeRef.current(parsed.geometry, parsed.zoneType);
+    }
+  };
+
+  const syncDrawingModeRef = useRef<() => void>(() => {});
+
+  const clearActiveLayer = () => {
+    detachAttachedLayerHandlersRef.current?.();
+    detachAttachedLayerHandlersRef.current = null;
+    activeLayerRef.current = null;
+    onGeometryChangeRef.current(
+      null,
+      drawModeRef.current === "circle" ? "circle" : "polygon",
+    );
+  };
+
+  const attachActiveLayer = (layer: L.Layer, shape: string) => {
+    detachAttachedLayerHandlersRef.current?.();
+    detachAttachedLayerHandlersRef.current = null;
+    markZoneDraftLayer(layer);
+    activeLayerRef.current = layer;
+    applyZoneLayerStyle(layer, draftColor);
+
+    if (isPmVectorLayer(layer)) {
+      try {
+        (layer as L.Layer & { pm: { enable: () => void } }).pm.enable();
+      } catch {
+        /* Geoman may already have edit enabled */
+      }
+    }
+
+    const onUpdate = () => syncLayerGeometry(layer, shape);
+    const onRemove = () => {
+      clearActiveLayer();
+      syncDrawingModeRef.current();
+    };
+    layer.on("pm:update", onUpdate);
+    layer.on("pm:edit", onUpdate);
+    layer.on("pm:change", onUpdate);
+    layer.on("pm:remove", onRemove);
+    syncLayerGeometry(layer, shape);
+
+    detachAttachedLayerHandlersRef.current = () => {
+      layer.off("pm:update", onUpdate);
+      layer.off("pm:edit", onUpdate);
+      layer.off("pm:change", onUpdate);
+      layer.off("pm:remove", onRemove);
+    };
+  };
+
+  useEffect(() => {
     if (!drawMode) return;
 
-    map.pm.setGlobalOptions({
-      allowSelfIntersection: false,
-      snappable: true,
-    });
+    if (!draftGeometry) {
+      detachAttachedLayerHandlersRef.current?.();
+      detachAttachedLayerHandlersRef.current = null;
+      if (activeLayerRef.current) {
+        map.removeLayer(activeLayerRef.current);
+        activeLayerRef.current = null;
+      }
+      return;
+    }
 
-    map.pm.addControls({
-      position: "topright",
-      drawCircle: drawMode === "circle",
-      drawPolygon: drawMode === "polygon",
-      drawMarker: false,
-      drawPolyline: false,
-      drawRectangle: false,
-      drawCircleMarker: false,
-      drawText: false,
-      editMode: true,
-      dragMode: false,
-      cutPolygon: false,
-      removalMode: true,
-    });
+    if (activeLayerRef.current) return;
 
-    const emitGeometry = (geometry: ZoneGeoFeature, zoneType: ZoneGeometryType) => {
-      onGeometryChangeRef.current(geometry, zoneType);
+    const restored = addZoneLayerToMap(map, draftGeometry, draftZoneType, draftColor);
+    if (!restored) return;
+
+    const shape = draftZoneType === "circle" ? "Circle" : "Polygon";
+    attachActiveLayer(restored, shape);
+
+    return () => {
+      detachAttachedLayerHandlersRef.current?.();
+      detachAttachedLayerHandlersRef.current = null;
     };
+  }, [map, drawMode, draftColor, draftGeometry, draftZoneType]);
 
-    const handleCreate = (e: L.LeafletEvent & { layer: L.Layer }) => {
-      const layer = e.layer;
-      map.eachLayer((l) => {
-        if (l !== layer && "pm" in l && (l as L.Layer & { pm?: unknown }).pm) {
-          map.removeLayer(l);
-        }
+  useEffect(() => {
+    if (activeLayerRef.current) {
+      applyZoneLayerStyle(activeLayerRef.current, draftColor);
+    }
+  }, [draftColor]);
+
+  const syncDrawingMode = () => {
+    const mode = drawModeRef.current;
+    if (!mode || !map.pm) return;
+    const hasShape = Boolean(activeLayerRef.current);
+    const opts = geomanDrawOptions(mode);
+    try {
+      map.pm.disableDraw();
+      if (!hasShape) {
+        map.pm.enableDraw(opts.shape, opts.options);
+      }
+    } catch {
+      /* ignore */
+    }
+  };
+  syncDrawingModeRef.current = syncDrawingMode;
+
+  useEffect(() => {
+    if (!drawMode) return;
+
+    const setupControls = () => {
+      if (!map.pm) return;
+
+      map.invalidateSize({ animate: false });
+      map.pm.setGlobalOptions({
+        allowSelfIntersection: true,
+        snappable: true,
       });
 
-      if (layer instanceof L.Circle) {
-        const center = layer.getLatLng();
-        const radiusMeters = layer.getRadius();
-        emitGeometry(
-          {
-            type: "Feature",
-            properties: { radiusMeters },
-            geometry: {
-              type: "Point",
-              coordinates: [center.lng, center.lat],
-            },
-          },
-          "circle",
-        );
-      } else if (layer instanceof L.Polygon) {
-        const latlngs = layer.getLatLngs()[0] as L.LatLng[];
-        const coordinates = latlngs.map((ll) => [ll.lng, ll.lat] as [number, number]);
-        if (coordinates.length > 0) {
-          const first = coordinates[0];
-          const last = coordinates[coordinates.length - 1];
-          if (first[0] !== last[0] || first[1] !== last[1]) {
-            coordinates.push([...first]);
-          }
-        }
-        emitGeometry(
-          {
-            type: "Feature",
-            properties: {},
-            geometry: { type: "Polygon", coordinates: [coordinates] },
-          },
-          "polygon",
-        );
+      map.pm.removeControls();
+      map.pm.addControls({
+        position: "bottomright",
+        drawCircle: drawMode === "circle",
+        drawPolygon: drawMode === "polygon",
+        drawMarker: false,
+        drawPolyline: false,
+        drawRectangle: false,
+        drawCircleMarker: false,
+        drawText: false,
+        editMode: true,
+        dragMode: false,
+        cutPolygon: false,
+        removalMode: true,
+        rotateMode: false,
+      });
+    };
+
+    const finishLayer = (layer: L.Layer, shape: string) => {
+      removeZoneDraftLayers(map, layer);
+      attachActiveLayer(layer, shape);
+      try {
+        map.pm?.disableDraw();
+        map.pm?.disableGlobalEditMode();
+        map.pm?.disableGlobalRemovalMode();
+      } catch {
+        /* ignore */
       }
     };
 
-    const handleEdit = () => {
-      map.eachLayer((layer) => {
-        if (layer instanceof L.Circle) {
-          const center = layer.getLatLng();
-          emitGeometry(
-            {
-              type: "Feature",
-              properties: { radiusMeters: layer.getRadius() },
-              geometry: {
-                type: "Point",
-                coordinates: [center.lng, center.lat],
-              },
-            },
-            "circle",
-          );
-        } else if (layer instanceof L.Polygon && layer.pm) {
-          const latlngs = layer.getLatLngs()[0] as L.LatLng[];
-          const coordinates = latlngs.map((ll) => [ll.lng, ll.lat] as [number, number]);
-          if (coordinates.length > 0) {
-            const first = coordinates[0];
-            const last = coordinates[coordinates.length - 1];
-            if (first[0] !== last[0] || first[1] !== last[1]) {
-              coordinates.push([...first]);
-            }
-          }
-          emitGeometry(
-            {
-              type: "Feature",
-              properties: {},
-              geometry: { type: "Polygon", coordinates: [coordinates] },
-            },
-            "polygon",
-          );
-        }
-      });
+    const handleCreate: L.LeafletEventHandlerFn = (event) => {
+      const e = event as L.LeafletEvent & {
+        layer?: L.Layer;
+        marker?: L.Layer;
+        shape?: string;
+      };
+      const layer = e.layer ?? e.marker;
+      if (!layer) return;
+
+      const shapeGuess = drawModeRef.current === "circle" ? "Circle" : "Polygon";
+      const shape =
+        typeof e.shape === "string" && e.shape.trim().length > 0 ? e.shape : shapeGuess;
+
+      finishLayer(layer, shape);
     };
 
+    const handleRemove: L.LeafletEventHandlerFn = (event) => {
+      const e = event as L.LeafletEvent & { layer?: L.Layer };
+      if (!e.layer) return;
+      if (e.layer === activeLayerRef.current || isZoneDraftLayer(e.layer)) {
+        clearActiveLayer();
+        syncDrawingMode();
+      }
+    };
+
+    const handleGlobalEditToggled: L.LeafletEventHandlerFn = (event) => {
+      const e = event as L.LeafletEvent & { enabled?: boolean };
+      if (e.enabled) {
+        try {
+          map.pm?.disableDraw();
+        } catch {
+          /* ignore */
+        }
+      } else if (!activeLayerRef.current) {
+        syncDrawingMode();
+      }
+    };
+
+    const handleGlobalRemovalToggled: L.LeafletEventHandlerFn = (event) => {
+      const e = event as L.LeafletEvent & { enabled?: boolean };
+      if (e.enabled) {
+        try {
+          map.pm?.disableDraw();
+        } catch {
+          /* ignore */
+        }
+      } else if (!activeLayerRef.current) {
+        syncDrawingMode();
+      }
+    };
+
+    setupControls();
+    syncDrawingMode();
+
+    map.whenReady(() => {
+      setupControls();
+      syncDrawingMode();
+    });
+
     map.on("pm:create", handleCreate);
-    map.on("pm:edit", handleEdit);
+    map.on("pm:remove", handleRemove);
+    map.on("pm:globaleditmodetoggled", handleGlobalEditToggled);
+    map.on("pm:globalremovalmodetoggled", handleGlobalRemovalToggled);
 
     return () => {
       map.off("pm:create", handleCreate);
-      map.off("pm:edit", handleEdit);
-      map.pm.removeControls();
+      map.off("pm:remove", handleRemove);
+      map.off("pm:globaleditmodetoggled", handleGlobalEditToggled);
+      map.off("pm:globalremovalmodetoggled", handleGlobalRemovalToggled);
+      detachAttachedLayerHandlersRef.current?.();
+      detachAttachedLayerHandlersRef.current = null;
+      if (map.pm) {
+        try {
+          map.pm.disableDraw();
+          map.pm.disableGlobalEditMode();
+          map.pm.disableGlobalRemovalMode();
+          map.pm.removeControls();
+        } catch {
+          /* ignore */
+        }
+      }
+      removeZoneDraftLayers(map);
+      activeLayerRef.current = null;
     };
   }, [map, drawMode]);
 
+  useEffect(() => {
+    if (!drawMode || !map.pm) return;
+    if (!draftGeometry && !activeLayerRef.current) {
+      syncDrawingMode();
+    }
+  }, [map, drawMode, draftGeometry]);
+
   return null;
-}
-
-function ExistingGeometryLayer({
-  geometry,
-  zoneType,
-}: {
-  geometry: ZoneGeoFeature | null;
-  zoneType: ZoneGeometryType;
-}) {
-  if (!geometry) return null;
-
-  if (zoneType === "circle") {
-    const circle = circleFromFeature(geometry);
-    if (!circle) return null;
-    return (
-      <Circle
-        center={circle.center}
-        radius={circle.radiusMeters}
-        pathOptions={{
-          color: ZONE_STROKE_COLOR,
-          fillColor: ZONE_FILL_COLOR,
-          fillOpacity: 0.25,
-          weight: 2,
-        }}
-      />
-    );
-  }
-
-  const positions = polygonPositionsFromFeature(geometry);
-  if (positions.length < 3) return null;
-
-  return (
-    <Polygon
-      positions={positions}
-      pathOptions={{
-        color: ZONE_STROKE_COLOR,
-        fillColor: ZONE_FILL_COLOR,
-        fillOpacity: 0.25,
-        weight: 2,
-      }}
-    />
-  );
 }
 
 export function ZoneMapInner({
@@ -280,22 +443,34 @@ export function ZoneMapInner({
   selectedId,
   className,
   drawMode = null,
+  excludeZoneId = null,
   draftGeometry = null,
   draftZoneType = "polygon",
+  draftColor,
   onDraftGeometryChange,
+  onMapReady,
 }: {
   zones: ZoneRow[];
   selectedId: string | null;
   className?: string;
   drawMode?: ZoneMapDrawMode;
+  /** When drawing/editing, hide this zone from the reference overlays */
+  excludeZoneId?: string | null;
   draftGeometry?: ZoneGeoFeature | null;
   draftZoneType?: ZoneGeometryType;
-  onDraftGeometryChange?: (geometry: ZoneGeoFeature, zoneType: ZoneGeometryType) => void;
+  draftColor?: string;
+  onDraftGeometryChange?: (
+    geometry: ZoneGeoFeature | null,
+    zoneType: ZoneGeometryType,
+  ) => void;
+  onMapReady?: (map: L.Map) => void;
 }) {
-  const displayZones = useMemo(
-    () => (drawMode ? [] : zones),
-    [drawMode, zones],
-  );
+  const referenceZones = useMemo(() => {
+    if (!drawMode) return [];
+    return zones.filter(
+      (z) => z.geometry && z.id !== excludeZoneId,
+    );
+  }, [drawMode, zones, excludeZoneId]);
 
   const tile = useMemo(() => getZoneMapTileProps(), []);
 
@@ -305,24 +480,37 @@ export function ZoneMapInner({
       zoom={DEFAULT_MAP_ZOOM}
       className={className ?? "zones-leaflet-map h-full w-full rounded-xl"}
       scrollWheelZoom
+      zoomControl={false}
     >
       <TileLayer attribution={tile.attribution} url={tile.url} />
+      <ZoomControl position="topright" />
+      <MapInvalidateSize active={Boolean(drawMode)} />
       {!drawMode &&
-        displayZones.map((zone) => (
+        zones.map((zone) => (
           <ZoneOverlay
             key={zone.id}
             zone={zone}
             selected={zone.id === selectedId}
           />
         ))}
+      {drawMode &&
+        referenceZones.map((zone) => (
+          <ZoneOverlay
+            key={zone.id}
+            zone={zone}
+            selected={false}
+            variant="reference"
+          />
+        ))}
       {drawMode && onDraftGeometryChange && (
         <GeomanDrawControl
           drawMode={drawMode}
+          draftColor={normalizeZoneColor(draftColor)}
+          draftGeometry={draftGeometry ?? null}
+          draftZoneType={draftZoneType}
           onGeometryChange={onDraftGeometryChange}
+          onMapReady={onMapReady}
         />
-      )}
-      {drawMode && (
-        <ExistingGeometryLayer geometry={draftGeometry ?? null} zoneType={draftZoneType} />
       )}
       {!drawMode && <FitBounds zones={zones} selectedId={selectedId} />}
     </MapContainer>

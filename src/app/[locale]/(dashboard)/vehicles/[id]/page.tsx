@@ -1,6 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { requirePermission } from "@/lib/auth/require-permission";
-import { PageHeader } from "@/components/dashboard/page-header";
+import { PageContentHeader } from "@/components/dashboard/page-content-header";
 import { Card, CardContent } from "@/components/ui/card";
 
 export default async function VehicleDetailPage({
@@ -15,7 +15,7 @@ export default async function VehicleDetailPage({
 
   return (
     <>
-      <PageHeader title={t("title")} subtitle={`${t("subtitle")} · ${id.slice(0, 8)}…`} />
+      <PageContentHeader title={t("title")} subtitle={`${t("subtitle")} · ${id.slice(0, 8)}…`} />
       <Card className="rounded-xl border-border shadow-sm">
         <CardContent className="pt-6">
           <p className="text-sm text-muted-foreground">{t("emptyTitle")}</p>

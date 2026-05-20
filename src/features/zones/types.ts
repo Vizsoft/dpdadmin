@@ -4,6 +4,7 @@ export type ZoneRow = {
   id: string;
   name: string;
   code: string;
+  color: string;
   zone_type: ZoneGeometryType;
   geometry: ZoneGeoFeature | null;
   created_at: string;
@@ -21,6 +22,7 @@ export type ZoneDriverRow = {
 export type ZoneFormValues = {
   name: string;
   code: string;
+  color: string;
   zone_type: ZoneGeometryType;
   geometry: ZoneGeoFeature | null;
 };

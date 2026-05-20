@@ -3,13 +3,14 @@
 import { useLocale, useTranslations } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { routing, type Locale } from "@/i18n/routing";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 import { Languages } from "lucide-react";
 
 const localeLabels: Record<Locale, string> = {
@@ -25,11 +26,14 @@ export function LocaleSwitcher() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger>
-        <Button variant="ghost" size="icon" className="cursor-pointer">
-          <Languages className="h-4 w-4" />
-          <span className="sr-only">{t("language")}</span>
-        </Button>
+      <DropdownMenuTrigger
+        className={cn(
+          buttonVariants({ variant: "ghost", size: "icon" }),
+          "cursor-pointer",
+        )}
+      >
+        <Languages className="h-4 w-4" />
+        <span className="sr-only">{t("language")}</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         {routing.locales.map((nextLocale) => (

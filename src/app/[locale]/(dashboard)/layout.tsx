@@ -4,10 +4,8 @@ import { requireAuth } from "@/lib/auth/require-permission";
 import { getAppOpsSettings } from "@/lib/auth/app-settings";
 import { redirect } from "@/i18n/navigation";
 import { AuthProvider } from "@/contexts/auth-context";
-import { PageHeaderProvider } from "@/contexts/page-header-context";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/app-sidebar";
-import { AppHeader } from "@/components/layout/app-header";
 
 export default async function DashboardLayout({
   children,
@@ -41,17 +39,16 @@ export default async function DashboardLayout({
         permissions: Array.from(session.permissions),
       }}
     >
-      <PageHeaderProvider>
-        <div className="flex min-h-svh w-full bg-background">
-          <SidebarProvider className="flex min-h-svh w-full">
-            <AppSidebar />
-            <SidebarInset className="flex min-h-svh min-w-0 flex-1 flex-col bg-card shadow-[0_0_24px_rgba(15,15,15,0.04)]">
-              <AppHeader />
-              <main className="flex-1 space-y-6 overflow-auto p-6">{children}</main>
-            </SidebarInset>
-          </SidebarProvider>
-        </div>
-      </PageHeaderProvider>
+      <div className="flex h-svh w-full overflow-hidden bg-background">
+        <SidebarProvider className="flex h-svh w-full overflow-hidden">
+          <AppSidebar />
+          <SidebarInset className="flex h-svh min-w-0 flex-1 flex-col overflow-hidden bg-background">
+            <main className="flex-1 overflow-auto px-6 py-4 md:px-8 md:py-6">
+              {children}
+            </main>
+          </SidebarInset>
+        </SidebarProvider>
+      </div>
     </AuthProvider>
   );
 }

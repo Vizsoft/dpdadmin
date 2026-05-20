@@ -4,7 +4,6 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { useAuth } from "@/contexts/auth-context";
 import { updateRolePermissions } from "@/features/settings/roles-actions";
 import type { AdminRoleRow } from "@/lib/auth/get-role-permissions";
 import { PERMISSIONS, type Permission } from "@/lib/auth/permissions";
@@ -26,7 +25,6 @@ export function RolesPermissionsPanel({
   permissions: PermissionRow[];
 }) {
   const t = useTranslations("pages.settings.roles");
-  const { isSuperAdmin } = useAuth();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -41,10 +39,6 @@ export function RolesPermissionsPanel({
   const [checked, setChecked] = useState<Set<string>>(
     () => new Set(selectedRole?.permissions ?? []),
   );
-
-  if (!isSuperAdmin) {
-    return null;
-  }
 
   const byCategory = permissions.reduce<Record<string, PermissionRow[]>>((acc, p) => {
     const list = acc[p.category] ?? [];
@@ -69,7 +63,7 @@ export function RolesPermissionsPanel({
   }
 
   return (
-    <Card className="md:col-span-2">
+    <Card>
       <CardHeader>
         <CardTitle className="text-base">{t("title")}</CardTitle>
         <CardDescription>{t("subtitle")}</CardDescription>

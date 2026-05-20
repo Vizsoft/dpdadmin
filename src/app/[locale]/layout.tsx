@@ -11,6 +11,7 @@ import {
 } from "next/font/google";
 import { BrandingProvider } from "@/contexts/branding-context";
 import { getAppSettings } from "@/lib/branding/get-app-settings";
+import { buildCustomThemeCss } from "@/lib/theme/presets";
 import { siteConfig } from "@/config/site";
 import { routing } from "@/i18n/routing";
 import { ThemeProvider } from "@/components/theme/theme-provider";
@@ -97,16 +98,27 @@ export default async function LocaleLayout({
   setRequestLocale(locale);
   const messages = await getMessages();
   const branding = await getAppSettings();
+  const customThemeCss = !branding.theme.isPreset
+    ? buildCustomThemeCss(
+        branding.theme.themeId,
+        branding.theme.lightTokens,
+        branding.theme.darkTokens,
+      )
+    : null;
 
   return (
     <html
       lang={locale}
       dir={locale === "ar" ? "rtl" : "ltr"}
       suppressHydrationWarning
+      data-theme={branding.themeId}
       data-font={branding.fontFamily}
       className={`${fontVariables} h-full`}
     >
       <body className="min-h-full font-sans antialiased">
+        {customThemeCss ? (
+          <style dangerouslySetInnerHTML={{ __html: customThemeCss }} />
+        ) : null}
         <ThemeProvider>
           <BrandingProvider value={branding}>
             <NextIntlClientProvider messages={messages}>

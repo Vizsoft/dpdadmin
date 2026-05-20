@@ -71,3 +71,12 @@ export async function resetMenuConfig(role: string): Promise<void> {
     .is("site_id", null);
   if (error) throw error;
 }
+
+/** Copy saved menu config from one role to another (overwrites target). */
+export async function copyMenuConfig(fromRole: string, toRole: string): Promise<void> {
+  if (fromRole === toRole) {
+    throw new Error("Source and target roles must differ");
+  }
+  const config = await getMenuConfig(fromRole);
+  await saveMenuConfig(toRole, config);
+}

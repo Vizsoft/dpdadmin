@@ -10,6 +10,8 @@ import {
   type ZoneGeometryType,
 } from "@/lib/geo/zone-geometry";
 import type { Json } from "@/types/database";
+import { mapZoneDbError } from "./zone-errors";
+import { normalizeZoneColor } from "./zone-colors";
 
 async function requireZonesManager() {
   const session = await getSessionUser();
@@ -27,6 +29,7 @@ export type ZoneMutationResult = { error?: string; success?: boolean; id?: strin
 export async function createZone(input: {
   name: string;
   code: string;
+  color: string;
   zone_type: ZoneGeometryType;
   geometry: ZoneGeoFeature;
 }): Promise<ZoneMutationResult> {
@@ -46,6 +49,7 @@ export async function createZone(input: {
     .insert({
       name,
       code,
+      color: normalizeZoneColor(input.color),
       zone_type: input.zone_type,
       geometry: input.geometry as unknown as Json,
     })
@@ -53,8 +57,7 @@ export async function createZone(input: {
     .single();
 
   if (error) {
-    if (error.code === "23505") return { error: "code_exists" };
-    return { error: error.message };
+    return { error: mapZoneDbError(error) };
   }
 
   return { success: true, id: data.id };
@@ -64,6 +67,7 @@ export async function updateZone(input: {
   id: string;
   name: string;
   code: string;
+  color: string;
   zone_type: ZoneGeometryType;
   geometry: ZoneGeoFeature;
 }): Promise<ZoneMutationResult> {
@@ -83,6 +87,7 @@ export async function updateZone(input: {
     .update({
       name,
       code,
+      color: normalizeZoneColor(input.color),
       zone_type: input.zone_type,
       geometry: input.geometry as unknown as Json,
       updated_at: new Date().toISOString(),
@@ -90,8 +95,7 @@ export async function updateZone(input: {
     .eq("id", input.id);
 
   if (error) {
-    if (error.code === "23505") return { error: "code_exists" };
-    return { error: error.message };
+    return { error: mapZoneDbError(error) };
   }
 
   return { success: true, id: input.id };
@@ -108,7 +112,7 @@ export async function deleteZone(id: string, force = false): Promise<ZoneMutatio
     .select("id", { count: "exact", head: true })
     .eq("zone_id", id);
 
-  if (countError) return { error: countError.message };
+  if (countError) return { error: mapZoneDbError(countError) };
 
   if (!force && (count ?? 0) > 0) return { error: "has_drivers" };
 
@@ -117,11 +121,11 @@ export async function deleteZone(id: string, force = false): Promise<ZoneMutatio
       .from("drivers")
       .update({ zone_id: null })
       .eq("zone_id", id);
-    if (unassignError) return { error: unassignError.message };
+    if (unassignError) return { error: mapZoneDbError(unassignError) };
   }
 
   const { error } = await supabase.from("zones").delete().eq("id", id);
-  if (error) return { error: error.message };
+  if (error) return { error: mapZoneDbError(error) };
 
   return { success: true };
 }

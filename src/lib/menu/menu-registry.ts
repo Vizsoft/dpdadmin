@@ -11,7 +11,11 @@ import {
   ListTree,
   MapPin,
   Package,
+  Paintbrush,
   Settings as SettingsIcon,
+  Shield,
+  ToggleLeft,
+  UserCheck,
   Users,
   Wallet,
   type LucideIcon,
@@ -46,6 +50,10 @@ export const ICON_MAP: Record<string, LucideIcon> = {
   ListTree,
   Folder,
   MapPin,
+  Paintbrush,
+  Shield,
+  ToggleLeft,
+  UserCheck,
 };
 
 export const ICON_NAMES = Object.keys(ICON_MAP);
@@ -158,26 +166,6 @@ export const MENU_REGISTRY: MenuRegistryItem[] = [
     footer: true,
   },
   {
-    id: "menu-editor",
-    defaultLabel: "Menu Editor",
-    defaultIcon: "ListTree",
-    href: "/settings/menu-editor",
-    defaultGroup: "System",
-    defaultOrder: 1,
-    superAdminOnly: true,
-    footer: true,
-  },
-  {
-    id: "languages",
-    defaultLabel: "Languages",
-    defaultIcon: "Languages",
-    href: "/settings/languages",
-    defaultGroup: "System",
-    defaultOrder: 2,
-    superAdminOnly: true,
-    footer: true,
-  },
-  {
     id: "zones",
     defaultLabel: "Zones",
     defaultIcon: "MapPin",
@@ -201,7 +189,23 @@ export const APP_NAV_KEY_BY_ID: Record<string, string> = {
   notifications: "notifications",
   support: "support",
   settings: "settings",
-  "menu-editor": "menuEditor",
-  languages: "languages",
   zones: "zones",
 };
+
+export type SettingsSubItem = {
+  id: string;
+  labelKey: string;
+  icon: string;
+  href: string;
+  permission?: Permission;
+  superAdminOnly?: boolean;
+};
+
+export const SETTINGS_SUB_ITEMS: SettingsSubItem[] = [
+  { id: "branding", labelKey: "branding", icon: "Paintbrush", href: "/settings/branding", permission: "settings.manage" },
+  { id: "roles", labelKey: "roles", icon: "Shield", href: "/settings/roles", superAdminOnly: true },
+  { id: "access-requests", labelKey: "accessRequests", icon: "UserCheck", href: "/settings/access-requests", superAdminOnly: true },
+  { id: "maintenance", labelKey: "maintenance", icon: "ToggleLeft", href: "/settings/maintenance", superAdminOnly: true },
+  { id: "menu-editor", labelKey: "menuEditor", icon: "ListTree", href: "/settings/menu-editor", superAdminOnly: true },
+  { id: "languages", labelKey: "languages", icon: "Languages", href: "/settings/languages", superAdminOnly: true },
+];

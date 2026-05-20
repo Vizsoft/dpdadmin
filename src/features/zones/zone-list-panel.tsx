@@ -6,7 +6,6 @@ import {
   ChevronDown,
   ChevronUp,
   Loader2,
-  MapPin,
   Pencil,
   Search,
   Trash2,
@@ -161,7 +160,11 @@ export function ZoneListPanel({
                         onClick={() => onSelect(zone.id)}
                         className="flex min-w-0 flex-1 items-start gap-2 text-start"
                       >
-                        <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+                        <span
+                          className="mt-1 h-3 w-3 shrink-0 rounded-full ring-1 ring-border"
+                          style={{ backgroundColor: zone.color }}
+                          aria-hidden
+                        />
                         <div className="min-w-0">
                           <p className="truncate font-semibold text-foreground">
                             {zone.name}

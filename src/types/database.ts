@@ -17,6 +17,7 @@ export type Database = {
           font_family: string;
           logo_url: string | null;
           logo_type: string;
+          theme_id: string;
           maintenance_mode: boolean;
           super_admin_claimed: boolean;
           super_admin_user_id: string | null;
@@ -30,6 +31,7 @@ export type Database = {
           font_family?: string;
           logo_url?: string | null;
           logo_type?: string;
+          theme_id?: string;
           maintenance_mode?: boolean;
           super_admin_claimed?: boolean;
           super_admin_user_id?: string | null;
@@ -43,11 +45,42 @@ export type Database = {
           font_family?: string;
           logo_url?: string | null;
           logo_type?: string;
+          theme_id?: string;
           maintenance_mode?: boolean;
           super_admin_claimed?: boolean;
           super_admin_user_id?: string | null;
           updated_at?: string;
           updated_by?: string | null;
+        };
+        Relationships: [];
+      };
+      app_themes: {
+        Row: {
+          id: string;
+          name: string;
+          base_preset: string;
+          light_tokens: Json;
+          dark_tokens: Json;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id: string;
+          name: string;
+          base_preset?: string;
+          light_tokens?: Json;
+          dark_tokens?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          base_preset?: string;
+          light_tokens?: Json;
+          dark_tokens?: Json;
+          created_at?: string;
+          updated_at?: string;
         };
         Relationships: [];
       };
@@ -277,8 +310,10 @@ export type Database = {
           id: string;
           name: string;
           code: string;
+          color: string;
           zone_type: "polygon" | "circle";
           geometry: Json | null;
+          company_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -286,8 +321,10 @@ export type Database = {
           id?: string;
           name: string;
           code: string;
+          color?: string;
           zone_type?: "polygon" | "circle";
           geometry?: Json | null;
+          company_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -295,8 +332,10 @@ export type Database = {
           id?: string;
           name?: string;
           code?: string;
+          color?: string;
           zone_type?: "polygon" | "circle";
           geometry?: Json | null;
+          company_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
