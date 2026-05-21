@@ -11,6 +11,11 @@ export const queryKeys = {
     list: (filters: Record<string, unknown> = {}) => ["drivers", "list", filters] as const,
     detail: (id: string) => ["drivers", "detail", id] as const,
   },
+  partners: {
+    all: () => ["partners"] as const,
+    list: () => ["partners", "list"] as const,
+    detail: (id: string) => ["partners", "detail", id] as const,
+  },
   deliveries: {
     all: () => ["deliveries"] as const,
     live: (zoneId?: string) => ["deliveries", "live", zoneId ?? "all"] as const,
@@ -33,5 +38,12 @@ export const queryKeys = {
   admin: {
     roles: () => ["admin", "roles"] as const,
     pendingProfiles: () => ["admin", "profiles", "pending"] as const,
+  },
+  dpd: {
+    all: () => ["dpd"] as const,
+    restaurants: () => ["dpd", "restaurants"] as const,
+    deliveryRules: () => ["dpd", "delivery-rules"] as const,
+    incentiveRules: () => ["dpd", "incentive-rules"] as const,
+    scopeOptions: () => ["dpd", "scope-options"] as const,
   },
 } as const;

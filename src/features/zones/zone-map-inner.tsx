@@ -6,6 +6,7 @@ import {
   MapContainer,
   Polygon,
   TileLayer,
+  Tooltip,
   useMap,
   ZoomControl,
 } from "react-leaflet";
@@ -51,16 +52,25 @@ function FitBounds({ zones, selectedId }: { zones: ZoneRow[]; selectedId: string
       const { x, y } = map.getSize();
       if (x === 0 || y === 0) return;
 
-      const target = selectedId
-        ? zones.find((z) => z.id === selectedId)
-        : zones.find((z) => z.geometry);
+      const latlngs: L.LatLngExpression[] = [];
 
-      if (!target?.geometry) return;
+      if (selectedId) {
+        const target = zones.find((z) => z.id === selectedId);
+        if (target?.geometry) {
+          const corners = zoneMapBoundsFromShape(target.zone_type, target.geometry);
+          if (corners) latlngs.push(...corners);
+        }
+      } else {
+        for (const z of zones) {
+          if (!z.geometry) continue;
+          const corners = zoneMapBoundsFromShape(z.zone_type, z.geometry);
+          if (corners) latlngs.push(...corners);
+        }
+      }
 
-      const corners = zoneMapBoundsFromShape(target.zone_type, target.geometry);
-      if (!corners) return;
+      if (latlngs.length === 0) return;
 
-      const bounds = L.latLngBounds(corners);
+      const bounds = L.latLngBounds(latlngs);
       if (!bounds.isValid()) return;
 
       map.fitBounds(bounds, { padding: [48, 48], maxZoom: 15 });
@@ -102,6 +112,12 @@ function ZoneOverlay({
     ...(isReference ? { pmIgnore: true } : {}),
   } as L.PathOptions;
 
+  const tooltip = (
+    <Tooltip direction="top" offset={[0, -4]} opacity={0.92}>
+      {zone.name}
+    </Tooltip>
+  );
+
   if (zone.zone_type === "circle") {
     const circle = circleFromFeature(zone.geometry);
     if (!circle) return null;
@@ -111,7 +127,9 @@ function ZoneOverlay({
         radius={circle.radiusMeters}
         interactive={!isReference}
         pathOptions={pathOptions}
-      />
+      >
+        {tooltip}
+      </Circle>
     );
   }
 
@@ -123,7 +141,9 @@ function ZoneOverlay({
       positions={positions}
       interactive={!isReference}
       pathOptions={pathOptions}
-    />
+    >
+      {tooltip}
+    </Polygon>
   );
 }
 
@@ -307,6 +327,11 @@ function GeomanDrawControl({
       if (!map.pm) return;
 
       map.invalidateSize({ animate: false });
+      try {
+        map.pm.setLang("en");
+      } catch {
+        /* ignore */
+      }
       map.pm.setGlobalOptions({
         allowSelfIntersection: true,
         snappable: true,
@@ -315,8 +340,9 @@ function GeomanDrawControl({
       map.pm.removeControls();
       map.pm.addControls({
         position: "bottomright",
-        drawCircle: drawMode === "circle",
-        drawPolygon: drawMode === "polygon",
+        drawControls: false,
+        drawCircle: false,
+        drawPolygon: false,
         drawMarker: false,
         drawPolyline: false,
         drawRectangle: false,
@@ -325,9 +351,37 @@ function GeomanDrawControl({
         editMode: true,
         dragMode: false,
         cutPolygon: false,
-        removalMode: true,
+        removalMode: false,
         rotateMode: false,
       });
+
+      try {
+        if (map.pm.Toolbar.controlExists("zoneClear")) {
+          map.pm.Toolbar.deleteControl("zoneClear");
+        }
+        map.pm.Toolbar.createCustomControl({
+          name: "zoneClear",
+          block: "custom",
+          title: "Clear shape",
+          className: "leaflet-pm-icon-delete",
+          toggle: false,
+          onClick: () => {
+            const layer = activeLayerRef.current;
+            if (layer) {
+              try {
+                map.removeLayer(layer);
+              } catch {
+                /* ignore */
+              }
+            }
+            removeZoneDraftLayers(map);
+            clearActiveLayer();
+            syncDrawingMode();
+          },
+        });
+      } catch {
+        /* ignore */
+      }
     };
 
     const finishLayer = (layer: L.Layer, shape: string) => {

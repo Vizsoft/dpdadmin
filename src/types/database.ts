@@ -349,24 +349,124 @@ export type Database = {
           },
         ];
       };
+      driver_intakes: {
+        Row: {
+          id: string;
+          phone: string;
+          full_name: string;
+          civil_id: string;
+          driver_code: string;
+          partner_id: string;
+          zone_id: string;
+          vehicle_id: string | null;
+          assets_issued: Json;
+          status: Database["public"]["Enums"]["driver_intake_status"];
+          workflow_status: Database["public"]["Enums"]["driver_workflow_status"];
+          linked: boolean;
+          linked_profile_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          phone: string;
+          full_name: string;
+          civil_id: string;
+          driver_code: string;
+          partner_id: string;
+          zone_id: string;
+          vehicle_id?: string | null;
+          assets_issued?: Json;
+          status?: Database["public"]["Enums"]["driver_intake_status"];
+          workflow_status?: Database["public"]["Enums"]["driver_workflow_status"];
+          linked?: boolean;
+          linked_profile_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          phone?: string;
+          full_name?: string;
+          civil_id?: string;
+          driver_code?: string;
+          partner_id?: string;
+          zone_id?: string;
+          vehicle_id?: string | null;
+          assets_issued?: Json;
+          status?: Database["public"]["Enums"]["driver_intake_status"];
+          workflow_status?: Database["public"]["Enums"]["driver_workflow_status"];
+          linked?: boolean;
+          linked_profile_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "driver_intakes_partner_id_fkey";
+            columns: ["partner_id"];
+            isOneToOne: false;
+            referencedRelation: "partners";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "driver_intakes_zone_id_fkey";
+            columns: ["zone_id"];
+            isOneToOne: false;
+            referencedRelation: "zones";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "driver_intakes_vehicle_id_fkey";
+            columns: ["vehicle_id"];
+            isOneToOne: false;
+            referencedRelation: "vehicles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       drivers: {
         Row: {
           id: string;
           driver_code: string;
-          zone_id: string | null;
           partner_id: string | null;
+          zone_id: string | null;
+          civil_id: string | null;
+          status: Database["public"]["Enums"]["driver_status"];
+          base_earnings_kwd: number | null;
+          joined_at: string | null;
+          is_on_duty: boolean;
+          vehicle_id: string | null;
+          created_at: string;
+          updated_at: string;
         };
         Insert: {
           id: string;
           driver_code: string;
-          zone_id?: string | null;
           partner_id?: string | null;
+          zone_id?: string | null;
+          civil_id?: string | null;
+          status?: Database["public"]["Enums"]["driver_status"];
+          base_earnings_kwd?: number | null;
+          joined_at?: string | null;
+          is_on_duty?: boolean;
+          vehicle_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
         };
         Update: {
           id?: string;
           driver_code?: string;
-          zone_id?: string | null;
           partner_id?: string | null;
+          zone_id?: string | null;
+          civil_id?: string | null;
+          status?: Database["public"]["Enums"]["driver_status"];
+          base_earnings_kwd?: number | null;
+          joined_at?: string | null;
+          is_on_duty?: boolean;
+          vehicle_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
         };
         Relationships: [
           {
@@ -385,24 +485,341 @@ export type Database = {
           },
         ];
       };
+      vehicles: {
+        Row: {
+          id: string;
+          bike_id: string;
+          reg_number: string | null;
+          make: string | null;
+          model: string | null;
+          project_type: Database["public"]["Enums"]["project_type"];
+          status: Database["public"]["Enums"]["vehicle_status"];
+          current_driver_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          bike_id: string;
+          reg_number?: string | null;
+          make?: string | null;
+          model?: string | null;
+          project_type?: Database["public"]["Enums"]["project_type"];
+          status?: Database["public"]["Enums"]["vehicle_status"];
+          current_driver_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          bike_id?: string;
+          reg_number?: string | null;
+          make?: string | null;
+          model?: string | null;
+          project_type?: Database["public"]["Enums"]["project_type"];
+          status?: Database["public"]["Enums"]["vehicle_status"];
+          current_driver_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      storage_config: {
+        Row: {
+          id: number;
+          r2_account_id: string | null;
+          r2_access_key_id: string | null;
+          r2_secret_access_key: string | null;
+          r2_bucket_name: string | null;
+          r2_s3_endpoint: string | null;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: {
+          id?: number;
+          r2_account_id?: string | null;
+          r2_access_key_id?: string | null;
+          r2_secret_access_key?: string | null;
+          r2_bucket_name?: string | null;
+          r2_s3_endpoint?: string | null;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: {
+          id?: number;
+          r2_account_id?: string | null;
+          r2_access_key_id?: string | null;
+          r2_secret_access_key?: string | null;
+          r2_bucket_name?: string | null;
+          r2_s3_endpoint?: string | null;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Relationships: [];
+      };
+      restaurants: {
+        Row: {
+          id: string;
+          partner_id: string;
+          name: string;
+          external_merchant_id: string | null;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          partner_id: string;
+          name: string;
+          external_merchant_id?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          partner_id?: string;
+          name?: string;
+          external_merchant_id?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "restaurants_partner_id_fkey";
+            columns: ["partner_id"];
+            isOneToOne: false;
+            referencedRelation: "partners";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      delivery_rules: {
+        Row: {
+          id: string;
+          name: string;
+          status: Database["public"]["Enums"]["rule_status"];
+          scope_type: Database["public"]["Enums"]["rule_scope_type"];
+          zone_id: string | null;
+          partner_id: string | null;
+          restaurant_id: string | null;
+          start_date: string;
+          end_date: string;
+          priority: number;
+          require_verified: boolean;
+          must_match_driver_zone: boolean;
+          must_match_partner: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          status?: Database["public"]["Enums"]["rule_status"];
+          scope_type: Database["public"]["Enums"]["rule_scope_type"];
+          zone_id?: string | null;
+          partner_id?: string | null;
+          restaurant_id?: string | null;
+          start_date: string;
+          end_date: string;
+          priority?: number;
+          require_verified?: boolean;
+          must_match_driver_zone?: boolean;
+          must_match_partner?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          status?: Database["public"]["Enums"]["rule_status"];
+          scope_type?: Database["public"]["Enums"]["rule_scope_type"];
+          zone_id?: string | null;
+          partner_id?: string | null;
+          restaurant_id?: string | null;
+          start_date?: string;
+          end_date?: string;
+          priority?: number;
+          require_verified?: boolean;
+          must_match_driver_zone?: boolean;
+          must_match_partner?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      incentive_rules: {
+        Row: {
+          id: string;
+          name: string;
+          status: Database["public"]["Enums"]["rule_status"];
+          scope_type: Database["public"]["Enums"]["rule_scope_type"];
+          zone_id: string | null;
+          partner_id: string | null;
+          restaurant_id: string | null;
+          period: Database["public"]["Enums"]["incentive_period"];
+          target_deliveries: number;
+          reward_kwd: number;
+          start_date: string;
+          end_date: string;
+          priority: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          status?: Database["public"]["Enums"]["rule_status"];
+          scope_type: Database["public"]["Enums"]["rule_scope_type"];
+          zone_id?: string | null;
+          partner_id?: string | null;
+          restaurant_id?: string | null;
+          period: Database["public"]["Enums"]["incentive_period"];
+          target_deliveries?: number;
+          reward_kwd?: number;
+          start_date: string;
+          end_date: string;
+          priority?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          status?: Database["public"]["Enums"]["rule_status"];
+          scope_type?: Database["public"]["Enums"]["rule_scope_type"];
+          zone_id?: string | null;
+          partner_id?: string | null;
+          restaurant_id?: string | null;
+          period?: Database["public"]["Enums"]["incentive_period"];
+          target_deliveries?: number;
+          reward_kwd?: number;
+          start_date?: string;
+          end_date?: string;
+          priority?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      deliveries: {
+        Row: {
+          id: string;
+          driver_id: string;
+          partner_id: string | null;
+          zone_id: string | null;
+          restaurant_id: string | null;
+          external_order_id: string | null;
+          order_proof_url: string | null;
+          status: Database["public"]["Enums"]["delivery_status"];
+          rejection_reason: string | null;
+          delivered_at: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          driver_id: string;
+          partner_id?: string | null;
+          zone_id?: string | null;
+          restaurant_id?: string | null;
+          external_order_id?: string | null;
+          order_proof_url?: string | null;
+          status?: Database["public"]["Enums"]["delivery_status"];
+          rejection_reason?: string | null;
+          delivered_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          driver_id?: string;
+          partner_id?: string | null;
+          zone_id?: string | null;
+          restaurant_id?: string | null;
+          external_order_id?: string | null;
+          order_proof_url?: string | null;
+          status?: Database["public"]["Enums"]["delivery_status"];
+          rejection_reason?: string | null;
+          delivered_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      driver_earnings_daily: {
+        Row: {
+          id: string;
+          driver_id: string;
+          earn_date: string;
+          deliveries: number;
+          base_kwd: number;
+          incentive_kwd: number;
+          loan_deduction_kwd: number;
+          penalty_kwd: number;
+          reimbursement_kwd: number;
+          net_kwd: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          driver_id: string;
+          earn_date: string;
+          deliveries?: number;
+          base_kwd?: number;
+          incentive_kwd?: number;
+          loan_deduction_kwd?: number;
+          penalty_kwd?: number;
+          reimbursement_kwd?: number;
+          net_kwd?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          driver_id?: string;
+          earn_date?: string;
+          deliveries?: number;
+          base_kwd?: number;
+          incentive_kwd?: number;
+          loan_deduction_kwd?: number;
+          penalty_kwd?: number;
+          reimbursement_kwd?: number;
+          net_kwd?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       partners: {
         Row: {
           id: string;
           name: string;
           slug: string;
+          description: string | null;
           logo_url: string | null;
+          created_at: string;
+          updated_at: string;
         };
         Insert: {
           id?: string;
           name: string;
           slug: string;
+          description?: string | null;
           logo_url?: string | null;
+          created_at?: string;
+          updated_at?: string;
         };
         Update: {
           id?: string;
           name?: string;
           slug?: string;
+          description?: string | null;
           logo_url?: string | null;
+          created_at?: string;
+          updated_at?: string;
         };
         Relationships: [];
       };
@@ -413,11 +830,32 @@ export type Database = {
       is_admin_panel_user: { Args: never; Returns: boolean };
       is_staff: { Args: never; Returns: boolean };
       is_super_admin_user: { Args: never; Returns: boolean };
+      delivery_matches_rules: {
+        Args: { p_delivery_id: string; p_on_date?: string };
+        Returns: boolean;
+      };
+      recalculate_driver_earnings: {
+        Args: { p_driver_id: string; p_earn_date: string };
+        Returns: undefined;
+      };
+      preview_driver_earnings: { Args: { p_earn_date: string }; Returns: Json };
+      recalculate_earnings_for_date: { Args: { p_earn_date: string }; Returns: number };
     };
     Enums: {
       app_role: "rider" | "staff";
       admin_approval_status: "pending" | "approved" | "rejected";
       zone_geometry_type: "polygon" | "circle";
+      driver_intake_status: "awaiting_app_link" | "linked" | "cancelled";
+      driver_workflow_status: "draft" | "pending" | "approved";
+      driver_status: "active" | "suspended" | "pending";
+      vehicle_status: "active" | "suspended" | "maintenance";
+      project_type: "group" | "rent";
+      document_type: "license" | "civil_id" | "work_permit" | "passport";
+      asset_type: "gps" | "sim" | "phone" | "delivery_bag" | "helmet" | "uniform";
+      delivery_status: "pending" | "verified" | "rejected";
+      rule_scope_type: "zone" | "partner" | "restaurant";
+      rule_status: "draft" | "active" | "ended";
+      incentive_period: "daily" | "weekly" | "monthly";
     };
     CompositeTypes: Record<string, never>;
   };

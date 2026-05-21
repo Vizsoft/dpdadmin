@@ -24,7 +24,29 @@ The **admin panel** verifies deliveries, approves requests, manages zones/vehicl
 | Locale | `profiles.locale` — `en` \| `ar` |
 | Admin block | `role = 'staff'` users use email login on web only |
 
-**On first login:** upsert `profiles` (phone, full_name TBD) + create `drivers` row with `status = pending` until admin verifies.
+**On first login (OTP success):** call `link_driver_by_phone(phone)` (RPC or edge function — implement in Supabase when wiring the app):
+
+1. Normalize phone to `+965XXXXXXXX`.
+2. **If** a `driver_intakes` row exists with that phone and `linked = false`:
+   - Create/update `profiles` (`role = 'rider'`, intake `full_name`, `phone`, `civil_id` if stored on profile).
+   - Insert `drivers` (`id = auth.uid()`, `driver_code`, `partner_id`, `zone_id`) as needed for the app.
+   - Copy R2 objects `drivers/intakes/{intakeId}/{doc_type}.{ext}` → `drivers/{driverId}/{doc_type}.{ext}` (S3 CopyObject, same private bucket).
+   - Insert `driver_documents` rows; create `driver_assets` from intake `assets_issued` jsonb.
+   - If intake has `vehicle_id`, set `vehicles.current_driver_id = auth.uid()`.
+   - Set intake `linked = true`, `linked_profile_id = auth.uid()`, legacy `status = 'linked'`.
+   - Or call RPC: `select mark_driver_intake_linked(p_phone, p_profile_id)`.
+3. **Else** (no intake): create minimal `profiles` + `drivers` (self-signup path).
+
+Admin panel **does not** create auth users; it only inserts `driver_intakes` via **Add Driver** (`/drivers/new`):
+- `workflow_status = 'draft'` (staff change manually to `pending` / `approved` in admin UI)
+- `linked = false` until mobile OTP link
+
+| Table / bucket | Admin | Driver app |
+|----------------|-------|------------|
+| `driver_intakes` | insert (staff RLS) | read on link (service role / RPC) |
+| R2 `drivers/intakes/…` | admin upload (server) | copy to `drivers/{driverId}/…` on link |
+| `drivers` | — | row after OTP link |
+| `profiles.phone` | duplicate check on create | unique identity for link |
 
 ---
 
@@ -83,12 +105,34 @@ The **admin panel** verifies deliveries, approves requests, manages zones/vehicl
 |--------|------|-------|
 | driver_id | uuid | = auth.uid() |
 | partner_id | uuid | Selected partner |
+| zone_id | uuid | Zone at time of delivery |
+| restaurant_id | uuid | Optional FK → `restaurants` (merchant) |
 | external_order_id | text | Order # from partner app |
 | order_proof_url | text | Storage path |
 | status | enum | pending → admin sets verified/rejected |
 | delivered_at | timestamptz | |
 
+When admin sets `status = verified`, Postgres runs `recalculate_driver_earnings(driver_id, earn_date)` and updates `driver_earnings_daily`.
+
 **Driver RLS (to implement):** INSERT/SELECT where `driver_id = auth.uid()`.
+
+### `restaurants` (admin-managed)
+| Column | Type | Notes |
+|--------|------|-------|
+| partner_id | uuid | FK → partners |
+| name | text | Display name |
+| external_merchant_id | text | Optional ID from partner app |
+| is_active | boolean | |
+
+Configured in admin **Settings → DPD → Restaurants**.
+
+### `delivery_rules` / `incentive_rules` (admin-managed)
+- Scope: `zone`, `partner`, or `restaurant` (exactly one FK per rule).
+- `delivery_rules`: which verified deliveries count toward incentives (if none active globally, all verified deliveries count).
+- `incentive_rules`: `period` (daily/weekly/monthly), `target_deliveries`, `reward_kwd`; matching rules **stack** (sum of rewards).
+- Kuwait calendar for weekly (Mon–Sun) and monthly periods in SQL (`Asia/Kuwait`).
+
+Admin UI: **DPD** (`/dpd`, `earnings.view` / `earnings.manage`). Legacy `/settings/dpd` redirects to `/dpd`.
 
 ### `requests`
 | Column | Type | Notes |
@@ -125,17 +169,32 @@ The **admin panel** verifies deliveries, approves requests, manages zones/vehicl
 
 ---
 
-## 5. Storage buckets
+## 5. Storage
+
+### Cloudflare R2 (private — admin + linked driver docs)
+
+Env: `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`. Server-only uploads; staff read via presigned GET (15 min).
+
+| Prefix | Who writes | Path |
+|--------|------------|------|
+| `drivers/intakes/{intake_id}/` | Admin panel (Add Driver) | `{doc_type}.{pdf\|png\|jpg\|webp}` |
+| `drivers/{driver_id}/` | Link RPC / mobile onboarding | `{doc_type}.{ext}` |
+| `partners/{partner_id}/` | Admin panel | `logo.{ext}` |
+
+`driver_documents.file_url` should store the **object key** (e.g. `drivers/{uuid}/license.pdf`), not a public URL. Resolve with presigned GET in admin/mobile as needed.
+
+Legacy Supabase buckets `driver-intakes` and `partner-logos` are deprecated; migrate with `node scripts/migrate-storage-to-r2.mjs`.
+
+### Supabase Storage (still used for mobile operational uploads)
 
 | Bucket | Driver upload | Path |
 |--------|---------------|------|
 | delivery-proofs | Yes | `{driver_id}/{uuid}.jpg` |
 | fuel-receipts | Yes | `{driver_id}/{request_id}.jpg` |
 | hygiene-photos | Yes | `{driver_id}/{task_id}.jpg` |
-| driver-documents | Yes (profile onboarding) | `{driver_id}/{doc_type}.pdf` |
 | support-attachments | Yes | `{thread_id}/{uuid}` |
 
-RLS: authenticated user can write only under their `driver_id` prefix.
+RLS: authenticated user can write only under their `driver_id` prefix where applicable.
 
 ---
 
@@ -201,7 +260,7 @@ Shared validation logic (admin): `src/lib/geo/zone-geometry.ts` — mirror in mo
 
 ## 9. Brand / UI
 
-Match admin design tokens: `design-system/dpd-admin/TOKENS.md`
+Match admin semantic tokens: `docs/DESIGN_SYSTEM.md` (CSS variables: `primary`, `background`, `muted`, etc.)
 
 - Background cream `#FAF6F2`, accent coral `#EF5B4D`, primary CTA dark `#1A1A1A`
 - Status: green Active, coral Suspended/Warning

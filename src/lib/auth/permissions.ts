@@ -2,6 +2,8 @@ export const PERMISSIONS = {
   "dashboard.view": "dashboard.view",
   "drivers.view": "drivers.view",
   "drivers.manage": "drivers.manage",
+  "partners.view": "partners.view",
+  "partners.manage": "partners.manage",
   "vehicles.view": "vehicles.view",
   "vehicles.manage": "vehicles.manage",
   "deliveries.view": "deliveries.view",

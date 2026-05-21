@@ -8,7 +8,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
-import { EmptyState } from "@/components/dashboard/empty-state";
+import { TABLE_HEAD_CLASS } from "@/components/app/constants";
+import { AppDataTableEmpty, AppEmptyState } from "@/components/app";
 
 export function DataTableShell({
   columns,
@@ -28,7 +29,7 @@ export function DataTableShell({
           <TableHeader>
             <TableRow className="bg-muted/30 hover:bg-muted/30">
               {columns.map((col) => (
-                <TableHead key={col} className="text-xs font-semibold text-accent">
+                <TableHead key={col} className={TABLE_HEAD_CLASS}>
                   {col}
                 </TableHead>
               ))}
@@ -46,9 +47,9 @@ export function DataTableShell({
             ))}
           </TableBody>
         </Table>
-        <div className="border-t border-border p-6">
-          <EmptyState title={emptyTitle} description={emptyDescription} />
-        </div>
+        <AppDataTableEmpty>
+          <AppEmptyState title={emptyTitle} description={emptyDescription} />
+        </AppDataTableEmpty>
       </CardContent>
     </Card>
   );

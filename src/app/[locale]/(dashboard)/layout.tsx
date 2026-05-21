@@ -42,10 +42,8 @@ export default async function DashboardLayout({
       <div className="flex h-svh w-full overflow-hidden bg-background">
         <SidebarProvider className="flex h-svh w-full overflow-hidden">
           <AppSidebar />
-          <SidebarInset className="flex h-svh min-w-0 flex-1 flex-col overflow-hidden bg-background">
-            <main className="flex-1 overflow-auto px-6 py-4 md:px-8 md:py-6">
-              {children}
-            </main>
+          <SidebarInset className="flex h-svh min-w-0 flex-1 flex-col overflow-hidden bg-muted/30">
+            <main className="flex-1 overflow-auto p-6">{children}</main>
           </SidebarInset>
         </SidebarProvider>
       </div>

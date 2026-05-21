@@ -4,6 +4,7 @@ import {
   Bike,
   ClipboardCheck,
   Folder,
+  Handshake,
   Inbox,
   Languages,
   LayoutDashboard,
@@ -18,6 +19,7 @@ import {
   UserCheck,
   Users,
   Wallet,
+  Cloud,
   type LucideIcon,
 } from "lucide-react";
 import type { Permission } from "@/lib/auth/permissions";
@@ -49,11 +51,13 @@ export const ICON_MAP: Record<string, LucideIcon> = {
   Languages,
   ListTree,
   Folder,
+  Handshake,
   MapPin,
   Paintbrush,
   Shield,
   ToggleLeft,
   UserCheck,
+  Cloud,
 };
 
 export const ICON_NAMES = Object.keys(ICON_MAP);
@@ -84,12 +88,21 @@ export const MENU_REGISTRY: MenuRegistryItem[] = [
     permission: "drivers.view",
   },
   {
+    id: "partners",
+    defaultLabel: "Partners",
+    defaultIcon: "Handshake",
+    href: "/partners",
+    defaultGroup: "Operations",
+    defaultOrder: 1,
+    permission: "partners.view",
+  },
+  {
     id: "deliveries",
     defaultLabel: "Live Deliveries",
     defaultIcon: "Package",
     href: "/deliveries",
     defaultGroup: "Operations",
-    defaultOrder: 1,
+    defaultOrder: 2,
     permission: "deliveries.view",
   },
   {
@@ -98,7 +111,7 @@ export const MENU_REGISTRY: MenuRegistryItem[] = [
     defaultIcon: "Bike",
     href: "/vehicles",
     defaultGroup: "Operations",
-    defaultOrder: 2,
+    defaultOrder: 3,
     permission: "vehicles.view",
   },
   {
@@ -107,7 +120,7 @@ export const MENU_REGISTRY: MenuRegistryItem[] = [
     defaultIcon: "ClipboardCheck",
     href: "/attendance",
     defaultGroup: "Operations",
-    defaultOrder: 3,
+    defaultOrder: 4,
     permission: "attendance.view",
   },
   {
@@ -116,7 +129,7 @@ export const MENU_REGISTRY: MenuRegistryItem[] = [
     defaultIcon: "Inbox",
     href: "/requests",
     defaultGroup: "Operations",
-    defaultOrder: 4,
+    defaultOrder: 5,
     permission: "requests.view",
   },
   {
@@ -125,7 +138,7 @@ export const MENU_REGISTRY: MenuRegistryItem[] = [
     defaultIcon: "AlertTriangle",
     href: "/wrong-actions",
     defaultGroup: "Operations",
-    defaultOrder: 5,
+    defaultOrder: 6,
     permission: "wrong_actions.view",
   },
   {
@@ -134,7 +147,16 @@ export const MENU_REGISTRY: MenuRegistryItem[] = [
     defaultIcon: "Wallet",
     href: "/earnings",
     defaultGroup: "Operations",
-    defaultOrder: 6,
+    defaultOrder: 7,
+    permission: "earnings.view",
+  },
+  {
+    id: "dpd",
+    defaultLabel: "DPD",
+    defaultIcon: "ToggleLeft",
+    href: "/dpd",
+    defaultGroup: "Operations",
+    defaultOrder: 75,
     permission: "earnings.view",
   },
   {
@@ -143,7 +165,7 @@ export const MENU_REGISTRY: MenuRegistryItem[] = [
     defaultIcon: "Bell",
     href: "/notifications",
     defaultGroup: "Operations",
-    defaultOrder: 7,
+    defaultOrder: 8,
     permission: "notifications.view",
   },
   {
@@ -152,7 +174,7 @@ export const MENU_REGISTRY: MenuRegistryItem[] = [
     defaultIcon: "LifeBuoy",
     href: "/support",
     defaultGroup: "Operations",
-    defaultOrder: 8,
+    defaultOrder: 9,
     permission: "support.view",
   },
   {
@@ -163,7 +185,6 @@ export const MENU_REGISTRY: MenuRegistryItem[] = [
     defaultGroup: "System",
     defaultOrder: 0,
     permission: "settings.view",
-    footer: true,
   },
   {
     id: "zones",
@@ -180,12 +201,14 @@ export const MENU_REGISTRY: MenuRegistryItem[] = [
 export const APP_NAV_KEY_BY_ID: Record<string, string> = {
   dashboard: "dashboard",
   drivers: "drivers",
+  partners: "partners",
   deliveries: "deliveries",
   vehicles: "vehicles",
   attendance: "attendance",
   requests: "requests",
   "wrong-actions": "wrongActions",
   earnings: "earnings",
+  dpd: "dpd",
   notifications: "notifications",
   support: "support",
   settings: "settings",
@@ -203,6 +226,7 @@ export type SettingsSubItem = {
 
 export const SETTINGS_SUB_ITEMS: SettingsSubItem[] = [
   { id: "branding", labelKey: "branding", icon: "Paintbrush", href: "/settings/branding", permission: "settings.manage" },
+  { id: "storage", labelKey: "storage", icon: "Cloud", href: "/settings/storage", superAdminOnly: true },
   { id: "roles", labelKey: "roles", icon: "Shield", href: "/settings/roles", superAdminOnly: true },
   { id: "access-requests", labelKey: "accessRequests", icon: "UserCheck", href: "/settings/access-requests", superAdminOnly: true },
   { id: "maintenance", labelKey: "maintenance", icon: "ToggleLeft", href: "/settings/maintenance", superAdminOnly: true },

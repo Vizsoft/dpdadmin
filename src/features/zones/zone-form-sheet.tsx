@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import type { Map as LeafletMap } from "leaflet";
 import { useTranslations } from "next-intl";
-import { Loader2 } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -23,11 +24,16 @@ import {
   type ZoneGeometryType,
   type ZoneGeoFeature,
 } from "@/lib/geo/zone-geometry";
+import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import { ZoneColorPicker } from "./zone-color-picker";
-import { pickAutoZoneColor, normalizeZoneColor } from "./zone-colors";
+import {
+  isPaletteColor,
+  pickAutoZoneColor,
+  normalizeZoneColor,
+} from "./zone-colors";
 import { ZoneMap } from "./zone-map";
 import { geomanDrawOptions } from "./zone-map-geoman-options";
-import { createZone, updateZone } from "./zones-actions";
+import { createZone, deleteZone, updateZone } from "./zones-actions";
 import { isZoneErrorKey } from "./zone-errors";
 import type { ZoneRow } from "./types";
 
@@ -52,6 +58,7 @@ type ZoneFormSheetProps = {
   zone?: ZoneRow | null;
   existingZones?: ZoneRow[];
   onSaved: () => void;
+  onDeleted: () => void;
 };
 
 function ZoneFormBody({
@@ -59,13 +66,19 @@ function ZoneFormBody({
   existingZones,
   onClose,
   onSaved,
+  onDeleted,
+  onRequestDelete,
 }: {
   zone: ZoneRow | null;
   existingZones: ZoneRow[];
   onClose: () => void;
   onSaved: () => void;
+  onDeleted: () => void;
+  onRequestDelete: () => void;
 }) {
   const t = useTranslations("pages.zones");
+  const { can } = useAuth();
+  const canManage = can("zones.manage");
   const isEdit = Boolean(zone);
   const [isPending, startTransition] = useTransition();
 
@@ -77,11 +90,14 @@ function ZoneFormBody({
   }, [zone]);
 
   const [zoneType, setZoneType] = useState<ZoneGeometryType>(zone?.zone_type ?? "polygon");
-  const [color, setColor] = useState(() =>
-    normalizeZoneColor(
+  const [color, setColor] = useState(() => {
+    const initial = normalizeZoneColor(
       zone?.color ?? pickAutoZoneColor(existingZones.map((z) => z.color)),
-    ),
-  );
+    );
+    return isPaletteColor(initial)
+      ? initial
+      : pickAutoZoneColor(existingZones.map((z) => z.color));
+  });
 
   useEffect(() => {
     if (!zone) {
@@ -188,43 +204,52 @@ function ZoneFormBody({
       </div>
 
       <div className="order-2 flex min-h-0 w-full shrink-0 flex-col lg:order-1 lg:w-[min(400px,38%)] lg:max-w-[420px]">
-        <DialogHeader className="border-b border-border px-6 py-4 pr-14">
+        <DialogHeader className="border-b border-border px-6 py-3 pr-14">
           <DialogTitle>{isEdit ? t("editZoneTitle") : t("addZoneTitle")}</DialogTitle>
-          <DialogDescription>{t("formDescription")}</DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 space-y-4 overflow-y-auto px-6 py-4">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-            <div className="space-y-2">
-              <Label htmlFor="zone-name">{t("fieldName")}</Label>
-              <Input
-                id="zone-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder={t("fieldNamePlaceholder")}
-                className="rounded-lg"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="zone-code">{t("fieldCode")}</Label>
-              <Input
-                id="zone-code"
-                value={code}
-                onChange={(e) => setCode(e.target.value.toUpperCase())}
-                placeholder="ZN-1025"
-                className="rounded-lg font-mono"
-              />
-            </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="zone-name">{t("fieldName")}</Label>
+            <Input
+              id="zone-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={t("fieldNamePlaceholder")}
+              className="rounded-lg"
+            />
+            <p className="text-[11px] text-muted-foreground">{t("nameHint")}</p>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="zone-code">{t("fieldCode")}</Label>
+            <Input
+              id="zone-code"
+              value={code}
+              onChange={(e) => setCode(e.target.value.toUpperCase())}
+              placeholder="ZN-1025"
+              className="rounded-lg font-mono"
+            />
+            <p className="text-[11px] text-muted-foreground">{t("codeHint")}</p>
+          </div>
+
+          <div className="space-y-1.5">
             <Label>{t("fieldColor")}</Label>
             <ZoneColorPicker value={color} onChange={setColor} />
-            <p className="text-xs text-muted-foreground">{t("fieldColorHint")}</p>
+            <p className="text-[11px] text-muted-foreground">{t("colorHelp")}</p>
           </div>
 
-          <div className="space-y-2">
-            <Label>{t("fieldType")}</Label>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between gap-2">
+              <Label>{t("fieldType")}</Label>
+              <button
+                type="button"
+                className="cursor-pointer text-xs font-medium text-primary hover:underline"
+                onClick={startDrawing}
+              >
+                {zoneType === "polygon" ? t("startDrawPolygon") : t("startDrawCircle")}
+              </button>
+            </div>
             <div className="flex gap-2">
               {(["polygon", "circle"] as const).map((type) => (
                 <Button
@@ -241,10 +266,13 @@ function ZoneFormBody({
                 </Button>
               ))}
             </div>
+            <p className="text-[11px] text-muted-foreground">
+              {zoneType === "polygon" ? t("polygonTypeHint") : t("circleTypeHint")}
+            </p>
           </div>
 
           {zoneType === "circle" && (
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="zone-radius">{t("fieldRadius")}</Label>
               <Input
                 id="zone-radius"
@@ -255,61 +283,86 @@ function ZoneFormBody({
                 onChange={(e) => setRadiusInput(e.target.value)}
                 className="rounded-lg"
               />
-              <p className="text-xs text-muted-foreground">{t("radiusHint")}</p>
             </div>
           )}
 
-          <div className="space-y-2">
-            <Label>{t("drawOnMap")}</Label>
-            <p className="text-xs text-muted-foreground">
-              {zoneType === "polygon" ? t("polygonFinishHint") : t("drawHint")}
+          <div
+            className={
+              geometry
+                ? "rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-400"
+                : "rounded-lg border border-dashed border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground"
+            }
+          >
+            {geometry ? t("geometryReady") : t("geometryPending")}
+          </div>
+
+          <div className="rounded-lg border border-border bg-muted/30 px-3 py-2.5">
+            <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              {t("tipsTitle")}
             </p>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="cursor-pointer rounded-lg"
-                onClick={startDrawing}
-              >
-                {zoneType === "polygon" ? t("startDrawPolygon") : t("startDrawCircle")}
-              </Button>
-              {geometry ? (
-                <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                  {t("geometryReady")}
-                </span>
-              ) : (
-                <span className="text-xs text-muted-foreground">{t("geometryPending")}</span>
-              )}
-            </div>
+            <ul className="space-y-1 text-[11px] leading-relaxed text-muted-foreground">
+              <li className="flex gap-1.5">
+                <span aria-hidden className="mt-1 h-1 w-1 shrink-0 rounded-full bg-muted-foreground/60" />
+                <span>{t("tipDraw")}</span>
+              </li>
+              <li className="flex gap-1.5">
+                <span aria-hidden className="mt-1 h-1 w-1 shrink-0 rounded-full bg-muted-foreground/60" />
+                <span>{t("tipFinish")}</span>
+              </li>
+              <li className="flex gap-1.5">
+                <span aria-hidden className="mt-1 h-1 w-1 shrink-0 rounded-full bg-muted-foreground/60" />
+                <span>{t("tipEdit")}</span>
+              </li>
+              <li className="flex gap-1.5">
+                <span aria-hidden className="mt-1 h-1 w-1 shrink-0 rounded-full bg-muted-foreground/60" />
+                <span>{t("tipClear")}</span>
+              </li>
+            </ul>
           </div>
         </div>
 
-        <DialogFooter className="border-t border-border px-6 py-4">
-          <Button
-            type="button"
-            variant="outline"
-            className="cursor-pointer rounded-lg"
-            onClick={onClose}
-            disabled={isPending}
-          >
-            {t("cancel")}
-          </Button>
-          <Button
-            type="button"
-            className="cursor-pointer rounded-lg"
-            onClick={handleSave}
-            disabled={isPending || !name.trim() || !code.trim() || !geometry}
-          >
-            {isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : isEdit ? (
-              t("saveChanges")
-            ) : (
-              t("createZone")
-            )}
-          </Button>
+        <DialogFooter className="flex-row items-center justify-between gap-2 border-t border-border px-6 py-4">
+          {isEdit && canManage ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="cursor-pointer rounded-lg border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+              onClick={onRequestDelete}
+              disabled={isPending}
+            >
+              <Trash2 className="me-2 h-3.5 w-3.5" />
+              {t("deleteZone")}
+            </Button>
+          ) : (
+            <span />
+          )}
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="cursor-pointer rounded-lg"
+              onClick={onClose}
+              disabled={isPending}
+            >
+              {t("cancel")}
+            </Button>
+            <Button
+              type="button"
+              className="cursor-pointer rounded-lg"
+              onClick={handleSave}
+              disabled={isPending || !name.trim() || !code.trim() || !geometry}
+            >
+              {isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : isEdit ? (
+                t("saveChanges")
+              ) : (
+                t("createZone")
+              )}
+            </Button>
+          </div>
         </DialogFooter>
+
       </div>
     </div>
   );
@@ -321,23 +374,60 @@ export function ZoneFormSheet({
   zone,
   existingZones = [],
   onSaved,
+  onDeleted,
 }: ZoneFormSheetProps) {
+  const t = useTranslations("pages.zones");
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
+  const runDelete = async () => {
+    if (!zone) return;
+    const force = zone.driver_count > 0;
+    const result = await deleteZone(zone.id, force);
+    if (result.error) {
+      toast.error(zoneErrorToast(t, result.error));
+      throw new Error(result.error);
+    }
+    toast.success(t("deleted"));
+    onOpenChange(false);
+    onDeleted();
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="flex h-[90vh] max-h-[90vh] flex-col gap-0"
-        showCloseButton
-      >
-        {open ? (
-          <ZoneFormBody
-            key={zone?.id ?? "new"}
-            zone={zone ?? null}
-            existingZones={existingZones}
-            onClose={() => onOpenChange(false)}
-            onSaved={onSaved}
-          />
-        ) : null}
-      </DialogContent>
-    </Dialog>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent
+          className="flex h-[90vh] max-h-[90vh] flex-col gap-0"
+          showCloseButton
+        >
+          {open ? (
+            <ZoneFormBody
+              key={zone?.id ?? "new"}
+              zone={zone ?? null}
+              existingZones={existingZones}
+              onClose={() => onOpenChange(false)}
+              onSaved={onSaved}
+              onDeleted={onDeleted}
+              onRequestDelete={() => setDeleteOpen(true)}
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
+      {zone ? (
+        <ConfirmDeleteDialog
+          open={deleteOpen}
+          onOpenChange={setDeleteOpen}
+          itemTitle={t("deleteZone")}
+          itemName={zone.name}
+          confirmText={zone.code}
+          warning={
+            zone.driver_count > 0
+              ? t("deleteConfirmWithDrivers", { count: zone.driver_count })
+              : undefined
+          }
+          onConfirm={runDelete}
+        />
+      ) : null}
+    </>
   );
 }

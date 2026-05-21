@@ -84,6 +84,6 @@ Next steps:
    { href: "/${slug}", labelKey: "${labelKey}", icon: "LayoutDashboard", permission: "${permission}" }
 2. Add PERMISSIONS entry in src/lib/auth/permissions.ts if new permission
 3. Update ROLE_PERMISSIONS for staff role
-4. Follow design-system/dpd-admin/TOKENS.md and COMPONENTS.md
+4. Follow docs/DESIGN_SYSTEM.md and src/components/app/*
 5. If driver-facing: update docs/DRIVER_APP_HANDOFF.md [admin+app]
 `);

@@ -14,7 +14,7 @@ import {
 const cacheByRole = new Map<string, ResolvedMenuNode[]>();
 
 function menuStorageKey(role: string) {
-  return `sidebar-menu-cache:v5:${role}`;
+  return `sidebar-menu-cache:v6:${role}`;
 }
 
 function loadCachedMenu(role: string): ResolvedMenuNode[] {

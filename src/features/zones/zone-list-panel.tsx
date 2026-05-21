@@ -8,7 +8,6 @@ import {
   Loader2,
   Pencil,
   Search,
-  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -77,14 +76,12 @@ export function ZoneListPanel({
   isLoading,
   onSelect,
   onEdit,
-  onDelete,
 }: {
   zones: ZoneRow[];
   selectedId: string | null;
   isLoading: boolean;
   onSelect: (id: string) => void;
   onEdit: (zone: ZoneRow) => void;
-  onDelete: (zone: ZoneRow) => void;
 }) {
   const t = useTranslations("pages.zones");
   const { can } = useAuth();
@@ -112,7 +109,7 @@ export function ZoneListPanel({
   };
 
   return (
-    <aside className="flex h-full w-[380px] shrink-0 flex-col border-r border-border bg-card">
+    <aside className="flex h-full w-[300px] shrink-0 flex-col border-r border-border bg-card">
       <div className="space-y-3 border-b border-border p-4">
         <div className="relative">
           <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -175,28 +172,16 @@ export function ZoneListPanel({
                         </div>
                       </button>
                       {canManage && (
-                        <div className="flex shrink-0 gap-1">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-sm"
-                            className="cursor-pointer"
-                            onClick={() => onEdit(zone)}
-                            aria-label={t("editZone")}
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-sm"
-                            className="cursor-pointer text-destructive hover:text-destructive"
-                            onClick={() => onDelete(zone)}
-                            aria-label={t("deleteZone")}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          className="shrink-0 cursor-pointer"
+                          onClick={() => onEdit(zone)}
+                          aria-label={t("editZone")}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
                       )}
                     </div>
 

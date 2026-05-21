@@ -1,0 +1,18 @@
+---
+description: Unified admin UI — shadcn visuals, Polaris-inspired structure only
+alwaysApply: true
+---
+
+# UI system
+
+Read [`docs/DESIGN_SYSTEM.md`](../../docs/DESIGN_SYSTEM.md) before building or changing UI.
+
+## Rules
+
+1. **Styling:** shadcn semantic tokens + `@/components/ui/*`. Product layout: `@/components/app/*`.
+2. **Polaris:** Use for **information architecture** (page title, primary actions, index table, settings secondary nav). Not for colors or typography.
+3. **Lists:** Use `AppListCard` + `AppDataTable` (or `ModuleIndexPage` for placeholders). Do not invent new toolbar layouts.
+4. **Tables:** Always `TABLE_HEAD_CLASS` on headers — never `text-accent` on `TableHead`.
+5. **Cards:** `rounded-xl border-border shadow-sm` — no heavy `ring-black/5` stacks.
+6. **Settings:** Use `AppSettingsLayout`; preserve `SETTINGS_SUB_ITEMS` permissions and active-route logic.
+7. **Do not use** archived `design-system/dpd-admin/MASTER.md`, `TOKENS.md`, or `design-system/references/` for new work.

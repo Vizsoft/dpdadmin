@@ -79,6 +79,12 @@ export const NAV_ITEMS: NavItem[] = [
     permission: "earnings.view",
   },
   {
+    href: "/dpd",
+    labelKey: "nav.dpd",
+    icon: "Wallet",
+    permission: "earnings.view",
+  },
+  {
     href: "/notifications",
     labelKey: "nav.notifications",
     icon: "Bell",

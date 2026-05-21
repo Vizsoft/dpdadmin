@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
+import { AppPageHeader } from "@/components/app/app-page-header";
 
+/** @deprecated Prefer AppPageHeader from @/components/app */
 export function PageContentHeader({
   title,
   subtitle,
@@ -12,19 +14,11 @@ export function PageContentHeader({
   tabs?: ReactNode;
 }) {
   return (
-    <div className="space-y-3">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <h1 className="text-lg font-semibold tracking-tight text-foreground">{title}</h1>
-          {subtitle ? (
-            <p className="mt-0.5 text-sm text-muted-foreground">{subtitle}</p>
-          ) : null}
-        </div>
-        {actions ? (
-          <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>
-        ) : null}
-      </div>
-      {tabs}
-    </div>
+    <AppPageHeader
+      title={title}
+      description={subtitle}
+      actions={actions}
+      tabs={tabs}
+    />
   );
 }

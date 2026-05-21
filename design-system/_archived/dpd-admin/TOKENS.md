@@ -52,7 +52,7 @@
 | Body | 14px (`text-sm`) | 400 | 1.5 |
 | Label / caption | 12px (`text-xs`) | 500 | 1.4 |
 | KPI value | 24–32px (`text-2xl`–`text-3xl`) | 600–700 | 1.1, `tabular-nums` |
-| Table header | 12px (`text-xs`) | 600 | 1.4, `text-accent` |
+| Table header | 12px (`text-xs`) | 600 | 1.4, `text-muted-foreground` on `bg-muted/30` |
 
 **Fonts:** Inter (sans), Fira Code (mono for IDs only).
 

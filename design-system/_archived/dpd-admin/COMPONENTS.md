@@ -100,12 +100,12 @@ Use shadcn `<Tabs>` with custom active class: `data-[state=active]:border-accent
 ## DataTable
 
 - Wrapper: `rounded-xl border border-border overflow-hidden`
-- Header row: `bg-muted/30 text-xs font-semibold uppercase tracking-wide text-accent`
+- Header row: `bg-muted/30 text-xs font-semibold uppercase tracking-wider text-muted-foreground`
 - Body row: `border-t border-border hover:bg-muted/40 transition-colors`
 - Action column: `text-muted-foreground` with `MoreHorizontal` icon
 
 ```tsx
-<TableHead className="text-accent">Driver ID</TableHead>
+<TableHead className="text-muted-foreground">Driver ID</TableHead>
 ```
 
 ---

@@ -12,6 +12,7 @@ import {
   setActiveTheme,
 } from "@/features/settings/theme-actions";
 import { THEME_PRESETS, type PresetThemeId } from "@/lib/theme/presets";
+import { SimpleConfirmDialog } from "@/components/simple-confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -94,6 +95,8 @@ export function ThemeSettingsSection() {
   const [isPending, startTransition] = useTransition();
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingTheme, setEditingTheme] = useState<AppThemeRecord | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [themeToDelete, setThemeToDelete] = useState<AppThemeRecord | null>(null);
   const [clonePreset, setClonePreset] = useState<PresetThemeId>("shopify");
 
   const activate = (themeId: string) => {
@@ -127,17 +130,15 @@ export function ThemeSettingsSection() {
     });
   };
 
-  const handleDelete = (id: string) => {
-    if (!window.confirm(t("deleteConfirm"))) return;
-    startTransition(async () => {
-      const result = await deleteCustomTheme(id);
-      if (result.error) {
-        toast.error(t("errors.saveFailed"));
-        return;
-      }
-      toast.success(t("deleted"));
-      router.refresh();
-    });
+  const runDeleteTheme = async () => {
+    if (!themeToDelete) return;
+    const result = await deleteCustomTheme(themeToDelete.id);
+    if (result.error) {
+      toast.error(t("errors.saveFailed"));
+      throw new Error(result.error);
+    }
+    toast.success(t("deleted"));
+    router.refresh();
   };
 
   return (
@@ -253,7 +254,10 @@ export function ThemeSettingsSection() {
                         variant="ghost"
                         className="cursor-pointer text-destructive"
                         disabled={isPending}
-                        onClick={() => handleDelete(theme.id)}
+                        onClick={() => {
+                          setThemeToDelete(theme);
+                          setDeleteOpen(true);
+                        }}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
@@ -265,6 +269,20 @@ export function ThemeSettingsSection() {
           </div>
         </CardContent>
       </Card>
+
+      {themeToDelete ? (
+        <SimpleConfirmDialog
+          open={deleteOpen}
+          onOpenChange={(open) => {
+            setDeleteOpen(open);
+            if (!open) setThemeToDelete(null);
+          }}
+          title={t("deleteTheme")}
+          description={t("deleteConfirm")}
+          onConfirm={runDeleteTheme}
+          isPending={isPending}
+        />
+      ) : null}
 
       <ThemeEditorDialog
         open={editorOpen}

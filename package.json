@@ -14,9 +14,14 @@
     "test:geo": "node --import tsx --test src/lib/geo/zone-geometry.test.ts",
     "new:page": "node scripts/scaffold-page.mjs",
     "bootstrap:admin": "node scripts/bootstrap-admin.mjs",
+    "migrate:storage-r2": "node scripts/migrate-storage-to-r2.mjs",
+    "migrate:storage-r2:dry": "node scripts/migrate-storage-to-r2.mjs --dry-run",
+    "env:push-vercel": "node scripts/push-vercel-env.mjs",
     "db:types": "echo 'Run: supabase gen types typescript --project-id ytfmsgckjatiserpgdbz > src/types/database.ts'"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1050.0",
+    "@aws-sdk/s3-request-presigner": "^3.1050.0",
     "@base-ui/react": "^1.4.1",
     "@geoman-io/leaflet-geoman-free": "^2.19.3",
     "@hookform/resolvers": "^5.2.2",

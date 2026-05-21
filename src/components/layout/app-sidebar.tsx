@@ -14,6 +14,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -112,7 +113,7 @@ function NavItemLink({
       <SidebarMenuButton
         isActive={isActive}
         tooltip={label}
-        className="h-8 cursor-pointer rounded-md px-2.5 text-[13px] text-sidebar-foreground hover:bg-sidebar-accent/80 hover:text-sidebar-accent-foreground data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground"
+        className="h-8 cursor-pointer rounded-md px-2.5 text-[13px] font-normal text-sidebar-foreground shadow-none hover:bg-sidebar-accent/80 hover:text-sidebar-accent-foreground focus-visible:ring-0 data-active:bg-sidebar-accent data-active:font-medium data-active:text-sidebar-accent-foreground"
         render={
           <Link href={node.href} prefetch>
             <MenuIcon name={node.icon} className="h-3.5 w-3.5 shrink-0" />
@@ -229,57 +230,31 @@ function NavTree({ nodes }: { nodes: ResolvedMenuNode[] }) {
     else main.push(n);
   }
 
+  const navNodes = [...main, ...footer];
+
   return (
-    <>
-      <SidebarGroup>
-        <SidebarGroupContent>
-          <SidebarMenu>
-            {main.map((node) =>
-              node.type === "group" ? (
-                <NavGroup
-                  key={node.id}
-                  node={node}
-                  tItemLabel={tItemLabel}
-                  tGroupLabel={tGroupLabel}
-                />
-              ) : (
-                <NavItemLink
-                  key={node.id}
-                  node={node}
-                  label={tItemLabel(node)}
-                />
-              ),
-            )}
-          </SidebarMenu>
-        </SidebarGroupContent>
-      </SidebarGroup>
-      {footer.length > 0 && (
-        <SidebarFooter className="border-t border-sidebar-border px-2 py-2">
-          <SidebarGroup>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {footer.map((node) =>
-                  node.type === "group" ? (
-                    <NavGroup
-                      key={node.id}
-                      node={node}
-                      tItemLabel={tItemLabel}
-                      tGroupLabel={tGroupLabel}
-                    />
-                  ) : (
-                    <NavItemLink
-                      key={node.id}
-                      node={node}
-                      label={tItemLabel(node)}
-                    />
-                  ),
-                )}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        </SidebarFooter>
-      )}
-    </>
+    <SidebarGroup>
+      <SidebarGroupContent>
+        <SidebarMenu>
+          {navNodes.map((node) =>
+            node.type === "group" ? (
+              <NavGroup
+                key={node.id}
+                node={node}
+                tItemLabel={tItemLabel}
+                tGroupLabel={tGroupLabel}
+              />
+            ) : (
+              <NavItemLink
+                key={node.id}
+                node={node}
+                label={tItemLabel(node)}
+              />
+            ),
+          )}
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>
   );
 }
 
@@ -339,7 +314,7 @@ function SidebarUserMenu() {
   const initials = (fullName ?? email ?? "A").slice(0, 2).toUpperCase();
 
   return (
-    <SidebarFooter className="mt-auto border-t border-sidebar-border p-2">
+    <SidebarFooter className="mt-auto px-2 py-3">
       <DropdownMenu>
         <DropdownMenuTrigger
           className={cn(
@@ -364,25 +339,29 @@ function SidebarUserMenu() {
           )}
         </DropdownMenuTrigger>
         <DropdownMenuContent side="top" align="start" className="w-56">
-          <DropdownMenuLabel className="font-normal">
-            <div className="flex flex-col gap-0.5">
-              <p className="text-sm font-medium">{fullName ?? "Admin"}</p>
-              <p className="text-xs text-muted-foreground">{email}</p>
-            </div>
-          </DropdownMenuLabel>
+          <DropdownMenuGroup>
+            <DropdownMenuLabel className="font-normal">
+              <div className="flex flex-col gap-0.5">
+                <p className="text-sm font-medium">{fullName ?? "Admin"}</p>
+                <p className="text-xs text-muted-foreground">{email}</p>
+              </div>
+            </DropdownMenuLabel>
+          </DropdownMenuGroup>
           <DropdownMenuSeparator />
-          <DropdownMenuItem
-            className="cursor-pointer"
-            render={<Link href="/settings" />}
-          >
-            {t("settings")}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            className="cursor-pointer"
-            onClick={() => signOut(locale)}
-          >
-            {t("logout")}
-          </DropdownMenuItem>
+          <DropdownMenuGroup>
+            <DropdownMenuItem
+              className="cursor-pointer"
+              render={<Link href="/settings" />}
+            >
+              {t("settings")}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="cursor-pointer"
+              onClick={() => signOut(locale)}
+            >
+              {t("logout")}
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
     </SidebarFooter>
@@ -394,8 +373,12 @@ export function AppSidebar() {
   const { tree } = useSidebarMenu();
 
   return (
-    <Sidebar collapsible="icon" className="border-sidebar-border bg-sidebar">
-      <SidebarHeader className="flex flex-row items-center gap-2 border-b border-sidebar-border px-2 py-3 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
+    <Sidebar
+      collapsible="icon"
+      variant="sidebar"
+      className="border-sidebar-border bg-sidebar text-sidebar-foreground"
+    >
+      <SidebarHeader className="flex flex-row items-center gap-2 px-2 py-3 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
         <SidebarBrand />
         <SidebarCollapseTrigger />
       </SidebarHeader>

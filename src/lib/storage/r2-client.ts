@@ -1,0 +1,131 @@
+import {
+  CopyObjectCommand,
+  DeleteObjectCommand,
+  DeleteObjectsCommand,
+  HeadBucketCommand,
+  PutObjectCommand,
+  S3Client,
+  GetObjectCommand,
+} from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { invalidateR2ConfigCache, resolveR2Config } from "@/lib/storage/r2-config";
+
+const DEFAULT_PRESIGN_SECONDS = 900;
+
+let client: S3Client | null = null;
+let clientConfigKey: string | null = null;
+
+function configKey(config: Awaited<ReturnType<typeof resolveR2Config>>): string {
+  return `${config.endpoint}:${config.accessKeyId}:${config.bucketName}`;
+}
+
+export async function getR2Client(): Promise<S3Client> {
+  const config = await resolveR2Config();
+  const key = configKey(config);
+
+  if (client && clientConfigKey === key) return client;
+
+  client = new S3Client({
+    region: "auto",
+    endpoint: config.endpoint,
+    credentials: {
+      accessKeyId: config.accessKeyId,
+      secretAccessKey: config.secretAccessKey,
+    },
+  });
+  clientConfigKey = key;
+  return client;
+}
+
+export async function getR2BucketName(): Promise<string> {
+  const config = await resolveR2Config();
+  return config.bucketName;
+}
+
+export async function testR2Connection(): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const s3 = await getR2Client();
+    const bucket = await getR2BucketName();
+    await s3.send(new HeadBucketCommand({ Bucket: bucket }));
+    return { ok: true };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Connection failed";
+    return { ok: false, error: message };
+  }
+}
+
+export async function putObject(
+  key: string,
+  body: Buffer | Uint8Array,
+  contentType: string,
+): Promise<void> {
+  const s3 = await getR2Client();
+  const bucket = await getR2BucketName();
+  await s3.send(
+    new PutObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      Body: body,
+      ContentType: contentType,
+    }),
+  );
+}
+
+export async function deleteObject(key: string): Promise<void> {
+  const s3 = await getR2Client();
+  const bucket = await getR2BucketName();
+  await s3.send(
+    new DeleteObjectCommand({
+      Bucket: bucket,
+      Key: key,
+    }),
+  );
+}
+
+export async function deleteObjects(keys: string[]): Promise<void> {
+  const unique = [...new Set(keys.filter(Boolean))];
+  if (unique.length === 0) return;
+
+  const s3 = await getR2Client();
+  const bucket = await getR2BucketName();
+
+  for (let i = 0; i < unique.length; i += 1000) {
+    const chunk = unique.slice(i, i + 1000);
+    await s3.send(
+      new DeleteObjectsCommand({
+        Bucket: bucket,
+        Delete: {
+          Objects: chunk.map((Key) => ({ Key })),
+          Quiet: true,
+        },
+      }),
+    );
+  }
+}
+
+export async function copyObject(sourceKey: string, destKey: string): Promise<void> {
+  const bucket = await getR2BucketName();
+  const s3 = await getR2Client();
+  await s3.send(
+    new CopyObjectCommand({
+      Bucket: bucket,
+      CopySource: `${bucket}/${sourceKey}`,
+      Key: destKey,
+    }),
+  );
+}
+
+export async function getPresignedGetUrl(
+  key: string,
+  expiresInSeconds = DEFAULT_PRESIGN_SECONDS,
+): Promise<string> {
+  const s3 = await getR2Client();
+  const bucket = await getR2BucketName();
+  const command = new GetObjectCommand({
+    Bucket: bucket,
+    Key: key,
+  });
+  return getSignedUrl(s3, command, { expiresIn: expiresInSeconds });
+}
+
+export { invalidateR2ConfigCache };

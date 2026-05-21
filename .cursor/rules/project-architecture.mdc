@@ -41,11 +41,13 @@ Order allocation is **external** (partner apps). We own: monitoring, compliance,
 | 6 | `/requests` | `requests.view` / `requests.manage` | Loan, Leave, Fuel, Complaint |
 | 7 | `/wrong-actions` | `wrong_actions.view` | Wrong action details |
 | 8 | `/earnings` | `earnings.view` / `earnings.manage` | Earnings + bumper bonus |
+| — | `/dpd` | `earnings.view` / `earnings.manage` | Incentive & delivery rules, restaurants, calc |
 | 9 | `/notifications` | `notifications.view` | Notifications + hygiene tasks |
 | 10 | `/support` | `support.view` | Chat, SOS, Appointments |
 | — | `/settings` | `settings.view` | — |
 | — | `/settings/menu-editor` | super admin | Per-role sidebar layout (DB + registry merge) |
 | — | `/settings/languages` | super admin | Locales table + translation editor |
+| — | `/dpd` | `earnings.view` / `earnings.manage` | Restaurants, delivery rules, incentive rules, earnings recalc |
 
 **Next implementation:** Drivers → Vehicles & Zones → Live Deliveries (ops first).
 
@@ -57,7 +59,7 @@ Order allocation is **external** (partner apps). We own: monitoring, compliance,
 |------|---------|
 | `src/app/[locale]/(dashboard)/` | All admin routes |
 | `src/features/<domain>/` | Domain actions + forms |
-| `src/components/dashboard/` | `PageHeader`, `KpiCard`, `ModuleListShell`, `TabBar`, `DataTableShell` |
+| `src/components/dashboard/` | `KpiCard`, `TabBar`, `StatusPill` (legacy shells re-export from `src/components/app/`) |
 | `src/lib/auth/` | Session, permissions, sync-profile |
 | `src/lib/query/` | TanStack Query: `makeQueryClient`, `queryKeys`, server `getServerQueryClient` |
 | `src/components/providers/` | `QueryProvider`, devtools (dev only) |
@@ -66,7 +68,8 @@ Order allocation is **external** (partner apps). We own: monitoring, compliance,
 | `src/lib/menu/menu-merge.ts` | `mergeMenu`, `resolveForSidebar` |
 | `src/services/menu-config-service.ts` | Supabase CRUD for `menu_configs` |
 | `src/hooks/use-sidebar-menu.ts` | Sidebar menu load + cache invalidation |
-| `design-system/dpd-admin/` | TOKENS, COMPONENTS, MASTER |
+| `docs/DESIGN_SYSTEM.md` | UI rules (shadcn + app components) |
+| `src/components/app/` | AppPage, AppListCard, AppSettingsLayout, etc. |
 | `docs/DRIVER_APP_HANDOFF.md` | **Mobile app single-file handoff** |
 | `supabase/migrations/` | Schema |
 
@@ -145,7 +148,7 @@ Migrations: `20260518000000_dpd_core_schema.sql`, `20260518120000_app_settings.s
 | Ops | `deliveries`, `attendance_logs`, `driver_sessions` |
 | Compliance | `wrong_actions`, `hygiene_tasks`, `hygiene_submissions` |
 | HR | `requests`, `loan_terms` |
-| Payroll | `offers`, `driver_earnings_daily` |
+| Payroll | `offers` (legacy), `incentive_rules`, `driver_earnings_daily`, `delivery_rules`, `restaurants` |
 | Comms | `notifications`, `support_*`, `appointment_slots`, `appointments` |
 
 **RLS:** Staff = `is_admin_panel_user()` on all tables. Driver policies added per mobile module (see handoff doc).
@@ -156,7 +159,7 @@ Migrations: `20260518000000_dpd_core_schema.sql`, `20260518120000_app_settings.s
 
 ## UI conventions
 
-- Design: `design-system/dpd-admin/TOKENS.md`, `COMPONENTS.md`
+- Design: `docs/DESIGN_SYSTEM.md`, `.cursor/rules/ui-system.mdc`
 - List pages: `<ModuleListShell>` = PageHeader + KpiGrid + TabBar + DataTableShell
 - Theme tokens only — no raw hex
 - Table headers: `text-xs font-semibold text-accent`
@@ -175,7 +178,19 @@ Migrations: `20260518000000_dpd_core_schema.sql`, `20260518120000_app_settings.s
 
 ---
 
-## Storage buckets (create in Supabase dashboard)
+## Storage
+
+### Cloudflare R2 (private bucket — server env `R2_*`)
+
+| Prefix | Path pattern |
+|--------|----------------|
+| `drivers/intakes/{intake_id}/` | `{doc_type}.{ext}` — admin Add Driver |
+| `drivers/{driver_id}/` | `{doc_type}.{ext}` — post OTP link |
+| `partners/{partner_id}/` | `logo.{ext}` — `partners.logo_url` stores object key |
+
+Presigned GET for staff UI; see `src/lib/storage/r2-client.ts`.
+
+### Supabase Storage buckets
 
 | Bucket | App path pattern |
 |--------|------------------|
@@ -183,8 +198,9 @@ Migrations: `20260518000000_dpd_core_schema.sql`, `20260518120000_app_settings.s
 | `delivery-proofs` | `{driver_id}/{delivery_id}.jpg` |
 | `fuel-receipts` | `{driver_id}/{request_id}.jpg` |
 | `hygiene-photos` | `{driver_id}/{task_id}.jpg` |
-| `driver-documents` | `{driver_id}/{doc_type}.pdf` |
 | `support-attachments` | `{thread_id}/{message_id}` |
+
+Deprecated (migrated to R2): `driver-intakes`, `partner-logos`, `driver-documents`.
 
 ---
 
@@ -207,6 +223,7 @@ Change-log format:
 
 ## Change log
 
+- `[admin+app] 2026-05-24` — DPD module `/dpd` (dedicated page): `restaurants`, `delivery_rules`, `incentive_rules`; `deliveries.restaurant_id`; RPC `recalculate_driver_earnings` + trigger on verify; migration `20260524100000_dpd_incentives_rules.sql`
 - `[admin+app] 2026-05-20` — Zones module at `/zones`: `zone_type` + `geometry` GeoJSON (polygon/circle), Leaflet map UI, shared `zone-geometry` validation; migration `20260520140000_zones_geometry.sql`
 - `[admin only] 2026-05-18` — Menu editor + Languages admin: `menu_configs` / `locales` tables; `/settings/menu-editor`, `/settings/languages`, `/settings/languages/[code]`; DB-driven grouped sidebar with per-role overrides; translation API writes `src/messages/{locale}.json`
 - `[admin only] 2026-05-18` — TanStack Query (`QueryProvider` in locale layout, `queryKeys`, server prefetch helpers); build-id polling via `useQuery`; devtools in development
