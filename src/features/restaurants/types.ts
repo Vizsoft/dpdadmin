@@ -11,6 +11,8 @@ export type RestaurantRow = {
   name: string;
   external_merchant_id: string | null;
   map_link: string | null;
+  latitude: number | null;
+  longitude: number | null;
   status: RestaurantStatus;
   is_active: boolean;
   driver_count: number;

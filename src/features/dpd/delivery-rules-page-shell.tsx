@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Loader2, Pencil, Plus } from "lucide-react";
 import { AppPage } from "@/components/app/app-page";
-import { AppPageHeader } from "@/components/app/app-page-header";
 import { AppEmptyState } from "@/components/app/app-empty-state";
 import { AppListCard } from "@/components/app/app-list-card";
 import { TABLE_HEAD_CLASS } from "@/components/app/constants";
@@ -26,7 +25,6 @@ import { useDeliveryRules, useDpdScopeOptions } from "./use-dpd";
 
 export function DeliveryRulesPageShell() {
   const t = useTranslations("pages.dpd");
-  const tPage = useTranslations("pages.deliveryRules");
   const { can } = useAuth();
   const canManage = can("earnings.manage");
 
@@ -40,8 +38,6 @@ export function DeliveryRulesPageShell() {
 
   return (
     <AppPage>
-      <AppPageHeader title={tPage("title")} description={tPage("subtitle")} />
-
       <AppListCard
         headerActions={
           canManage ? (

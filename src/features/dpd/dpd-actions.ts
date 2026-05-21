@@ -3,7 +3,10 @@
 import { createClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/auth/get-session";
 import { hasPermissionInSet } from "@/lib/auth/permissions";
-import { parseRestaurantFormData } from "@/features/restaurants/parse-restaurant-form";
+import {
+  parseRestaurantFormData,
+  validateRestaurantCoordinates,
+} from "@/features/restaurants/parse-restaurant-form";
 import { isDpdErrorKey, type DpdErrorKey } from "./dpd-errors";
 import {
   previewDriverEarnings,
@@ -13,6 +16,7 @@ import {
 import type {
   DeliveryRuleRow,
   DpdScopeOptions,
+  IncentivePayoutMode,
   IncentiveRewardMode,
   IncentiveRuleRow,
   IncentiveRuleTierRow,
@@ -153,7 +157,7 @@ export async function fetchRestaurantsForAdmin(): Promise<RestaurantRow[]> {
     supabase
       .from("restaurants")
       .select(
-        "id, partner_id, zone_id, name, external_merchant_id, map_link, status, is_active, created_at",
+        "id, partner_id, zone_id, name, external_merchant_id, map_link, latitude, longitude, status, is_active, created_at",
       )
       .order("name"),
     supabase.from("partners").select("id, name"),
@@ -177,6 +181,8 @@ export async function fetchRestaurantsForAdmin(): Promise<RestaurantRow[]> {
       name: row.name,
       external_merchant_id: row.external_merchant_id,
       map_link: row.map_link,
+      latitude: row.latitude != null ? Number(row.latitude) : null,
+      longitude: row.longitude != null ? Number(row.longitude) : null,
       status: row.status,
       is_active: row.is_active,
       created_at: row.created_at,
@@ -250,6 +256,8 @@ type IncentiveRuleDbRow = {
   reward_mode: IncentiveRewardMode;
   reward_kwd: number | string;
   reward_per_delivery_kwd: number | string | null;
+  payout_mode: IncentivePayoutMode;
+  overrides_others: boolean;
   start_date: string;
   end_date: string;
   priority: number;
@@ -287,7 +295,8 @@ export async function fetchIncentiveRulesForAdmin(): Promise<IncentiveRuleRow[]>
     .select(
       `id, name, status, scope_type, zone_id, partner_id, restaurant_id, period,
        target_mode, base_minimum_deliveries, target_deliveries, reward_mode,
-       reward_kwd, reward_per_delivery_kwd, start_date, end_date, priority,
+       reward_kwd, reward_per_delivery_kwd, payout_mode, overrides_others,
+       start_date, end_date, priority,
        incentive_rule_tiers (id, threshold_deliveries, reward_mode, reward_kwd, reward_per_delivery_kwd, sort_order)`,
     )
     .order("priority", { ascending: false })
@@ -325,6 +334,8 @@ export async function fetchIncentiveRulesForAdmin(): Promise<IncentiveRuleRow[]>
         row.reward_per_delivery_kwd != null
           ? Number(row.reward_per_delivery_kwd)
           : null,
+      payout_mode: row.payout_mode ?? "milestone",
+      overrides_others: row.overrides_others ?? false,
       tiers,
       start_date: row.start_date,
       end_date: row.end_date,
@@ -339,10 +350,23 @@ export async function saveRestaurant(formData: FormData): Promise<DpdMutationRes
   const { session } = auth;
 
   const parsed = parseRestaurantFormData(formData);
-  const { id, partnerId, zoneId, name, externalMerchantId, mapLink, status, isActive } =
-    parsed;
+  const {
+    id,
+    partnerId,
+    zoneId,
+    name,
+    externalMerchantId,
+    mapLink,
+    status,
+    isActive,
+    latitude,
+    longitude,
+  } = parsed;
 
   if (!partnerId || !zoneId || !name) return { error: "missing_fields" };
+
+  const coordError = validateRestaurantCoordinates(latitude, longitude);
+  if (coordError) return { error: coordError };
 
   const supabase = await createClient();
   const payload = {
@@ -351,6 +375,8 @@ export async function saveRestaurant(formData: FormData): Promise<DpdMutationRes
     name,
     external_merchant_id: externalMerchantId || null,
     map_link: mapLink || null,
+    latitude,
+    longitude,
     status,
     is_active: isActive,
     updated_at: new Date().toISOString(),
@@ -516,6 +542,10 @@ export async function saveIncentiveRule(formData: FormData): Promise<DpdMutation
   const targetMode = String(formData.get("targetMode") ?? "single").trim() as IncentiveTargetMode;
   const baseRaw = String(formData.get("baseMinimumDeliveries") ?? "0").trim();
   const rewardMode = String(formData.get("rewardMode") ?? "fixed").trim() as IncentiveRewardMode;
+  const payoutMode = (String(formData.get("payoutMode") ?? "milestone").trim() === "cumulative"
+    ? "cumulative"
+    : "milestone") as IncentivePayoutMode;
+  const overridesOthers = String(formData.get("overridesOthers") ?? "false") === "true";
   const targetRaw = String(formData.get("targetDeliveries") ?? "").trim();
   const rewardRaw = String(formData.get("rewardKwd") ?? "").trim();
   const perDeliveryRaw = String(formData.get("rewardPerDeliveryKwd") ?? "").trim();
@@ -544,6 +574,9 @@ export async function saveIncentiveRule(formData: FormData): Promise<DpdMutation
   if (targetMode === "single") {
     const target = Number(targetRaw);
     if (!Number.isFinite(target) || target <= baseMinimum) return { error: "invalid_target" };
+    if (payoutMode === "cumulative" && rewardMode === "fixed") {
+      // Cumulative + fixed pays as soon as eligible > base; target still required for validation
+    }
     targetDeliveries = target;
     if (rewardMode !== "fixed" && rewardMode !== "per_delivery") {
       return { error: "invalid_reward_mode" };
@@ -582,6 +615,8 @@ export async function saveIncentiveRule(formData: FormData): Promise<DpdMutation
       targetMode === "single" && rewardMode === "per_delivery"
         ? rewardPerDeliveryKwd
         : null,
+    payout_mode: payoutMode,
+    overrides_others: overridesOthers,
     start_date: dates.startDate,
     end_date: dates.endDate,
     priority,

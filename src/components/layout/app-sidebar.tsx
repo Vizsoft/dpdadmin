@@ -1,11 +1,15 @@
 "use client";
 
-import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
-import { ChevronDown, LayoutDashboard, PanelLeftClose } from "lucide-react";
+import { LayoutDashboard, PanelLeftClose } from "lucide-react";
+import {
+  firstChildHref,
+  pathnameMatchesInlineGroup,
+} from "@/lib/menu/inline-group-nav";
 import { useLocale } from "next-intl";
 import { BrandMark } from "@/components/brand/brand-mark";
+import { Logo } from "@/components/brand/logo";
 import { useAuth } from "@/contexts/auth-context";
 import { signOut } from "@/features/auth/actions";
 import { useHasMounted } from "@/hooks/use-has-mounted";
@@ -35,9 +39,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
   SidebarMenuSkeleton,
   useSidebar,
 } from "@/components/ui/sidebar";
@@ -51,25 +52,17 @@ function useItemLabel() {
   const t = useTranslations();
   return (node: ResolvedMenuNode) => {
     const navKey = APP_NAV_KEY_BY_ID[node.id];
-    if (navKey) return t(`nav.${navKey}`);
-    return node.label;
+    if (!navKey) return node.label;
+    const translated = t(`nav.${navKey}`);
+    if (node.label && node.label !== translated && node.label !== navKey) {
+      return node.label;
+    }
+    return translated;
   };
 }
 
-const GROUP_LABEL_KEYS: Record<string, string> = {
-  Overview: "overview",
-  Operations: "operations",
-  System: "system",
-  Unorganised: "unorganised",
-  "Unassigned (new)": "unorganised",
-};
-
 function useGroupLabel() {
-  const t = useTranslations("appNavGroups");
-  return (label: string) => {
-    const slug = GROUP_LABEL_KEYS[label];
-    return slug ? t(slug) : label;
-  };
+  return (label: string) => label;
 }
 
 function SidebarCollapseTrigger({ className }: { className?: string }) {
@@ -125,6 +118,22 @@ function NavItemLink({
   );
 }
 
+function NavGroupLabel({ label }: { label: string }) {
+  const { state } = useSidebar();
+  if (state === "collapsed") return null;
+
+  return (
+    <li
+      data-slot="sidebar-menu-item"
+      className="group/menu-item relative px-2.5 pt-2 pb-0.5"
+    >
+      <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+        {label}
+      </span>
+    </li>
+  );
+}
+
 function NavGroup({
   node,
   tItemLabel,
@@ -136,22 +145,31 @@ function NavGroup({
 }) {
   const pathname = usePathname();
   const { state } = useSidebar();
-  const [open, setOpen] = useState(true);
   const children = node.children ?? [];
   const groupLabel = tGroupLabel(node.label);
   const collapsed = state === "collapsed";
+  const isInline = node.displayMode === "inline";
 
-  if (node.displayMode === "panel") {
+  if (isInline) {
+    const href = firstChildHref(node);
+    if (!href) return null;
+
+    const isActive = pathnameMatchesInlineGroup(node, pathname);
+
     return (
-      <>
-        {children.map((child) => (
-          <NavItemLink
-            key={child.id}
-            node={child}
-            label={tItemLabel(child)}
-          />
-        ))}
-      </>
+      <SidebarMenuItem>
+        <SidebarMenuButton
+          isActive={isActive}
+          tooltip={groupLabel}
+          className="h-8 cursor-pointer rounded-md px-2.5 text-[13px] font-normal text-sidebar-foreground shadow-none hover:bg-sidebar-accent/80 hover:text-sidebar-accent-foreground focus-visible:ring-0 data-active:bg-sidebar-accent data-active:font-medium data-active:text-sidebar-accent-foreground"
+          render={
+            <Link href={href} prefetch>
+              <MenuIcon name={node.icon} className="h-3.5 w-3.5 shrink-0" />
+              <span>{groupLabel}</span>
+            </Link>
+          }
+        />
+      </SidebarMenuItem>
     );
   }
 
@@ -170,46 +188,14 @@ function NavGroup({
   }
 
   return (
-    <SidebarMenuItem>
-      <SidebarMenuButton
-        type="button"
-        tooltip={groupLabel}
-        onClick={() => setOpen((o) => !o)}
-        className="h-6 cursor-pointer rounded-md px-2.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground hover:bg-sidebar-accent/50"
-      >
-        <MenuIcon name={node.icon} className="h-3.5 w-3.5 shrink-0" />
-        <span className="flex-1 text-start">{groupLabel}</span>
-        <ChevronDown
-          className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")}
-        />
-      </SidebarMenuButton>
-      {open && (
-        <SidebarMenuSub>
-          {children.map((child) => {
-            const isActive =
-              child.href &&
-              (pathname === child.href || pathname.startsWith(`${child.href}/`));
-            return (
-              <SidebarMenuSubItem key={child.id}>
-                <SidebarMenuSubButton
-                  isActive={!!isActive}
-                  render={
-                    child.href ? (
-                      <Link href={child.href} prefetch>
-                        <MenuIcon name={child.icon} className="h-3.5 w-3.5" />
-                        <span>{tItemLabel(child)}</span>
-                      </Link>
-                    ) : (
-                      <span>{tItemLabel(child)}</span>
-                    )
-                  }
-                />
-              </SidebarMenuSubItem>
-            );
-          })}
-        </SidebarMenuSub>
-      )}
-    </SidebarMenuItem>
+    <>
+      <NavGroupLabel label={groupLabel} />
+      <ul className="ms-3 flex list-none flex-col gap-0.5 border-s border-sidebar-border/60 ps-1.5">
+        {children.map((child) => (
+          <NavItemLink key={child.id} node={child} label={tItemLabel(child)} />
+        ))}
+      </ul>
+    </>
   );
 }
 
@@ -284,13 +270,9 @@ function SidebarBrand() {
         onClick={toggleSidebar}
         title={t("expandSidebar")}
         aria-label={t("expandSidebar")}
-        className="mx-auto flex h-8 w-8 cursor-pointer items-center justify-center rounded-md transition-colors hover:bg-sidebar-accent"
+        className="mx-auto flex size-9 cursor-pointer items-center justify-center rounded-md transition-colors hover:bg-sidebar-accent"
       >
-        <BrandMark
-          size="md"
-          variant="sidebar"
-          className="[&>div:last-child]:hidden"
-        />
+        <Logo size="sm" framed priority />
       </button>
     );
   }
@@ -305,13 +287,22 @@ function SidebarBrand() {
   );
 }
 
+function formatAdminRole(slug: string): string {
+  if (!slug) return "";
+  return slug
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
 function SidebarUserMenu() {
   const t = useTranslations("common");
   const locale = useLocale();
   const { state } = useSidebar();
-  const { email, fullName, role } = useAuth();
+  const { email, fullName, adminRoleSlug } = useAuth();
   const collapsed = state === "collapsed";
   const initials = (fullName ?? email ?? "A").slice(0, 2).toUpperCase();
+  const roleLabel = formatAdminRole(adminRoleSlug);
 
   return (
     <SidebarFooter className="mt-auto px-2 py-3">
@@ -334,7 +325,7 @@ function SidebarUserMenu() {
                 {fullName ?? "Admin"}
               </p>
               <p className="truncate text-[11px] text-muted-foreground">{email}</p>
-              <p className="truncate text-[10px] capitalize text-muted-foreground/80">{role}</p>
+              <p className="truncate text-[10px] text-muted-foreground/80">{roleLabel}</p>
             </div>
           )}
         </DropdownMenuTrigger>

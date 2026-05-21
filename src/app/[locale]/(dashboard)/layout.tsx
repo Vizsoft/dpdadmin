@@ -4,8 +4,11 @@ import { requireAuth } from "@/lib/auth/require-permission";
 import { getAppOpsSettings } from "@/lib/auth/app-settings";
 import { redirect } from "@/i18n/navigation";
 import { AuthProvider } from "@/contexts/auth-context";
+import { SidebarMenuConfigProvider } from "@/contexts/sidebar-menu-context";
+import { getMenuConfigServer } from "@/services/menu-config-server";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/app-sidebar";
+import { AppSecondaryNav } from "@/components/layout/app-secondary-nav";
 
 export default async function DashboardLayout({
   children,
@@ -18,7 +21,10 @@ export default async function DashboardLayout({
   setRequestLocale(locale);
 
   const session = await requireAuth(locale);
-  const ops = await getAppOpsSettings();
+  const [ops, menuConfig] = await Promise.all([
+    getAppOpsSettings(),
+    getMenuConfigServer(session.adminRoleSlug),
+  ]);
 
   if (ops.maintenanceMode && !session.isSuperAdmin) {
     redirect({ href: "/maintenance", locale });
@@ -39,14 +45,21 @@ export default async function DashboardLayout({
         permissions: Array.from(session.permissions),
       }}
     >
-      <div className="flex h-svh w-full overflow-hidden bg-background">
-        <SidebarProvider className="flex h-svh w-full overflow-hidden">
-          <AppSidebar />
-          <SidebarInset className="flex h-svh min-w-0 flex-1 flex-col overflow-hidden bg-muted/30">
-            <main className="flex-1 overflow-auto p-6">{children}</main>
-          </SidebarInset>
-        </SidebarProvider>
-      </div>
+      <SidebarMenuConfigProvider config={menuConfig}>
+        <div className="flex h-svh w-full overflow-hidden bg-background">
+          <SidebarProvider className="flex h-svh w-full overflow-hidden">
+            <AppSidebar />
+            <SidebarInset className="flex h-svh min-w-0 flex-1 flex-col overflow-hidden bg-muted/30">
+              <div className="flex h-full min-h-0 overflow-hidden bg-sidebar">
+                <AppSecondaryNav />
+                <main className="flex-1 overflow-auto bg-muted/30 p-6">
+                  {children}
+                </main>
+              </div>
+            </SidebarInset>
+          </SidebarProvider>
+        </div>
+      </SidebarMenuConfigProvider>
     </AuthProvider>
   );
 }

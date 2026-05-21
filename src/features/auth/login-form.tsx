@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useTranslations, useLocale } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { BrandMark } from "@/components/brand/brand-mark";
+import { useBranding } from "@/contexts/branding-context";
 import { signInWithEmail } from "@/features/auth/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,7 @@ import {
 
 export function LoginForm() {
   const t = useTranslations("auth");
+  const { appSubtitle } = useBranding();
   const locale = useLocale();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
@@ -39,8 +41,8 @@ export function LoginForm() {
       <BrandMark size="lg" layout="stack" priority />
       <Card className="w-full border-border shadow-[0_4px_24px_rgba(15,15,15,0.08)]">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-xl">{t("title")}</CardTitle>
-          <CardDescription>{t("subtitle")}</CardDescription>
+          <CardTitle className="text-xl">{t("signIn")}</CardTitle>
+          <CardDescription>{appSubtitle}</CardDescription>
         </CardHeader>
         <CardContent>
           <form

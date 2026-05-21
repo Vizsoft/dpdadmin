@@ -5,7 +5,6 @@ import { useTranslations } from "next-intl";
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, Plus, RefreshCw } from "lucide-react";
 import { AppPage } from "@/components/app/app-page";
-import { AppPageHeader } from "@/components/app/app-page-header";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import { useHasMounted } from "@/hooks/use-has-mounted";
@@ -76,11 +75,7 @@ function ZonesPageContent() {
 
   return (
     <AppPage className="flex h-full min-h-[560px] flex-col">
-      <AppPageHeader
-        title={t("title")}
-        description={t("subtitle")}
-        actions={
-          <div className="flex items-center gap-2">
+      <div className="flex items-center justify-end gap-2">
             <Button
               type="button"
               variant="outline"
@@ -100,9 +95,7 @@ function ZonesPageContent() {
                 {t("addZone")}
               </Button>
             )}
-          </div>
-        }
-      />
+      </div>
 
       <div className="flex min-h-0 flex-1 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         <ZoneListPanel

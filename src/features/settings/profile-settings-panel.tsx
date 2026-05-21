@@ -82,7 +82,7 @@ export function ProfileSettingsPanel({ profile }: { profile: ProfileData }) {
               <Input
                 value={profile.role}
                 disabled
-                className="capitalize text-muted-foreground"
+                className="text-muted-foreground"
               />
             </div>
             <div className="sm:col-span-2">

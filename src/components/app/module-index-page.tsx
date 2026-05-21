@@ -2,7 +2,6 @@
 
 import type { ReactNode } from "react";
 import { AppPage } from "./app-page";
-import { AppPageHeader } from "./app-page-header";
 import { AppListCard } from "./app-list-card";
 import { AppListToolbar } from "./app-list-toolbar";
 import {
@@ -48,20 +47,18 @@ export function ModuleIndexPage({
 
   return (
     <AppPage>
-      <AppPageHeader
-        title={title}
-        description={subtitle}
-        actions={actions}
-        tabs={
-          tabs && activeTabId ? (
-            <TabBar
-              items={tabs}
-              activeId={activeTabId}
-              onSelect={onTabSelect}
-            />
-          ) : undefined
-        }
-      />
+      {actions && (
+        <div className="flex items-center justify-end gap-2">
+          {actions}
+        </div>
+      )}
+      {tabs && activeTabId && (
+        <TabBar
+          items={tabs}
+          activeId={activeTabId}
+          onSelect={onTabSelect}
+        />
+      )}
       <KpiGrid items={kpis} />
       <AppListCard
         toolbar={

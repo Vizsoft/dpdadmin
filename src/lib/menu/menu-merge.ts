@@ -1,5 +1,6 @@
 import {
   DEFAULT_GROUPS,
+  DEFAULT_GROUP_META,
   MENU_REGISTRY,
   type MenuRegistryItem,
 } from "@/lib/menu/menu-registry";
@@ -35,11 +36,13 @@ function collectIdsFromTree(nodes: MenuNode[], set: Set<string>) {
 export function buildDefaultTree(): MenuNode[] {
   const groups = new Map<string, MenuNode>();
   for (const g of DEFAULT_GROUPS) {
+    const meta = DEFAULT_GROUP_META[g];
     groups.set(g, {
       id: `group-${g.toLowerCase()}`,
       type: "group",
       label: g,
-      icon: "Folder",
+      icon: meta?.icon ?? "Folder",
+      displayMode: meta?.displayMode,
       children: [],
     });
   }

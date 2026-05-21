@@ -24,6 +24,9 @@ export type DriverIntakeStatus = "awaiting_app_link" | "linked" | "cancelled";
 export const DRIVER_WORKFLOW_STATUSES = ["draft", "pending", "approved"] as const;
 export type DriverWorkflowStatus = (typeof DRIVER_WORKFLOW_STATUSES)[number];
 
+export const DRIVER_ACCOUNT_STATUSES = ["active", "suspended", "pending"] as const;
+export type DriverAccountStatus = (typeof DRIVER_ACCOUNT_STATUSES)[number];
+
 export type DriverIntakeRow = {
   id: string;
   phone: string;
@@ -78,12 +81,16 @@ export type DriverListRow = {
   driver_code: string;
   full_name: string;
   phone: string;
+  partner_id: string;
   partner_name: string;
-  zone_label: string;
+  partner_logo_url: string | null;
+  zone_id: string;
+  zone_name: string;
   workflow_status: DriverWorkflowStatus;
   linked: boolean;
-  deliveries_display: string;
-  earnings_display: string;
+  account_status: DriverAccountStatus;
+  is_on_duty: boolean;
+  today_deliveries: number;
 };
 
 export type DriverDetailModel = {

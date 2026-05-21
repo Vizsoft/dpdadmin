@@ -1,5 +1,6 @@
-import { unstable_cache } from "next/cache";
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import {
   DEFAULT_APP_SETTINGS,
   type FontFamilyId,
@@ -84,25 +85,24 @@ async function fetchCustomThemes(): Promise<AppThemeRecord[]> {
   }
 }
 
-const getCustomThemes = unstable_cache(fetchCustomThemes, ["app-custom-themes"], {
-  tags: ["app-theme"],
-});
+const getCustomThemes = cache(fetchCustomThemes);
 
-async function fetchAppSettings(): Promise<AppSettings> {
-  const customThemes = await getCustomThemes();
-  const customRows: CustomThemeRow[] = customThemes.map((t) => ({
-    id: t.id,
-    name: t.name,
-    base_preset: t.basePreset,
-    light_tokens: t.lightTokens,
-    dark_tokens: t.darkTokens,
-  }));
+const APP_SETTINGS_SELECT =
+  "app_name, app_subtitle, font_family, logo_url, logo_type, theme_id";
 
+async function loadAppSettingsRow(): Promise<{
+  app_name: string;
+  app_subtitle: string;
+  font_family: string;
+  logo_url: string | null;
+  logo_type: string;
+  theme_id?: string | null;
+} | null> {
   try {
     const supabase = await createClient();
     let { data, error } = await supabase
       .from("app_settings")
-      .select("app_name, app_subtitle, font_family, logo_url, logo_type, theme_id")
+      .select(APP_SETTINGS_SELECT)
       .eq("id", 1)
       .maybeSingle();
 
@@ -114,26 +114,40 @@ async function fetchAppSettings(): Promise<AppSettings> {
         .maybeSingle());
     }
 
-    if (error || !data) {
-      const themeId = DEFAULT_THEME_ID;
-      return {
-        appName: DEFAULT_APP_SETTINGS.app_name,
-        appSubtitle: DEFAULT_APP_SETTINGS.app_subtitle,
-        fontFamily: DEFAULT_APP_SETTINGS.font_family,
-        logoUrl: DEFAULT_APP_SETTINGS.logo_url,
-        logoType: DEFAULT_APP_SETTINGS.logo_type,
-        themeId,
-        customThemes,
-        theme: resolveTheme(themeId, customRows),
-      };
-    }
-
-    const base = normalizeRow(data, customThemes);
-    return {
-      ...base,
-      theme: resolveTheme(base.themeId, customRows),
-    };
+    if (!error && data) return data;
   } catch {
+    /* fall through to service role */
+  }
+
+  try {
+    const admin = createAdminClient();
+    const { data, error } = await admin
+      .from("app_settings")
+      .select(APP_SETTINGS_SELECT)
+      .eq("id", 1)
+      .maybeSingle();
+
+    if (!error && data) return data;
+  } catch {
+    /* use defaults */
+  }
+
+  return null;
+}
+
+async function fetchAppSettings(): Promise<AppSettings> {
+  const customThemes = await getCustomThemes();
+  const customRows: CustomThemeRow[] = customThemes.map((t) => ({
+    id: t.id,
+    name: t.name,
+    base_preset: t.basePreset,
+    light_tokens: t.lightTokens,
+    dark_tokens: t.darkTokens,
+  }));
+
+  const data = await loadAppSettingsRow();
+
+  if (!data) {
     const themeId = DEFAULT_THEME_ID;
     return {
       appName: DEFAULT_APP_SETTINGS.app_name,
@@ -146,8 +160,13 @@ async function fetchAppSettings(): Promise<AppSettings> {
       theme: resolveTheme(themeId, customRows),
     };
   }
+
+  const base = normalizeRow(data, customThemes);
+  return {
+    ...base,
+    theme: resolveTheme(base.themeId, customRows),
+  };
 }
 
-export const getAppSettings = unstable_cache(fetchAppSettings, ["app-settings"], {
-  tags: ["app-settings", "app-theme"],
-});
+/** Per-request cache only — avoids stale logos after branding upload. */
+export const getAppSettings = cache(fetchAppSettings);

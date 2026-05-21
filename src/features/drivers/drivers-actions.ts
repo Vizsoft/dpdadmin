@@ -13,8 +13,10 @@ import {
 } from "@/lib/storage/r2-keys";
 import { isR2Configured } from "@/lib/storage/r2-config";
 import { deleteObjects, putObject } from "@/lib/storage/r2-client";
+import { resolvePartnerLogoUrl } from "@/lib/storage/partner-logo-url";
 import {
   DOCUMENT_TYPES,
+  type DriverAccountStatus,
   type DriverAssetType,
   type DriverDetailModel,
   type DriverDocumentType,
@@ -383,11 +385,37 @@ type IntakeListRow = {
   full_name: string;
   phone: string;
   driver_code: string;
+  partner_id: string;
+  zone_id: string;
+  linked_profile_id: string | null;
   workflow_status: DriverWorkflowStatus;
   linked: boolean;
-  partners: { name: string } | { name: string }[] | null;
-  zones: { name: string; code: string } | { name: string; code: string }[] | null;
+  partners:
+    | { name: string; logo_url: string | null }
+    | { name: string; logo_url: string | null }[]
+    | null;
+  zones: { name: string } | { name: string }[] | null;
 };
+
+function kuwaitDayBounds(): { start: string; end: string } {
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kuwait",
+  }).format(new Date());
+  return {
+    start: `${today}T00:00:00+03:00`,
+    end: `${today}T23:59:59.999+03:00`,
+  };
+}
+
+function deriveAccountStatus(
+  linked: boolean,
+  workflowStatus: DriverWorkflowStatus,
+  driverStatus?: DriverAccountStatus,
+): DriverAccountStatus {
+  if (linked && driverStatus) return driverStatus;
+  if (workflowStatus === "pending") return "pending";
+  return "pending";
+}
 
 function relName<T extends { name: string }>(
   rel: T | T[] | null | undefined,
@@ -398,12 +426,16 @@ function relName<T extends { name: string }>(
 }
 
 function relZone(
-  rel: { name: string; code: string } | { name: string; code: string }[] | null | undefined,
+  rel:
+    | { name: string; code?: string }
+    | { name: string; code?: string }[]
+    | null
+    | undefined,
 ): string {
   if (!rel) return "—";
   const row = Array.isArray(rel) ? rel[0] : rel;
   if (!row) return "—";
-  return `${row.name} (${row.code})`;
+  return row.code ? `${row.name} (${row.code})` : row.name;
 }
 
 export async function fetchDriversForAdmin(): Promise<DriverListRow[]> {
@@ -418,10 +450,13 @@ export async function fetchDriversForAdmin(): Promise<DriverListRow[]> {
       full_name,
       phone,
       driver_code,
+      partner_id,
+      zone_id,
+      linked_profile_id,
       workflow_status,
       linked,
-      partners (name),
-      zones (name, code)
+      partners (name, logo_url),
+      zones (name)
     `,
     )
     .neq("status", "cancelled")
@@ -430,19 +465,102 @@ export async function fetchDriversForAdmin(): Promise<DriverListRow[]> {
   if (error) throw error;
 
   const rows = (intakes ?? []) as IntakeListRow[];
+  const linkedIds = [
+    ...new Set(
+      rows
+        .map((r) => r.linked_profile_id)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
 
-  return rows.map((row) => ({
-    id: row.id,
-    driver_code: row.driver_code,
-    full_name: row.full_name,
-    phone: row.phone,
-    partner_name: relName(row.partners),
-    zone_label: relZone(row.zones),
-    workflow_status: row.workflow_status,
-    linked: row.linked,
-    deliveries_display: "—",
-    earnings_display: "—",
-  }));
+  const driverByProfileId = new Map<
+    string,
+    { status: DriverAccountStatus; is_on_duty: boolean }
+  >();
+  const deliveryCountByDriverId = new Map<string, number>();
+
+  if (linkedIds.length > 0) {
+    const [{ data: driverRows }, { data: deliveryRows }] = await Promise.all([
+      supabase
+        .from("drivers")
+        .select("id, status, is_on_duty")
+        .in("id", linkedIds),
+      (() => {
+        const { start, end } = kuwaitDayBounds();
+        return supabase
+          .from("deliveries")
+          .select("driver_id")
+          .in("driver_id", linkedIds)
+          .gte("delivered_at", start)
+          .lte("delivered_at", end);
+      })(),
+    ]);
+
+    for (const driver of driverRows ?? []) {
+      driverByProfileId.set(driver.id, {
+        status: driver.status as DriverAccountStatus,
+        is_on_duty: driver.is_on_duty,
+      });
+    }
+
+    for (const delivery of deliveryRows ?? []) {
+      deliveryCountByDriverId.set(
+        delivery.driver_id,
+        (deliveryCountByDriverId.get(delivery.driver_id) ?? 0) + 1,
+      );
+    }
+  }
+
+  const partnerLogoCache = new Map<string, string | null>();
+
+  return Promise.all(
+    rows.map(async (row) => {
+      const partnerRel = row.partners;
+      const partnerRow = Array.isArray(partnerRel) ? partnerRel[0] : partnerRel;
+      const partnerLogoKey = partnerRow?.logo_url ?? null;
+
+      let partner_logo_url: string | null = null;
+      if (partnerLogoKey) {
+        if (partnerLogoCache.has(partnerLogoKey)) {
+          partner_logo_url = partnerLogoCache.get(partnerLogoKey) ?? null;
+        } else {
+          partner_logo_url = await resolvePartnerLogoUrl(partnerLogoKey);
+          partnerLogoCache.set(partnerLogoKey, partner_logo_url);
+        }
+      }
+
+      const zoneRel = row.zones;
+      const zoneRow = Array.isArray(zoneRel) ? zoneRel[0] : zoneRel;
+      const linkedDriver = row.linked_profile_id
+        ? driverByProfileId.get(row.linked_profile_id)
+        : undefined;
+
+      const account_status = deriveAccountStatus(
+        row.linked,
+        row.workflow_status,
+        linkedDriver?.status,
+      );
+
+      return {
+        id: row.id,
+        driver_code: row.driver_code,
+        full_name: row.full_name,
+        phone: row.phone,
+        partner_id: row.partner_id,
+        partner_name: relName(row.partners),
+        partner_logo_url,
+        zone_id: row.zone_id,
+        zone_name: zoneRow?.name ?? "—",
+        workflow_status: row.workflow_status,
+        linked: row.linked,
+        account_status,
+        is_on_duty: linkedDriver?.is_on_duty ?? false,
+        today_deliveries: row.linked_profile_id
+          ? (deliveryCountByDriverId.get(row.linked_profile_id) ?? 0)
+          : 0,
+      };
+    }),
+  );
 }
 
 export async function updateDriverWorkflowStatus(
@@ -645,9 +763,9 @@ export async function fetchDriverDetail(
       civil_id: intake.civil_id,
       avatar_url: profile?.avatar_url ?? null,
       partner_name: relName(
-        intake.partners as IntakeListRow["partners"],
+        intake.partners as { name: string } | { name: string }[] | null,
       ),
-      zone_label: relZone(intake.zones as IntakeListRow["zones"]),
+      zone_label: relZone(intake.zones),
       vehicle_label,
       partner_id: intake.partner_id,
       zone_id: intake.zone_id,
@@ -725,8 +843,8 @@ export async function fetchDriverDetail(
     email: prof?.email ?? null,
     civil_id: driverRow.civil_id ?? "—",
     avatar_url: prof?.avatar_url ?? null,
-    partner_name: relName(driverRow.partners as IntakeListRow["partners"]),
-    zone_label: relZone(driverRow.zones as IntakeListRow["zones"]),
+    partner_name: relName(driverRow.partners as { name: string } | { name: string }[] | null),
+    zone_label: relZone(driverRow.zones),
     vehicle_label: vehicleRow
       ? `${vehicleRow.bike_id}${vehicleRow.reg_number ? ` · ${vehicleRow.reg_number}` : ""}`
       : null,

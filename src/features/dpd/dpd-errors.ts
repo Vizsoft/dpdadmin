@@ -11,6 +11,7 @@ export const DPD_ERROR_KEYS = [
   "save_failed",
   "delete_failed",
   "restaurant_exists",
+  "invalid_coordinates",
   "delivery_not_found",
 ] as const;
 

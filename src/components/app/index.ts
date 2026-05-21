@@ -11,5 +11,4 @@ export {
 } from "./app-data-table";
 export { AppEmptyState } from "./app-empty-state";
 export { AppFormSection } from "./app-form-section";
-export { AppSettingsLayout } from "./app-settings-layout";
 export { ModuleIndexPage } from "./module-index-page";

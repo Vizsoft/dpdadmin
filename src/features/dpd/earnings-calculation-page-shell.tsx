@@ -5,7 +5,6 @@ import { useTranslations } from "next-intl";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { AppPage } from "@/components/app/app-page";
-import { AppPageHeader } from "@/components/app/app-page-header";
 import { TABLE_HEAD_CLASS } from "@/components/app/constants";
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
@@ -30,7 +29,6 @@ import type { DeliveryValidationResult, EarningsPreviewResult } from "./types";
 
 export function EarningsCalculationPageShell() {
   const t = useTranslations("pages.dpd");
-  const tPage = useTranslations("pages.earningsCalculation");
   const { can } = useAuth();
   const canManage = can("earnings.manage");
 
@@ -88,8 +86,6 @@ export function EarningsCalculationPageShell() {
 
   return (
     <AppPage>
-      <AppPageHeader title={tPage("title")} description={tPage("subtitle")} />
-
       <div className="space-y-4">
         <Card className="rounded-xl border-border shadow-sm">
           <CardHeader>

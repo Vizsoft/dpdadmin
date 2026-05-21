@@ -5,7 +5,7 @@ import { queryKeys } from "@/lib/query/query-keys";
 import { fetchDriverDetail, fetchDriversForAdmin } from "./drivers-actions";
 import type { DriverListRow } from "./types";
 
-export type DriversTabFilter = "all" | "draft" | "pending" | "approved";
+export type DriversTabFilter = "all" | "pending" | "on_duty";
 
 export async function fetchDriversList(): Promise<DriverListRow[]> {
   return fetchDriversForAdmin();

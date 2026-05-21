@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Loader2, Pencil, Plus } from "lucide-react";
 import { AppPage } from "@/components/app/app-page";
-import { AppPageHeader } from "@/components/app/app-page-header";
 import { AppEmptyState } from "@/components/app/app-empty-state";
 import { AppListCard } from "@/components/app/app-list-card";
 import { TABLE_HEAD_CLASS } from "@/components/app/constants";
@@ -30,7 +29,6 @@ import { useDpdScopeOptions, useIncentiveRules } from "./use-dpd";
 
 export function IncentiveRulesPageShell() {
   const t = useTranslations("pages.dpd");
-  const tPage = useTranslations("pages.incentiveRules");
   const { can } = useAuth();
   const canManage = can("earnings.manage");
 
@@ -44,8 +42,6 @@ export function IncentiveRulesPageShell() {
 
   return (
     <AppPage>
-      <AppPageHeader title={tPage("title")} description={tPage("subtitle")} />
-
       <p className="text-sm text-muted-foreground">{t("stackingHint")}</p>
 
       <AppListCard

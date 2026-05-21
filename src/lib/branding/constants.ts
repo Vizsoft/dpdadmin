@@ -29,6 +29,42 @@ export const LOGO_MIME_TYPES: Record<string, LogoType> = {
   "image/svg+xml": "svg",
 };
 
+const LOGO_EXT_META: Record<
+  (typeof ALLOWED_LOGO_EXTENSIONS)[number],
+  { logoType: LogoType; contentType: string }
+> = {
+  png: { logoType: "image", contentType: "image/png" },
+  jpg: { logoType: "image", contentType: "image/jpeg" },
+  jpeg: { logoType: "image", contentType: "image/jpeg" },
+  webp: { logoType: "image", contentType: "image/webp" },
+  svg: { logoType: "svg", contentType: "image/svg+xml" },
+};
+
+/** Browsers often omit file.type for SVG — infer from extension when needed. */
+export function resolveLogoUploadMeta(
+  file: File,
+): { ext: string; logoType: LogoType; contentType: string } | null {
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+  if (!ALLOWED_LOGO_EXTENSIONS.includes(ext as (typeof ALLOWED_LOGO_EXTENSIONS)[number])) {
+    return null;
+  }
+
+  const byMime = file.type ? LOGO_MIME_TYPES[file.type] : undefined;
+  if (byMime) {
+    return { ext, logoType: byMime, contentType: file.type };
+  }
+
+  const byExt = LOGO_EXT_META[ext as (typeof ALLOWED_LOGO_EXTENSIONS)[number]];
+  if (!byExt) return null;
+
+  return { ext, logoType: byExt.logoType, contentType: byExt.contentType };
+}
+
+export function isSvgLogoUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  return /\.svg(\?|#|$)/i.test(url);
+}
+
 export function isFontFamilyId(value: string): value is FontFamilyId {
   return FONT_OPTIONS.some((f) => f.id === value);
 }

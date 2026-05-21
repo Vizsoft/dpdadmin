@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useTranslations, useLocale } from "next-intl";
 import { requestPasswordReset } from "@/features/auth/actions";
 import { BrandMark } from "@/components/brand/brand-mark";
+import { useBranding } from "@/contexts/branding-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 
 export function ForgotPasswordForm() {
   const t = useTranslations("auth");
+  const { appSubtitle } = useBranding();
   const locale = useLocale();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -30,7 +32,7 @@ export function ForgotPasswordForm() {
       <Card className="w-full border-border shadow-[0_4px_24px_rgba(15,15,15,0.08)]">
         <CardHeader className="space-y-1">
           <CardTitle className="text-xl">{t("forgotTitle")}</CardTitle>
-          <CardDescription>{t("forgotSubtitle")}</CardDescription>
+          <CardDescription>{appSubtitle}</CardDescription>
         </CardHeader>
         <CardContent>
           {success ? (

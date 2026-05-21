@@ -1,5 +1,4 @@
 /**
- * Settings navigation lives in AppSettingsLayout (@/components/app/app-settings-layout).
- * This file is kept for import stability only.
+ * Settings secondary navigation is handled by AppSecondaryNav in the dashboard layout.
  */
 export {};

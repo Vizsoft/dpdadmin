@@ -24,6 +24,8 @@ export const queryKeys = {
   },
   deliveries: {
     all: () => ["deliveries"] as const,
+    list: (filters: Record<string, unknown> = {}) => ["deliveries", "list", filters] as const,
+    detail: (id: string) => ["deliveries", "detail", id] as const,
     live: (zoneId?: string) => ["deliveries", "live", zoneId ?? "all"] as const,
   },
   zones: {

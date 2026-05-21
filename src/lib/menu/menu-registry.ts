@@ -17,6 +17,7 @@ import {
   Settings as SettingsIcon,
   Shield,
   ToggleLeft,
+  User,
   UserCheck,
   Users,
   Wallet,
@@ -58,6 +59,7 @@ export const ICON_MAP: Record<string, LucideIcon> = {
   Paintbrush,
   Shield,
   ToggleLeft,
+  User,
   UserCheck,
   Cloud,
 };
@@ -68,7 +70,24 @@ export function resolveIcon(name: string): LucideIcon {
   return ICON_MAP[name] ?? LayoutDashboard;
 }
 
-export const DEFAULT_GROUPS = ["Overview", "Operations", "System", "Unorganised"];
+export const DEFAULT_GROUPS = [
+  "Overview",
+  "Operations",
+  "Settings",
+  "WIP",
+  "Unorganised",
+];
+
+export const DEFAULT_GROUP_META: Record<
+  string,
+  { icon: string; displayMode?: "inline" | "panel" }
+> = {
+  Overview: { icon: "Folder" },
+  Operations: { icon: "Folder", displayMode: "panel" },
+  Settings: { icon: "Settings", displayMode: "inline" },
+  WIP: { icon: "AlertTriangle", displayMode: "panel" },
+  Unorganised: { icon: "Folder" },
+};
 
 export const MENU_REGISTRY: MenuRegistryItem[] = [
   {
@@ -121,7 +140,7 @@ export const MENU_REGISTRY: MenuRegistryItem[] = [
     defaultLabel: "Vehicles",
     defaultIcon: "Bike",
     href: "/vehicles",
-    defaultGroup: "Operations",
+    defaultGroup: "WIP",
     defaultOrder: 4,
     permission: "vehicles.view",
   },
@@ -130,7 +149,7 @@ export const MENU_REGISTRY: MenuRegistryItem[] = [
     defaultLabel: "Attendance",
     defaultIcon: "ClipboardCheck",
     href: "/attendance",
-    defaultGroup: "Operations",
+    defaultGroup: "WIP",
     defaultOrder: 5,
     permission: "attendance.view",
   },
@@ -139,7 +158,7 @@ export const MENU_REGISTRY: MenuRegistryItem[] = [
     defaultLabel: "Requests",
     defaultIcon: "Inbox",
     href: "/requests",
-    defaultGroup: "Operations",
+    defaultGroup: "WIP",
     defaultOrder: 6,
     permission: "requests.view",
   },
@@ -148,7 +167,7 @@ export const MENU_REGISTRY: MenuRegistryItem[] = [
     defaultLabel: "Wrong Actions",
     defaultIcon: "AlertTriangle",
     href: "/wrong-actions",
-    defaultGroup: "Operations",
+    defaultGroup: "WIP",
     defaultOrder: 7,
     permission: "wrong_actions.view",
   },
@@ -157,7 +176,7 @@ export const MENU_REGISTRY: MenuRegistryItem[] = [
     defaultLabel: "Earnings & Incentives",
     defaultIcon: "Wallet",
     href: "/earnings",
-    defaultGroup: "Operations",
+    defaultGroup: "WIP",
     defaultOrder: 8,
     permission: "earnings.view",
   },
@@ -193,7 +212,7 @@ export const MENU_REGISTRY: MenuRegistryItem[] = [
     defaultLabel: "Notifications",
     defaultIcon: "Bell",
     href: "/notifications",
-    defaultGroup: "Operations",
+    defaultGroup: "WIP",
     defaultOrder: 9,
     permission: "notifications.view",
   },
@@ -202,18 +221,81 @@ export const MENU_REGISTRY: MenuRegistryItem[] = [
     defaultLabel: "Support",
     defaultIcon: "LifeBuoy",
     href: "/support",
-    defaultGroup: "Operations",
+    defaultGroup: "WIP",
     defaultOrder: 10,
     permission: "support.view",
   },
   {
-    id: "settings",
-    defaultLabel: "Settings",
-    defaultIcon: "Settings",
+    id: "profile",
+    defaultLabel: "Profile",
+    defaultIcon: "User",
     href: "/settings",
-    defaultGroup: "System",
+    defaultGroup: "Settings",
     defaultOrder: 0,
     permission: "settings.view",
+  },
+  {
+    id: "branding",
+    defaultLabel: "Branding",
+    defaultIcon: "Paintbrush",
+    href: "/settings/branding",
+    defaultGroup: "Settings",
+    defaultOrder: 1,
+    permission: "settings.manage",
+  },
+  {
+    id: "storage",
+    defaultLabel: "Cloudflare R2",
+    defaultIcon: "Cloud",
+    href: "/settings/storage",
+    defaultGroup: "Settings",
+    defaultOrder: 2,
+    superAdminOnly: true,
+  },
+  {
+    id: "roles",
+    defaultLabel: "Roles & Permissions",
+    defaultIcon: "Shield",
+    href: "/settings/roles",
+    defaultGroup: "Settings",
+    defaultOrder: 3,
+    superAdminOnly: true,
+  },
+  {
+    id: "access-requests",
+    defaultLabel: "Access Requests",
+    defaultIcon: "UserCheck",
+    href: "/settings/access-requests",
+    defaultGroup: "Settings",
+    defaultOrder: 4,
+    superAdminOnly: true,
+  },
+  {
+    id: "maintenance",
+    defaultLabel: "Maintenance",
+    defaultIcon: "ToggleLeft",
+    href: "/settings/maintenance",
+    defaultGroup: "Settings",
+    defaultOrder: 5,
+    superAdminOnly: true,
+  },
+  {
+    id: "menu-editor",
+    defaultLabel: "Menu Editor",
+    defaultIcon: "ListTree",
+    href: "/settings/menu-editor",
+    defaultGroup: "Settings",
+    defaultOrder: 6,
+    superAdminOnly: true,
+  },
+  {
+    id: "languages",
+    defaultLabel: "Languages",
+    defaultIcon: "Languages",
+    href: "/settings/languages",
+    defaultGroup: "Settings",
+    defaultOrder: 7,
+    superAdminOnly: true,
   },
   {
     id: "zones",
@@ -243,25 +325,13 @@ export const APP_NAV_KEY_BY_ID: Record<string, string> = {
   "earnings-calculation": "earningsCalculation",
   notifications: "notifications",
   support: "support",
-  settings: "settings",
+  profile: "profile",
+  branding: "branding",
+  storage: "storage",
+  roles: "roles",
+  "access-requests": "accessRequests",
+  maintenance: "maintenance",
+  "menu-editor": "menuEditor",
+  languages: "languages",
   zones: "zones",
 };
-
-export type SettingsSubItem = {
-  id: string;
-  labelKey: string;
-  icon: string;
-  href: string;
-  permission?: Permission;
-  superAdminOnly?: boolean;
-};
-
-export const SETTINGS_SUB_ITEMS: SettingsSubItem[] = [
-  { id: "branding", labelKey: "branding", icon: "Paintbrush", href: "/settings/branding", permission: "settings.manage" },
-  { id: "storage", labelKey: "storage", icon: "Cloud", href: "/settings/storage", superAdminOnly: true },
-  { id: "roles", labelKey: "roles", icon: "Shield", href: "/settings/roles", superAdminOnly: true },
-  { id: "access-requests", labelKey: "accessRequests", icon: "UserCheck", href: "/settings/access-requests", superAdminOnly: true },
-  { id: "maintenance", labelKey: "maintenance", icon: "ToggleLeft", href: "/settings/maintenance", superAdminOnly: true },
-  { id: "menu-editor", labelKey: "menuEditor", icon: "ListTree", href: "/settings/menu-editor", superAdminOnly: true },
-  { id: "languages", labelKey: "languages", icon: "Languages", href: "/settings/languages", superAdminOnly: true },
-];

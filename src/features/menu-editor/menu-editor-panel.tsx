@@ -481,7 +481,7 @@ export function MenuEditorPanel({ roles }: { roles: AdminRoleRow[] }) {
     <div
       key={r.itemId}
       className={cn(
-        "flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-muted/50",
+        "flex items-center gap-1.5 rounded-md px-1.5 py-1 hover:bg-muted/50",
         r.hidden && "opacity-50",
       )}
     >
@@ -507,14 +507,14 @@ export function MenuEditorPanel({ roles }: { roles: AdminRoleRow[] }) {
       <Input
         value={r.label}
         onChange={(e) => updateRow(r.itemId, { label: e.target.value })}
-        className="h-7 flex-1 text-sm"
+        className="h-6 flex-1 text-xs"
       />
       <Select
         items={groupOptions}
         value={r.groupId}
         onValueChange={(v) => v && updateRow(r.itemId, { groupId: v })}
       >
-        <SelectTrigger className="h-7 w-[130px] text-xs">
+        <SelectTrigger className="h-6 w-[120px] text-xs">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -536,9 +536,9 @@ export function MenuEditorPanel({ roles }: { roles: AdminRoleRow[] }) {
         variant="ghost"
         onClick={() => updateRow(r.itemId, { hidden: !r.hidden })}
         title={r.hidden ? t("show") : t("hide")}
-        className="h-7 w-7"
+        className="h-6 w-6"
       >
-        {r.hidden ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+        {r.hidden ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
       </Button>
       <Button
         type="button"
@@ -546,7 +546,7 @@ export function MenuEditorPanel({ roles }: { roles: AdminRoleRow[] }) {
         variant="ghost"
         onClick={() => resetRow(r.itemId)}
         title={t("resetDefault")}
-        className="h-7 w-7"
+        className="h-6 w-6"
       >
         <RotateCcw className="h-3.5 w-3.5 text-muted-foreground" />
       </Button>
@@ -654,8 +654,8 @@ export function MenuEditorPanel({ roles }: { roles: AdminRoleRow[] }) {
                   const r = rowByItem.get(entry.id);
                   if (!r || r.groupId !== NONE_GROUP) return null;
                   return (
-                    <div key={`item-${entry.id}`} className="p-3">
-                      <div className="mb-1 flex items-center gap-2">
+                    <div key={`item-${entry.id}`} className="p-2">
+                      <div className="mb-0.5 flex items-center gap-1.5">
                         <div className="flex flex-col">
                           <button
                             type="button"
@@ -687,8 +687,8 @@ export function MenuEditorPanel({ roles }: { roles: AdminRoleRow[] }) {
                 const sectionRows = rowsByGroup.get(g.id) || [];
                 const isPanel = g.displayMode === "panel";
                 return (
-                  <div key={`group-${g.id}`} className="p-3">
-                    <div className="mb-2 flex items-center gap-2">
+                  <div key={`group-${g.id}`} className="p-2">
+                    <div className="mb-1 flex items-center gap-1.5">
                       <div className="flex flex-col">
                         <button
                           type="button"
@@ -719,7 +719,7 @@ export function MenuEditorPanel({ roles }: { roles: AdminRoleRow[] }) {
                       <Input
                         value={g.label}
                         onChange={(e) => renameGroup(g.id, e.target.value)}
-                        className="h-7 max-w-[220px] text-[11px] font-semibold uppercase tracking-wider"
+                        className="h-6 max-w-[180px] text-[10px] font-semibold uppercase tracking-wider"
                       />
                       <span className="text-[10px] text-muted-foreground">
                         ({sectionRows.length})
@@ -730,7 +730,10 @@ export function MenuEditorPanel({ roles }: { roles: AdminRoleRow[] }) {
                         size="sm"
                         variant={isPanel ? "default" : "outline"}
                         onClick={() => toggleGroupMode(g.id)}
-                        className="h-6 gap-1 px-2 text-[10px]"
+                        title={
+                          isPanel ? t("modeHintPanel") : t("modeHintInline")
+                        }
+                        className="h-5 gap-1 px-2 text-[10px]"
                       >
                         <PanelRight className="h-3 w-3" />
                         {isPanel ? t("panel") : t("inline")}
@@ -747,7 +750,7 @@ export function MenuEditorPanel({ roles }: { roles: AdminRoleRow[] }) {
                         </Button>
                       )}
                     </div>
-                    <div className="space-y-1">
+                    <div className="space-y-0.5">
                       {sectionRows.map((r, idx) =>
                         renderRowControls(r, idx, sectionRows.length),
                       )}

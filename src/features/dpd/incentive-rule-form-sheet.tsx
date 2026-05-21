@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { queryKeys } from "@/lib/query/query-keys";
 import { selectOptionsFrom } from "@/lib/select-items";
 import { isDpdErrorKey, saveIncentiveRule } from "./dpd-actions";
@@ -33,6 +34,7 @@ import {
   INCENTIVE_TARGET_MODES,
   RULE_STATUSES,
   type DpdScopeOptions,
+  type IncentivePayoutMode,
   type IncentiveRewardMode,
   type IncentiveRuleRow,
   type IncentiveTargetMode,
@@ -118,6 +120,12 @@ export function IncentiveRuleFormSheet({
   const [rewardPerDeliveryKwd, setRewardPerDeliveryKwd] = useState(
     String(rule?.reward_per_delivery_kwd ?? "0"),
   );
+  const [payoutMode, setPayoutMode] = useState<IncentivePayoutMode>(
+    rule?.payout_mode ?? "milestone",
+  );
+  const [overridesOthers, setOverridesOthers] = useState(
+    rule?.overrides_others ?? false,
+  );
   const [tiers, setTiers] = useState<TierDraft[]>(() => tiersFromRule(rule));
   const [previewCount, setPreviewCount] = useState(
     String(rule?.target_deliveries ?? rule?.tiers.at(-1)?.threshold_deliveries ?? "15"),
@@ -141,6 +149,8 @@ export function IncentiveRuleFormSheet({
     setRewardMode(rule?.reward_mode ?? "fixed");
     setRewardKwd(String(rule?.reward_kwd ?? "0"));
     setRewardPerDeliveryKwd(String(rule?.reward_per_delivery_kwd ?? "0"));
+    setPayoutMode(rule?.payout_mode ?? "milestone");
+    setOverridesOthers(rule?.overrides_others ?? false);
     setTiers(tiersFromRule(rule));
     const lastThreshold =
       rule?.target_deliveries ??
@@ -159,6 +169,7 @@ export function IncentiveRuleFormSheet({
         reward_mode: rewardMode,
         reward_kwd: Number(rewardKwd) || 0,
         reward_per_delivery_kwd: Number(rewardPerDeliveryKwd) || 0,
+        payout_mode: payoutMode,
         tiers: [],
       };
     }
@@ -169,6 +180,7 @@ export function IncentiveRuleFormSheet({
       reward_mode: "fixed",
       reward_kwd: 0,
       reward_per_delivery_kwd: null,
+      payout_mode: payoutMode,
       tiers: tiers.map((tier, index) => ({
         id: tier.key,
         threshold_deliveries: Number(tier.threshold_deliveries) || 0,
@@ -189,6 +201,7 @@ export function IncentiveRuleFormSheet({
     rewardMode,
     rewardKwd,
     rewardPerDeliveryKwd,
+    payoutMode,
     tiers,
   ]);
 
@@ -223,6 +236,8 @@ export function IncentiveRuleFormSheet({
       formData.append("targetDeliveries", targetDeliveries);
       formData.append("rewardKwd", rewardKwd);
       formData.append("rewardPerDeliveryKwd", rewardPerDeliveryKwd);
+      formData.append("payoutMode", payoutMode);
+      formData.append("overridesOthers", overridesOthers ? "true" : "false");
 
       if (targetMode === "tiered") {
         const tierPayload = tiers.map((tier) => ({
@@ -359,6 +374,22 @@ export function IncentiveRuleFormSheet({
                 className="rounded-lg"
               />
             </div>
+
+            <div className="flex items-start justify-between gap-3 rounded-lg border border-border p-3">
+              <div className="space-y-0.5">
+                <Label htmlFor="overrides-others" className="text-sm">
+                  {t("fields.overridesOthers")}
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  {t("hints.overridesOthers")}
+                </p>
+              </div>
+              <Switch
+                id="overrides-others"
+                checked={overridesOthers}
+                onCheckedChange={setOverridesOthers}
+              />
+            </div>
           </div>
 
           <div className="space-y-4">
@@ -373,12 +404,28 @@ export function IncentiveRuleFormSheet({
                 </SelectTrigger>
                 <SelectContent>
                   {INCENTIVE_TARGET_MODES.map((m) => (
-                    <SelectItem key={m} value={m} label={t(`targetMode.${m}`)}>
-                      {t(`targetMode.${m}`)}
+                    <SelectItem key={m} value={m} label={t(`targetTypes.${m}`)}>
+                      {t(`targetTypes.${m}`)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="flex items-start justify-between gap-3 rounded-lg border border-border p-3">
+              <div className="space-y-0.5">
+                <Label htmlFor="payout-cumulative" className="text-sm">
+                  {t("fields.cumulativePayout")}
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  {t("hints.cumulativePayout")}
+                </p>
+              </div>
+              <Switch
+                id="payout-cumulative"
+                checked={payoutMode === "cumulative"}
+                onCheckedChange={(v) => setPayoutMode(v ? "cumulative" : "milestone")}
+              />
             </div>
 
             <div className="space-y-1.5">
@@ -420,8 +467,8 @@ export function IncentiveRuleFormSheet({
                     </SelectTrigger>
                     <SelectContent>
                       {INCENTIVE_REWARD_MODES.map((m) => (
-                        <SelectItem key={m} value={m} label={t(`rewardMode.${m}`)}>
-                          {t(`rewardMode.${m}`)}
+                        <SelectItem key={m} value={m} label={t(`rewardTypes.${m}`)}>
+                          {t(`rewardTypes.${m}`)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -534,8 +581,8 @@ export function IncentiveRuleFormSheet({
                             </SelectTrigger>
                             <SelectContent>
                               {INCENTIVE_REWARD_MODES.map((m) => (
-                                <SelectItem key={m} value={m} label={t(`rewardMode.${m}`)}>
-                                  {t(`rewardMode.${m}`)}
+                                <SelectItem key={m} value={m} label={t(`rewardTypes.${m}`)}>
+                                  {t(`rewardTypes.${m}`)}
                                 </SelectItem>
                               ))}
                             </SelectContent>

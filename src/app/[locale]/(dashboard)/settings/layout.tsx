@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import { AppSettingsLayout } from "@/components/app";
 
+/** Secondary nav for settings sub-pages is handled by AppSecondaryNav in the dashboard layout. */
 export default function SettingsLayout({ children }: { children: ReactNode }) {
-  return <AppSettingsLayout>{children}</AppSettingsLayout>;
+  return <>{children}</>;
 }

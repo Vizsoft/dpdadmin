@@ -9,6 +9,8 @@ type BrandMarkProps = {
   layout?: "row" | "stack";
   variant?: "default" | "sidebar";
   showSubtitle?: boolean;
+  /** Sidebar collapsed: logo only in a square frame */
+  logoOnly?: boolean;
   className?: string;
   priority?: boolean;
 };
@@ -24,12 +26,25 @@ export function BrandMark({
   layout: brandLayout = "row",
   variant = "default",
   showSubtitle = true,
+  logoOnly = false,
   className,
   priority,
 }: BrandMarkProps) {
   const { appName, appSubtitle } = useBranding();
   const styles = layout[size];
   const isSidebar = variant === "sidebar";
+  const framed = isSidebar || logoOnly;
+
+  if (logoOnly) {
+    return (
+      <Logo
+        size={size === "lg" ? "md" : "sm"}
+        priority={priority}
+        framed
+        className={className}
+      />
+    );
+  }
 
   return (
     <div
@@ -40,7 +55,11 @@ export function BrandMark({
         className,
       )}
     >
-      <Logo size={size} priority={priority} />
+      <Logo
+        size={size}
+        priority={priority}
+        framed={framed || brandLayout === "stack"}
+      />
       <div
         className={cn(
           "flex min-w-0 flex-col gap-0.5",

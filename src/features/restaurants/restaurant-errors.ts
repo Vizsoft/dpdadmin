@@ -4,6 +4,7 @@ export const RESTAURANT_ERROR_KEYS = [
   "save_failed",
   "delete_failed",
   "restaurant_exists",
+  "invalid_coordinates",
 ] as const;
 
 export type RestaurantErrorKey = (typeof RESTAURANT_ERROR_KEYS)[number];

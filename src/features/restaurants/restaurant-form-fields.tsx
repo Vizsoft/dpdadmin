@@ -21,6 +21,7 @@ type FieldLabels = {
   externalMerchantIdHint: string;
   mapLink: string;
   mapLinkHint: string;
+  mapAutoFilledHint?: string;
   status: string;
   statusHint: string;
   selectPartner: string;
@@ -177,6 +178,11 @@ export function RestaurantFormFields({
           className="rounded-lg bg-background text-sm"
         />
         <p className="text-[11px] text-muted-foreground">{labels.mapLinkHint}</p>
+        {labels.mapAutoFilledHint ? (
+          <p className="text-[11px] text-muted-foreground/80">
+            {labels.mapAutoFilledHint}
+          </p>
+        ) : null}
       </div>
 
       <div className="space-y-1.5">

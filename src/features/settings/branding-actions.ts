@@ -1,19 +1,23 @@
 "use server";
 
-import { updateTag } from "next/cache";
+import { refresh, revalidatePath, updateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/auth/get-session";
 import { hasPermissionInSet } from "@/lib/auth/permissions";
 import {
   ALLOWED_LOGO_EXTENSIONS,
   DEFAULT_APP_SETTINGS,
-  LOGO_MIME_TYPES,
   MAX_LOGO_BYTES,
   isFontFamilyId,
+  resolveLogoUploadMeta,
 } from "@/lib/branding/constants";
 
-function revalidateBranding() {
+function revalidateBranding(locale: string) {
   updateTag("app-settings");
+  revalidatePath("/", "layout");
+  revalidatePath(`/${locale}`, "layout");
+  revalidatePath(`/${locale}/settings/branding`, "page");
+  refresh();
 }
 
 async function requireSettingsManager() {
@@ -61,7 +65,7 @@ export async function updateBranding(
     return { error: "save_failed" };
   }
 
-  revalidateBranding();
+  revalidateBranding(_locale);
   return { success: true };
 }
 
@@ -80,24 +84,24 @@ export async function uploadLogo(
     return { error: "file_too_large" };
   }
 
-  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
-  if (!ALLOWED_LOGO_EXTENSIONS.includes(ext as (typeof ALLOWED_LOGO_EXTENSIONS)[number])) {
+  const meta = resolveLogoUploadMeta(file);
+  if (!meta) {
     return { error: "invalid_type" };
   }
 
-  const logoType = LOGO_MIME_TYPES[file.type];
-  if (!logoType) {
-    return { error: "invalid_type" };
-  }
-
+  const { ext, logoType, contentType } = meta;
   const supabase = await createClient();
   const path = `logo.${ext}`;
   const buffer = Buffer.from(await file.arrayBuffer());
 
+  await supabase.storage
+    .from("branding")
+    .remove(ALLOWED_LOGO_EXTENSIONS.map((e) => `logo.${e}`));
+
   const { error: uploadError } = await supabase.storage
     .from("branding")
     .upload(path, buffer, {
-      contentType: file.type,
+      contentType,
       upsert: true,
     });
 
@@ -125,11 +129,13 @@ export async function uploadLogo(
     return { error: "save_failed" };
   }
 
-  revalidateBranding();
+  revalidateBranding(_locale);
   return { success: true, logoUrl };
 }
 
-export async function resetBranding(): Promise<{ error?: string; success?: boolean }> {
+export async function resetBranding(
+  locale: string,
+): Promise<{ error?: string; success?: boolean }> {
   const auth = await requireSettingsManager();
   if ("error" in auth) return auth;
 
@@ -154,6 +160,6 @@ export async function resetBranding(): Promise<{ error?: string; success?: boole
     return { error: "save_failed" };
   }
 
-  revalidateBranding();
+  revalidateBranding(locale);
   return { success: true };
 }

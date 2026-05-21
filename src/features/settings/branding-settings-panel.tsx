@@ -4,7 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useBranding } from "@/contexts/branding-context";
-import { FONT_OPTIONS } from "@/lib/branding/constants";
+import { DEFAULT_APP_SETTINGS, FONT_OPTIONS } from "@/lib/branding/constants";
 import {
   resetBranding,
   updateBranding,
@@ -26,7 +26,8 @@ export function BrandingSettingsPanel() {
   const [preview, setPreview] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const logoPreview = preview ?? branding.logoUrl ?? "/logo.png";
+  const logoPreview =
+    preview ?? branding.logoUrl ?? DEFAULT_APP_SETTINGS.logo_url;
 
   const errorMessage =
     error === "missing_fields"
@@ -155,6 +156,10 @@ export function BrandingSettingsPanel() {
                   setError(result.error);
                   return;
                 }
+                if (result.logoUrl) {
+                  setPreview(result.logoUrl);
+                }
+                if (fileRef.current) fileRef.current.value = "";
                 router.refresh();
               });
             }}
@@ -172,7 +177,7 @@ export function BrandingSettingsPanel() {
             onClick={() => {
               startTransition(async () => {
                 setError(null);
-                const result = await resetBranding();
+                const result = await resetBranding(locale);
                 if (result.error) {
                   setError(result.error);
                   return;

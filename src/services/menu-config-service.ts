@@ -1,6 +1,12 @@
 import { createClient } from "@/lib/supabase/client";
 import type { Json } from "@/types/database";
 
+function formatMenuConfigError(error: unknown): string {
+  if (!error || typeof error !== "object") return String(error);
+  const e = error as { message?: string; code?: string; details?: string };
+  return [e.message, e.code, e.details].filter(Boolean).join(" — ") || "unknown";
+}
+
 export type MenuNodeType = "item" | "group";
 
 export interface MenuNode {
@@ -15,6 +21,14 @@ export interface MenuNode {
 
 export async function getMenuConfig(role: string): Promise<MenuNode[]> {
   const supabase = createClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session) {
+    return [];
+  }
+
   const { data, error } = await supabase
     .from("menu_configs")
     .select("config")
@@ -24,7 +38,9 @@ export async function getMenuConfig(role: string): Promise<MenuNode[]> {
     .maybeSingle();
 
   if (error) {
-    console.error("getMenuConfig", error);
+    if (process.env.NODE_ENV === "development") {
+      console.warn("getMenuConfig", formatMenuConfigError(error));
+    }
     return [];
   }
   const cfg = data?.config as unknown;

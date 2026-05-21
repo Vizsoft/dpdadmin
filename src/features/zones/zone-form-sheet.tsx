@@ -188,7 +188,7 @@ function ZoneFormBody({
   return (
     <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
       {/* Map on top for mobile, right column on desktop */}
-      <div className="zones-draw-map-wrapper zones-draw-map-wrapper--modal order-1 min-h-[45vh] flex-1 border-b border-border lg:order-2 lg:min-h-0 lg:flex-[1.4] lg:border-b-0 lg:border-l">
+      <div className="zones-draw-map-wrapper zones-draw-map-wrapper--modal order-1 min-h-[40vh] flex-1 border-b border-border lg:order-2 lg:min-h-0 lg:border-b-0 lg:border-l">
         <ZoneMap
           zones={existingZones}
           selectedId={null}
@@ -203,9 +203,12 @@ function ZoneFormBody({
         />
       </div>
 
-      <div className="order-2 flex min-h-0 w-full shrink-0 flex-col lg:order-1 lg:w-[min(400px,38%)] lg:max-w-[420px]">
-        <DialogHeader className="border-b border-border px-6 py-3 pr-14">
-          <DialogTitle>{isEdit ? t("editZoneTitle") : t("addZoneTitle")}</DialogTitle>
+      <div className="order-2 flex min-h-0 w-full shrink-0 flex-col lg:order-1 lg:w-[420px] lg:min-w-[380px]">
+        <DialogHeader className="border-b border-border px-6 py-4 pr-14">
+          <DialogTitle className="text-lg">{isEdit ? t("editZoneTitle") : t("addZoneTitle")}</DialogTitle>
+          <DialogDescription className="sr-only">
+            {isEdit ? t("editZoneTitle") : t("addZoneTitle")}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 space-y-4 overflow-y-auto px-6 py-4">
@@ -396,7 +399,7 @@ export function ZoneFormSheet({
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
-          className="flex h-[90vh] max-h-[90vh] flex-col gap-0"
+          className="flex h-[90vh] max-h-[90vh] w-[95vw] max-w-5xl flex-col gap-0 p-0"
           showCloseButton
         >
           {open ? (

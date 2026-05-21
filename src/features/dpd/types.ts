@@ -6,6 +6,7 @@ export type RuleStatus = Database["public"]["Enums"]["rule_status"];
 export type IncentivePeriod = Database["public"]["Enums"]["incentive_period"];
 export type IncentiveTargetMode = Database["public"]["Enums"]["incentive_target_mode"];
 export type IncentiveRewardMode = Database["public"]["Enums"]["incentive_reward_mode"];
+export type IncentivePayoutMode = Database["public"]["Enums"]["incentive_payout_mode"];
 
 export const RULE_SCOPE_TYPES: RuleScopeType[] = ["zone", "partner", "restaurant"];
 export const RULE_STATUSES: RuleStatus[] = ["draft", "active", "ended"];
@@ -22,6 +23,8 @@ export type RestaurantRow = {
   name: string;
   external_merchant_id: string | null;
   map_link: string | null;
+  latitude: number | null;
+  longitude: number | null;
   status: RestaurantStatus;
   is_active: boolean;
   created_at: string;
@@ -66,6 +69,8 @@ export type IncentiveRuleRow = {
   reward_mode: IncentiveRewardMode;
   reward_kwd: number;
   reward_per_delivery_kwd: number | null;
+  payout_mode: IncentivePayoutMode;
+  overrides_others: boolean;
   tiers: IncentiveRuleTierRow[];
   start_date: string;
   end_date: string;
@@ -120,19 +125,22 @@ export function computeIncentivePreview(
     | "reward_mode"
     | "reward_kwd"
     | "reward_per_delivery_kwd"
+    | "payout_mode"
     | "tiers"
   >,
   eligibleCount: number,
 ): number {
   const base = rule.base_minimum_deliveries;
-  if (eligibleCount < base) return 0;
+  if (eligibleCount <= base) return 0;
+  const cumulative = rule.payout_mode === "cumulative";
 
   if (rule.target_mode === "single") {
     const target = rule.target_deliveries;
-    if (target == null || eligibleCount < target) return 0;
+    if (!cumulative && (target == null || eligibleCount < target)) return 0;
     if (rule.reward_mode === "fixed") return rule.reward_kwd;
     const rate = rule.reward_per_delivery_kwd ?? 0;
-    const band = Math.min(eligibleCount - base, target - base);
+    let band = eligibleCount - base;
+    if (target != null) band = Math.min(band, target - base);
     return rate * Math.max(band, 0);
   }
 
@@ -141,7 +149,7 @@ export function computeIncentivePreview(
     (a, b) => a.threshold_deliveries - b.threshold_deliveries,
   );
   for (const tier of tiers) {
-    if (eligibleCount < tier.threshold_deliveries) continue;
+    if (!cumulative && eligibleCount < tier.threshold_deliveries) continue;
     if (tier.reward_mode === "fixed") {
       total += tier.reward_kwd ?? 0;
     } else {

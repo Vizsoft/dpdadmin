@@ -7,7 +7,10 @@ import {
   canViewRestaurants,
 } from "@/lib/auth/permissions";
 import { isRestaurantErrorKey, type RestaurantErrorKey } from "./restaurant-errors";
-import { parseRestaurantFormData } from "./parse-restaurant-form";
+import {
+  parseRestaurantFormData,
+  validateRestaurantCoordinates,
+} from "./parse-restaurant-form";
 import type {
   RestaurantPartnerOption,
   RestaurantRow,
@@ -71,7 +74,7 @@ export async function fetchRestaurantsForAdmin(): Promise<RestaurantRow[]> {
       supabase
         .from("restaurants")
         .select(
-          "id, partner_id, zone_id, name, external_merchant_id, map_link, status, is_active, created_at",
+          "id, partner_id, zone_id, name, external_merchant_id, map_link, latitude, longitude, status, is_active, created_at",
         )
         .order("name"),
       supabase.from("partners").select("id, name"),
@@ -127,6 +130,8 @@ export async function fetchRestaurantsForAdmin(): Promise<RestaurantRow[]> {
     name: row.name,
     external_merchant_id: row.external_merchant_id,
     map_link: row.map_link,
+    latitude: row.latitude != null ? Number(row.latitude) : null,
+    longitude: row.longitude != null ? Number(row.longitude) : null,
     status: row.status,
     is_active: row.is_active,
     driver_count: driverCounts.get(row.id) ?? 0,
@@ -139,10 +144,23 @@ export async function saveRestaurant(formData: FormData): Promise<RestaurantMuta
   if (auth.error) return { error: auth.error };
 
   const parsed = parseRestaurantFormData(formData);
-  const { id, partnerId, zoneId, name, externalMerchantId, mapLink, status, isActive } =
-    parsed;
+  const {
+    id,
+    partnerId,
+    zoneId,
+    name,
+    externalMerchantId,
+    mapLink,
+    status,
+    isActive,
+    latitude,
+    longitude,
+  } = parsed;
 
   if (!partnerId || !zoneId || !name) return { error: "missing_fields" };
+
+  const coordError = validateRestaurantCoordinates(latitude, longitude);
+  if (coordError) return { error: coordError };
 
   const supabase = await createClient();
   const payload = {
@@ -151,6 +169,8 @@ export async function saveRestaurant(formData: FormData): Promise<RestaurantMuta
     name,
     external_merchant_id: externalMerchantId || null,
     map_link: mapLink || null,
+    latitude,
+    longitude,
     status,
     is_active: isActive,
     updated_at: new Date().toISOString(),

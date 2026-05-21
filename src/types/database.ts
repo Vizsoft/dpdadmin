@@ -107,6 +107,78 @@ export type Database = {
         }
         Relationships: []
       }
+      app_page_registry: {
+        Row: {
+          admin_permission: string | null
+          admin_route: string | null
+          admin_sidebar_id: string | null
+          created_at: string
+          description: string | null
+          driver_bottom_nav: string | null
+          driver_route: string | null
+          id: string
+          key_columns: Json
+          logic_summary: string | null
+          page_key: string
+          page_title: string
+          platform: string
+          realtime_channels: string[]
+          rls_notes: string | null
+          sort_order: number
+          status_flow: Json | null
+          storage_buckets: string[]
+          tables_read: string[]
+          tables_write: string[]
+          updated_at: string
+        }
+        Insert: {
+          admin_permission?: string | null
+          admin_route?: string | null
+          admin_sidebar_id?: string | null
+          created_at?: string
+          description?: string | null
+          driver_bottom_nav?: string | null
+          driver_route?: string | null
+          id?: string
+          key_columns?: Json
+          logic_summary?: string | null
+          page_key: string
+          page_title: string
+          platform: string
+          realtime_channels?: string[]
+          rls_notes?: string | null
+          sort_order?: number
+          status_flow?: Json | null
+          storage_buckets?: string[]
+          tables_read?: string[]
+          tables_write?: string[]
+          updated_at?: string
+        }
+        Update: {
+          admin_permission?: string | null
+          admin_route?: string | null
+          admin_sidebar_id?: string | null
+          created_at?: string
+          description?: string | null
+          driver_bottom_nav?: string | null
+          driver_route?: string | null
+          id?: string
+          key_columns?: Json
+          logic_summary?: string | null
+          page_key?: string
+          page_title?: string
+          platform?: string
+          realtime_channels?: string[]
+          rls_notes?: string | null
+          sort_order?: number
+          status_flow?: Json | null
+          storage_buckets?: string[]
+          tables_read?: string[]
+          tables_write?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       app_settings: {
         Row: {
           app_name: string
@@ -1027,7 +1099,9 @@ export type Database = {
           end_date: string
           id: string
           name: string
+          overrides_others: boolean
           partner_id: string | null
+          payout_mode: Database["public"]["Enums"]["incentive_payout_mode"]
           period: Database["public"]["Enums"]["incentive_period"]
           priority: number
           restaurant_id: string | null
@@ -1048,7 +1122,9 @@ export type Database = {
           end_date: string
           id?: string
           name: string
+          overrides_others?: boolean
           partner_id?: string | null
+          payout_mode?: Database["public"]["Enums"]["incentive_payout_mode"]
           period: Database["public"]["Enums"]["incentive_period"]
           priority?: number
           restaurant_id?: string | null
@@ -1069,7 +1145,9 @@ export type Database = {
           end_date?: string
           id?: string
           name?: string
+          overrides_others?: boolean
           partner_id?: string | null
+          payout_mode?: Database["public"]["Enums"]["incentive_payout_mode"]
           period?: Database["public"]["Enums"]["incentive_period"]
           priority?: number
           restaurant_id?: string | null
@@ -1499,6 +1577,8 @@ export type Database = {
           external_merchant_id: string | null
           id: string
           is_active: boolean
+          latitude: number | null
+          longitude: number | null
           map_link: string | null
           name: string
           partner_id: string
@@ -1513,6 +1593,8 @@ export type Database = {
           external_merchant_id?: string | null
           id?: string
           is_active?: boolean
+          latitude?: number | null
+          longitude?: number | null
           map_link?: string | null
           name: string
           partner_id: string
@@ -1527,6 +1609,8 @@ export type Database = {
           external_merchant_id?: string | null
           id?: string
           is_active?: boolean
+          latitude?: number | null
+          longitude?: number | null
           map_link?: string | null
           name?: string
           partner_id?: string
@@ -1918,6 +2002,7 @@ export type Database = {
       fuel_expense_status: "pending" | "approved" | "refused"
       hygiene_submission_status: "pending" | "completed" | "rejected"
       hygiene_task_status: "draft" | "active" | "ended"
+      incentive_payout_mode: "milestone" | "cumulative"
       incentive_period: "daily" | "weekly" | "monthly"
       incentive_reward_mode: "fixed" | "per_delivery"
       incentive_target_mode: "single" | "tiered"
@@ -2093,6 +2178,7 @@ export const Constants = {
       fuel_expense_status: ["pending", "approved", "refused"],
       hygiene_submission_status: ["pending", "completed", "rejected"],
       hygiene_task_status: ["draft", "active", "ended"],
+      incentive_payout_mode: ["milestone", "cumulative"],
       incentive_period: ["daily", "weekly", "monthly"],
       incentive_reward_mode: ["fixed", "per_delivery"],
       incentive_target_mode: ["single", "tiered"],

@@ -18,6 +18,9 @@ export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
 }
 
+/** Branding and theme come from DB; must not bake defaults at build time. */
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getAppSettings();
   const icon = settings.logoUrl ?? siteConfig.logo;
