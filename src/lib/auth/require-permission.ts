@@ -26,3 +26,17 @@ export async function requirePermission(locale: string, permission: Permission) 
   }
   return session;
 }
+
+export async function requireAnyPermission(
+  locale: string,
+  permissions: readonly Permission[],
+) {
+  const session = await requireAuth(locale);
+  const allowed = permissions.some((p) =>
+    hasPermissionInSet(session.permissions, p, session.isSuperAdmin),
+  );
+  if (!allowed) {
+    redirect({ href: "/unauthorized", locale });
+  }
+  return session;
+}

@@ -114,7 +114,7 @@ function PartnerFormBody({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={t("fieldTitlePlaceholder")}
-            className="rounded-lg"
+            className="rounded-lg bg-background"
           />
           <p className="text-[11px] text-muted-foreground">{t("titleHint")}</p>
         </div>

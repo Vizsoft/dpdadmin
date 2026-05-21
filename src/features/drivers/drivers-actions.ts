@@ -112,6 +112,94 @@ function buildAssetsMap(
   return map;
 }
 
+function parseRestaurantIds(formData: FormData): string[] {
+  return [
+    ...new Set(
+      formData
+        .getAll("restaurantIds")
+        .map((v) => String(v).trim())
+        .filter(Boolean),
+    ),
+  ];
+}
+
+async function validateRestaurantsForPartner(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  partnerId: string,
+  restaurantIds: string[],
+): Promise<{ error?: string }> {
+  if (restaurantIds.length === 0) return {};
+  const { data, error } = await supabase
+    .from("restaurants")
+    .select("id")
+    .eq("partner_id", partnerId)
+    .eq("status", "published")
+    .in("id", restaurantIds);
+  if (error) return { error: "save_failed" };
+  if ((data ?? []).length !== restaurantIds.length) {
+    return { error: "invalid_restaurants" };
+  }
+  return {};
+}
+
+async function syncIntakeRestaurants(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  intakeId: string,
+  restaurantIds: string[],
+) {
+  await supabase.from("driver_intake_restaurants").delete().eq("intake_id", intakeId);
+  if (restaurantIds.length === 0) return;
+  await supabase.from("driver_intake_restaurants").insert(
+    restaurantIds.map((restaurant_id) => ({ intake_id: intakeId, restaurant_id })),
+  );
+}
+
+async function syncDriverRestaurants(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  driverId: string,
+  restaurantIds: string[],
+) {
+  await supabase.from("driver_restaurants").delete().eq("driver_id", driverId);
+  if (restaurantIds.length === 0) return;
+  await supabase.from("driver_restaurants").insert(
+    restaurantIds.map((restaurant_id) => ({ driver_id: driverId, restaurant_id })),
+  );
+}
+
+async function fetchIntakeRestaurantIds(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  intakeId: string,
+): Promise<string[]> {
+  const { data } = await supabase
+    .from("driver_intake_restaurants")
+    .select("restaurant_id")
+    .eq("intake_id", intakeId);
+  return (data ?? []).map((r) => r.restaurant_id);
+}
+
+async function fetchDriverRestaurantIds(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  driverId: string,
+): Promise<string[]> {
+  const { data } = await supabase
+    .from("driver_restaurants")
+    .select("restaurant_id")
+    .eq("driver_id", driverId);
+  return (data ?? []).map((r) => r.restaurant_id);
+}
+
+async function loadRestaurantNames(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  ids: string[],
+): Promise<string[]> {
+  if (ids.length === 0) return [];
+  const { data } = await supabase.from("restaurants").select("id, name").in("id", ids);
+  const order = new Map(ids.map((id, i) => [id, i]));
+  return (data ?? [])
+    .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0))
+    .map((r) => r.name);
+}
+
 async function phoneExists(phone: string, excludeIntakeId?: string): Promise<boolean> {
   const supabase = await createClient();
 
@@ -221,7 +309,15 @@ export async function createDriverIntake(
   if (await phoneExists(phone)) return { error: "phone_exists" };
   if (await driverCodeExists(driverCode)) return { error: "driver_code_exists" };
 
+  const restaurantIds = parseRestaurantIds(formData);
   const supabase = await createClient();
+
+  const restaurantCheck = await validateRestaurantsForPartner(
+    supabase,
+    partnerId,
+    restaurantIds,
+  );
+  if (restaurantCheck.error) return { error: restaurantCheck.error };
   const intakeId = crypto.randomUUID();
   const assetsIssued = buildAssetsMap(assetsEnabled, formData);
 
@@ -276,6 +372,8 @@ export async function createDriverIntake(
     }
     return { error: mapDriverDbError(error) };
   }
+
+  await syncIntakeRestaurants(supabase, data.id, restaurantIds);
 
   return { success: true, id: data.id };
 }
@@ -418,6 +516,14 @@ export async function updateDriverIntake(
 
   if (!existing) return { error: "save_failed" };
 
+  const restaurantIds = parseRestaurantIds(formData);
+  const restaurantCheck = await validateRestaurantsForPartner(
+    supabase,
+    partnerId,
+    restaurantIds,
+  );
+  if (restaurantCheck.error) return { error: restaurantCheck.error };
+
   const assetsIssued = buildAssetsMap(assetsEnabled, formData);
 
   const { error } = await supabase
@@ -437,6 +543,8 @@ export async function updateDriverIntake(
     .eq("id", intakeId);
 
   if (error) return { error: mapDriverDbError(error) };
+
+  await syncIntakeRestaurants(supabase, intakeId, restaurantIds);
 
   if (existing.linked_profile_id) {
     await supabase
@@ -459,6 +567,8 @@ export async function updateDriverIntake(
         updated_at: new Date().toISOString(),
       })
       .eq("id", existing.linked_profile_id);
+
+    await syncDriverRestaurants(supabase, existing.linked_profile_id, restaurantIds);
   }
 
   return { success: true, id: intakeId };
@@ -521,6 +631,9 @@ export async function fetchDriverDetail(
       ? `${vehicleRow.bike_id}${vehicleRow.reg_number ? ` · ${vehicleRow.reg_number}` : ""}`
       : null;
 
+    const restaurant_ids = await fetchIntakeRestaurantIds(supabase, intake.id);
+    const restaurant_names = await loadRestaurantNames(supabase, restaurant_ids);
+
     return {
       id: intake.id,
       intake_id: intake.id,
@@ -545,6 +658,8 @@ export async function fetchDriverDetail(
       base_earnings_kwd: null,
       joined_at: intake.created_at.slice(0, 10),
       assets_issued: parseAssetsIssued(intake.assets_issued),
+      restaurant_ids,
+      restaurant_names,
     };
   }
 
@@ -595,6 +710,11 @@ export async function fetchDriverDetail(
     .eq("linked_profile_id", id)
     .maybeSingle();
 
+  const restaurant_ids = intakeForDriver?.id
+    ? await fetchIntakeRestaurantIds(supabase, intakeForDriver.id)
+    : await fetchDriverRestaurantIds(supabase, id);
+  const restaurant_names = await loadRestaurantNames(supabase, restaurant_ids);
+
   return {
     id: driverRow.id,
     intake_id: intakeForDriver?.id ?? null,
@@ -620,5 +740,7 @@ export async function fetchDriverDetail(
     base_earnings_kwd: driverRow.base_earnings_kwd,
     joined_at: driverRow.joined_at,
     assets_issued: parseAssetsIssued(intakeForDriver?.assets_issued),
+    restaurant_ids,
+    restaurant_names,
   };
 }

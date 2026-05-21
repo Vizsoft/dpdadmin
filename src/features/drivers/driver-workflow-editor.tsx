@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { queryKeys } from "@/lib/query/query-keys";
+import { selectOptionsFrom } from "@/lib/select-items";
 import { updateDriverWorkflowStatus } from "./drivers-actions";
 import { isDriverErrorKey } from "./driver-errors";
 import {
@@ -65,10 +66,17 @@ export function DriverWorkflowEditor({
     });
   };
 
+  const workflowSelectItems = selectOptionsFrom(
+    DRIVER_WORKFLOW_STATUSES,
+    (s) => s,
+    (s) => labelFor(s),
+  );
+
   return (
     <div className="space-y-1.5">
       <Label htmlFor="workflow-status">{t("fieldWorkflowStatus")}</Label>
       <Select
+        items={workflowSelectItems}
         value={value}
         onValueChange={onValueChange}
         disabled={disabled || isPending}
@@ -85,7 +93,12 @@ export function DriverWorkflowEditor({
         </SelectTrigger>
         <SelectContent>
           {DRIVER_WORKFLOW_STATUSES.map((status) => (
-            <SelectItem key={status} value={status} className="cursor-pointer">
+            <SelectItem
+              key={status}
+              value={status}
+              label={labelFor(status)}
+              className="cursor-pointer"
+            >
               {labelFor(status)}
             </SelectItem>
           ))}

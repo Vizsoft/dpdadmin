@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { selectOptions, selectOptionsFrom } from "@/lib/select-items";
 import type { DpdScopeOptions, RuleScopeType } from "./types";
 
 export function ScopePicker({
@@ -40,18 +41,40 @@ export function ScopePicker({
   const partners = options?.partners ?? [];
   const restaurants = options?.restaurants ?? [];
 
+  const scopeTypeItems = selectOptions([
+    { value: "zone", label: t("scope.zone") },
+    { value: "partner", label: t("scope.partner") },
+    { value: "restaurant", label: t("scope.restaurant") },
+  ]);
+  const zoneItems = selectOptionsFrom(
+    zones,
+    (z) => z.id,
+    (z) => `${z.name} (${z.code})`,
+  );
+  const partnerItems = selectOptionsFrom(
+    partners,
+    (p) => p.id,
+    (p) => p.name,
+  );
+  const restaurantItems = selectOptionsFrom(
+    restaurants,
+    (r) => r.id,
+    (r) => `${r.name} · ${r.partner_name}`,
+  );
+
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <div className="space-y-1.5 sm:col-span-2">
         <Label>{t("fields.scopeType")}</Label>
         <Select
+          items={scopeTypeItems}
           value={scopeType}
           onValueChange={(v) => {
             if (v) onScopeTypeChange(v as RuleScopeType);
           }}
           disabled={disabled}
         >
-          <SelectTrigger className="w-full cursor-pointer rounded-lg">
+          <SelectTrigger className="h-9 w-full cursor-pointer rounded-lg bg-background">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -71,8 +94,13 @@ export function ScopePicker({
       {scopeType === "zone" ? (
         <div className="space-y-1.5 sm:col-span-2">
           <Label>{t("fields.zone")}</Label>
-          <Select value={zoneId} onValueChange={(v) => onZoneIdChange(v ?? "")} disabled={disabled}>
-            <SelectTrigger className="w-full cursor-pointer rounded-lg">
+          <Select
+            items={zoneItems}
+            value={zoneId || null}
+            onValueChange={(v) => onZoneIdChange(v ?? "")}
+            disabled={disabled}
+          >
+            <SelectTrigger className="h-9 w-full cursor-pointer rounded-lg bg-background">
               <SelectValue placeholder={t("placeholders.selectZone")} />
             </SelectTrigger>
             <SelectContent>
@@ -90,11 +118,12 @@ export function ScopePicker({
         <div className="space-y-1.5 sm:col-span-2">
           <Label>{t("fields.partner")}</Label>
           <Select
-            value={partnerId}
+            items={partnerItems}
+            value={partnerId || null}
             onValueChange={(v) => onPartnerIdChange(v ?? "")}
             disabled={disabled}
           >
-            <SelectTrigger className="w-full cursor-pointer rounded-lg">
+            <SelectTrigger className="h-9 w-full cursor-pointer rounded-lg bg-background">
               <SelectValue placeholder={t("placeholders.selectPartner")} />
             </SelectTrigger>
             <SelectContent>
@@ -112,11 +141,12 @@ export function ScopePicker({
         <div className="space-y-1.5 sm:col-span-2">
           <Label>{t("fields.restaurant")}</Label>
           <Select
-            value={restaurantId}
+            items={restaurantItems}
+            value={restaurantId || null}
             onValueChange={(v) => onRestaurantIdChange(v ?? "")}
             disabled={disabled}
           >
-            <SelectTrigger className="w-full cursor-pointer rounded-lg">
+            <SelectTrigger className="h-9 w-full cursor-pointer rounded-lg bg-background">
               <SelectValue placeholder={t("placeholders.selectRestaurant")} />
             </SelectTrigger>
             <SelectContent>

@@ -33,6 +33,7 @@
     "dashboard": "Dashboard",
     "drivers": "Drivers",
     "partners": "Partners",
+    "restaurants": "Restaurants",
     "deliveries": "Live Deliveries",
     "vehicles": "Vehicles",
     "attendance": "Attendance",
@@ -46,7 +47,9 @@
     "menuEditor": "Menu Editor",
     "languages": "Languages",
     "branding": "Branding",
-    "dpd": "DPD",
+    "deliveryRules": "Delivery rules",
+    "incentiveRules": "Incentive rules",
+    "earningsCalculation": "Earnings calculation",
     "storage": "Cloudflare R2",
     "roles": "Roles & Permissions",
     "accessRequests": "Access Requests",
@@ -266,6 +269,7 @@
       "fieldZone": "Zone",
       "fieldBaseEarnings": "Base earnings",
       "fieldPartner": "Partner",
+      "fieldRestaurants": "Restaurants",
       "fieldBike": "Bike ID",
       "fieldJoined": "Join date",
       "fieldLinked": "Mobile app linked",
@@ -295,6 +299,8 @@
       "sections": {
         "basic": "Basic Details",
         "assignment": "Assignment",
+        "restaurants": "Restaurants",
+        "restaurantsDescription": "Optional — assign merchants this driver delivers for (must match the selected partner)",
         "assets": "Assets Issued",
         "documents": "Documents",
         "documentsDescription": "All uploads are optional — add files now or complete them later."
@@ -347,6 +353,9 @@
       "addPartnerLink": "Add a partner",
       "emptyZones": "No zones yet.",
       "addZoneLink": "Add a zone",
+      "restaurantsSelectPartnerFirst": "Select a partner first to choose restaurants.",
+      "restaurantsEmptyForPartner": "No published restaurants for this partner.",
+      "addRestaurantLink": "Add restaurants",
       "errors": {
         "not_authorized": "You do not have permission to manage drivers",
         "missing_fields": "This field is required",
@@ -361,7 +370,80 @@
         "invalid_file_type": "Use PDF, PNG, JPG, or WebP",
         "upload_failed": "Document upload failed",
         "r2_not_configured": "File storage is not configured. Set up Cloudflare R2 in Settings first.",
+        "invalid_restaurants": "One or more restaurants do not belong to the selected partner",
         "save_failed": "Could not save the driver. Please try again."
+      }
+    },
+    "restaurants": {
+      "title": "Restaurants",
+      "subtitle": "Merchants under delivery partners — link to drivers when creating or editing riders",
+      "addRestaurant": "Add restaurant",
+      "editRestaurant": "Edit restaurant",
+      "deleteRestaurant": "Delete",
+      "deleteRestaurantTitle": "Delete restaurant?",
+      "deleteRestaurantDescription": "Remove \"{name}\"? Drivers and rules referencing it may be affected.",
+      "restaurantCreated": "Restaurant created",
+      "restaurantUpdated": "Restaurant updated",
+      "restaurantDeleted": "Restaurant deleted",
+      "refresh": "Refresh",
+      "export": "Export",
+      "filter": "Filter",
+      "filterStatus": "Status",
+      "filterStatusAll": "All",
+      "filterDraft": "Draft",
+      "filterPublished": "Published",
+      "filterArchived": "Archived",
+      "clearFilters": "Reset filters",
+      "clearSearch": "Clear search",
+      "searchPlaceholder": "Search restaurants…",
+      "totalRestaurants": "{count, plural, one {# restaurant} other {# restaurants}}",
+      "ofTotal": "of {total} total",
+      "colRestaurant": "Restaurant",
+      "colPartner": "Partner",
+      "colZone": "Zone",
+      "colExternalId": "External ID",
+      "colStatus": "Status",
+      "colDrivers": "Drivers",
+      "colCreated": "Created",
+      "colActions": "Actions",
+      "statusDraft": "Draft",
+      "statusPublished": "Published",
+      "statusArchived": "Archived",
+      "driversCount": "{count, plural, one {# driver} other {# drivers}}",
+      "emptyTitle": "No restaurants yet",
+      "emptyDescription": "Add merchants under a partner so you can assign them to drivers and delivery rules.",
+      "emptySearchTitle": "No restaurants match your filters",
+      "emptySearchDescription": "Try adjusting search or filters.",
+      "cancel": "Cancel",
+      "save": "Save",
+      "createRestaurant": "Create restaurant",
+      "fields": {
+        "partner": "Partner",
+        "zone": "Zone",
+        "name": "Restaurant name",
+        "externalMerchantId": "External merchant ID",
+        "mapLink": "Map link",
+        "status": "Status"
+      },
+      "placeholders": {
+        "selectPartner": "Select partner",
+        "selectZone": "Select zone",
+        "name": "e.g. Talabat — Salmiya",
+        "mapLink": "https://maps.google.com/?q=..."
+      },
+      "hints": {
+        "externalMerchantId": "Optional code from the partner platform (Talabat ID, DoorDash store ID, etc.).",
+        "mapLink": "Optional — paste a Google Maps or Apple Maps share link.",
+        "status": "Only published restaurants are selectable when adding a driver."
+      },
+      "errors": {
+        "not_authorized": "You do not have permission to manage restaurants",
+        "missing_fields": "Partner, zone, and name are required",
+        "noPartners": "Add a partner before creating restaurants.",
+        "noZones": "Add a zone before creating restaurants.",
+        "save_failed": "Could not save the restaurant",
+        "delete_failed": "Could not delete the restaurant",
+        "restaurant_exists": "A restaurant with this name already exists for this partner"
       }
     },
     "deliveries": {
@@ -561,6 +643,18 @@
       "colStatus": "Status",
       "emptyTitle": "No earnings data yet"
     },
+    "deliveryRules": {
+      "title": "Delivery rules",
+      "subtitle": "Define which verified deliveries count toward incentives"
+    },
+    "incentiveRules": {
+      "title": "Incentive rules",
+      "subtitle": "Target deliveries and reward amounts by zone, partner, or restaurant"
+    },
+    "earningsCalculation": {
+      "title": "Earnings calculation",
+      "subtitle": "Preview, recalculate, and test delivery eligibility"
+    },
     "dpd": {
       "title": "DPD",
       "subtitle": "Incentives, delivery rules, and earnings calculation",
@@ -585,7 +679,26 @@
       "edit": "Edit",
       "delete": "Delete",
       "searchRestaurants": "Search restaurants…",
-      "stackingHint": "Matching incentive rules stack — total reward is the sum of all qualifying rules.",
+      "stackingHint": "Matching incentive rules stack. Within one tiered rule, every met tier pays cumulatively.",
+      "addTier": "Add tier",
+      "tierLabel": "Tier {index}",
+      "perDeliveryShort": "del.",
+      "targetSummaryTiered": "{count} tiers ({thresholds})",
+      "targetSummarySingleRange": "{base} → {target}",
+      "rewardSummaryPerDelivery": "{rate} KD/delivery",
+      "payoutPreviewAt": "At {count} deliveries: {amount} KD",
+      "targetMode": {
+        "single": "Single target",
+        "tiered": "Tiered (cumulative)"
+      },
+      "rewardMode": {
+        "fixed": "Fixed amount",
+        "per_delivery": "Per delivery (above base)"
+      },
+      "hints": {
+        "baseMinimum": "Driver must reach this count before any payout from this rule.",
+        "cumulativeTiers": "Each tier pays when eligible deliveries reach its threshold; amounts add together."
+      },
       "calcTitle": "Earnings calculation",
       "calcDescription": "Incentives recalculate automatically when a delivery is verified. Use preview or recalculate for corrections.",
       "earnDate": "Date",
@@ -639,7 +752,14 @@
         "status": "Status",
         "period": "Period",
         "targetDeliveries": "Target deliveries",
+        "targetMode": "Target type",
+        "baseMinimumDeliveries": "Base minimum deliveries",
+        "rewardMode": "Reward type",
         "rewardKwd": "Reward (KD)",
+        "rewardPerDeliveryKwd": "Per delivery (KD)",
+        "tieredTargets": "Tiers",
+        "tierThreshold": "At deliveries",
+        "payoutPreview": "Payout preview",
         "startDate": "Start date",
         "endDate": "End date",
         "priority": "Priority",
@@ -656,7 +776,10 @@
         "missing_fields": "Required fields are missing",
         "invalid_dates": "End date must be on or after start date",
         "invalid_scope": "Select a valid scope",
-        "invalid_target": "Target deliveries must be at least 1",
+        "invalid_target": "Target must be greater than base minimum",
+        "invalid_base": "Base minimum must be zero or greater",
+        "invalid_tiers": "Add at least one tier with increasing thresholds above base",
+        "invalid_reward_mode": "Select a valid reward type",
         "invalid_reward": "Reward must be zero or greater",
         "save_failed": "Could not save. Please try again.",
         "delete_failed": "Could not delete",

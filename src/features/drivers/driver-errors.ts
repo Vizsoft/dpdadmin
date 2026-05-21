@@ -12,6 +12,7 @@ export const DRIVER_ERROR_KEYS = [
   "invalid_file_type",
   "upload_failed",
   "r2_not_configured",
+  "invalid_restaurants",
   "save_failed",
 ] as const;
 

@@ -1,0 +1,640 @@
+"use client";
+
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
+import { useQueryClient } from "@tanstack/react-query";
+import { Loader2, Plus, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { queryKeys } from "@/lib/query/query-keys";
+import { selectOptionsFrom } from "@/lib/select-items";
+import { isDpdErrorKey, saveIncentiveRule } from "./dpd-actions";
+import { ScopePicker } from "./scope-picker";
+import {
+  computeIncentivePreview,
+  INCENTIVE_PERIODS,
+  INCENTIVE_REWARD_MODES,
+  INCENTIVE_TARGET_MODES,
+  RULE_STATUSES,
+  type DpdScopeOptions,
+  type IncentiveRewardMode,
+  type IncentiveRuleRow,
+  type IncentiveTargetMode,
+  type IncentivePeriod,
+  type RuleScopeType,
+  type RuleStatus,
+} from "./types";
+
+type TierDraft = {
+  key: string;
+  threshold_deliveries: string;
+  reward_mode: IncentiveRewardMode;
+  reward_kwd: string;
+  reward_per_delivery_kwd: string;
+};
+
+function newTierDraft(): TierDraft {
+  return {
+    key: crypto.randomUUID(),
+    threshold_deliveries: "",
+    reward_mode: "fixed",
+    reward_kwd: "0",
+    reward_per_delivery_kwd: "0",
+  };
+}
+
+function tiersFromRule(rule: IncentiveRuleRow | null): TierDraft[] {
+  if (!rule?.tiers?.length) return [newTierDraft(), newTierDraft()];
+  return rule.tiers.map((t) => ({
+    key: t.id,
+    threshold_deliveries: String(t.threshold_deliveries),
+    reward_mode: t.reward_mode,
+    reward_kwd: String(t.reward_kwd ?? 0),
+    reward_per_delivery_kwd: String(t.reward_per_delivery_kwd ?? 0),
+  }));
+}
+
+export function IncentiveRuleFormSheet({
+  rule,
+  options,
+  open,
+  onOpenChange,
+}: {
+  rule: IncentiveRuleRow | null;
+  options: DpdScopeOptions | undefined;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const t = useTranslations("pages.dpd");
+  const statusSelectItems = selectOptionsFrom(RULE_STATUSES, (s) => s, (s) =>
+    t(`status.${s}`),
+  );
+  const periodSelectItems = selectOptionsFrom(INCENTIVE_PERIODS, (p) => p, (p) =>
+    t(`period.${p}`),
+  );
+  const queryClient = useQueryClient();
+  const [isPending, startTransition] = useTransition();
+  const isEdit = Boolean(rule);
+
+  const [name, setName] = useState(rule?.name ?? "");
+  const [status, setStatus] = useState<RuleStatus>(rule?.status ?? "draft");
+  const [scopeType, setScopeType] = useState<RuleScopeType>(rule?.scope_type ?? "zone");
+  const [zoneId, setZoneId] = useState(rule?.zone_id ?? "");
+  const [partnerId, setPartnerId] = useState(rule?.partner_id ?? "");
+  const [restaurantId, setRestaurantId] = useState(rule?.restaurant_id ?? "");
+  const [startDate, setStartDate] = useState(rule?.start_date ?? "");
+  const [endDate, setEndDate] = useState(rule?.end_date ?? "");
+  const [priority, setPriority] = useState(String(rule?.priority ?? ""));
+  const [period, setPeriod] = useState<IncentivePeriod>(rule?.period ?? "daily");
+  const [targetMode, setTargetMode] = useState<IncentiveTargetMode>(
+    rule?.target_mode ?? "single",
+  );
+  const [baseMinimum, setBaseMinimum] = useState(
+    String(rule?.base_minimum_deliveries ?? "0"),
+  );
+  const [targetDeliveries, setTargetDeliveries] = useState(
+    String(rule?.target_deliveries ?? "1"),
+  );
+  const [rewardMode, setRewardMode] = useState<IncentiveRewardMode>(
+    rule?.reward_mode ?? "fixed",
+  );
+  const [rewardKwd, setRewardKwd] = useState(String(rule?.reward_kwd ?? "0"));
+  const [rewardPerDeliveryKwd, setRewardPerDeliveryKwd] = useState(
+    String(rule?.reward_per_delivery_kwd ?? "0"),
+  );
+  const [tiers, setTiers] = useState<TierDraft[]>(() => tiersFromRule(rule));
+  const [previewCount, setPreviewCount] = useState(
+    String(rule?.target_deliveries ?? rule?.tiers.at(-1)?.threshold_deliveries ?? "15"),
+  );
+
+  useEffect(() => {
+    if (!open) return;
+    setName(rule?.name ?? "");
+    setStatus(rule?.status ?? "draft");
+    setScopeType(rule?.scope_type ?? "zone");
+    setZoneId(rule?.zone_id ?? "");
+    setPartnerId(rule?.partner_id ?? "");
+    setRestaurantId(rule?.restaurant_id ?? "");
+    setStartDate(rule?.start_date ?? "");
+    setEndDate(rule?.end_date ?? "");
+    setPriority(String(rule?.priority ?? ""));
+    setPeriod(rule?.period ?? "daily");
+    setTargetMode(rule?.target_mode ?? "single");
+    setBaseMinimum(String(rule?.base_minimum_deliveries ?? "0"));
+    setTargetDeliveries(String(rule?.target_deliveries ?? "1"));
+    setRewardMode(rule?.reward_mode ?? "fixed");
+    setRewardKwd(String(rule?.reward_kwd ?? "0"));
+    setRewardPerDeliveryKwd(String(rule?.reward_per_delivery_kwd ?? "0"));
+    setTiers(tiersFromRule(rule));
+    const lastThreshold =
+      rule?.target_deliveries ??
+      rule?.tiers[rule.tiers.length - 1]?.threshold_deliveries ??
+      15;
+    setPreviewCount(String(lastThreshold));
+  }, [open, rule]);
+
+  const previewRule = useMemo((): Parameters<typeof computeIncentivePreview>[0] => {
+    const base = Number(baseMinimum) || 0;
+    if (targetMode === "single") {
+      return {
+        target_mode: "single",
+        base_minimum_deliveries: base,
+        target_deliveries: Number(targetDeliveries) || null,
+        reward_mode: rewardMode,
+        reward_kwd: Number(rewardKwd) || 0,
+        reward_per_delivery_kwd: Number(rewardPerDeliveryKwd) || 0,
+        tiers: [],
+      };
+    }
+    return {
+      target_mode: "tiered",
+      base_minimum_deliveries: base,
+      target_deliveries: null,
+      reward_mode: "fixed",
+      reward_kwd: 0,
+      reward_per_delivery_kwd: null,
+      tiers: tiers.map((tier, index) => ({
+        id: tier.key,
+        threshold_deliveries: Number(tier.threshold_deliveries) || 0,
+        reward_mode: tier.reward_mode,
+        reward_kwd:
+          tier.reward_mode === "fixed" ? Number(tier.reward_kwd) || 0 : null,
+        reward_per_delivery_kwd:
+          tier.reward_mode === "per_delivery"
+            ? Number(tier.reward_per_delivery_kwd) || 0
+            : null,
+        sort_order: index,
+      })),
+    };
+  }, [
+    baseMinimum,
+    targetMode,
+    targetDeliveries,
+    rewardMode,
+    rewardKwd,
+    rewardPerDeliveryKwd,
+    tiers,
+  ]);
+
+  const previewAmount = useMemo(() => {
+    const count = Number(previewCount);
+    if (!Number.isFinite(count) || count < 0) return 0;
+    return computeIncentivePreview(previewRule, count);
+  }, [previewRule, previewCount]);
+
+  const errorToast = (error?: string) => {
+    if (error && isDpdErrorKey(error)) return t(`errors.${error}`);
+    return t("errors.save_failed");
+  };
+
+  const handleSave = () => {
+    startTransition(async () => {
+      const formData = new FormData();
+      if (rule?.id) formData.append("id", rule.id);
+      formData.append("name", name);
+      formData.append("status", status);
+      formData.append("scopeType", scopeType);
+      if (zoneId) formData.append("zoneId", zoneId);
+      if (partnerId) formData.append("partnerId", partnerId);
+      if (restaurantId) formData.append("restaurantId", restaurantId);
+      formData.append("startDate", startDate);
+      formData.append("endDate", endDate);
+      if (priority) formData.append("priority", priority);
+      formData.append("period", period);
+      formData.append("targetMode", targetMode);
+      formData.append("baseMinimumDeliveries", baseMinimum);
+      formData.append("rewardMode", rewardMode);
+      formData.append("targetDeliveries", targetDeliveries);
+      formData.append("rewardKwd", rewardKwd);
+      formData.append("rewardPerDeliveryKwd", rewardPerDeliveryKwd);
+
+      if (targetMode === "tiered") {
+        const tierPayload = tiers.map((tier) => ({
+          threshold_deliveries: Number(tier.threshold_deliveries),
+          reward_mode: tier.reward_mode,
+          reward_kwd: tier.reward_mode === "fixed" ? Number(tier.reward_kwd) : null,
+          reward_per_delivery_kwd:
+            tier.reward_mode === "per_delivery"
+              ? Number(tier.reward_per_delivery_kwd)
+              : null,
+        }));
+        formData.append("tiersJson", JSON.stringify(tierPayload));
+      }
+
+      const result = await saveIncentiveRule(formData);
+      if (result.error) {
+        toast.error(errorToast(result.error));
+        return;
+      }
+      toast.success(isEdit ? t("incentiveUpdated") : t("incentiveCreated"));
+      await queryClient.invalidateQueries({ queryKey: queryKeys.dpd.all() });
+      onOpenChange(false);
+    });
+  };
+
+  const title = isEdit ? t("editIncentiveRule") : t("addIncentiveRule");
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="flex max-h-[min(92vh,800px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl">
+        <DialogHeader className="border-b border-border px-6 py-4">
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+        <div className="grid flex-1 gap-6 overflow-y-auto px-6 py-4 md:grid-cols-2">
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="incentive-name">{t("fields.ruleName")}</Label>
+              <Input
+                id="incentive-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="rounded-lg"
+              />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>{t("fields.status")}</Label>
+                <Select
+                  items={statusSelectItems}
+                  value={status}
+                  onValueChange={(v) => v && setStatus(v as RuleStatus)}
+                >
+                  <SelectTrigger className="w-full cursor-pointer rounded-lg">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {RULE_STATUSES.map((s) => (
+                      <SelectItem key={s} value={s} label={t(`status.${s}`)}>
+                        {t(`status.${s}`)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t("fields.period")}</Label>
+                <Select
+                  items={periodSelectItems}
+                  value={period}
+                  onValueChange={(v) => v && setPeriod(v as IncentivePeriod)}
+                >
+                  <SelectTrigger className="w-full cursor-pointer rounded-lg">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {INCENTIVE_PERIODS.map((p) => (
+                      <SelectItem key={p} value={p} label={t(`period.${p}`)}>
+                        {t(`period.${p}`)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <ScopePicker
+              scopeType={scopeType}
+              zoneId={zoneId}
+              partnerId={partnerId}
+              restaurantId={restaurantId}
+              onScopeTypeChange={(v) => {
+                setScopeType(v);
+                setZoneId("");
+                setPartnerId("");
+                setRestaurantId("");
+              }}
+              onZoneIdChange={setZoneId}
+              onPartnerIdChange={setPartnerId}
+              onRestaurantIdChange={setRestaurantId}
+              options={options}
+              disabled={isPending}
+            />
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="start-date">{t("fields.startDate")}</Label>
+                <Input
+                  id="start-date"
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="rounded-lg"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="end-date">{t("fields.endDate")}</Label>
+                <Input
+                  id="end-date"
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="rounded-lg"
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="priority">{t("fields.priority")}</Label>
+              <Input
+                id="priority"
+                type="number"
+                value={priority}
+                onChange={(e) => setPriority(e.target.value)}
+                placeholder={t("placeholders.priority")}
+                className="rounded-lg"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>{t("fields.targetMode")}</Label>
+              <Select
+                value={targetMode}
+                onValueChange={(v) => v && setTargetMode(v as IncentiveTargetMode)}
+              >
+                <SelectTrigger className="w-full cursor-pointer rounded-lg">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {INCENTIVE_TARGET_MODES.map((m) => (
+                    <SelectItem key={m} value={m} label={t(`targetMode.${m}`)}>
+                      {t(`targetMode.${m}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="base-min">{t("fields.baseMinimumDeliveries")}</Label>
+              <Input
+                id="base-min"
+                type="number"
+                min={0}
+                value={baseMinimum}
+                onChange={(e) => setBaseMinimum(e.target.value)}
+                className="rounded-lg"
+              />
+              <p className="text-xs text-muted-foreground">
+                {t("hints.baseMinimum")}
+              </p>
+            </div>
+
+            {targetMode === "single" ? (
+              <>
+                <div className="space-y-1.5">
+                  <Label htmlFor="target">{t("fields.targetDeliveries")}</Label>
+                  <Input
+                    id="target"
+                    type="number"
+                    min={1}
+                    value={targetDeliveries}
+                    onChange={(e) => setTargetDeliveries(e.target.value)}
+                    className="rounded-lg"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>{t("fields.rewardMode")}</Label>
+                  <Select
+                    value={rewardMode}
+                    onValueChange={(v) => v && setRewardMode(v as IncentiveRewardMode)}
+                  >
+                    <SelectTrigger className="w-full cursor-pointer rounded-lg">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {INCENTIVE_REWARD_MODES.map((m) => (
+                        <SelectItem key={m} value={m} label={t(`rewardMode.${m}`)}>
+                          {t(`rewardMode.${m}`)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {rewardMode === "fixed" ? (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="reward">{t("fields.rewardKwd")}</Label>
+                    <Input
+                      id="reward"
+                      type="number"
+                      min={0}
+                      step="0.001"
+                      value={rewardKwd}
+                      onChange={(e) => setRewardKwd(e.target.value)}
+                      className="rounded-lg"
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="per-delivery">{t("fields.rewardPerDeliveryKwd")}</Label>
+                    <Input
+                      id="per-delivery"
+                      type="number"
+                      min={0}
+                      step="0.001"
+                      value={rewardPerDeliveryKwd}
+                      onChange={(e) => setRewardPerDeliveryKwd(e.target.value)}
+                      className="rounded-lg"
+                    />
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <Label>{t("fields.tieredTargets")}</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="cursor-pointer rounded-lg"
+                    onClick={() => setTiers((prev) => [...prev, newTierDraft()])}
+                  >
+                    <Plus className="h-4 w-4" />
+                    {t("addTier")}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">{t("hints.cumulativeTiers")}</p>
+                <div className="space-y-3">
+                  {tiers.map((tier, index) => (
+                    <div
+                      key={tier.key}
+                      className="space-y-3 rounded-lg border border-border p-3"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-medium text-muted-foreground">
+                          {t("tierLabel", { index: index + 1 })}
+                        </span>
+                        {tiers.length > 1 ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 cursor-pointer"
+                            onClick={() =>
+                              setTiers((prev) => prev.filter((x) => x.key !== tier.key))
+                            }
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        ) : null}
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="space-y-1.5">
+                          <Label>{t("fields.tierThreshold")}</Label>
+                          <Input
+                            type="number"
+                            min={1}
+                            value={tier.threshold_deliveries}
+                            onChange={(e) =>
+                              setTiers((prev) =>
+                                prev.map((x) =>
+                                  x.key === tier.key
+                                    ? { ...x, threshold_deliveries: e.target.value }
+                                    : x,
+                                ),
+                              )
+                            }
+                            className="rounded-lg"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label>{t("fields.rewardMode")}</Label>
+                          <Select
+                            value={tier.reward_mode}
+                            onValueChange={(v) =>
+                              v &&
+                              setTiers((prev) =>
+                                prev.map((x) =>
+                                  x.key === tier.key
+                                    ? { ...x, reward_mode: v as IncentiveRewardMode }
+                                    : x,
+                                ),
+                              )
+                            }
+                          >
+                            <SelectTrigger className="w-full cursor-pointer rounded-lg">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {INCENTIVE_REWARD_MODES.map((m) => (
+                                <SelectItem key={m} value={m} label={t(`rewardMode.${m}`)}>
+                                  {t(`rewardMode.${m}`)}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      {tier.reward_mode === "fixed" ? (
+                        <div className="space-y-1.5">
+                          <Label>{t("fields.rewardKwd")}</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            step="0.001"
+                            value={tier.reward_kwd}
+                            onChange={(e) =>
+                              setTiers((prev) =>
+                                prev.map((x) =>
+                                  x.key === tier.key
+                                    ? { ...x, reward_kwd: e.target.value }
+                                    : x,
+                                ),
+                              )
+                            }
+                            className="rounded-lg"
+                          />
+                        </div>
+                      ) : (
+                        <div className="space-y-1.5">
+                          <Label>{t("fields.rewardPerDeliveryKwd")}</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            step="0.001"
+                            value={tier.reward_per_delivery_kwd}
+                            onChange={(e) =>
+                              setTiers((prev) =>
+                                prev.map((x) =>
+                                  x.key === tier.key
+                                    ? {
+                                        ...x,
+                                        reward_per_delivery_kwd: e.target.value,
+                                      }
+                                    : x,
+                                ),
+                              )
+                            }
+                            className="rounded-lg"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="rounded-lg border border-dashed border-border bg-muted/30 p-3 space-y-2">
+              <Label htmlFor="preview-count">{t("fields.payoutPreview")}</Label>
+              <div className="flex flex-wrap items-end gap-2">
+                <Input
+                  id="preview-count"
+                  type="number"
+                  min={0}
+                  value={previewCount}
+                  onChange={(e) => setPreviewCount(e.target.value)}
+                  className="w-28 rounded-lg"
+                />
+                <p className="text-sm tabular-nums">
+                  {t("payoutPreviewAt", {
+                    count: previewCount,
+                    amount: previewAmount.toFixed(3),
+                  })}
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-muted-foreground">{t("stackingHint")}</p>
+          </div>
+        </div>
+        <DialogFooter className="border-t border-border px-6 py-4">
+          <Button
+            type="button"
+            variant="outline"
+            className="cursor-pointer rounded-lg"
+            onClick={() => onOpenChange(false)}
+            disabled={isPending}
+          >
+            {t("cancel")}
+          </Button>
+          <Button
+            type="button"
+            className="cursor-pointer rounded-lg"
+            onClick={handleSave}
+            disabled={isPending}
+          >
+            {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : t("save")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

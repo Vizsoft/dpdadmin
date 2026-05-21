@@ -60,6 +60,13 @@ export type ZoneOption = {
   code: string;
 };
 
+export type RestaurantOption = {
+  id: string;
+  name: string;
+  partner_id: string;
+  status: "draft" | "published" | "archived";
+};
+
 export type PendingDocumentFile = {
   docType: DriverDocumentType;
   file: File;
@@ -102,4 +109,6 @@ export type DriverDetailModel = {
   base_earnings_kwd: number | null;
   joined_at: string | null;
   assets_issued: Record<string, boolean>;
+  restaurant_ids: string[];
+  restaurant_names: string[];
 };

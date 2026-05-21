@@ -79,9 +79,21 @@ export const NAV_ITEMS: NavItem[] = [
     permission: "earnings.view",
   },
   {
-    href: "/dpd",
-    labelKey: "nav.dpd",
+    href: "/delivery-rules",
+    labelKey: "nav.deliveryRules",
+    icon: "Package",
+    permission: "earnings.view",
+  },
+  {
+    href: "/incentive-rules",
+    labelKey: "nav.incentiveRules",
     icon: "Wallet",
+    permission: "earnings.view",
+  },
+  {
+    href: "/earnings-calculation",
+    labelKey: "nav.earningsCalculation",
+    icon: "ClipboardCheck",
     permission: "earnings.view",
   },
   {

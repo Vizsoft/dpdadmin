@@ -25,6 +25,7 @@ import {
 import { ThemeEditorDialog } from "@/features/settings/theme-editor-dialog";
 import type { AppThemeRecord } from "@/lib/branding/get-app-settings";
 import { cn } from "@/lib/utils";
+import { selectOptionsFrom } from "@/lib/select-items";
 
 function ThemeSwatch({ color }: { color: string }) {
   return (
@@ -98,6 +99,12 @@ export function ThemeSettingsSection() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [themeToDelete, setThemeToDelete] = useState<AppThemeRecord | null>(null);
   const [clonePreset, setClonePreset] = useState<PresetThemeId>("shopify");
+
+  const presetSelectItems = selectOptionsFrom(
+    THEME_PRESETS,
+    (p) => p.id,
+    (p) => p.name,
+  );
 
   const activate = (themeId: string) => {
     startTransition(async () => {
@@ -173,6 +180,7 @@ export function ThemeSettingsSection() {
               <p className="text-sm font-medium">{t("customThemes")}</p>
               <div className="flex flex-wrap items-center gap-2">
                 <Select
+                  items={presetSelectItems}
                   value={clonePreset}
                   onValueChange={(v) => v && setClonePreset(v as PresetThemeId)}
                 >
@@ -181,7 +189,7 @@ export function ThemeSettingsSection() {
                   </SelectTrigger>
                   <SelectContent>
                     {THEME_PRESETS.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
+                      <SelectItem key={p.id} value={p.id} label={p.name}>
                         {p.name}
                       </SelectItem>
                     ))}

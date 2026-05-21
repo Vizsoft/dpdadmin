@@ -38,6 +38,8 @@ import {
   type DriverAssetType,
   type DriverDocumentType,
 } from "./types";
+import { DriverRestaurantPicker } from "./driver-restaurant-picker";
+import { selectOptions, selectOptionsFrom } from "@/lib/select-items";
 import { useDriverFormOptions } from "./use-driver-form-options";
 import {
   hasValidationErrors,
@@ -79,6 +81,7 @@ function AddDriverForm() {
   const [civilId, setCivilId] = useState("");
   const [driverCode, setDriverCode] = useState("");
   const [partnerId, setPartnerId] = useState("");
+  const [restaurantIds, setRestaurantIds] = useState<string[]>([]);
   const [zoneId, setZoneId] = useState("");
   const [vehicleId, setVehicleId] = useState(NONE_VEHICLE);
   const [assetsEnabled, setAssetsEnabled] = useState(true);
@@ -176,6 +179,9 @@ function AddDriverForm() {
         const file = documents[docType];
         if (file) formData.append(`doc_${docType}`, file);
       }
+      for (const rid of restaurantIds) {
+        formData.append("restaurantIds", rid);
+      }
 
       const result = await createDriverIntake(formData);
       if (result.error) {
@@ -195,17 +201,39 @@ function AddDriverForm() {
   const zones = options?.zones ?? [];
   const vehicles = options?.vehicles ?? [];
 
-  const partnerLabel = (id: string) => partners.find((p) => p.id === id)?.name;
-  const zoneLabel = (id: string) => {
-    const z = zones.find((item) => item.id === id);
-    return z ? `${z.name} (${z.code})` : undefined;
-  };
-  const vehicleLabel = (id: string) => {
-    if (id === NONE_VEHICLE) return t("noVehicle");
-    const v = vehicles.find((item) => item.id === id);
-    return v
-      ? `${v.bike_id}${v.reg_number ? ` · ${v.reg_number}` : ""}`
-      : undefined;
+  const partnerSelectItems = selectOptionsFrom(
+    partners,
+    (p) => p.id,
+    (p) => p.name,
+  );
+  const zoneSelectItems = selectOptionsFrom(
+    zones,
+    (z) => z.id,
+    (z) => `${z.name} (${z.code})`,
+  );
+  const vehicleSelectItems = selectOptions([
+    { value: NONE_VEHICLE, label: t("noVehicle") },
+    ...vehicles.map((v) => ({
+      value: v.id,
+      label: `${v.bike_id}${v.reg_number ? ` · ${v.reg_number}` : ""}`,
+    })),
+  ]);
+  const allRestaurants = options?.restaurants ?? [];
+
+  const handlePartnerChange = (nextPartnerId: string) => {
+    setPartnerId(nextPartnerId);
+    clearFieldError("partnerId");
+    if (!nextPartnerId) {
+      setRestaurantIds([]);
+      return;
+    }
+    setRestaurantIds((prev) =>
+      prev.filter((id) =>
+        allRestaurants.some(
+          (r) => r.id === id && r.partner_id === nextPartnerId && r.status === "published",
+        ),
+      ),
+    );
   };
 
   const showFieldError = (field: DriverFormField) =>
@@ -337,22 +365,16 @@ function AddDriverForm() {
           <div className="space-y-1.5">
             <Label>{t("fields.partner")}</Label>
             <Select
-              value={partnerId}
-              onValueChange={(v) => {
-                setPartnerId(v ?? "");
-                clearFieldError("partnerId");
-              }}
+              items={partnerSelectItems}
+              value={partnerId || null}
+              onValueChange={(v) => handlePartnerChange(v ?? "")}
               disabled={optionsLoading || partners.length === 0}
             >
               <SelectTrigger
-                className="w-full cursor-pointer rounded-lg"
+                className="h-9 w-full cursor-pointer rounded-lg bg-background"
                 aria-invalid={Boolean(showFieldError("partnerId"))}
               >
-                <SelectValue placeholder={t("placeholders.partner")}>
-                  {(value: string | null) =>
-                    value ? (partnerLabel(value) ?? null) : null
-                  }
-                </SelectValue>
+                <SelectValue placeholder={t("placeholders.partner")} />
               </SelectTrigger>
               <SelectContent>
                 {partners.map((p) => (
@@ -375,7 +397,8 @@ function AddDriverForm() {
           <div className="space-y-1.5">
             <Label>{t("fields.zone")}</Label>
             <Select
-              value={zoneId}
+              items={zoneSelectItems}
+              value={zoneId || null}
               onValueChange={(v) => {
                 setZoneId(v ?? "");
                 clearFieldError("zoneId");
@@ -383,14 +406,10 @@ function AddDriverForm() {
               disabled={optionsLoading || zones.length === 0}
             >
               <SelectTrigger
-                className="w-full cursor-pointer rounded-lg"
+                className="h-9 w-full cursor-pointer rounded-lg bg-background"
                 aria-invalid={Boolean(showFieldError("zoneId"))}
               >
-                <SelectValue placeholder={t("placeholders.zone")}>
-                  {(value: string | null) =>
-                    value ? (zoneLabel(value) ?? null) : null
-                  }
-                </SelectValue>
+                <SelectValue placeholder={t("placeholders.zone")} />
               </SelectTrigger>
               <SelectContent>
                 {zones.map((z) => (
@@ -417,16 +436,13 @@ function AddDriverForm() {
           <div className="space-y-1.5">
             <Label>{t("fields.vehicle")}</Label>
             <Select
-              value={vehicleId}
+              items={vehicleSelectItems}
+              value={vehicleId || null}
               onValueChange={(v) => setVehicleId(v ?? NONE_VEHICLE)}
               disabled={optionsLoading}
             >
-              <SelectTrigger className="w-full cursor-pointer rounded-lg">
-                <SelectValue placeholder={t("placeholders.vehicle")}>
-                  {(value: string | null) =>
-                    value ? (vehicleLabel(value) ?? null) : null
-                  }
-                </SelectValue>
+              <SelectTrigger className="h-9 w-full cursor-pointer rounded-lg bg-background">
+                <SelectValue placeholder={t("placeholders.vehicle")} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={NONE_VEHICLE} label={t("noVehicle")}>
@@ -444,6 +460,19 @@ function AddDriverForm() {
             </Select>
           </div>
         </div>
+        </FormSectionCard>
+
+        <FormSectionCard
+          title={t("sections.restaurants")}
+          description={t("sections.restaurantsDescription")}
+        >
+          <DriverRestaurantPicker
+            partnerId={partnerId}
+            restaurants={allRestaurants}
+            selectedIds={restaurantIds}
+            onChange={setRestaurantIds}
+            disabled={optionsLoading}
+          />
         </FormSectionCard>
 
         <FormSectionCard

@@ -1,15 +1,11 @@
-import { setRequestLocale } from "next-intl/server";
-import { DpdPageShell } from "@/features/dpd/dpd-page-shell";
-import { requirePermission } from "@/lib/auth/require-permission";
+import { redirect } from "@/i18n/navigation";
 
-export default async function DpdPage({
+/** Legacy /dpd tabbed page → delivery rules. */
+export default async function DpdRedirectPage({
   params,
 }: {
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  setRequestLocale(locale);
-  await requirePermission(locale, "earnings.view");
-
-  return <DpdPageShell />;
+  redirect({ href: "/delivery-rules", locale });
 }

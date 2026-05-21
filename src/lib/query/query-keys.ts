@@ -16,6 +16,12 @@ export const queryKeys = {
     list: () => ["partners", "list"] as const,
     detail: (id: string) => ["partners", "detail", id] as const,
   },
+  restaurants: {
+    all: () => ["restaurants"] as const,
+    list: () => ["restaurants", "list"] as const,
+    partnerOptions: () => ["restaurants", "partner-options"] as const,
+    zoneOptions: () => ["restaurants", "zone-options"] as const,
+  },
   deliveries: {
     all: () => ["deliveries"] as const,
     live: (zoneId?: string) => ["deliveries", "live", zoneId ?? "all"] as const,

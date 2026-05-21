@@ -33,6 +33,7 @@
     "dashboard": "لوحة التحكم",
     "drivers": "السائقون",
     "partners": "الشركاء",
+    "restaurants": "المطاعم",
     "deliveries": "التوصيل المباشر",
     "vehicles": "المركبات",
     "attendance": "الحضور",
@@ -46,7 +47,9 @@
     "menuEditor": "محرر القائمة",
     "languages": "اللغات",
     "branding": "العلامة التجارية",
-    "dpd": "DPD",
+    "deliveryRules": "قواعد التوصيل",
+    "incentiveRules": "قواعد الحوافز",
+    "earningsCalculation": "حساب الأرباح",
     "storage": "Cloudflare R2",
     "roles": "الأدوار والصلاحيات",
     "accessRequests": "طلبات الوصول",
@@ -266,6 +269,7 @@
       "fieldZone": "المنطقة",
       "fieldBaseEarnings": "الأرباح الأساسية",
       "fieldPartner": "الشريك",
+      "fieldRestaurants": "المطاعم",
       "fieldBike": "رقم الدراجة",
       "fieldJoined": "تاريخ الانضمام",
       "fieldLinked": "مرتبط بتطبيق الجوال",
@@ -295,6 +299,8 @@
       "sections": {
         "basic": "البيانات الأساسية",
         "assignment": "التعيين",
+        "restaurants": "المطاعم",
+        "restaurantsDescription": "اختياري — عيّن المتاجر التي يوصّل لها هذا السائق (يجب أن تتطابق مع الشريك المحدد)",
         "assets": "الأصول المُسلّمة",
         "documents": "المستندات",
         "documentsDescription": "جميع المرفقات اختيارية — أضف الملفات الآن أو أكملها لاحقًا."
@@ -347,6 +353,9 @@
       "addPartnerLink": "أضف شريكاً",
       "emptyZones": "لا توجد مناطق بعد.",
       "addZoneLink": "أضف منطقة",
+      "restaurantsSelectPartnerFirst": "اختر الشريك أولاً لاختيار المطاعم.",
+      "restaurantsEmptyForPartner": "لا توجد مطاعم نشطة لهذا الشريك.",
+      "addRestaurantLink": "أضف مطاعم",
       "errors": {
         "not_authorized": "ليس لديك صلاحية إدارة السائقين",
         "missing_fields": "هذا الحقل مطلوب",
@@ -361,7 +370,80 @@
         "invalid_file_type": "استخدم PDF أو PNG أو JPG أو WebP",
         "upload_failed": "فشل رفع المستند",
         "r2_not_configured": "تخزين الملفات غير مُعد. أعد Cloudflare R2 من الإعدادات أولاً.",
+        "invalid_restaurants": "واحد أو أكثر من المطاعم لا يتبع الشريك المحدد",
         "save_failed": "تعذر حفظ السائق. حاول مرة أخرى."
+      }
+    },
+    "restaurants": {
+      "title": "المطاعم",
+      "subtitle": "متاجر تحت شركاء التوصيل — اربطها بالسائقين عند الإنشاء أو التعديل",
+      "addRestaurant": "إضافة مطعم",
+      "editRestaurant": "تعديل مطعم",
+      "deleteRestaurant": "حذف",
+      "deleteRestaurantTitle": "حذف المطعم؟",
+      "deleteRestaurantDescription": "إزالة \"{name}\"؟ قد تتأثر تعيينات السائقين والقواعد المرتبطة.",
+      "restaurantCreated": "تم إنشاء المطعم",
+      "restaurantUpdated": "تم تحديث المطعم",
+      "restaurantDeleted": "تم حذف المطعم",
+      "refresh": "تحديث",
+      "export": "تصدير",
+      "filter": "تصفية",
+      "filterStatus": "الحالة",
+      "filterStatusAll": "الكل",
+      "filterDraft": "مسودة",
+      "filterPublished": "منشور",
+      "filterArchived": "مؤرشف",
+      "clearFilters": "إعادة التصفية",
+      "clearSearch": "مسح البحث",
+      "searchPlaceholder": "بحث في المطاعم…",
+      "totalRestaurants": "{count, plural, one {مطعم واحد} other {# مطاعم}}",
+      "ofTotal": "من {total} إجمالي",
+      "colRestaurant": "المطعم",
+      "colPartner": "الشريك",
+      "colZone": "المنطقة",
+      "colExternalId": "المعرّف الخارجي",
+      "colStatus": "الحالة",
+      "colDrivers": "السائقون",
+      "colCreated": "تاريخ الإنشاء",
+      "colActions": "إجراءات",
+      "statusDraft": "مسودة",
+      "statusPublished": "منشور",
+      "statusArchived": "مؤرشف",
+      "driversCount": "{count, plural, one {سائق واحد} other {# سائقين}}",
+      "emptyTitle": "لا توجد مطاعم بعد",
+      "emptyDescription": "أضف متاجر تحت شريك لتعيينها للسائقين وقواعد التوصيل.",
+      "emptySearchTitle": "لا توجد مطاعم مطابقة",
+      "emptySearchDescription": "جرّب تعديل البحث أو التصفية.",
+      "cancel": "إلغاء",
+      "save": "حفظ",
+      "createRestaurant": "إنشاء مطعم",
+      "fields": {
+        "partner": "الشريك",
+        "zone": "المنطقة",
+        "name": "اسم المطعم",
+        "externalMerchantId": "معرّف التاجر الخارجي",
+        "mapLink": "رابط الخريطة",
+        "status": "الحالة"
+      },
+      "placeholders": {
+        "selectPartner": "اختر الشريك",
+        "selectZone": "اختر المنطقة",
+        "name": "مثال: طلبات — السالمية",
+        "mapLink": "https://maps.google.com/?q=..."
+      },
+      "hints": {
+        "externalMerchantId": "رمز اختياري من منصة الشريك (معرّف طلبات، معرّف متجر DoorDash، إلخ).",
+        "mapLink": "اختياري — الصق رابط مشاركة من Google Maps أو Apple Maps.",
+        "status": "يظهر المطاعم المنشورة فقط عند إضافة سائق."
+      },
+      "errors": {
+        "not_authorized": "ليس لديك صلاحية إدارة المطاعم",
+        "missing_fields": "الشريك والمنطقة والاسم مطلوبة",
+        "noPartners": "أضف شريكاً قبل إنشاء المطاعم.",
+        "noZones": "أضف منطقة قبل إنشاء المطاعم.",
+        "save_failed": "تعذر حفظ المطعم",
+        "delete_failed": "تعذر حذف المطعم",
+        "restaurant_exists": "يوجد مطعم بهذا الاسم لنفس الشريك"
       }
     },
     "deliveries": {
@@ -561,6 +643,18 @@
       "colStatus": "الحالة",
       "emptyTitle": "لا توجد بيانات أرباح بعد"
     },
+    "deliveryRules": {
+      "title": "قواعد التوصيل",
+      "subtitle": "تحديد التوصيلات المؤكدة التي تُحتسب ضمن الحوافز"
+    },
+    "incentiveRules": {
+      "title": "قواعد الحوافز",
+      "subtitle": "أهداف التوصيل ومبالغ المكافآت حسب المنطقة أو الشريك أو المطعم"
+    },
+    "earningsCalculation": {
+      "title": "حساب الأرباح",
+      "subtitle": "معاينة وإعادة الحساب واختبار أهلية التوصيل"
+    },
     "dpd": {
       "title": "DPD",
       "subtitle": "الحوافز وقواعد التوصيل وحساب الأرباح",
@@ -585,7 +679,26 @@
       "edit": "تعديل",
       "delete": "حذف",
       "searchRestaurants": "بحث في المطاعم…",
-      "stackingHint": "قواعد الحوافز المطابقة تُجمع — المكافأة الإجمالية هي مجموع كل القواعد المؤهلة.",
+      "stackingHint": "قواعد الحوافز المطابقة تُجمع. داخل قاعدة متدرجة، كل مستوى مُحقق يُدفع بشكل تراكمي.",
+      "addTier": "إضافة مستوى",
+      "tierLabel": "المستوى {index}",
+      "perDeliveryShort": "توصيلة",
+      "targetSummaryTiered": "{count} مستويات ({thresholds})",
+      "targetSummarySingleRange": "{base} ← {target}",
+      "rewardSummaryPerDelivery": "{rate} د.ك/توصيلة",
+      "payoutPreviewAt": "عند {count} توصيلة: {amount} د.ك",
+      "targetMode": {
+        "single": "هدف واحد",
+        "tiered": "متدرج (تراكمي)"
+      },
+      "rewardMode": {
+        "fixed": "مبلغ ثابت",
+        "per_delivery": "لكل توصيلة (فوق الأساس)"
+      },
+      "hints": {
+        "baseMinimum": "يجب أن يصل السائق إلى هذا العدد قبل أي دفع من هذه القاعدة.",
+        "cumulativeTiers": "يُدفع كل مستوى عند بلوغ عتبة التوصيلات؛ المبالغ تُجمع معاً."
+      },
       "calcTitle": "حساب الأرباح",
       "calcDescription": "تُعاد حسابات الحوافز تلقائياً عند التحقق من التوصيل. استخدم المعاينة أو إعادة الحساب للتصحيح.",
       "earnDate": "التاريخ",
@@ -639,7 +752,14 @@
         "status": "الحالة",
         "period": "الفترة",
         "targetDeliveries": "هدف التوصيلات",
+        "targetMode": "نوع الهدف",
+        "baseMinimumDeliveries": "الحد الأدنى للتوصيلات",
+        "rewardMode": "نوع المكافأة",
         "rewardKwd": "المكافأة (د.ك)",
+        "rewardPerDeliveryKwd": "لكل توصيلة (د.ك)",
+        "tieredTargets": "المستويات",
+        "tierThreshold": "عند التوصيلات",
+        "payoutPreview": "معاينة الدفع",
         "startDate": "تاريخ البداية",
         "endDate": "تاريخ النهاية",
         "priority": "الأولوية",
@@ -656,7 +776,10 @@
         "missing_fields": "الحقول المطلوبة ناقصة",
         "invalid_dates": "تاريخ النهاية يجب أن يكون بعد البداية أو مساوياً لها",
         "invalid_scope": "اختر نطاقاً صالحاً",
-        "invalid_target": "هدف التوصيلات يجب أن يكون 1 على الأقل",
+        "invalid_target": "يجب أن يكون الهدف أكبر من الحد الأدنى",
+        "invalid_base": "الحد الأدنى يجب أن يكون صفراً أو أكثر",
+        "invalid_tiers": "أضف مستوى واحداً على الأقل بعتبات متزايدة فوق الأساس",
+        "invalid_reward_mode": "اختر نوع مكافأة صالحاً",
         "invalid_reward": "المكافأة يجب أن تكون صفراً أو أكثر",
         "save_failed": "تعذر الحفظ. حاول مرة أخرى.",
         "delete_failed": "تعذر الحذف",

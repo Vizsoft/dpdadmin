@@ -6,5 +6,5 @@ export default async function LegacyDpdSettingsRedirect({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  redirect({ href: "/dpd", locale });
+  redirect({ href: "/delivery-rules", locale });
 }

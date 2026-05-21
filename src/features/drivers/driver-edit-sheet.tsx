@@ -48,6 +48,8 @@ import {
   type DriverDetailModel,
   type DriverWorkflowStatus,
 } from "./types";
+import { DriverRestaurantPicker } from "./driver-restaurant-picker";
+import { selectOptions, selectOptionsFrom } from "@/lib/select-items";
 import { useDriverFormOptions } from "./use-driver-form-options";
 
 function FieldError({ message }: { message?: string }) {
@@ -98,6 +100,7 @@ export function DriverEditSheet({
   );
   const [driverCode, setDriverCode] = useState(driver.driver_code);
   const [partnerId, setPartnerId] = useState(driver.partner_id);
+  const [restaurantIds, setRestaurantIds] = useState<string[]>(driver.restaurant_ids);
   const [zoneId, setZoneId] = useState(driver.zone_id);
   const [vehicleId, setVehicleId] = useState(
     driver.vehicle_id ?? NONE_VEHICLE,
@@ -132,6 +135,7 @@ export function DriverEditSheet({
     setCivilId(restrictDigits(driver.civil_id, CIVIL_ID_DIGIT_COUNT));
     setDriverCode(driver.driver_code);
     setPartnerId(driver.partner_id);
+    setRestaurantIds(driver.restaurant_ids);
     setZoneId(driver.zone_id);
     setVehicleId(driver.vehicle_id ?? NONE_VEHICLE);
     setWorkflowStatus(driver.workflow_status);
@@ -183,18 +187,45 @@ export function DriverEditSheet({
   const partners = options?.partners ?? [];
   const zones = options?.zones ?? [];
   const vehicles = options?.vehicles ?? [];
+  const allRestaurants = options?.restaurants ?? [];
 
-  const partnerLabel = (id: string) => partners.find((p) => p.id === id)?.name;
-  const zoneLabel = (id: string) => {
-    const z = zones.find((item) => item.id === id);
-    return z ? `${z.name} (${z.code})` : undefined;
-  };
-  const vehicleLabel = (id: string) => {
-    if (id === NONE_VEHICLE) return tNew("noVehicle");
-    const v = vehicles.find((item) => item.id === id);
-    return v
-      ? `${v.bike_id}${v.reg_number ? ` · ${v.reg_number}` : ""}`
-      : undefined;
+  const workflowSelectItems = selectOptionsFrom(
+    DRIVER_WORKFLOW_STATUSES,
+    (s) => s,
+    (s) => workflowLabel(s),
+  );
+  const partnerSelectItems = selectOptionsFrom(
+    partners,
+    (p) => p.id,
+    (p) => p.name,
+  );
+  const zoneSelectItems = selectOptionsFrom(
+    zones,
+    (z) => z.id,
+    (z) => `${z.name} (${z.code})`,
+  );
+  const vehicleSelectItems = selectOptions([
+    { value: NONE_VEHICLE, label: tNew("noVehicle") },
+    ...vehicles.map((v) => ({
+      value: v.id,
+      label: `${v.bike_id}${v.reg_number ? ` · ${v.reg_number}` : ""}`,
+    })),
+  ]);
+
+  const handlePartnerChange = (nextPartnerId: string) => {
+    setPartnerId(nextPartnerId);
+    clearFieldError("partnerId");
+    if (!nextPartnerId) {
+      setRestaurantIds([]);
+      return;
+    }
+    setRestaurantIds((prev) =>
+      prev.filter((id) =>
+        allRestaurants.some(
+          (r) => r.id === id && r.partner_id === nextPartnerId && r.status === "published",
+        ),
+      ),
+    );
   };
 
   const showFieldError = (field: DriverFormField) =>
@@ -242,6 +273,9 @@ export function DriverEditSheet({
       for (const asset of ASSET_TYPES) {
         formData.append(`asset_${asset}`, assets[asset] ? "true" : "false");
       }
+      for (const rid of restaurantIds) {
+        formData.append("restaurantIds", rid);
+      }
 
       const result = await updateDriverIntake(formData);
       if (result.error) {
@@ -263,13 +297,14 @@ export function DriverEditSheet({
         <div className="flex-1 space-y-6 overflow-y-auto px-6 py-4">
           <div className="space-y-1.5">
             <Label htmlFor="edit-workflow-status">{tList("fieldWorkflowStatus")}</Label>
-            <Select
-              value={workflowStatus}
-              onValueChange={(v) => {
-                if (v) setWorkflowStatus(v as DriverWorkflowStatus);
-              }}
-              disabled={isPending}
-            >
+              <Select
+                items={workflowSelectItems}
+                value={workflowStatus ?? null}
+                onValueChange={(v) => {
+                  if (v) setWorkflowStatus(v as DriverWorkflowStatus);
+                }}
+                disabled={isPending}
+              >
               <SelectTrigger
                 id="edit-workflow-status"
                 className="w-full cursor-pointer rounded-lg"
@@ -356,22 +391,16 @@ export function DriverEditSheet({
             <div className="space-y-1.5">
               <Label>{tNew("fields.partner")}</Label>
               <Select
-                value={partnerId}
-                onValueChange={(v) => {
-                  setPartnerId(v ?? "");
-                  clearFieldError("partnerId");
-                }}
+                items={partnerSelectItems}
+                value={partnerId || null}
+                onValueChange={(v) => handlePartnerChange(v ?? "")}
                 disabled={optionsLoading || partners.length === 0}
               >
                 <SelectTrigger
-                  className="w-full cursor-pointer rounded-lg"
+                  className="h-9 w-full cursor-pointer rounded-lg bg-background"
                   aria-invalid={Boolean(showFieldError("partnerId"))}
                 >
-                  <SelectValue placeholder={tNew("placeholders.partner")}>
-                    {(value: string | null) =>
-                      value ? (partnerLabel(value) ?? null) : null
-                    }
-                  </SelectValue>
+                  <SelectValue placeholder={tNew("placeholders.partner")} />
                 </SelectTrigger>
                 <SelectContent>
                   {partners.map((p) => (
@@ -386,7 +415,8 @@ export function DriverEditSheet({
             <div className="space-y-1.5">
               <Label>{tNew("fields.zone")}</Label>
               <Select
-                value={zoneId}
+                items={zoneSelectItems}
+                value={zoneId || null}
                 onValueChange={(v) => {
                   setZoneId(v ?? "");
                   clearFieldError("zoneId");
@@ -394,14 +424,10 @@ export function DriverEditSheet({
                 disabled={optionsLoading || zones.length === 0}
               >
                 <SelectTrigger
-                  className="w-full cursor-pointer rounded-lg"
+                  className="h-9 w-full cursor-pointer rounded-lg bg-background"
                   aria-invalid={Boolean(showFieldError("zoneId"))}
                 >
-                  <SelectValue placeholder={tNew("placeholders.zone")}>
-                    {(value: string | null) =>
-                      value ? (zoneLabel(value) ?? null) : null
-                    }
-                  </SelectValue>
+                  <SelectValue placeholder={tNew("placeholders.zone")} />
                 </SelectTrigger>
                 <SelectContent>
                   {zones.map((z) => (
@@ -420,16 +446,13 @@ export function DriverEditSheet({
             <div className="space-y-1.5 sm:col-span-2">
               <Label>{tNew("fields.vehicle")}</Label>
               <Select
-                value={vehicleId}
+                items={vehicleSelectItems}
+                value={vehicleId || null}
                 onValueChange={(v) => setVehicleId(v ?? NONE_VEHICLE)}
                 disabled={optionsLoading}
               >
-                <SelectTrigger className="w-full cursor-pointer rounded-lg">
-                  <SelectValue placeholder={tNew("placeholders.vehicle")}>
-                    {(value: string | null) =>
-                      value ? (vehicleLabel(value) ?? null) : null
-                    }
-                  </SelectValue>
+                <SelectTrigger className="h-9 w-full cursor-pointer rounded-lg bg-background">
+                  <SelectValue placeholder={tNew("placeholders.vehicle")} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={NONE_VEHICLE} label={tNew("noVehicle")}>
@@ -446,6 +469,20 @@ export function DriverEditSheet({
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="space-y-2 rounded-xl border border-border p-4">
+            <Label className="text-sm font-medium">{tNew("sections.restaurants")}</Label>
+            <p className="text-xs text-muted-foreground">
+              {tNew("sections.restaurantsDescription")}
+            </p>
+            <DriverRestaurantPicker
+              partnerId={partnerId}
+              restaurants={allRestaurants}
+              selectedIds={restaurantIds}
+              onChange={setRestaurantIds}
+              disabled={optionsLoading || isPending}
+            />
           </div>
 
           <div className="space-y-3 rounded-xl border border-border p-4">

@@ -448,6 +448,15 @@ export function MenuEditorPanel({ roles }: { roles: AdminRoleRow[] }) {
     return opts;
   }, [groups, t]);
 
+  const roleSelectItems = useMemo(
+    () =>
+      roles.map((r) => ({
+        value: r.slug,
+        label: r.name,
+      })),
+    [roles],
+  );
+
   const rowByItem = useMemo(() => {
     const map = new Map<string, FlatRow>();
     for (const r of rows) map.set(r.itemId, r);
@@ -501,6 +510,7 @@ export function MenuEditorPanel({ roles }: { roles: AdminRoleRow[] }) {
         className="h-7 flex-1 text-sm"
       />
       <Select
+        items={groupOptions}
         value={r.groupId}
         onValueChange={(v) => v && updateRow(r.itemId, { groupId: v })}
       >
@@ -509,7 +519,12 @@ export function MenuEditorPanel({ roles }: { roles: AdminRoleRow[] }) {
         </SelectTrigger>
         <SelectContent>
           {groupOptions.map((o) => (
-            <SelectItem key={o.value} value={o.value} className="text-xs">
+            <SelectItem
+              key={o.value}
+              value={o.value}
+              label={o.label}
+              className="text-xs"
+            >
               {o.label}
             </SelectItem>
           ))}
@@ -559,6 +574,7 @@ export function MenuEditorPanel({ roles }: { roles: AdminRoleRow[] }) {
             <div className="min-w-[140px] flex-1 space-y-1.5">
               <Label className="text-xs text-muted-foreground">{t("copyFrom")}</Label>
               <Select
+                items={roleSelectItems}
                 value={copyFromRole}
                 onValueChange={(v) => v && setCopyFromRole(v)}
               >
@@ -567,7 +583,7 @@ export function MenuEditorPanel({ roles }: { roles: AdminRoleRow[] }) {
                 </SelectTrigger>
                 <SelectContent>
                   {roles.map((r) => (
-                    <SelectItem key={r.id} value={r.slug}>
+                    <SelectItem key={r.id} value={r.slug} label={r.name}>
                       {r.name}
                     </SelectItem>
                   ))}
@@ -577,13 +593,17 @@ export function MenuEditorPanel({ roles }: { roles: AdminRoleRow[] }) {
             <ArrowRight className="mb-2 hidden h-4 w-4 shrink-0 text-muted-foreground sm:block" />
             <div className="min-w-[140px] flex-1 space-y-1.5">
               <Label className="text-xs text-muted-foreground">{t("copyTo")}</Label>
-              <Select value={copyToRole} onValueChange={(v) => v && setCopyToRole(v)}>
+              <Select
+                items={roleSelectItems}
+                value={copyToRole}
+                onValueChange={(v) => v && setCopyToRole(v)}
+              >
                 <SelectTrigger className="h-9 w-full">
                   <SelectValue placeholder={t("copyTo")} />
                 </SelectTrigger>
                 <SelectContent>
                   {roles.map((r) => (
-                    <SelectItem key={r.id} value={r.slug}>
+                    <SelectItem key={r.id} value={r.slug} label={r.name}>
                       {r.name}
                     </SelectItem>
                   ))}

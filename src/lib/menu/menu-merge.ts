@@ -141,7 +141,9 @@ export function resolveForSidebar(
         const r = reg.get(n.id);
         if (!r) continue;
         if (r.superAdminOnly && !isSuperAdmin) continue;
-        if (r.permission && !can(r.permission)) continue;
+        if (r.id === "restaurants") {
+          if (!can("restaurants.view") && !can("earnings.view")) continue;
+        } else if (r.permission && !can(r.permission)) continue;
         out.push({
           id: n.id,
           type: "item",

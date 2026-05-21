@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { queryKeys } from "@/lib/query/query-keys";
 import { fetchPartners } from "@/features/partners/use-partners";
 import { fetchZones } from "@/features/zones/use-zones";
-import type { PartnerOption, VehicleOption, ZoneOption } from "./types";
+import type { PartnerOption, RestaurantOption, VehicleOption, ZoneOption } from "./types";
 
 export async function fetchAvailableVehicles(): Promise<VehicleOption[]> {
   const supabase = createClient();
@@ -28,14 +28,22 @@ export type DriverFormOptions = {
   partners: PartnerOption[];
   zones: ZoneOption[];
   vehicles: VehicleOption[];
+  restaurants: RestaurantOption[];
 };
 
 export async function fetchDriverFormOptions(): Promise<DriverFormOptions> {
-  const [partners, zones, vehicles] = await Promise.all([
+  const supabase = createClient();
+  const [partners, zones, vehicles, { data: restaurants, error }] = await Promise.all([
     fetchPartners(),
     fetchZones(),
     fetchAvailableVehicles(),
+    supabase
+      .from("restaurants")
+      .select("id, name, partner_id, status")
+      .order("name"),
   ]);
+
+  if (error) throw error;
 
   return {
     partners: partners.map((p) => ({
@@ -49,6 +57,12 @@ export async function fetchDriverFormOptions(): Promise<DriverFormOptions> {
       code: z.code,
     })),
     vehicles,
+    restaurants: (restaurants ?? []).map((r) => ({
+      id: r.id,
+      name: r.name,
+      partner_id: r.partner_id,
+      status: r.status,
+    })),
   };
 }
 

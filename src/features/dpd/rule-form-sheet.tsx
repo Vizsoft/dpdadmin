@@ -23,40 +23,35 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { queryKeys } from "@/lib/query/query-keys";
-import { isDpdErrorKey, saveDeliveryRule, saveIncentiveRule } from "./dpd-actions";
+import { selectOptionsFrom } from "@/lib/select-items";
+import { isDpdErrorKey, saveDeliveryRule } from "./dpd-actions";
 import { ScopePicker } from "./scope-picker";
 import {
-  INCENTIVE_PERIODS,
   RULE_STATUSES,
   type DeliveryRuleRow,
   type DpdScopeOptions,
-  type IncentiveRuleRow,
-  type IncentivePeriod,
   type RuleScopeType,
   type RuleStatus,
 } from "./types";
 
-type RuleKind = "delivery" | "incentive";
-
 export function RuleFormSheet({
-  kind,
   rule,
   options,
   open,
   onOpenChange,
 }: {
-  kind: RuleKind;
-  rule: DeliveryRuleRow | IncentiveRuleRow | null;
+  rule: DeliveryRuleRow | null;
   options: DpdScopeOptions | undefined;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
   const t = useTranslations("pages.dpd");
+  const statusSelectItems = selectOptionsFrom(RULE_STATUSES, (s) => s, (s) =>
+    t(`status.${s}`),
+  );
   const queryClient = useQueryClient();
   const [isPending, startTransition] = useTransition();
   const isEdit = Boolean(rule);
-  const incentiveRule = kind === "incentive" ? (rule as IncentiveRuleRow | null) : null;
-  const deliveryRule = kind === "delivery" ? (rule as DeliveryRuleRow | null) : null;
 
   const [name, setName] = useState(rule?.name ?? "");
   const [status, setStatus] = useState<RuleStatus>(rule?.status ?? "draft");
@@ -67,15 +62,6 @@ export function RuleFormSheet({
   const [startDate, setStartDate] = useState(rule?.start_date ?? "");
   const [endDate, setEndDate] = useState(rule?.end_date ?? "");
   const [priority, setPriority] = useState(String(rule?.priority ?? ""));
-  const [period, setPeriod] = useState<IncentivePeriod>(
-    incentiveRule?.period ?? "daily",
-  );
-  const [targetDeliveries, setTargetDeliveries] = useState(
-    String(incentiveRule?.target_deliveries ?? "1"),
-  );
-  const [rewardKwd, setRewardKwd] = useState(
-    String(incentiveRule?.reward_kwd ?? "0"),
-  );
 
   useEffect(() => {
     if (!open) return;
@@ -88,10 +74,7 @@ export function RuleFormSheet({
     setStartDate(rule?.start_date ?? "");
     setEndDate(rule?.end_date ?? "");
     setPriority(String(rule?.priority ?? ""));
-    setPeriod(incentiveRule?.period ?? "daily");
-    setTargetDeliveries(String(incentiveRule?.target_deliveries ?? "1"));
-    setRewardKwd(String(incentiveRule?.reward_kwd ?? "0"));
-  }, [open, rule, incentiveRule]);
+  }, [open, rule]);
 
   const errorToast = (error?: string) => {
     if (error && isDpdErrorKey(error)) return t(`errors.${error}`);
@@ -112,38 +95,19 @@ export function RuleFormSheet({
       formData.append("endDate", endDate);
       if (priority) formData.append("priority", priority);
 
-      if (kind === "incentive") {
-        formData.append("period", period);
-        formData.append("targetDeliveries", targetDeliveries);
-        formData.append("rewardKwd", rewardKwd);
-        const result = await saveIncentiveRule(formData);
-        if (result.error) {
-          toast.error(errorToast(result.error));
-          return;
-        }
-        toast.success(isEdit ? t("incentiveUpdated") : t("incentiveCreated"));
-      } else {
-        const result = await saveDeliveryRule(formData);
-        if (result.error) {
-          toast.error(errorToast(result.error));
-          return;
-        }
-        toast.success(isEdit ? t("deliveryRuleUpdated") : t("deliveryRuleCreated"));
+      const result = await saveDeliveryRule(formData);
+      if (result.error) {
+        toast.error(errorToast(result.error));
+        return;
       }
+      toast.success(isEdit ? t("deliveryRuleUpdated") : t("deliveryRuleCreated"));
 
       await queryClient.invalidateQueries({ queryKey: queryKeys.dpd.all() });
       onOpenChange(false);
     });
   };
 
-  const title =
-    kind === "delivery"
-      ? isEdit
-        ? t("editDeliveryRule")
-        : t("addDeliveryRule")
-      : isEdit
-        ? t("editIncentiveRule")
-        : t("addIncentiveRule");
+  const title = isEdit ? t("editDeliveryRule") : t("addDeliveryRule");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -161,45 +125,24 @@ export function RuleFormSheet({
               className="rounded-lg"
             />
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label>{t("fields.status")}</Label>
-              <Select
-                value={status}
-                onValueChange={(v) => v && setStatus(v as RuleStatus)}
-              >
-                <SelectTrigger className="w-full cursor-pointer rounded-lg">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {RULE_STATUSES.map((s) => (
-                    <SelectItem key={s} value={s} label={t(`status.${s}`)}>
-                      {t(`status.${s}`)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {kind === "incentive" ? (
-              <div className="space-y-1.5">
-                <Label>{t("fields.period")}</Label>
-                <Select
-                  value={period}
-                  onValueChange={(v) => v && setPeriod(v as IncentivePeriod)}
-                >
-                  <SelectTrigger className="w-full cursor-pointer rounded-lg">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {INCENTIVE_PERIODS.map((p) => (
-                      <SelectItem key={p} value={p} label={t(`period.${p}`)}>
-                        {t(`period.${p}`)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            ) : null}
+          <div className="space-y-1.5">
+            <Label>{t("fields.status")}</Label>
+            <Select
+              items={statusSelectItems}
+              value={status}
+              onValueChange={(v) => v && setStatus(v as RuleStatus)}
+            >
+              <SelectTrigger className="w-full cursor-pointer rounded-lg">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {RULE_STATUSES.map((s) => (
+                  <SelectItem key={s} value={s} label={t(`status.${s}`)}>
+                    {t(`status.${s}`)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <ScopePicker
@@ -219,34 +162,6 @@ export function RuleFormSheet({
             options={options}
             disabled={isPending}
           />
-
-          {kind === "incentive" ? (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="target">{t("fields.targetDeliveries")}</Label>
-                <Input
-                  id="target"
-                  type="number"
-                  min={1}
-                  value={targetDeliveries}
-                  onChange={(e) => setTargetDeliveries(e.target.value)}
-                  className="rounded-lg"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="reward">{t("fields.rewardKwd")}</Label>
-                <Input
-                  id="reward"
-                  type="number"
-                  min={0}
-                  step="0.001"
-                  value={rewardKwd}
-                  onChange={(e) => setRewardKwd(e.target.value)}
-                  className="rounded-lg"
-                />
-              </div>
-            </div>
-          ) : null}
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
@@ -281,9 +196,6 @@ export function RuleFormSheet({
               className="rounded-lg"
             />
           </div>
-          {kind === "incentive" ? (
-            <p className="text-xs text-muted-foreground">{t("stackingHint")}</p>
-          ) : null}
         </div>
         <DialogFooter className="border-t border-border px-6 py-4">
           <Button

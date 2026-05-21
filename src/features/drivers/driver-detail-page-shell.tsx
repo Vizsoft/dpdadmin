@@ -124,6 +124,13 @@ function DriverDetailContent({ id }: { id: string }) {
           : "—",
     },
     { label: t("fieldPartner"), value: driver.partner_name },
+    {
+      label: t("fieldRestaurants"),
+      value:
+        driver.restaurant_names.length > 0
+          ? driver.restaurant_names.join(", ")
+          : "—",
+    },
     { label: t("fieldBike"), value: driver.vehicle_label ?? "—" },
     { label: t("fieldJoined"), value: driver.joined_at ?? "—" },
   ];

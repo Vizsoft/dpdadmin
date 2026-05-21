@@ -4,6 +4,8 @@ export const PERMISSIONS = {
   "drivers.manage": "drivers.manage",
   "partners.view": "partners.view",
   "partners.manage": "partners.manage",
+  "restaurants.view": "restaurants.view",
+  "restaurants.manage": "restaurants.manage",
   "vehicles.view": "vehicles.view",
   "vehicles.manage": "vehicles.manage",
   "deliveries.view": "deliveries.view",
@@ -47,6 +49,49 @@ export function hasPermissionInSet(
 ): boolean {
   if (isSuperAdmin) return true;
   return permissions.has(permission);
+}
+
+/** View restaurants on /restaurants or legacy DPD earnings screens. */
+export const RESTAURANTS_VIEW_PERMISSIONS = [
+  "restaurants.view",
+  "earnings.view",
+] as const satisfies readonly Permission[];
+
+/** Create/update/delete restaurants. */
+export const RESTAURANTS_MANAGE_PERMISSIONS = [
+  "restaurants.manage",
+  "earnings.manage",
+] as const satisfies readonly Permission[];
+
+export function hasAnyPermissionInSet(
+  permissions: ReadonlySet<string>,
+  permissionList: readonly Permission[],
+  isSuperAdmin: boolean,
+): boolean {
+  if (isSuperAdmin) return true;
+  return permissionList.some((p) => permissions.has(p));
+}
+
+export function canViewRestaurants(
+  permissions: ReadonlySet<string>,
+  isSuperAdmin: boolean,
+): boolean {
+  return hasAnyPermissionInSet(
+    permissions,
+    RESTAURANTS_VIEW_PERMISSIONS,
+    isSuperAdmin,
+  );
+}
+
+export function canManageRestaurants(
+  permissions: ReadonlySet<string>,
+  isSuperAdmin: boolean,
+): boolean {
+  return hasAnyPermissionInSet(
+    permissions,
+    RESTAURANTS_MANAGE_PERMISSIONS,
+    isSuperAdmin,
+  );
 }
 
 export function canAccessAdminPanel(profile: AuthProfile): boolean {
