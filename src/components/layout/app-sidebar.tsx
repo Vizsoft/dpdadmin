@@ -2,7 +2,15 @@
 
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
-import { LayoutDashboard, PanelLeftClose } from "lucide-react";
+import {
+  Check,
+  LayoutDashboard,
+  Monitor,
+  Moon,
+  PanelLeftClose,
+  Sun,
+} from "lucide-react";
+import { useTheme } from "next-themes";
 import {
   firstChildHref,
   pathnameMatchesInlineGroup,
@@ -22,6 +30,9 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { buttonVariants } from "@/components/ui/button";
@@ -295,6 +306,49 @@ function formatAdminRole(slug: string): string {
     .join(" ");
 }
 
+const THEME_OPTIONS = [
+  { value: "light", labelKey: "themeLight", icon: Sun },
+  { value: "dark", labelKey: "themeDark", icon: Moon },
+  { value: "system", labelKey: "themeSystem", icon: Monitor },
+] as const;
+
+function ThemeSubmenu() {
+  const t = useTranslations("common");
+  const { theme, setTheme, resolvedTheme } = useTheme();
+  const mounted = useHasMounted();
+  const current = theme ?? "system";
+  const triggerIcon = mounted
+    ? resolvedTheme === "dark"
+      ? Moon
+      : Sun
+    : Monitor;
+  const TriggerIcon = triggerIcon;
+
+  return (
+    <DropdownMenuSub>
+      <DropdownMenuSubTrigger className="cursor-pointer gap-2">
+        <TriggerIcon className="size-4 text-muted-foreground" />
+        {t("theme")}
+      </DropdownMenuSubTrigger>
+      <DropdownMenuSubContent className="w-40">
+        {THEME_OPTIONS.map(({ value, labelKey, icon: Icon }) => (
+          <DropdownMenuItem
+            key={value}
+            className="cursor-pointer gap-2"
+            onClick={() => setTheme(value)}
+          >
+            <Icon className="size-4 text-muted-foreground" />
+            <span className="flex-1">{t(labelKey)}</span>
+            {mounted && current === value ? (
+              <Check className="size-3.5 text-muted-foreground" />
+            ) : null}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuSubContent>
+    </DropdownMenuSub>
+  );
+}
+
 function SidebarUserMenu() {
   const t = useTranslations("common");
   const locale = useLocale();
@@ -346,6 +400,7 @@ function SidebarUserMenu() {
             >
               {t("settings")}
             </DropdownMenuItem>
+            <ThemeSubmenu />
             <DropdownMenuItem
               className="cursor-pointer"
               onClick={() => signOut(locale)}
