@@ -1,7 +1,9 @@
 import { setRequestLocale } from "next-intl/server";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import { getAllAdminRoles } from "@/lib/auth/get-role-permissions";
+import { syncAdminPermissionsFromCatalog } from "@/lib/auth/sync-admin-permissions";
 import { createClient } from "@/lib/supabase/server";
+import { getRoleUsageCounts } from "@/features/settings/roles-actions";
 import { RolesPermissionsPanel } from "@/features/settings/roles-permissions-panel";
 
 export default async function RolesPermissionsPage({
@@ -12,8 +14,14 @@ export default async function RolesPermissionsPage({
   const { locale } = await params;
   setRequestLocale(locale);
   await requireSuperAdmin(locale);
+
+  await syncAdminPermissionsFromCatalog();
+
   const supabase = await createClient();
-  const allRoles = await getAllAdminRoles();
+  const [allRoles, usageCounts] = await Promise.all([
+    getAllAdminRoles(),
+    getRoleUsageCounts(),
+  ]);
 
   const { data: permissions } = await supabase
     .from("admin_permissions")
@@ -21,5 +29,13 @@ export default async function RolesPermissionsPage({
     .order("category")
     .order("label");
 
-  return <RolesPermissionsPanel roles={allRoles} permissions={permissions ?? []} />;
+  return (
+    <div className="w-full min-w-0 max-w-none">
+      <RolesPermissionsPanel
+        roles={allRoles}
+        permissions={permissions ?? []}
+        usageCounts={usageCounts}
+      />
+    </div>
+  );
 }

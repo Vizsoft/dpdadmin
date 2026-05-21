@@ -1,35 +1,12 @@
-export const PERMISSIONS = {
-  "dashboard.view": "dashboard.view",
-  "drivers.view": "drivers.view",
-  "drivers.manage": "drivers.manage",
-  "partners.view": "partners.view",
-  "partners.manage": "partners.manage",
-  "restaurants.view": "restaurants.view",
-  "restaurants.manage": "restaurants.manage",
-  "vehicles.view": "vehicles.view",
-  "vehicles.manage": "vehicles.manage",
-  "deliveries.view": "deliveries.view",
-  "deliveries.manage": "deliveries.manage",
-  "zones.view": "zones.view",
-  "zones.manage": "zones.manage",
-  "attendance.view": "attendance.view",
-  "requests.view": "requests.view",
-  "requests.manage": "requests.manage",
-  "wrong_actions.view": "wrong_actions.view",
-  "wrong_actions.manage": "wrong_actions.manage",
-  "earnings.view": "earnings.view",
-  "earnings.manage": "earnings.manage",
-  "notifications.view": "notifications.view",
-  "notifications.manage": "notifications.manage",
-  "support.view": "support.view",
-  "support.manage": "support.manage",
-  "settings.view": "settings.view",
-  "settings.manage": "settings.manage",
-  "users.manage": "users.manage",
-  "roles.manage": "roles.manage",
-} as const;
+import { PERMISSION_CATALOG } from "@/lib/auth/permission-catalog";
 
-export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
+export const PERMISSIONS = Object.fromEntries(
+  PERMISSION_CATALOG.map((e) => [e.slug, e.slug]),
+) as {
+  [K in (typeof PERMISSION_CATALOG)[number]["slug"]]: K;
+};
+
+export type Permission = (typeof PERMISSION_CATALOG)[number]["slug"];
 
 export type AdminApprovalStatus = "pending" | "approved" | "rejected";
 
