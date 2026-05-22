@@ -1,13 +1,14 @@
 const DEFAULT_METHODS = "GET, POST, OPTIONS";
 const DEFAULT_HEADERS = "Authorization, Content-Type";
 
+function normalizeOrigin(value: string): string {
+  return value.trim().replace(/\/+$/, "");
+}
+
 function parseOrigins(): string[] {
   const raw = process.env.DRIVER_APP_ORIGINS?.trim();
   if (!raw) return [];
-  return raw
-    .split(",")
-    .map((o) => o.trim())
-    .filter(Boolean);
+  return raw.split(",").map(normalizeOrigin).filter(Boolean);
 }
 
 function corsHeaders(origin: string | null): HeadersInit {
@@ -18,8 +19,13 @@ function corsHeaders(origin: string | null): HeadersInit {
     "Access-Control-Max-Age": "86400",
   };
 
-  if (origin && (allowed.length === 0 || allowed.includes(origin))) {
-    headers["Access-Control-Allow-Origin"] = origin;
+  const normalizedOrigin = origin ? normalizeOrigin(origin) : null;
+
+  if (
+    normalizedOrigin &&
+    (allowed.length === 0 || allowed.includes(normalizedOrigin))
+  ) {
+    headers["Access-Control-Allow-Origin"] = normalizedOrigin;
     headers["Vary"] = "Origin";
   } else if (allowed.length === 1) {
     headers["Access-Control-Allow-Origin"] = allowed[0]!;
