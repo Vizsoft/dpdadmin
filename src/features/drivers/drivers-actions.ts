@@ -208,6 +208,7 @@ async function uploadIntakeDocument(
   intakeId: string,
   docType: DriverDocumentType,
   file: File,
+  uploadedBy: string,
 ): Promise<{ error?: string; path?: string }> {
   if (file.size > MAX_DOCUMENT_BYTES) return { error: "file_too_large" };
   if (!ALLOWED_DOC_MIME.has(file.type)) return { error: "invalid_file_type" };
@@ -217,7 +218,12 @@ async function uploadIntakeDocument(
   const buffer = Buffer.from(await file.arrayBuffer());
 
   try {
-    await putObject(key, buffer, file.type);
+    await putObject(key, buffer, file.type, {
+      uploadedBy,
+      entityType: "driver_intake",
+      entityId: intakeId,
+      uploadedVia: "admin",
+    });
   } catch {
     return { error: "upload_failed" };
   }
@@ -276,7 +282,12 @@ export async function createDriverIntake(
   }
 
   for (const { docType, file } of docsToUpload) {
-    const upload = await uploadIntakeDocument(intakeId, docType, file);
+    const upload = await uploadIntakeDocument(
+      intakeId,
+      docType,
+      file,
+      auth.session.id,
+    );
     if (upload.error) {
       try {
         await deleteObjects(allIntakeDocumentKeys(intakeId));

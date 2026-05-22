@@ -1,20 +1,10 @@
-import { createAdminClient } from "@/lib/supabase/admin";
-
 export type R2RuntimeConfig = {
   accountId: string;
   accessKeyId: string;
   secretAccessKey: string;
   bucketName: string;
   endpoint: string;
-  source: "env" | "database";
-};
-
-type StorageConfigRow = {
-  r2_account_id: string | null;
-  r2_access_key_id: string | null;
-  r2_secret_access_key: string | null;
-  r2_bucket_name: string | null;
-  r2_s3_endpoint: string | null;
+  source: "env";
 };
 
 let cached: R2RuntimeConfig | null = null;
@@ -44,59 +34,18 @@ function configFromEnv(): R2RuntimeConfig | null {
   };
 }
 
-async function configFromDatabase(): Promise<R2RuntimeConfig | null> {
-  const admin = createAdminClient();
-  const { data, error } = await admin
-    .from("storage_config")
-    .select(
-      "r2_account_id, r2_access_key_id, r2_secret_access_key, r2_bucket_name, r2_s3_endpoint",
-    )
-    .eq("id", 1)
-    .maybeSingle();
-
-  if (error || !data) return null;
-
-  const row = data as StorageConfigRow;
-  const accountId = row.r2_account_id?.trim();
-  const accessKeyId = row.r2_access_key_id?.trim();
-  const secretAccessKey = row.r2_secret_access_key?.trim();
-  const bucketName = row.r2_bucket_name?.trim();
-  if (!accountId || !accessKeyId || !secretAccessKey || !bucketName) {
-    return null;
-  }
-
-  const endpoint =
-    row.r2_s3_endpoint?.trim() ||
-    `https://${accountId}.r2.cloudflarestorage.com`;
-
-  return {
-    accountId,
-    accessKeyId,
-    secretAccessKey,
-    bucketName,
-    endpoint,
-    source: "database",
-  };
-}
-
 export async function resolveR2Config(): Promise<R2RuntimeConfig> {
   if (cached) return cached;
 
   const fromEnv = configFromEnv();
-  if (fromEnv) {
-    cached = fromEnv;
-    return fromEnv;
+  if (!fromEnv) {
+    throw new Error(
+      "Cloudflare R2 is not configured. Set R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and R2_BUCKET_NAME in server environment variables.",
+    );
   }
 
-  const fromDb = await configFromDatabase();
-  if (fromDb) {
-    cached = fromDb;
-    return fromDb;
-  }
-
-  throw new Error(
-    "Cloudflare R2 is not configured. Add credentials under Settings → Cloudflare R2, or set R2_* environment variables.",
-  );
+  cached = fromEnv;
+  return fromEnv;
 }
 
 export async function isR2Configured(): Promise<boolean> {

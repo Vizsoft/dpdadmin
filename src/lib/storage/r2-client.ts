@@ -2,15 +2,19 @@ import {
   CopyObjectCommand,
   DeleteObjectCommand,
   DeleteObjectsCommand,
+  GetObjectCommand,
   HeadBucketCommand,
+  HeadObjectCommand,
   PutObjectCommand,
   S3Client,
-  GetObjectCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { invalidateR2ConfigCache, resolveR2Config } from "@/lib/storage/r2-config";
+import { recordStorageUpload } from "@/lib/storage/storage-upload-audit";
+import type { StorageUploadVia } from "@/lib/storage/storage-upload-audit";
 
 const DEFAULT_PRESIGN_SECONDS = 900;
+const DEFAULT_PUT_PRESIGN_SECONDS = 300;
 
 let client: S3Client | null = null;
 let clientConfigKey: string | null = null;
@@ -75,14 +79,10 @@ export async function runR2StorageProbe(): Promise<{
 
     const key = `healthcheck/dpd-admin-probe-${new Date().toISOString().replace(/[:.]/g, "-")}.txt`;
 
-    await s3.send(
-      new PutObjectCommand({
-        Bucket: bucket,
-        Key: key,
-        Body: PROBE_BODY,
-        ContentType: "text/plain",
-      }),
-    );
+    await putObject(key, Buffer.from(PROBE_BODY), "text/plain", {
+      entityType: "healthcheck",
+      uploadedVia: "admin",
+    });
     steps.push("write");
 
     const getRes = await s3.send(
@@ -117,10 +117,18 @@ export async function runR2StorageProbe(): Promise<{
   }
 }
 
+export type PutObjectMeta = {
+  uploadedBy?: string;
+  entityType?: string;
+  entityId?: string;
+  uploadedVia?: "admin" | "driver_proxy";
+};
+
 export async function putObject(
   key: string,
   body: Buffer | Uint8Array,
   contentType: string,
+  meta?: PutObjectMeta,
 ): Promise<void> {
   const s3 = await getR2Client();
   const bucket = await getR2BucketName();
@@ -132,6 +140,66 @@ export async function putObject(
       ContentType: contentType,
     }),
   );
+
+  const sizeBytes =
+    body instanceof Buffer ? body.length : body.byteLength;
+
+  void recordStorageUpload({
+    objectKey: key,
+    sizeBytes,
+    contentType,
+    entityType: meta?.entityType ?? null,
+    entityId: meta?.entityId ?? null,
+    uploadedBy: meta?.uploadedBy ?? null,
+    uploadedVia: (meta?.uploadedVia ?? "admin") as StorageUploadVia,
+    status: "completed",
+  });
+}
+
+export async function headObject(key: string): Promise<{
+  exists: boolean;
+  size?: number;
+  contentType?: string;
+}> {
+  try {
+    const s3 = await getR2Client();
+    const bucket = await getR2BucketName();
+    const res = await s3.send(
+      new HeadObjectCommand({
+        Bucket: bucket,
+        Key: key,
+      }),
+    );
+    return {
+      exists: true,
+      size: res.ContentLength,
+      contentType: res.ContentType,
+    };
+  } catch (e) {
+    const err = e as { name?: string; $metadata?: { httpStatusCode?: number } };
+    if (
+      err.name === "NotFound" ||
+      err.$metadata?.httpStatusCode === 404
+    ) {
+      return { exists: false };
+    }
+    throw e;
+  }
+}
+
+export async function getPresignedPutUrl(
+  key: string,
+  contentType: string,
+  expiresInSeconds = DEFAULT_PUT_PRESIGN_SECONDS,
+): Promise<string> {
+  const s3 = await getR2Client();
+  const bucket = await getR2BucketName();
+  const command = new PutObjectCommand({
+    Bucket: bucket,
+    Key: key,
+    ContentType: contentType,
+  });
+  return getSignedUrl(s3, command, { expiresIn: expiresInSeconds });
 }
 
 export async function deleteObject(key: string): Promise<void> {

@@ -1040,59 +1040,77 @@
       },
       "storage": {
         "title": "Cloudflare R2 storage",
-        "subtitle": "Secure storage for driver documents and partner logos",
-        "howToTitle": "Setup in Cloudflare",
-        "howToDescription": "Create a private bucket and API token before saving credentials here.",
-        "steps": {
-          "createBucket": "Enable R2 if needed, then create bucket dpd-private (private).",
-          "createToken": "On the R2 Overview page, Account details → Manage (API Tokens) → Create API token → Object Read & Write (or Admin Read & Write) for dpd-private.",
-          "fillForm": "Copy Access Key ID + Secret Access Key from that screen (shown once). Paste below with your Account ID, then Save and Test read/write."
-        },
-        "openCloudflare": "Open R2 Overview (not Profile → API Tokens)",
-        "openR2Overview": "Open R2 Overview in Cloudflare",
-        "cfutVsR2Hint": "Profile → API Tokens (cfut_…) is different. S3 upload keys come only from the R2 Overview page above.",
-        "envOverride": "R2 credentials are loaded from server environment variables on this deployment. Database values are ignored until env vars are removed.",
-        "credentialsTitle": "API credentials",
-        "credentialsDescription": "Used for driver document uploads and partner logos. Only super admins can view or edit.",
-        "fields": {
+        "subtitle": "Bucket usage, connection health, and upload history for admin and driver apps",
+        "refresh": "Refresh",
+        "envNote": "R2 credentials are configured via server environment variables (Vercel). The driver app uploads through the same bucket using /api/driver-uploads — keys are never exposed to clients.",
+        "connection": {
+          "title": "Connection",
+          "description": "Runtime status from R2_* env vars on this deployment.",
+          "configured": "Connected",
+          "notConfigured": "Not configured",
           "accountId": "Account ID",
-          "accessKeyId": "Access Key ID",
-          "accessKeyPlaceholder": "Paste access key",
-          "secretAccessKey": "Secret Access Key",
-          "secretPlaceholder": "Paste secret key",
-          "secretPlaceholderKeep": "Leave blank to keep existing secret",
-          "bucketName": "Bucket name",
-          "s3Endpoint": "S3 API endpoint (optional)"
+          "endpoint": "S3 endpoint",
+          "runProbe": "Test read/write",
+          "verifyToken": "Verify analytics token"
         },
-        "secretHint": "Current secret: {masked}. Leave the field empty when saving to keep it.",
-        "save": "Save credentials",
-        "testConnection": "Test read/write",
-        "saved": "Storage settings saved",
+        "stats": {
+          "totalObjects": "Objects",
+          "totalSize": "Storage used",
+          "classA": "Class A requests",
+          "classB": "Class B requests",
+          "egress": "Egress {size}",
+          "last30Days": "Last 30 days"
+        },
+        "breakdown": {
+          "byType": "By file type",
+          "byPrefix": "By path prefix",
+          "empty": "No objects in bucket yet."
+        },
+        "chart": {
+          "title": "Daily storage (analytics)",
+          "description": "Payload size trend from Cloudflare R2 analytics."
+        },
+        "analytics": {
+          "unavailable": "Cloudflare analytics unavailable. Set CLOUDFLARE_API_TOKEN with Account → Analytics → Read on R2 to show request and bandwidth metrics."
+        },
+        "recent": {
+          "title": "Recent uploads",
+          "description": "Audit log for admin panel and driver app uploads.",
+          "objectKey": "Object key",
+          "size": "Size",
+          "type": "Type",
+          "source": "Source",
+          "uploader": "Uploader",
+          "at": "Uploaded",
+          "empty": "No completed uploads recorded yet.",
+          "sourceAdmin": "Admin",
+          "sourceDriverPresigned": "Driver (direct)",
+          "sourceDriverProxy": "Driver (proxy)",
+          "filter": {
+            "all": "All",
+            "admin": "Admin",
+            "driver": "Driver app"
+          }
+        },
+        "driverApi": {
+          "title": "Driver app uploads",
+          "description": "Same R2 bucket; authenticated with the driver Supabase session JWT.",
+          "presign": "POST /api/driver-uploads/presign → PUT file → POST /api/driver-uploads/confirm",
+          "proxy": "POST /api/driver-uploads/proxy (multipart fallback)",
+          "mine": "GET /api/driver-uploads/mine — list with presigned read URLs",
+          "handoff": "Full API contract: docs/DRIVER_APP_HANDOFF.md § Uploads (R2)."
+        },
         "testSuccess": "R2 read/write test passed",
         "testSuccessDetail": "Wrote and deleted {key}",
-        "cloudflareTokenTitle": "Cloudflare account API token",
-        "cloudflareTokenDescription": "Optional cfut_* token for account verification only. Does not upload files to R2.",
-        "cloudflareTokenField": "API token (cfut_…)",
-        "cloudflareTokenPlaceholder": "Paste Cloudflare API token",
-        "cloudflareTokenHint": "Create under Cloudflare Dashboard → My Profile → API Tokens. This is not the R2 S3 access key.",
-        "cloudflareTokenHintKeep": "Stored token: {masked}. Leave blank when saving credentials to keep it.",
-        "verifyToken": "Verify token",
         "verifyTokenSuccess": "Cloudflare API token is valid ({status})",
-        "verifyTokenFailed": "Token verification failed",
-        "saveCloudflareToken": "Save token",
-        "cloudflareTokenSaved": "Cloudflare API token saved",
-        "r2S3CalloutTitle": "R2 S3 credentials required for uploads",
-        "r2S3Callout": "The cfut_* token cannot upload files. Go to R2 Overview → Account details → Manage (API Tokens) → Create API token → Object Read & Write (scope to bucket \"{bucket}\"). Copy Access Key ID and Secret Access Key from the success screen, then paste them below and Save.",
         "probeResult": "Last probe: {key}",
         "errors": {
           "not_authorized": "Super admin access required",
-          "missing_fields": "Fill in account ID, access key, and bucket name",
-          "missing_secret": "Secret access key is required",
-          "missing_cloudflare_token": "Enter a Cloudflare API token first",
-          "missing_r2_s3_credentials": "Add R2 Access Key ID and Secret (from R2 Overview → Manage API Tokens), then Save",
+          "not_configured": "R2 environment variables are missing",
+          "missing_cloudflare_token": "CLOUDFLARE_API_TOKEN is not set",
           "verify_failed": "Could not verify token",
-          "save_failed": "Could not save settings",
-          "load_failed": "Could not load settings",
+          "load_failed": "Could not load overview",
+          "list_failed": "Could not list bucket objects",
           "connection_failed": "Could not connect to R2"
         }
       },

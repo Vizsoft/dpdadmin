@@ -8,7 +8,7 @@ import { queryKeys } from "@/lib/query/query-keys";
 import { ArrowLeft, AlertCircle, Loader2 } from "lucide-react";
 import { AppPage } from "@/components/app/app-page";
 import { FormSectionCard } from "@/components/form-section-card";
-import { getR2SetupStatus } from "@/features/settings/storage-actions";
+import { isR2Configured } from "@/lib/storage/r2-config";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -103,9 +103,7 @@ function AddDriverForm() {
   const [r2Configured, setR2Configured] = useState(true);
 
   useEffect(() => {
-    void getR2SetupStatus().then((status) => {
-      setR2Configured(status.configured);
-    });
+    void isR2Configured().then(setR2Configured);
   }, []);
 
   const errorMessage = (key?: DriverErrorKey) =>

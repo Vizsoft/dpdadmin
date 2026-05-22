@@ -57,6 +57,7 @@ async function uniquePartnerSlug(
 async function uploadPartnerLogoFile(
   partnerId: string,
   file: File,
+  uploadedBy: string,
 ): Promise<{ error?: string; logoUrl?: string }> {
   if (file.size === 0) return {};
 
@@ -69,7 +70,12 @@ async function uploadPartnerLogoFile(
   const buffer = Buffer.from(await file.arrayBuffer());
 
   try {
-    await putObject(key, buffer, contentType);
+    await putObject(key, buffer, contentType, {
+      uploadedBy,
+      entityType: "partner_logo",
+      entityId: partnerId,
+      uploadedVia: "admin",
+    });
   } catch {
     return { error: "upload_failed" };
   }
@@ -146,7 +152,11 @@ export async function createPartner(formData: FormData): Promise<PartnerMutation
   let logoUrl: string | undefined;
   let logoWarning: string | undefined;
   if (logoFile instanceof File && logoFile.size > 0) {
-    const upload = await uploadPartnerLogoFile(data.id, logoFile);
+    const upload = await uploadPartnerLogoFile(
+      data.id,
+      logoFile,
+      auth.session.id,
+    );
     if (upload.error) {
       logoWarning = upload.error;
     } else {
@@ -193,7 +203,7 @@ export async function updatePartner(formData: FormData): Promise<PartnerMutation
     } catch {
       /* best-effort */
     }
-    const upload = await uploadPartnerLogoFile(id, logoFile);
+    const upload = await uploadPartnerLogoFile(id, logoFile, auth.session.id);
     if (upload.error) {
       logoWarning = upload.error;
     } else {

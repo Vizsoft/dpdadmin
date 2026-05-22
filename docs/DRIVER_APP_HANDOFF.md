@@ -355,7 +355,55 @@ Tag admin PRs: `[admin+app]` in `.cursor/rules/project-architecture.mdc` change 
 
 ---
 
-## 14. Supabase connection
+## 14. Uploads (R2)
+
+Driver images and documents use the **same private R2 bucket** as the admin panel (`dpd-private`). R2 credentials live only in **Vercel env vars** on the admin Next.js app — never in the mobile bundle.
+
+**Base URL:** `https://dpdadmin.vercel.app` (or your deployed admin origin)
+
+**Auth:** `Authorization: Bearer <supabase_access_token>` for the signed-in rider (`profiles.role = 'rider'`, `drivers.id = auth.uid()`).
+
+### Recommended flow (presigned PUT)
+
+1. `POST /api/driver-uploads/presign`  
+   Body (JSON): `{ "entityType", "entityId?", "contentType", "filename", "sizeBytes" }`  
+   Response: `{ uploadId, uploadUrl, objectKey, expiresAt, requiredHeaders: { "Content-Type": "..." } }`
+
+2. `PUT <uploadUrl>` with raw file bytes and the **exact** `Content-Type` from step 1.
+
+3. `POST /api/driver-uploads/confirm`  
+   Body: `{ "uploadId" }`  
+   Response: `{ ok: true, objectKey, sizeBytes }`
+
+### Proxy fallback (when direct PUT is blocked)
+
+`POST /api/driver-uploads/proxy` — `multipart/form-data`: `entityType`, optional `entityId`, `file`.
+
+### List my uploads
+
+`GET /api/driver-uploads/mine?limit=50` — returns completed uploads with short-lived `readUrl` (presigned GET).
+
+### Allowed `entityType` values
+
+| entityType | Max size | Content types |
+|------------|----------|---------------|
+| `driver_doc` | 10 MB | `image/*`, `application/pdf` |
+| `driver_selfie` | 5 MB | `image/*` |
+| `order_proof` | 10 MB | `image/*`, `application/pdf` |
+
+Object keys are server-generated: `drivers/{driverId}/{entityType}/{date}/{uuid}.{ext}`.
+
+### CORS
+
+Set `DRIVER_APP_ORIGINS` on the admin deployment (comma-separated app origins). Preflight `OPTIONS` is supported on all upload routes.
+
+### Admin visibility
+
+Every completed upload is recorded in `storage_uploads` and shown on **Settings → Cloudflare R2** (filter: Driver app). Admin intake uploads use `uploaded_via = 'admin'`.
+
+---
+
+## 15. Supabase connection
 
 ```env
 EXPO_PUBLIC_SUPABASE_URL=https://ytfmsgckjatiserpgdbz.supabase.co
@@ -366,7 +414,9 @@ Never ship `SUPABASE_SERVICE_ROLE_KEY` in the mobile app.
 
 ---
 
-*Last synced: 2026-06-05 — [admin+app] Driver app settings: `driver_app_title`, logo/splash URLs, `driver_app_maintenance_mode` + message. Admin page `/settings/app`. Migration `20260605100000_driver_app_settings.sql`.*
+*Last synced: 2026-06-07 — [admin+app] R2 env-only credentials; storage stats dashboard; driver upload API (`/api/driver-uploads/*`) + `storage_uploads` audit table.*
+
+*Prior: 2026-06-05 — [admin+app] Driver app settings: `driver_app_title`, logo/splash URLs, `driver_app_maintenance_mode` + message. Admin page `/settings/app`. Migration `20260605100000_driver_app_settings.sql`.*
 
 *Prior: 2026-06-04 — [admin+app] Driver codes shortened to exactly 5 digits (`10001`–`99999`). Migration renumbers existing rows; `allocate_driver_code` enforces capacity.*
 

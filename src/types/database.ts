@@ -1670,39 +1670,51 @@ export type Database = {
           },
         ]
       }
-      storage_config: {
+      storage_uploads: {
         Row: {
-          cloudflare_api_token: string | null
-          id: number
-          r2_access_key_id: string | null
-          r2_account_id: string | null
-          r2_bucket_name: string | null
-          r2_s3_endpoint: string | null
-          r2_secret_access_key: string | null
-          updated_at: string
-          updated_by: string | null
+          bucket: string
+          confirmed_at: string | null
+          content_type: string | null
+          entity_id: string | null
+          entity_type: string | null
+          expires_at: string | null
+          id: string
+          object_key: string
+          size_bytes: number | null
+          status: string
+          uploaded_at: string
+          uploaded_by: string | null
+          uploaded_via: string
         }
         Insert: {
-          cloudflare_api_token?: string | null
-          id?: number
-          r2_access_key_id?: string | null
-          r2_account_id?: string | null
-          r2_bucket_name?: string | null
-          r2_s3_endpoint?: string | null
-          r2_secret_access_key?: string | null
-          updated_at?: string
-          updated_by?: string | null
+          bucket: string
+          confirmed_at?: string | null
+          content_type?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          expires_at?: string | null
+          id?: string
+          object_key: string
+          size_bytes?: number | null
+          status?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+          uploaded_via?: string
         }
         Update: {
-          cloudflare_api_token?: string | null
-          id?: number
-          r2_access_key_id?: string | null
-          r2_account_id?: string | null
-          r2_bucket_name?: string | null
-          r2_s3_endpoint?: string | null
-          r2_secret_access_key?: string | null
-          updated_at?: string
-          updated_by?: string | null
+          bucket?: string
+          confirmed_at?: string | null
+          content_type?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          expires_at?: string | null
+          id?: string
+          object_key?: string
+          size_bytes?: number | null
+          status?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+          uploaded_via?: string
         }
         Relationships: []
       }

@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/storage-uploads-cleanup",
+      "schedule": "0 4 * * *"
+    }
+  ]
+}
