@@ -10,11 +10,18 @@ export type GoogleLatLngBounds = {
   getSouthWest: () => GoogleMapLatLng;
 };
 
+export type GoogleMapStyleRule = {
+  featureType?: string;
+  elementType?: string;
+  stylers: Array<Record<string, string>>;
+};
+
 export type GoogleMapInstance = {
   setCenter: (center: GoogleMapLatLng) => void;
   setZoom: (zoom: number) => void;
   panTo: (center: GoogleMapLatLng) => void;
   setMapTypeId: (id: string) => void;
+  setOptions: (opts: { styles?: GoogleMapStyleRule[] }) => void;
   fitBounds: (
     bounds: GoogleLatLngBounds,
     padding?: number | { top?: number; right?: number; bottom?: number; left?: number },
@@ -57,6 +64,31 @@ export type GoogleOverlayLayer = {
   setMap: (map: GoogleMapInstance | null) => void;
 };
 
+export type GoogleMapPoint = { x: number; y: number };
+
+export type GoogleMapProjection = {
+  fromLatLngToDivPixel: (
+    latLng: GoogleMapLatLng | { lat: () => number; lng: () => number },
+  ) => GoogleMapPoint | null;
+};
+
+export type GoogleMapPanes = {
+  overlayMouseTarget?: HTMLElement;
+  floatPane?: HTMLElement;
+};
+
+/** Base class for custom map overlays (zone name labels). */
+export type GoogleOverlayViewClass = new () => {
+  setMap: (map: GoogleMapInstance | null) => void;
+  getPanes: () => GoogleMapPanes | null;
+  getProjection: () => GoogleMapProjection | null;
+  onAdd(): void;
+  draw(): void;
+  onRemove(): void;
+};
+
+export type GoogleOverlayViewInstance = InstanceType<GoogleOverlayViewClass>;
+
 export type GoogleDrawingManagerInstance = {
   setMap: (map: GoogleMapInstance | null) => void;
   setDrawingMode: (mode: string | null) => void;
@@ -82,6 +114,7 @@ export type GoogleMapsApi = {
         fullscreenControl?: boolean;
         clickableIcons?: boolean;
         mapTypeId?: string;
+        styles?: GoogleMapStyleRule[];
       },
     ) => GoogleMapInstance;
     Marker: new (opts: {
@@ -121,6 +154,7 @@ export type GoogleMapsApi = {
     TrafficLayer: new () => GoogleOverlayLayer;
     TransitLayer: new () => GoogleOverlayLayer;
     BicyclingLayer: new () => GoogleOverlayLayer;
+    OverlayView: GoogleOverlayViewClass;
     event: {
       clearInstanceListeners: (instance: object) => void;
       addListener: (

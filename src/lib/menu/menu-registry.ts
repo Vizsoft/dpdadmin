@@ -138,6 +138,15 @@ export const MENU_REGISTRY: MenuRegistryItem[] = [
     permission: "deliveries.view",
   },
   {
+    id: "dpd-verification",
+    defaultLabel: "DPD Verification",
+    defaultIcon: "ClipboardCheck",
+    href: "/dpd-verification",
+    defaultGroup: "Operations",
+    defaultOrder: 3.5,
+    permission: "verifications.view",
+  },
+  {
     id: "vehicles",
     defaultLabel: "Vehicles",
     defaultIcon: "Bike",
@@ -326,6 +335,7 @@ export const APP_NAV_KEY_BY_ID: Record<string, string> = {
   partners: "partners",
   restaurants: "restaurants",
   deliveries: "deliveries",
+  "dpd-verification": "dpdVerification",
   vehicles: "vehicles",
   attendance: "attendance",
   requests: "requests",

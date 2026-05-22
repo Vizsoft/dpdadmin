@@ -16,22 +16,13 @@ import type {
   GoogleMapsApi,
   GoogleOverlayLayer,
 } from "@/lib/google-maps/load";
-
-const STORAGE_KEY = "dpd:zones:map-prefs";
-
-export type ZoneMapLayerPrefs = {
-  mapType: string;
-  traffic: boolean;
-  transit: boolean;
-  bicycling: boolean;
-};
-
-const DEFAULT_PREFS: ZoneMapLayerPrefs = {
-  mapType: "roadmap",
-  traffic: false,
-  transit: false,
-  bicycling: false,
-};
+import {
+  DEFAULT_ZONE_MAP_PREFS,
+  loadZoneMapPrefs,
+  saveZoneMapPrefs,
+  type ZoneMapLayerPrefs,
+} from "./zone-map-layer-prefs";
+import { buildZoneMapStyles } from "./zone-map-google-styles";
 
 const MAP_TYPES = [
   { id: "roadmap", labelKey: "roadmap" as const },
@@ -39,25 +30,6 @@ const MAP_TYPES = [
   { id: "hybrid", labelKey: "hybrid" as const },
   { id: "terrain", labelKey: "terrain" as const },
 ];
-
-function loadPrefs(): ZoneMapLayerPrefs {
-  if (typeof window === "undefined") return DEFAULT_PREFS;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return DEFAULT_PREFS;
-    return { ...DEFAULT_PREFS, ...JSON.parse(raw) } as ZoneMapLayerPrefs;
-  } catch {
-    return DEFAULT_PREFS;
-  }
-}
-
-function savePrefs(prefs: ZoneMapLayerPrefs) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
-  } catch {
-    /* ignore */
-  }
-}
 
 export function ZoneMapLayersControl({
   map,
@@ -69,18 +41,19 @@ export function ZoneMapLayersControl({
   className?: string;
 }) {
   const t = useTranslations("pages.zones.layers");
-  const [prefs, setPrefs] = useState<ZoneMapLayerPrefs>(DEFAULT_PREFS);
+  const [prefs, setPrefs] = useState<ZoneMapLayerPrefs>(DEFAULT_ZONE_MAP_PREFS);
   const trafficRef = useRef<GoogleOverlayLayer | null>(null);
   const transitRef = useRef<GoogleOverlayLayer | null>(null);
   const bicyclingRef = useRef<GoogleOverlayLayer | null>(null);
 
   useEffect(() => {
-    setPrefs(loadPrefs());
+    setPrefs(loadZoneMapPrefs());
   }, []);
 
   const applyPrefs = (next: ZoneMapLayerPrefs) => {
     if (!map || !google) return;
     map.setMapTypeId(next.mapType);
+    map.setOptions({ styles: buildZoneMapStyles(next.hideLabels) });
     if (!trafficRef.current) trafficRef.current = new google.maps.TrafficLayer();
     if (!transitRef.current) transitRef.current = new google.maps.TransitLayer();
     if (!bicyclingRef.current) bicyclingRef.current = new google.maps.BicyclingLayer();
@@ -97,7 +70,7 @@ export function ZoneMapLayersControl({
   const update = (patch: Partial<ZoneMapLayerPrefs>) => {
     setPrefs((prev) => {
       const next = { ...prev, ...patch };
-      savePrefs(next);
+      saveZoneMapPrefs(next);
       return next;
     });
   };
@@ -161,6 +134,34 @@ export function ZoneMapLayersControl({
               </div>
             ))}
           </div>
+        </div>
+        <div>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {t("display")}
+          </p>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <Label htmlFor="layer-show-zone-labels" className="text-sm font-normal">
+                {t("showLabels")}
+              </Label>
+              <Switch
+                id="layer-show-zone-labels"
+                checked={prefs.showLabels}
+                onCheckedChange={(checked) => update({ showLabels: checked })}
+              />
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <Label htmlFor="layer-hide-labels" className="text-sm font-normal">
+                {t("hideLabels")}
+              </Label>
+              <Switch
+                id="layer-hide-labels"
+                checked={prefs.hideLabels}
+                onCheckedChange={(checked) => update({ hideLabels: checked })}
+              />
+            </div>
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">{t("hideLabelsHint")}</p>
         </div>
       </PopoverContent>
     </Popover>

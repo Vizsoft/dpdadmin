@@ -1,19 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
-  Check,
   Download,
   ExternalLink,
   FileImage,
   Loader2,
-  X,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/auth-context";
 import { hasPermissionInSet } from "@/lib/auth/permissions";
 import { proofFilenameFromKey } from "@/lib/storage/order-proof-url";
+import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import {
   Dialog,
   DialogContent,
@@ -22,23 +22,54 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { StatusPill } from "@/components/dashboard/status-pill";
 import { cn } from "@/lib/utils";
 import { DeliveryLocationMap } from "./delivery-location-map";
-import { useRejectDelivery, useVerifyDelivery } from "./use-deliveries";
+import { useDeleteDelivery, useUpdateDeliveryStatus } from "./use-deliveries";
 import type { DeliveryListRow, DeliveryStatus } from "./types";
+
+const STATUS_OPTIONS: DeliveryStatus[] = [
+  "pending",
+  "verified",
+  "under_review",
+  "rejected",
+];
 
 function deliveryStatusVariant(
   status: DeliveryStatus,
-): "success" | "warning" | "danger" {
+): "success" | "warning" | "danger" | "neutral" {
   switch (status) {
     case "verified":
       return "success";
     case "rejected":
       return "danger";
+    case "under_review":
+      return "neutral";
     case "pending":
     default:
       return "warning";
+  }
+}
+
+function statusMessageKey(status: DeliveryStatus) {
+  switch (status) {
+    case "verified":
+      return "statusVerified";
+    case "rejected":
+      return "statusRejected";
+    case "under_review":
+      return "statusUnderReview";
+    case "pending":
+    default:
+      return "statusPending";
   }
 }
 
@@ -170,71 +201,75 @@ export function DeliveryDetailSheet({
     isSuperAdmin,
   );
 
-  const verifyMutation = useVerifyDelivery();
-  const rejectMutation = useRejectDelivery();
+  const statusMutation = useUpdateDeliveryStatus();
+  const deleteMutation = useDeleteDelivery();
 
-  const [rejectOpen, setRejectOpen] = useState(false);
+  const [statusDraft, setStatusDraft] = useState<DeliveryStatus>("pending");
   const [rejectReason, setRejectReason] = useState("");
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
+  useEffect(() => {
+    if (!delivery || !open) return;
+    setStatusDraft(delivery.status);
+    setRejectReason(delivery.rejection_reason ?? "");
+  }, [delivery, open]);
 
   if (!delivery) return null;
 
   const statusLabel = t(
     `status${delivery.status.charAt(0).toUpperCase() + delivery.status.slice(1)}` as "statusPending",
   );
-  const isPending = delivery.status === "pending";
-  const isBusy = verifyMutation.isPending || rejectMutation.isPending;
+  const isBusy = statusMutation.isPending || deleteMutation.isPending;
   const hasCoords =
     delivery.delivered_lat != null && delivery.delivered_lng != null;
 
-  const handleVerify = async () => {
-    if (!canManage) {
-      toast.error(t("noPermission"));
-      return;
-    }
-    const result = await verifyMutation.mutateAsync(delivery.id);
-    if ("error" in result) {
-      const msg =
-        result.error === "invalid_status"
-          ? t("verifyFailed")
-          : result.error === "not_authorized"
-            ? t("noPermission")
-            : t("verifyFailed");
-      toast.error(msg);
-      return;
-    }
-    toast.success(t("verifySuccess"));
-    onUpdated?.();
-    onClose();
-  };
+  const statusUnchanged = statusDraft === delivery.status;
+  const rejectReasonUnchanged =
+    statusDraft !== "rejected" ||
+    rejectReason.trim() === (delivery.rejection_reason ?? "").trim();
+  const canSaveStatus =
+    !statusUnchanged ||
+    (statusDraft === "rejected" && !rejectReasonUnchanged);
 
-  const handleReject = async () => {
+  const handleSaveStatus = async () => {
     if (!canManage) {
       toast.error(t("noPermission"));
       return;
     }
-    if (!rejectReason.trim()) {
+    if (statusDraft === "rejected" && !rejectReason.trim()) {
       toast.error(t("rejectReasonRequired"));
       return;
     }
-    const result = await rejectMutation.mutateAsync({
+    const result = await statusMutation.mutateAsync({
       deliveryId: delivery.id,
-      reason: rejectReason,
+      status: statusDraft,
+      rejectionReason: statusDraft === "rejected" ? rejectReason : undefined,
     });
     if ("error" in result) {
       const msg =
         result.error === "reason_required"
           ? t("rejectReasonRequired")
-          : result.error === "invalid_status"
-            ? t("rejectFailed")
-            : result.error === "not_authorized"
-              ? t("noPermission")
-              : t("rejectFailed");
+          : result.error === "not_authorized"
+            ? t("noPermission")
+            : t("statusChangeFailed");
       toast.error(msg);
       return;
     }
-    toast.success(t("rejectSuccess"));
-    setRejectOpen(false);
-    setRejectReason("");
+    toast.success(t("statusChangeSuccess"));
+    onUpdated?.();
+    onClose();
+  };
+
+  const handleDelete = async () => {
+    const result = await deleteMutation.mutateAsync(delivery.id);
+    if ("error" in result) {
+      toast.error(
+        result.error === "not_authorized" ? t("noPermission") : t("deleteFailed"),
+      );
+      return;
+    }
+    toast.success(t("deleteSuccess"));
+    setDeleteOpen(false);
     onUpdated?.();
     onClose();
   };
@@ -334,85 +369,86 @@ export function DeliveryDetailSheet({
                 </dl>
               </section>
 
-              {rejectOpen && isPending && canManage ? (
-                <section className="space-y-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
-                  <label
-                    htmlFor="reject-reason"
-                    className="text-xs font-semibold uppercase tracking-wider text-destructive"
-                  >
-                    {t("rejectReasonLabel")}
-                  </label>
-                  <textarea
-                    id="reject-reason"
-                    value={rejectReason}
-                    onChange={(e) => setRejectReason(e.target.value)}
-                    placeholder={t("rejectReasonLabel")}
-                    rows={3}
-                    className="border-input bg-background placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 w-full resize-none rounded-lg border px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-[3px]"
-                  />
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="cursor-pointer rounded-lg"
-                      onClick={() => {
-                        setRejectOpen(false);
-                        setRejectReason("");
-                      }}
-                      disabled={isBusy}
+              {canManage ? (
+                <section className="space-y-3 rounded-lg border border-border bg-muted/20 p-3">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    {t("changeStatus")}
+                  </h4>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="delivery-status-select" className="text-sm">
+                      {t("colStatus")}
+                    </Label>
+                    <Select
+                      value={statusDraft}
+                      onValueChange={(v) => setStatusDraft(v as DeliveryStatus)}
                     >
-                      {t("cancelReject")}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="sm"
-                      className="cursor-pointer rounded-lg"
-                      onClick={() => void handleReject()}
-                      disabled={isBusy || !rejectReason.trim()}
-                    >
-                      {rejectMutation.isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        t("verifyConfirmReject")
-                      )}
-                    </Button>
+                      <SelectTrigger
+                        id="delivery-status-select"
+                        className="w-full cursor-pointer rounded-lg"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {STATUS_OPTIONS.map((status) => (
+                          <SelectItem key={status} value={status}>
+                            {t(statusMessageKey(status))}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
+                  {statusDraft === "rejected" ? (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="reject-reason" className="text-sm text-destructive">
+                        {t("rejectReasonLabel")}
+                      </Label>
+                      <textarea
+                        id="reject-reason"
+                        value={rejectReason}
+                        onChange={(e) => setRejectReason(e.target.value)}
+                        placeholder={t("rejectReasonLabel")}
+                        rows={3}
+                        className="border-input bg-background placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 w-full resize-none rounded-lg border px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-[3px]"
+                      />
+                    </div>
+                  ) : null}
                 </section>
               ) : null}
             </div>
 
-            {isPending && canManage ? (
-              <DialogFooter className="shrink-0 flex-row items-center justify-end gap-2 border-t border-border px-6 py-4">
-                {!rejectOpen ? (
-                  <>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="cursor-pointer rounded-lg border-destructive/40 text-destructive hover:bg-destructive/10"
-                      onClick={() => setRejectOpen(true)}
-                      disabled={isBusy}
-                    >
-                      <X className="me-2 h-3.5 w-3.5" />
-                      {t("actionsReject")}
-                    </Button>
-                    <Button
-                      type="button"
-                      className="cursor-pointer rounded-lg"
-                      onClick={() => void handleVerify()}
-                      disabled={isBusy}
-                    >
-                      {verifyMutation.isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <>
-                          <Check className="me-2 h-3.5 w-3.5" />
-                          {t("actionsVerify")}
-                        </>
-                      )}
-                    </Button>
-                  </>
+            {canManage || isSuperAdmin ? (
+              <DialogFooter className="shrink-0 flex-row items-center justify-between gap-2 border-t border-border px-6 py-4">
+                {isSuperAdmin ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="cursor-pointer rounded-lg border-destructive/40 text-destructive hover:bg-destructive/10"
+                    onClick={() => setDeleteOpen(true)}
+                    disabled={isBusy}
+                  >
+                    <Trash2 className="me-2 h-3.5 w-3.5" />
+                    {t("deleteDelivery")}
+                  </Button>
+                ) : (
+                  <span />
+                )}
+                {canManage ? (
+                  <Button
+                    type="button"
+                    className="cursor-pointer rounded-lg"
+                    onClick={() => void handleSaveStatus()}
+                    disabled={
+                      isBusy ||
+                      (statusUnchanged && rejectReasonUnchanged) ||
+                      (statusDraft === "rejected" && !rejectReason.trim())
+                    }
+                  >
+                    {statusMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      t("saveStatus")
+                    )}
+                  </Button>
                 ) : null}
               </DialogFooter>
             ) : null}
@@ -440,6 +476,17 @@ export function DeliveryDetailSheet({
           </div>
         </div>
       </DialogContent>
+
+      <ConfirmDeleteDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        itemTitle={t("deleteDeliveryTitle")}
+        itemName={`#${delivery.short_id}`}
+        confirmText={delivery.short_id}
+        warning={t("deleteDeliveryWarning")}
+        onConfirm={handleDelete}
+        isPending={deleteMutation.isPending}
+      />
     </Dialog>
   );
 }

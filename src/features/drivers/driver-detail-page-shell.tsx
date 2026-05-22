@@ -249,6 +249,10 @@ function DriverDetailContent({ id }: { id: string }) {
     },
     { label: t("fieldEmail"), value: driver.email ?? "—" },
     { label: t("fieldCivilId"), value: driver.civil_id },
+    {
+      label: tList("employeeId"),
+      value: driver.employee_id ?? "—",
+    },
     { label: t("fieldZone"), value: driver.zone_label },
     {
       label: t("fieldBaseEarnings"),

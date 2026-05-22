@@ -499,6 +499,95 @@ export type Database = {
           },
         ]
       }
+      delivery_verifications: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          driver_id: string
+          id: string
+          import_batch_id: string | null
+          matched_count: number
+          notes: string | null
+          partner_id: string
+          reconciled_at: string | null
+          reported_count: number
+          restaurant_id: string
+          service_date: string
+          shortfall_count: number
+          source: Database["public"]["Enums"]["verification_source"]
+          status: Database["public"]["Enums"]["verification_status"]
+          under_review_count: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          driver_id: string
+          id?: string
+          import_batch_id?: string | null
+          matched_count?: number
+          notes?: string | null
+          partner_id: string
+          reconciled_at?: string | null
+          reported_count: number
+          restaurant_id: string
+          service_date: string
+          shortfall_count?: number
+          source?: Database["public"]["Enums"]["verification_source"]
+          status?: Database["public"]["Enums"]["verification_status"]
+          under_review_count?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          driver_id?: string
+          id?: string
+          import_batch_id?: string | null
+          matched_count?: number
+          notes?: string | null
+          partner_id?: string
+          reconciled_at?: string | null
+          reported_count?: number
+          restaurant_id?: string
+          service_date?: string
+          shortfall_count?: number
+          source?: Database["public"]["Enums"]["verification_source"]
+          status?: Database["public"]["Enums"]["verification_status"]
+          under_review_count?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_verifications_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_verifications_import_batch_id_fkey"
+            columns: ["import_batch_id"]
+            isOneToOne: false
+            referencedRelation: "verification_import_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_verifications_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_verifications_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       delivery_rule_scopes: {
         Row: {
           created_at: string
@@ -970,6 +1059,7 @@ export type Database = {
           current_lat: number | null
           current_lng: number | null
           driver_code: string
+          employee_id: string | null
           id: string
           is_on_duty: boolean
           joined_at: string | null
@@ -989,6 +1079,7 @@ export type Database = {
           current_lat?: number | null
           current_lng?: number | null
           driver_code: string
+          employee_id?: string | null
           id: string
           is_on_duty?: boolean
           joined_at?: string | null
@@ -1008,6 +1099,7 @@ export type Database = {
           current_lat?: number | null
           current_lng?: number | null
           driver_code?: string
+          employee_id?: string | null
           id?: string
           is_on_duty?: boolean
           joined_at?: string | null
@@ -2001,6 +2093,94 @@ export type Database = {
           },
         ]
       }
+      verification_balances: {
+        Row: {
+          balance_count: number
+          driver_id: string
+          last_verification_id: string | null
+          restaurant_id: string
+          updated_at: string
+        }
+        Insert: {
+          balance_count?: number
+          driver_id: string
+          last_verification_id?: string | null
+          restaurant_id: string
+          updated_at?: string
+        }
+        Update: {
+          balance_count?: number
+          driver_id?: string
+          last_verification_id?: string | null
+          restaurant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "verification_balances_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "verification_balances_last_verification_id_fkey"
+            columns: ["last_verification_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_verifications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "verification_balances_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      verification_import_batches: {
+        Row: {
+          applied_count: number
+          file_name: string
+          id: string
+          mapping: Json
+          reverted_at: string | null
+          reverted_by: string | null
+          row_count: number
+          skipped_count: number
+          status: Database["public"]["Enums"]["verification_import_batch_status"]
+          uploaded_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          applied_count?: number
+          file_name: string
+          id?: string
+          mapping?: Json
+          reverted_at?: string | null
+          reverted_by?: string | null
+          row_count?: number
+          skipped_count?: number
+          status?: Database["public"]["Enums"]["verification_import_batch_status"]
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          applied_count?: number
+          file_name?: string
+          id?: string
+          mapping?: Json
+          reverted_at?: string | null
+          reverted_by?: string | null
+          row_count?: number
+          skipped_count?: number
+          status?: Database["public"]["Enums"]["verification_import_batch_status"]
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
       wrong_actions: {
         Row: {
           action_type: Database["public"]["Enums"]["wrong_action_type"]
@@ -2170,6 +2350,10 @@ export type Database = {
         Args: { p_driver_id: string; p_earn_date: string }
         Returns: undefined
       }
+      reconcile_delivery_verification: {
+        Args: { p_verification_id: string }
+        Returns: undefined
+      }
       recalculate_earnings_for_date: {
         Args: { p_earn_date: string }
         Returns: number
@@ -2195,7 +2379,7 @@ export type Database = {
         | "helmet"
         | "uniform"
       attendance_status: "present" | "late" | "absent" | "on_leave"
-      delivery_status: "pending" | "verified" | "rejected"
+      delivery_status: "pending" | "verified" | "rejected" | "under_review"
       delivery_verification_status: "pending" | "verified"
       document_type: "license" | "civil_id" | "work_permit" | "passport"
       driver_intake_status: "awaiting_app_link" | "linked" | "cancelled"
@@ -2228,6 +2412,15 @@ export type Database = {
       severity_level: "low" | "medium" | "high"
       support_ticket_status: "open" | "resolved"
       thread_status: "active" | "resolved"
+      verification_import_batch_status: "previewed" | "applied" | "reverted"
+      verification_source: "manual" | "import"
+      verification_status:
+        | "pending"
+        | "matched"
+        | "surplus"
+        | "deficit"
+        | "conflict"
+        | "reverted"
       vehicle_document_type: "rc" | "permit" | "insurance"
       vehicle_status: "active" | "suspended" | "maintenance"
       wrong_action_source: "system" | "admin"
@@ -2371,7 +2564,7 @@ export const Constants = {
       appointment_status: ["scheduled", "completed", "cancelled"],
       asset_type: ["gps", "sim", "phone", "delivery_bag", "helmet", "uniform"],
       attendance_status: ["present", "late", "absent", "on_leave"],
-      delivery_status: ["pending", "verified", "rejected"],
+      delivery_status: ["pending", "verified", "rejected", "under_review"],
       delivery_verification_status: ["pending", "verified"],
       document_type: ["license", "civil_id", "work_permit", "passport"],
       driver_intake_status: ["awaiting_app_link", "linked", "cancelled"],
@@ -2407,6 +2600,16 @@ export const Constants = {
       thread_status: ["active", "resolved"],
       vehicle_document_type: ["rc", "permit", "insurance"],
       vehicle_status: ["active", "suspended", "maintenance"],
+      verification_import_batch_status: ["previewed", "applied", "reverted"],
+      verification_source: ["manual", "import"],
+      verification_status: [
+        "pending",
+        "matched",
+        "surplus",
+        "deficit",
+        "conflict",
+        "reverted",
+      ],
       wrong_action_source: ["system", "admin"],
       wrong_action_type: [
         "delay",

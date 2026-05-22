@@ -5,6 +5,7 @@ export const DRIVER_ERROR_KEYS = [
   "invalid_phone",
   "invalid_civil_id",
   "phone_exists",
+  "employee_id_exists",
   "driver_code_exists",
   "missing_documents",
   "invalid_document_type",
@@ -22,7 +23,20 @@ export function isDriverErrorKey(value: string | undefined): value is DriverErro
   return DRIVER_ERROR_KEYS.includes(value as DriverErrorKey);
 }
 
-export function mapDriverDbError(error: { code?: string }): DriverErrorKey {
-  if (error.code === "23505") return "phone_exists";
+export function mapDriverDbError(
+  error: { code?: string; message?: string },
+  context?: "employee_id",
+): DriverErrorKey {
+  if (error.code === "23505") {
+    if (context === "employee_id") return "employee_id_exists";
+    const msg = error.message ?? "";
+    if (msg.includes("employee_id")) return "employee_id_exists";
+    return "phone_exists";
+  }
   return "save_failed";
+}
+
+export function normalizeEmployeeId(raw: string): string | null {
+  const trimmed = raw.trim();
+  return trimmed.length > 0 ? trimmed : null;
 }

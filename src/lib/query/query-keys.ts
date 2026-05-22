@@ -28,6 +28,14 @@ export const queryKeys = {
     detail: (id: string) => ["deliveries", "detail", id] as const,
     live: (zoneId?: string) => ["deliveries", "live", zoneId ?? "all"] as const,
   },
+  verifications: {
+    all: () => ["verifications"] as const,
+    list: (filters: Record<string, unknown> = {}) =>
+      ["verifications", "list", filters] as const,
+    detail: (id: string) => ["verifications", "detail", id] as const,
+    importBatches: () => ["verifications", "import-batches"] as const,
+    lookup: () => ["verifications", "lookup"] as const,
+  },
   zones: {
     all: () => ["zones"] as const,
     list: () => ["zones", "list"] as const,

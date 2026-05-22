@@ -1,10 +1,13 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getSessionUser } from "@/lib/auth/get-session";
 import { hasPermissionInSet } from "@/lib/auth/permissions";
 import { resolveOrderProofUrl } from "@/lib/storage/order-proof-url";
 import { resolvePartnerLogoUrl } from "@/lib/storage/partner-logo-url";
+import { deleteObject } from "@/lib/storage/r2-client";
+import { isR2ObjectKey } from "@/lib/storage/r2-keys";
 import type {
   DeliveryActionError,
   DeliveryListRow,
@@ -31,6 +34,34 @@ async function requireDeliveriesManage() {
     return null;
   }
   return session;
+}
+
+async function requireSuperAdmin() {
+  const session = await getSessionUser();
+  if (!session?.isSuperAdmin) return null;
+  return session;
+}
+
+function earnDateFromDeliveredAt(deliveredAt: string): string {
+  const d = new Date(deliveredAt);
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kuwait",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
+}
+
+async function recalcEarningsForDelivery(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  driverId: string,
+  deliveredAt: string,
+) {
+  const earnDate = earnDateFromDeliveredAt(deliveredAt);
+  await supabase.rpc("recalculate_driver_earnings", {
+    p_driver_id: driverId,
+    p_earn_date: earnDate,
+  });
 }
 
 function shortId(uuid: string): string {
@@ -178,62 +209,114 @@ export async function fetchDeliveriesForAdmin(): Promise<DeliveryListRow[]> {
   );
 }
 
-export async function verifyDelivery(
+export async function updateDeliveryStatus(
   deliveryId: string,
+  status: DeliveryStatus,
+  rejectionReason?: string,
 ): Promise<{ ok: true } | { error: DeliveryActionError }> {
   const session = await requireDeliveriesManage();
   if (!session) return { error: "not_authorized" };
 
+  if (status === "rejected") {
+    const trimmed = rejectionReason?.trim() ?? "";
+    if (!trimmed) return { error: "reason_required" };
+  }
+
   const supabase = await createClient();
   const { data: existing, error: fetchError } = await supabase
     .from("deliveries")
-    .select("id, status")
+    .select("id, driver_id, delivered_at, status")
     .eq("id", deliveryId)
     .maybeSingle();
 
   if (fetchError || !existing) return { error: "update_failed" };
-  if (existing.status !== "pending") return { error: "invalid_status" };
+
+  const updatePayload =
+    status === "rejected"
+      ? {
+          status: "rejected" as const,
+          rejection_reason: rejectionReason!.trim(),
+        }
+      : {
+          status,
+          rejection_reason: null,
+        };
 
   const { error } = await supabase
     .from("deliveries")
-    .update({
-      status: "verified",
-      rejection_reason: null,
-    })
+    .update(updatePayload)
     .eq("id", deliveryId);
 
   if (error) return { error: "update_failed" };
+
+  const affectsEarnings =
+    existing.status === "verified" ||
+    status === "verified";
+  if (affectsEarnings) {
+    await recalcEarningsForDelivery(
+      supabase,
+      existing.driver_id,
+      existing.delivered_at,
+    );
+  }
+
   return { ok: true };
+}
+
+export async function verifyDelivery(
+  deliveryId: string,
+): Promise<{ ok: true } | { error: DeliveryActionError }> {
+  return updateDeliveryStatus(deliveryId, "verified");
 }
 
 export async function rejectDelivery(
   deliveryId: string,
   reason: string,
 ): Promise<{ ok: true } | { error: DeliveryActionError }> {
-  const session = await requireDeliveriesManage();
+  return updateDeliveryStatus(deliveryId, "rejected", reason);
+}
+
+export async function deleteDelivery(
+  deliveryId: string,
+): Promise<{ ok: true } | { error: DeliveryActionError }> {
+  const session = await requireSuperAdmin();
   if (!session) return { error: "not_authorized" };
 
-  const trimmedReason = reason.trim();
-  if (!trimmedReason) return { error: "reason_required" };
-
   const supabase = await createClient();
-  const { data: existing, error: fetchError } = await supabase
+  const { data: row, error: fetchError } = await supabase
     .from("deliveries")
-    .select("id, status")
+    .select("id, driver_id, delivered_at, order_proof_url, status")
     .eq("id", deliveryId)
     .maybeSingle();
 
-  if (fetchError || !existing) return { error: "update_failed" };
-  if (existing.status !== "pending") return { error: "invalid_status" };
+  if (fetchError || !row) return { error: "delete_failed" };
 
-  const { error } = await supabase
+  const proofKey = row.order_proof_url?.trim() ?? "";
+
+  if (proofKey && isR2ObjectKey(proofKey)) {
+    try {
+      await deleteObject(proofKey);
+    } catch {
+      /* best-effort R2 cleanup */
+    }
+    try {
+      const admin = createAdminClient();
+      await admin.from("storage_uploads").delete().eq("object_key", proofKey);
+    } catch {
+      /* best-effort audit cleanup */
+    }
+  }
+
+  const { error: deleteError } = await supabase
     .from("deliveries")
-    .update({
-      status: "rejected",
-      rejection_reason: trimmedReason,
-    })
+    .delete()
     .eq("id", deliveryId);
 
-  if (error) return { error: "update_failed" };
+  if (deleteError) return { error: "delete_failed" };
+
+  if (row.status === "verified") {
+    await recalcEarningsForDelivery(supabase, row.driver_id, row.delivered_at);
+  }
+
   return { ok: true };
 }

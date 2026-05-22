@@ -68,6 +68,7 @@ function exportDriversCsv(rows: DriverListRow[]) {
   const header = [
     "id",
     "driver_code",
+    "employee_id",
     "full_name",
     "phone",
     "partner",
@@ -89,6 +90,7 @@ function exportDriversCsv(rows: DriverListRow[]) {
       [
         r.id,
         r.driver_code,
+        r.employee_id ?? "",
         r.full_name,
         r.phone,
         r.partner_name,
@@ -211,6 +213,7 @@ function DriversPageContent() {
       return (
         d.full_name.toLowerCase().includes(q) ||
         d.driver_code.toLowerCase().includes(q) ||
+        (d.employee_id?.toLowerCase().includes(q) ?? false) ||
         d.phone.replace(/\D/g, "").includes(q.replace(/\D/g, "")) ||
         d.partner_name.toLowerCase().includes(q) ||
         d.zone_name.toLowerCase().includes(q)
@@ -472,6 +475,9 @@ function DriversPageContent() {
                     />
                   </TableHead>
                   <TableHead className={TABLE_HEAD_CLASS}>{t("colDriverId")}</TableHead>
+                  <TableHead className={cn("hidden lg:table-cell", TABLE_HEAD_CLASS)}>
+                    {t("colEmployeeId")}
+                  </TableHead>
                   <TableHead className={TABLE_HEAD_CLASS}>{t("colName")}</TableHead>
                   <TableHead className={cn("hidden md:table-cell", TABLE_HEAD_CLASS)}>
                     {t("colPhone")}
@@ -494,7 +500,7 @@ function DriversPageContent() {
               <TableBody>
                 {showEmptySearch ? (
                   <TableRow className="hover:bg-transparent">
-                    <TableCell colSpan={11} className="border-t border-border py-12">
+                    <TableCell colSpan={12} className="border-t border-border py-12">
                       <AppEmptyState
                         title={t("emptySearchTitle")}
                         description={t("emptySearchDescription")}
@@ -521,6 +527,9 @@ function DriversPageContent() {
                       </TableCell>
                       <TableCell className="font-mono text-sm text-muted-foreground">
                         {formatDriverCodeDisplay(driver.driver_code)}
+                      </TableCell>
+                      <TableCell className="hidden font-mono text-sm text-muted-foreground lg:table-cell">
+                        {driver.employee_id ?? "—"}
                       </TableCell>
                       <TableCell>
                         <button

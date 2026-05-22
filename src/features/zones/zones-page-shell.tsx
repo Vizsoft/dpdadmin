@@ -1,11 +1,9 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { useTranslations } from "next-intl";
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2, Plus, RefreshCw } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { AppPage } from "@/components/app/app-page";
-import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import { useHasMounted } from "@/hooks/use-has-mounted";
 import { queryKeys } from "@/lib/query/query-keys";
@@ -34,7 +32,6 @@ function ZonesPageSkeleton() {
 }
 
 function ZonesPageContent() {
-  const t = useTranslations("pages.zones");
   const { can } = useAuth();
   const canManage = can("zones.manage");
   const queryClient = useQueryClient();
@@ -75,28 +72,6 @@ function ZonesPageContent() {
 
   return (
     <AppPage className="flex h-full min-h-[560px] flex-col">
-      <div className="flex items-center justify-end gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="cursor-pointer"
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-            >
-              <RefreshCw
-                className={`me-2 h-3.5 w-3.5 ${isRefreshing ? "animate-spin" : ""}`}
-              />
-              {t("refresh")}
-            </Button>
-            {canManage && (
-              <Button type="button" size="sm" className="cursor-pointer" onClick={handleAdd}>
-                <Plus className="me-2 h-3.5 w-3.5" />
-                {t("addZone")}
-              </Button>
-            )}
-      </div>
-
       <div className="flex min-h-0 flex-1 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         <ZoneListPanel
           zones={zones}
@@ -104,6 +79,9 @@ function ZonesPageContent() {
           isLoading={isLoading}
           onSelect={setSelectedId}
           onEdit={handleEdit}
+          onRefresh={handleRefresh}
+          isRefreshing={isRefreshing}
+          onAdd={canManage ? handleAdd : undefined}
         />
         <ZoneMapPanel
           zones={zones}

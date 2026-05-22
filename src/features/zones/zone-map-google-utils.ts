@@ -14,6 +14,17 @@ import type {
 } from "@/lib/google-maps/load";
 import { normalizeZoneColor } from "./zone-colors";
 
+/** Google returns `LatLng` with lat()/lng(); literals use .lat/.lng properties. */
+export type GoogleLatLngLike =
+  | { lat: number; lng: number }
+  | { lat: () => number; lng: () => number };
+
+export function latLngToTuple(p: GoogleLatLngLike): [number, number] {
+  const lat = typeof p.lat === "function" ? p.lat() : p.lat;
+  const lng = typeof p.lng === "function" ? p.lng() : p.lng;
+  return [lat, lng];
+}
+
 export function googlePathOptions(
   color: string,
   opts?: { fillOpacity?: number; weight?: number; strokeOpacity?: number; clickable?: boolean },
@@ -81,8 +92,7 @@ export function featureFromPolygon(polygon: GooglePolygonInstance): ZoneGeoFeatu
   if (len < 3) return null;
   const positions: [number, number][] = [];
   for (let i = 0; i < len; i++) {
-    const p = path.getAt(i);
-    positions.push([p.lat, p.lng]);
+    positions.push(latLngToTuple(path.getAt(i) as GoogleLatLngLike));
   }
   return buildPolygonFeature(positions);
 }

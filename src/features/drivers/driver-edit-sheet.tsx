@@ -102,6 +102,7 @@ export function DriverEditSheet({
   const [civilId, setCivilId] = useState(() =>
     restrictDigits(driver.civil_id, CIVIL_ID_DIGIT_COUNT),
   );
+  const [employeeId, setEmployeeId] = useState(driver.employee_id ?? "");
   const [partnerId, setPartnerId] = useState(driver.partner_id);
   const [restaurantIds, setRestaurantIds] = useState<string[]>(driver.restaurant_ids);
   const [zoneId, setZoneId] = useState(driver.zone_id);
@@ -267,6 +268,7 @@ export function DriverEditSheet({
       formData.append("fullName", fullName);
       formData.append("phone", phone);
       formData.append("civilId", civilId);
+      formData.append("employeeId", employeeId);
       formData.append("partnerId", partnerId);
       formData.append("zoneId", zoneId);
       if (vehicleId && vehicleId !== NONE_VEHICLE) {
@@ -378,6 +380,19 @@ export function DriverEditSheet({
               />
               <FieldError message={showFieldError("civilId")} />
             </div>
+            {driver.linked_profile_id ? (
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-employee-id">{tList("employeeId")}</Label>
+                <Input
+                  id="edit-employee-id"
+                  value={employeeId}
+                  onChange={(e) => setEmployeeId(e.target.value)}
+                  placeholder={tList("employeeIdPlaceholder")}
+                  className="rounded-lg font-mono tabular-nums"
+                />
+                <p className="text-xs text-muted-foreground">{tList("employeeIdHelp")}</p>
+              </div>
+            ) : null}
             <div className="space-y-1.5">
               <Label htmlFor="edit-driver-code">{tNew("fields.driverCode")}</Label>
               <Input

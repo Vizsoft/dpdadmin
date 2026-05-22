@@ -87,6 +87,7 @@ export type DriverRemoteDocument = {
 export type DriverListRow = {
   id: string;
   driver_code: string;
+  employee_id: string | null;
   full_name: string;
   phone: string;
   partner_id: string;
@@ -113,6 +114,7 @@ export type DriverDetailModel = {
   phone: string;
   email: string | null;
   civil_id: string;
+  employee_id: string | null;
   avatar_url: string | null;
   partner_name: string;
   zone_label: string;

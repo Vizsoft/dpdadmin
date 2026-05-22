@@ -10,6 +10,7 @@ import {
   type GoogleCircleInstance,
   type GoogleMapInstance,
   type GoogleMapsApi,
+  type GoogleOverlayViewInstance,
   type GooglePolygonInstance,
 } from "@/lib/google-maps/load";
 import {
@@ -29,6 +30,13 @@ import type { ZoneMapDrawMode } from "./zone-map-inner";
 import type { ZoneRow } from "./types";
 import type { ZoneMapAdapter } from "./zone-map-adapter";
 import { ZoneMapLayersControl } from "./zone-map-layers-control";
+import { createZoneLabelOverlay } from "./zone-map-google-label";
+import {
+  DEFAULT_ZONE_MAP_PREFS,
+  loadZoneMapPrefs,
+  subscribeZoneMapPrefs,
+  type ZoneMapLayerPrefs,
+} from "./zone-map-layer-prefs";
 import {
   bindCircleEditListeners,
   bindPolygonEditListeners,
@@ -99,6 +107,11 @@ export function ZoneMapGoogleInner({
   const zoneOverlaysRef = useRef<
     Array<{ id: string; layer: GooglePolygonInstance | GoogleCircleInstance }>
   >([]);
+  const zoneLabelsRef = useRef<
+    Array<{ id: string; overlay: GoogleOverlayViewInstance }>
+  >([]);
+  const showLabelsRef = useRef(true);
+  const [mapPrefs, setMapPrefs] = useState<ZoneMapLayerPrefs>(DEFAULT_ZONE_MAP_PREFS);
   const draftOverlayRef = useRef<GooglePolygonInstance | GoogleCircleInstance | null>(
     null,
   );
@@ -126,6 +139,23 @@ export function ZoneMapGoogleInner({
       o.layer.setMap(null);
     }
     zoneOverlaysRef.current = [];
+  }, []);
+
+  const clearZoneLabels = useCallback(() => {
+    for (const o of zoneLabelsRef.current) {
+      o.overlay.setMap(null);
+    }
+    zoneLabelsRef.current = [];
+  }, []);
+
+  useEffect(() => {
+    showLabelsRef.current = mapPrefs.showLabels;
+  }, [mapPrefs.showLabels]);
+
+  useEffect(() => {
+    setMapPrefs(loadZoneMapPrefs());
+    const unsub = subscribeZoneMapPrefs((prefs) => setMapPrefs(prefs));
+    return unsub;
   }, []);
 
   const clearDraftOverlay = useCallback(() => {
@@ -233,6 +263,26 @@ export function ZoneMapGoogleInner({
     fitZonesBounds,
     onZoneSelect,
   ]);
+
+  const syncZoneLabels = useCallback(() => {
+    const map = mapRef.current;
+    const google = googleRef.current;
+    if (!map || !google || drawMode || !showLabelsRef.current) {
+      clearZoneLabels();
+      return;
+    }
+
+    clearZoneLabels();
+    for (const zone of zones) {
+      if (!zone.geometry) continue;
+      const overlay = createZoneLabelOverlay(google, map, zone, {
+        onSelect: onZoneSelect,
+      });
+      if (overlay) {
+        zoneLabelsRef.current.push({ id: zone.id, overlay });
+      }
+    }
+  }, [zones, drawMode, clearZoneLabels, onZoneSelect]);
 
   const syncReferenceOverlays = useCallback(() => {
     const map = mapRef.current;
@@ -409,6 +459,7 @@ export function ZoneMapGoogleInner({
       }
       clearDraftOverlay();
       clearZoneOverlays();
+      clearZoneLabels();
       mapRef.current = null;
       googleRef.current = null;
     };
@@ -418,13 +469,17 @@ export function ZoneMapGoogleInner({
   useEffect(() => {
     if (mapState !== "ready") return;
     if (drawMode) {
+      clearZoneLabels();
       syncReferenceOverlays();
       if (draftGeometry) {
-        attachDraftFromGeometry(draftGeometry, draftZoneType, true);
+        if (!draftOverlayRef.current) {
+          attachDraftFromGeometry(draftGeometry, draftZoneType, true);
+        }
         if (drawingManagerRef.current) {
           drawingManagerRef.current.setDrawingMode(null);
         }
       } else {
+        clearDraftOverlay();
         setupDrawingManager();
       }
     } else {
@@ -433,7 +488,9 @@ export function ZoneMapGoogleInner({
         drawingManagerRef.current = null;
       }
       clearDraftOverlay();
+      clearZoneLabels();
       syncBrowseOverlays();
+      syncZoneLabels();
     }
   }, [
     mapState,
@@ -444,10 +501,17 @@ export function ZoneMapGoogleInner({
     selectedId,
     syncBrowseOverlays,
     syncReferenceOverlays,
+    syncZoneLabels,
     attachDraftFromGeometry,
     setupDrawingManager,
     clearDraftOverlay,
+    clearZoneLabels,
   ]);
+
+  useEffect(() => {
+    if (mapState !== "ready" || drawMode) return;
+    syncZoneLabels();
+  }, [mapState, drawMode, mapPrefs.showLabels, zones, syncZoneLabels]);
 
   useEffect(() => {
     if (!draftOverlayRef.current || mapState !== "ready") return;
@@ -517,7 +581,8 @@ export function ZoneMapGoogleInner({
               type="button"
               variant="secondary"
               size="sm"
-              className="absolute end-3 top-3 z-10 cursor-pointer rounded-lg shadow-sm"
+              data-zone-map-clear
+              className="absolute bottom-3 end-3 z-10 cursor-pointer rounded-lg shadow-sm"
               onClick={handleClearShape}
             >
               <Trash2 className="me-1.5 h-3.5 w-3.5" />

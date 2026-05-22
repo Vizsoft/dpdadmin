@@ -53,15 +53,31 @@ import type { DeliveryListRow, DeliveryStatus } from "./types";
 
 function deliveryStatusVariant(
   status: DeliveryStatus,
-): "success" | "warning" | "danger" {
+): "success" | "warning" | "danger" | "neutral" {
   switch (status) {
     case "verified":
       return "success";
     case "rejected":
       return "danger";
+    case "under_review":
+      return "neutral";
     case "pending":
     default:
       return "warning";
+  }
+}
+
+function statusMessageKey(status: DeliveryStatus) {
+  switch (status) {
+    case "verified":
+      return "statusVerified";
+    case "rejected":
+      return "statusRejected";
+    case "under_review":
+      return "statusUnderReview";
+    case "pending":
+    default:
+      return "statusPending";
   }
 }
 
@@ -471,7 +487,7 @@ function DeliveriesPageContent() {
                       </TableCell>
                       <TableCell className="text-end">
                         <StatusPill variant={deliveryStatusVariant(delivery.status)} dot>
-                          {t(`status${delivery.status.charAt(0).toUpperCase() + delivery.status.slice(1)}` as "statusPending")}
+                          {t(statusMessageKey(delivery.status))}
                         </StatusPill>
                       </TableCell>
                       <TableCell className="hidden font-mono text-sm tabular-nums text-muted-foreground lg:table-cell">

@@ -1,4 +1,9 @@
-export const DELIVERY_STATUSES = ["pending", "verified", "rejected"] as const;
+export const DELIVERY_STATUSES = [
+  "pending",
+  "verified",
+  "rejected",
+  "under_review",
+] as const;
 export type DeliveryStatus = (typeof DELIVERY_STATUSES)[number];
 
 export type DeliveryListRow = {
@@ -51,4 +56,5 @@ export type DeliveryActionError =
   | "not_authorized"
   | "invalid_status"
   | "reason_required"
-  | "update_failed";
+  | "update_failed"
+  | "delete_failed";

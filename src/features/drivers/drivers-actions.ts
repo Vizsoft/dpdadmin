@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/auth/get-session";
 import { hasPermissionInSet } from "@/lib/auth/permissions";
 import { normalizeCivilId, normalizeKuwaitPhone } from "./driver-phone";
-import { mapDriverDbError } from "./driver-errors";
+import { mapDriverDbError, normalizeEmployeeId } from "./driver-errors";
 import {
   allIntakeDocumentKeys,
   buildIntakeDocumentKey,
@@ -444,7 +444,12 @@ export async function fetchDriversForAdmin(options?: {
 
   const driverByProfileId = new Map<
     string,
-    { status: DriverAccountStatus; is_on_duty: boolean; app_passcode: string | null }
+    {
+      status: DriverAccountStatus;
+      is_on_duty: boolean;
+      app_passcode: string | null;
+      employee_id: string | null;
+    }
   >();
   const deliveryCountByDriverId = new Map<string, number>();
 
@@ -452,7 +457,7 @@ export async function fetchDriversForAdmin(options?: {
     const [{ data: driverRows }, { data: deliveryRows }] = await Promise.all([
       supabase
         .from("drivers")
-        .select("id, status, is_on_duty, app_passcode")
+        .select("id, status, is_on_duty, app_passcode, employee_id")
         .in("id", linkedIds),
       (() => {
         const { start, end } = kuwaitDayBounds();
@@ -470,6 +475,7 @@ export async function fetchDriversForAdmin(options?: {
         status: driver.status as DriverAccountStatus,
         is_on_duty: driver.is_on_duty,
         app_passcode: driver.app_passcode ?? null,
+        employee_id: driver.employee_id ?? null,
       });
     }
 
@@ -514,6 +520,9 @@ export async function fetchDriversForAdmin(options?: {
       return {
         id: row.id,
         driver_code: row.driver_code,
+        employee_id: row.linked_profile_id
+          ? (driverByProfileId.get(row.linked_profile_id)?.employee_id ?? null)
+          : null,
         full_name: row.full_name,
         phone: row.phone,
         partner_id: row.partner_id,
@@ -593,6 +602,8 @@ export async function updateDriverIntake(
   const partnerId = String(formData.get("partnerId") ?? "").trim();
   const zoneId = String(formData.get("zoneId") ?? "").trim();
   const vehicleId = String(formData.get("vehicleId") ?? "").trim();
+  const employeeIdRaw = String(formData.get("employeeId") ?? "");
+  const employeeId = normalizeEmployeeId(employeeIdRaw);
   const assetsEnabled = formData.get("assetsEnabled") === "true";
   const workflowStatus = String(formData.get("workflowStatus") ?? "").trim() as DriverWorkflowStatus;
 
@@ -661,16 +672,21 @@ export async function updateDriverIntake(
       })
       .eq("id", existing.linked_profile_id);
 
-    await supabase
+    const { error: driverUpdateError } = await supabase
       .from("drivers")
       .update({
         partner_id: partnerId,
         zone_id: zoneId,
         vehicle_id: vehicleId || null,
         civil_id: civilIdNormalized,
+        employee_id: employeeId,
         updated_at: new Date().toISOString(),
       })
       .eq("id", existing.linked_profile_id);
+
+    if (driverUpdateError) {
+      return { error: mapDriverDbError(driverUpdateError, "employee_id") };
+    }
 
     await syncDriverRestaurants(supabase, existing.linked_profile_id, restaurantIds);
   }
@@ -718,7 +734,11 @@ export async function fetchDriverDetail(
       full_name: string | null;
       phone: string | null;
     } | null = null;
-    let linkedDriver: { app_passcode: string | null; status: DriverAccountStatus } | null = null;
+    let linkedDriver: {
+      app_passcode: string | null;
+      status: DriverAccountStatus;
+      employee_id: string | null;
+    } | null = null;
     if (linkedId) {
       const [{ data: prof }, { data: drv }] = await Promise.all([
         supabase
@@ -728,13 +748,17 @@ export async function fetchDriverDetail(
           .maybeSingle(),
         supabase
           .from("drivers")
-          .select("app_passcode, status")
+          .select("app_passcode, status, employee_id")
           .eq("id", linkedId)
           .maybeSingle(),
       ]);
       profile = prof;
       linkedDriver = drv
-        ? { app_passcode: drv.app_passcode, status: drv.status as DriverAccountStatus }
+        ? {
+            app_passcode: drv.app_passcode,
+            status: drv.status as DriverAccountStatus,
+            employee_id: drv.employee_id ?? null,
+          }
         : null;
     }
 
@@ -763,6 +787,7 @@ export async function fetchDriverDetail(
       phone: profile?.phone ?? intake.phone,
       email: profile?.email ?? null,
       civil_id: intake.civil_id,
+      employee_id: linkedDriver?.employee_id ?? null,
       avatar_url: profile?.avatar_url ?? null,
       partner_name: relName(
         intake.partners as { name: string } | { name: string }[] | null,
@@ -809,6 +834,7 @@ export async function fetchDriverDetail(
       partner_id,
       zone_id,
       app_passcode,
+      employee_id,
       archived_at,
       partners (name),
       zones (name, code)
@@ -860,6 +886,7 @@ export async function fetchDriverDetail(
     phone: prof?.phone ?? "—",
     email: prof?.email ?? null,
     civil_id: driverRow.civil_id ?? "—",
+    employee_id: driverRow.employee_id ?? null,
     avatar_url: prof?.avatar_url ?? null,
     partner_name: relName(driverRow.partners as { name: string } | { name: string }[] | null),
     zone_label: relZone(driverRow.zones),
