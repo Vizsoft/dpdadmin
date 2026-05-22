@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
-import type { Map as LeafletMap } from "leaflet";
 import { useTranslations } from "next-intl";
 import { Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -32,7 +31,8 @@ import {
   normalizeZoneColor,
 } from "./zone-colors";
 import { ZoneMap } from "./zone-map";
-import { geomanDrawOptions } from "./zone-map-geoman-options";
+import { ZonePlaceSearch } from "./zone-place-search";
+import type { ZoneMapAdapter } from "./zone-map-adapter";
 import { createZone, deleteZone, updateZone } from "./zones-actions";
 import { isZoneErrorKey } from "./zone-errors";
 import type { ZoneRow } from "./types";
@@ -45,11 +45,6 @@ function zoneErrorToast(
     return t(`errors.${error}`);
   }
   return t("errors.save_failed");
-}
-
-function invalidateMapSize(map: LeafletMap | null) {
-  if (!map) return;
-  map.invalidateSize({ animate: false });
 }
 
 type ZoneFormSheetProps = {
@@ -110,41 +105,28 @@ function ZoneFormBody({
       ? String(zone.geometry.properties.radiusMeters)
       : "1000",
   );
-  const mapRef = useRef<LeafletMap | null>(null);
+  const mapAdapterRef = useRef<ZoneMapAdapter | null>(null);
 
-  const handleMapReady = useCallback((map: LeafletMap) => {
-    mapRef.current = map;
-    invalidateMapSize(map);
+  const handleMapReady = useCallback((adapter: ZoneMapAdapter) => {
+    mapAdapterRef.current = adapter;
+    adapter.invalidateSize?.();
   }, []);
 
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-
-    invalidateMapSize(map);
-    const t1 = window.setTimeout(() => invalidateMapSize(map), 100);
-    const t2 = window.setTimeout(() => invalidateMapSize(map), 400);
-
-    return () => {
-      window.clearTimeout(t1);
-      window.clearTimeout(t2);
-    };
-  }, []);
+  const handlePlaceSelect = useCallback(
+    (place: { lat: number; lng: number; viewport?: import("./zone-map-adapter").ZoneMapViewport }) => {
+      const adapter = mapAdapterRef.current;
+      if (!adapter) return;
+      if (place.viewport) {
+        adapter.fitViewport(place.viewport);
+      } else {
+        adapter.panTo(place.lat, place.lng, 14);
+      }
+    },
+    [],
+  );
 
   const startDrawing = () => {
-    const map = mapRef.current;
-    if (!map?.pm) return;
     setGeometry(null);
-    map.invalidateSize({ animate: false });
-    try {
-      map.pm.disableGlobalEditMode();
-      map.pm.disableGlobalRemovalMode();
-      map.pm.disableDraw();
-      const opts = geomanDrawOptions(zoneType === "polygon" ? "polygon" : "circle");
-      map.pm.enableDraw(opts.shape, opts.options);
-    } catch {
-      /* ignore */
-    }
   };
 
   const handleGeometryChange = (geo: ZoneGeoFeature | null, type: ZoneGeometryType) => {
@@ -188,7 +170,13 @@ function ZoneFormBody({
   return (
     <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
       {/* Map on top for mobile, right column on desktop */}
-      <div className="zones-draw-map-wrapper zones-draw-map-wrapper--modal order-1 min-h-[40vh] flex-1 border-b border-border lg:order-2 lg:min-h-0 lg:border-b-0 lg:border-l">
+      <div className="zones-draw-map-wrapper zones-draw-map-wrapper--modal relative order-1 min-h-[40vh] flex-1 border-b border-border lg:order-2 lg:min-h-0 lg:border-b-0 lg:border-l">
+        <div className="pointer-events-none absolute inset-x-0 top-3 z-10 flex justify-center px-3">
+          <ZonePlaceSearch
+            onSelect={handlePlaceSelect}
+            className="pointer-events-auto w-full max-w-sm"
+          />
+        </div>
         <ZoneMap
           zones={existingZones}
           selectedId={null}
@@ -199,7 +187,7 @@ function ZoneFormBody({
           draftZoneType={zoneType}
           onDraftGeometryChange={handleGeometryChange}
           onMapReady={handleMapReady}
-          className="zones-leaflet-map h-full w-full"
+          className="zones-google-map h-full w-full"
         />
       </div>
 

@@ -2,10 +2,23 @@
 
 export type GoogleMapLatLng = { lat: number; lng: number };
 
+export type GoogleMapLatLngLiteral = GoogleMapLatLng;
+
+export type GoogleLatLngBounds = {
+  extend: (point: GoogleMapLatLng) => void;
+  getNorthEast: () => GoogleMapLatLng;
+  getSouthWest: () => GoogleMapLatLng;
+};
+
 export type GoogleMapInstance = {
   setCenter: (center: GoogleMapLatLng) => void;
   setZoom: (zoom: number) => void;
   panTo: (center: GoogleMapLatLng) => void;
+  setMapTypeId: (id: string) => void;
+  fitBounds: (
+    bounds: GoogleLatLngBounds,
+    padding?: number | { top?: number; right?: number; bottom?: number; left?: number },
+  ) => void;
 };
 
 export type GoogleMarkerInstance = {
@@ -13,6 +26,46 @@ export type GoogleMarkerInstance = {
   setMap: (map: GoogleMapInstance | null) => void;
   getPosition: () => { lat: () => number; lng: () => number } | null | undefined;
   addListener: (event: string, handler: () => void) => void;
+};
+
+export type GoogleMVCArray<T> = {
+  getLength: () => number;
+  getAt: (index: number) => T;
+  addListener: (event: string, handler: () => void) => void;
+};
+
+export type GooglePolygonInstance = {
+  setMap: (map: GoogleMapInstance | null) => void;
+  setOptions: (opts: Record<string, unknown>) => void;
+  setEditable: (editable: boolean) => void;
+  setDraggable: (draggable: boolean) => void;
+  getPath: () => GoogleMVCArray<GoogleMapLatLng>;
+  addListener: (event: string, handler: () => void) => void;
+};
+
+export type GoogleCircleInstance = {
+  setMap: (map: GoogleMapInstance | null) => void;
+  setOptions: (opts: Record<string, unknown>) => void;
+  setEditable: (editable: boolean) => void;
+  setDraggable: (draggable: boolean) => void;
+  getCenter: () => { lat: () => number; lng: () => number } | null | undefined;
+  getRadius: () => number;
+  addListener: (event: string, handler: () => void) => void;
+};
+
+export type GoogleOverlayLayer = {
+  setMap: (map: GoogleMapInstance | null) => void;
+};
+
+export type GoogleDrawingManagerInstance = {
+  setMap: (map: GoogleMapInstance | null) => void;
+  setDrawingMode: (mode: string | null) => void;
+  addListener: (event: string, handler: (e: GoogleOverlayCompleteEvent) => void) => void;
+};
+
+export type GoogleOverlayCompleteEvent = {
+  type: string;
+  overlay: GooglePolygonInstance | GoogleCircleInstance;
 };
 
 export type GoogleMapsApi = {
@@ -28,6 +81,7 @@ export type GoogleMapsApi = {
         streetViewControl?: boolean;
         fullscreenControl?: boolean;
         clickableIcons?: boolean;
+        mapTypeId?: string;
       },
     ) => GoogleMapInstance;
     Marker: new (opts: {
@@ -35,10 +89,42 @@ export type GoogleMapsApi = {
       map: GoogleMapInstance | null;
       draggable?: boolean;
     }) => GoogleMarkerInstance;
+    Polygon: new (opts: {
+      paths: GoogleMapLatLng[] | GoogleMVCArray<GoogleMapLatLng>;
+      map?: GoogleMapInstance | null;
+      strokeColor?: string;
+      strokeOpacity?: number;
+      strokeWeight?: number;
+      fillColor?: string;
+      fillOpacity?: number;
+      clickable?: boolean;
+      editable?: boolean;
+      draggable?: boolean;
+      zIndex?: number;
+    }) => GooglePolygonInstance;
+    Circle: new (opts: {
+      center: GoogleMapLatLng;
+      radius: number;
+      map?: GoogleMapInstance | null;
+      strokeColor?: string;
+      strokeOpacity?: number;
+      strokeWeight?: number;
+      fillColor?: string;
+      fillOpacity?: number;
+      clickable?: boolean;
+      editable?: boolean;
+      draggable?: boolean;
+      zIndex?: number;
+    }) => GoogleCircleInstance;
+    LatLngBounds: new () => GoogleLatLngBounds;
+    LatLng: new (lat: number, lng: number) => GoogleMapLatLng;
+    TrafficLayer: new () => GoogleOverlayLayer;
+    TransitLayer: new () => GoogleOverlayLayer;
+    BicyclingLayer: new () => GoogleOverlayLayer;
     event: {
       clearInstanceListeners: (instance: object) => void;
       addListener: (
-        instance: GoogleMapInstance,
+        instance: GoogleMapInstance | GooglePolygonInstance | GoogleCircleInstance,
         event: string,
         handler: (e: { latLng: { lat: () => number; lng: () => number } | null }) => void,
       ) => void;
@@ -63,6 +149,10 @@ export type GoogleMapsApi = {
             place: {
               geometry?: {
                 location?: { lat: () => number; lng: () => number };
+                viewport?: {
+                  getNorthEast: () => { lat: () => number; lng: () => number };
+                  getSouthWest: () => { lat: () => number; lng: () => number };
+                };
               };
             } | null,
             status: string,
@@ -70,6 +160,19 @@ export type GoogleMapsApi = {
         ) => void;
       };
       PlacesServiceStatus: { OK: string };
+    };
+    drawing: {
+      DrawingManager: new (opts: {
+        map?: GoogleMapInstance | null;
+        drawingMode?: string | null;
+        drawingControl?: boolean;
+        polygonOptions?: Record<string, unknown>;
+        circleOptions?: Record<string, unknown>;
+      }) => GoogleDrawingManagerInstance;
+      OverlayType: {
+        POLYGON: string;
+        CIRCLE: string;
+      };
     };
   };
 };
@@ -108,7 +211,7 @@ function installAuthFailureHandler() {
   };
 }
 
-/** Lazy-load Google Maps JS API with Places library. Returns null when key is unset or blocked. */
+/** Lazy-load Google Maps JS API with Places + Drawing libraries. */
 export function loadGoogleMaps(): Promise<GoogleMapsApi | null> {
   if (typeof window === "undefined") {
     return Promise.resolve(null);
@@ -173,7 +276,7 @@ export function loadGoogleMaps(): Promise<GoogleMapsApi | null> {
       script.dataset.googleMaps = "true";
       script.async = true;
       script.defer = true;
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&libraries=places&callback=${callbackName}&loading=async`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&libraries=places,drawing&callback=${callbackName}&loading=async`;
       script.onerror = () => {
         lastFailure = "load_error";
         finish(null);

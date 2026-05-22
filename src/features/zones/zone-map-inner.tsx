@@ -39,6 +39,7 @@ import {
 } from "./constants";
 import { normalizeZoneColor, zonePathStyle } from "./zone-colors";
 import type { ZoneRow } from "./types";
+import type { ZoneMapAdapter } from "./zone-map-adapter";
 
 function FitBounds({ zones, selectedId }: { zones: ZoneRow[]; selectedId: string | null }) {
   const map = useMap();
@@ -149,6 +150,37 @@ function ZoneOverlay({
 
 export type ZoneMapDrawMode = "polygon" | "circle" | null;
 
+function LeafletMapAdapterBridge({
+  onMapAdapterReady,
+}: {
+  onMapAdapterReady?: (adapter: ZoneMapAdapter) => void;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!onMapAdapterReady) return;
+    onMapAdapterReady({
+      panTo(lat, lng, zoom = 14) {
+        map.setView([lat, lng], zoom);
+      },
+      fitViewport(viewport) {
+        map.fitBounds(
+          [
+            [viewport.south, viewport.west],
+            [viewport.north, viewport.east],
+          ],
+          { padding: [48, 48], maxZoom: 15 },
+        );
+      },
+      invalidateSize() {
+        map.invalidateSize({ animate: false });
+      },
+    });
+  }, [map, onMapAdapterReady]);
+
+  return null;
+}
+
 function MapInvalidateSize({ active }: { active?: boolean }) {
   const map = useMap();
 
@@ -189,6 +221,7 @@ function GeomanDrawControl({
   draftZoneType,
   onGeometryChange,
   onMapReady,
+  onMapAdapterReady,
 }: {
   drawMode: ZoneMapDrawMode;
   draftColor: string;
@@ -199,6 +232,7 @@ function GeomanDrawControl({
     zoneType: ZoneGeometryType,
   ) => void;
   onMapReady?: (map: L.Map) => void;
+  onMapAdapterReady?: (adapter: ZoneMapAdapter) => void;
 }) {
   const map = useMap();
   const onGeometryChangeRef = useRef(onGeometryChange);
@@ -216,7 +250,24 @@ function GeomanDrawControl({
 
   useEffect(() => {
     onMapReady?.(map);
-  }, [map, onMapReady]);
+    onMapAdapterReady?.({
+      panTo(lat, lng, zoom = 14) {
+        map.setView([lat, lng], zoom);
+      },
+      fitViewport(viewport) {
+        map.fitBounds(
+          [
+            [viewport.south, viewport.west],
+            [viewport.north, viewport.east],
+          ],
+          { padding: [48, 48], maxZoom: 15 },
+        );
+      },
+      invalidateSize() {
+        map.invalidateSize({ animate: false });
+      },
+    });
+  }, [map, onMapReady, onMapAdapterReady]);
 
   const syncLayerGeometry = (layer: L.Layer, shape: string) => {
     const parsed = parseLayerToZone(layer, shape);
@@ -503,6 +554,7 @@ export function ZoneMapInner({
   draftColor,
   onDraftGeometryChange,
   onMapReady,
+  onMapAdapterReady,
 }: {
   zones: ZoneRow[];
   selectedId: string | null;
@@ -518,6 +570,7 @@ export function ZoneMapInner({
     zoneType: ZoneGeometryType,
   ) => void;
   onMapReady?: (map: L.Map) => void;
+  onMapAdapterReady?: (adapter: ZoneMapAdapter) => void;
 }) {
   const referenceZones = useMemo(() => {
     if (!drawMode) return [];
@@ -538,6 +591,7 @@ export function ZoneMapInner({
     >
       <TileLayer attribution={tile.attribution} url={tile.url} />
       <ZoomControl position="topright" />
+      <LeafletMapAdapterBridge onMapAdapterReady={onMapAdapterReady} />
       <MapInvalidateSize active={Boolean(drawMode)} />
       {!drawMode &&
         zones.map((zone) => (
@@ -564,6 +618,7 @@ export function ZoneMapInner({
           draftZoneType={draftZoneType}
           onGeometryChange={onDraftGeometryChange}
           onMapReady={onMapReady}
+          onMapAdapterReady={onMapAdapterReady}
         />
       )}
       {!drawMode && <FitBounds zones={zones} selectedId={selectedId} />}

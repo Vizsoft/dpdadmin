@@ -603,6 +603,25 @@
       "addZone": "Add Zone",
       "refresh": "Refresh",
       "searchPlaceholder": "Search anything...",
+      "placeholders": {
+        "searchPlace": "Search place in Kuwait…"
+      },
+      "hints": {
+        "googleKeyMissing": "Set NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to enable Google Maps and place search."
+      },
+      "clearShape": "Clear shape",
+      "layers": {
+        "title": "Layers",
+        "mapType": "Map type",
+        "overlays": "Overlays",
+        "roadmap": "Roadmap",
+        "satellite": "Satellite",
+        "hybrid": "Hybrid",
+        "terrain": "Terrain",
+        "traffic": "Traffic",
+        "transit": "Transit",
+        "bicycling": "Bicycling"
+      },
       "totalZones": "Total Zones: {count}",
       "driversAssigned": "{count, plural, one {# driver assigned} other {# drivers assigned}}",
       "viewAll": "View all",

@@ -603,6 +603,25 @@
       "addZone": "إضافة منطقة",
       "refresh": "تحديث",
       "searchPlaceholder": "ابحث عن أي شيء...",
+      "placeholders": {
+        "searchPlace": "ابحث عن مكان في الكويت…"
+      },
+      "hints": {
+        "googleKeyMissing": "اضبط NEXT_PUBLIC_GOOGLE_MAPS_API_KEY لتفعيل خرائط Google والبحث عن الأماكن."
+      },
+      "clearShape": "مسح الشكل",
+      "layers": {
+        "title": "الطبقات",
+        "mapType": "نوع الخريطة",
+        "overlays": "طبقات إضافية",
+        "roadmap": "خريطة",
+        "satellite": "قمر صناعي",
+        "hybrid": "هجين",
+        "terrain": "تضاريس",
+        "traffic": "حركة المرور",
+        "transit": "مواصلات",
+        "bicycling": "دراجات"
+      },
       "totalZones": "إجمالي المناطق: {count}",
       "driversAssigned": "{count, plural, one {سائق واحد معيّن} other {# سائقين معيّنين}}",
       "viewAll": "عرض الكل",
