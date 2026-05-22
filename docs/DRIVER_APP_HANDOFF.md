@@ -130,14 +130,20 @@ Admin panel **does not** create auth users; it only inserts `driver_intakes` via
 | partner_id | uuid | Selected partner |
 | zone_id | uuid | Zone at time of delivery |
 | restaurant_id | uuid | Optional FK → `restaurants` (merchant) |
-| external_order_id | text | Order # from partner app |
-| order_proof_url | text | Storage path |
+| external_order_id | text | Order # from partner app (globally unique when normalized) |
+| order_proof_url | text | R2 object key (`drivers/{id}/order_proof/...`) |
 | status | enum | pending → admin sets verified/rejected |
-| delivered_at | timestamptz | |
+| delivered_at | timestamptz | Set on driver submit |
+| delivered_lat, delivered_lng | numeric | GPS at submit time |
 
 When admin sets `status = verified`, Postgres runs `recalculate_driver_earnings(driver_id, earn_date)` and updates `driver_earnings_daily`.
 
-**Driver RLS (to implement):** INSERT/SELECT where `driver_id = auth.uid()`.
+**Driver RLS:** `SELECT` / `INSERT` where `driver_id = auth.uid()` (migration `20260609100000_driver_deliveries_app.sql`).
+
+**RPCs (authenticated rider):**
+
+- `driver_check_order_id_available(p_external_order_id)` → `boolean`
+- `driver_create_delivery(p_external_order_id, p_order_proof_url?, p_delivered_lat?, p_delivered_lng?)` → `deliveries` row (`status = pending`, copies `partner_id` / `zone_id` from `drivers`)
 
 ### `restaurants` (admin-managed)
 | Column | Type | Notes |

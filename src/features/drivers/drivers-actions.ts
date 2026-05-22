@@ -12,6 +12,7 @@ import {
 } from "@/lib/storage/r2-keys";
 import { isR2Configured } from "@/lib/storage/r2-config";
 import { deleteObjects, putObject } from "@/lib/storage/r2-client";
+import { listExistingDriverDocuments } from "@/lib/storage/driver-documents";
 import { resolvePartnerLogoUrl } from "@/lib/storage/partner-logo-url";
 import {
   DOCUMENT_TYPES,
@@ -748,6 +749,10 @@ export async function fetchDriverDetail(
 
     const restaurant_ids = await fetchIntakeRestaurantIds(supabase, intake.id);
     const restaurant_names = await loadRestaurantNames(supabase, restaurant_ids);
+    const documents = await listExistingDriverDocuments(
+      intake.id,
+      intake.linked_profile_id,
+    );
 
     return {
       id: intake.id,
@@ -785,6 +790,7 @@ export async function fetchDriverDetail(
         linkedDriver?.status,
       ),
       archived_at: intake.archived_at,
+      documents,
     };
   }
 
@@ -841,6 +847,9 @@ export async function fetchDriverDetail(
     ? await fetchIntakeRestaurantIds(supabase, intakeForDriver.id)
     : await fetchDriverRestaurantIds(supabase, id);
   const restaurant_names = await loadRestaurantNames(supabase, restaurant_ids);
+  const documents = intakeForDriver?.id
+    ? await listExistingDriverDocuments(intakeForDriver.id, id)
+    : {};
 
   return {
     id: driverRow.id,
@@ -879,6 +888,7 @@ export async function fetchDriverDetail(
       driverRow.status as DriverAccountStatus,
     ),
     archived_at: intakeForDriver?.archived_at ?? driverRow.archived_at,
+    documents,
   };
 }
 

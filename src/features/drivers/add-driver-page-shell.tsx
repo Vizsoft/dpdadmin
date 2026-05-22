@@ -508,6 +508,7 @@ function AddDriverForm() {
           {DOCUMENT_TYPES.map((docType) => (
             <DriverDocumentUpload
               key={docType}
+              mode="inline"
               docType={docType}
               file={documents[docType]}
               isSubmitting={isPending}

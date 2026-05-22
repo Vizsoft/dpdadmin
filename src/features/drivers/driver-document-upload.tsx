@@ -2,12 +2,22 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { CheckCircle2, FileText, ImageIcon, Loader2, Trash2, Upload } from "lucide-react";
+import {
+  CheckCircle2,
+  ExternalLink,
+  FileText,
+  ImageIcon,
+  Loader2,
+  RefreshCw,
+  Trash2,
+  Upload,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { xhrUpload } from "@/lib/http/xhr-upload";
 import { isDriverErrorKey } from "./driver-errors";
 import { validateDocumentFile } from "./driver-form-validation";
-import type { DriverDocumentType } from "./types";
+import type { DriverDocumentType, DriverRemoteDocument } from "./types";
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -15,25 +25,67 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function isImageMime(contentType: string | null): boolean {
+  return Boolean(contentType?.startsWith("image/"));
+}
+
 function isImageFile(file: File): boolean {
   return file.type.startsWith("image/");
 }
 
-type DriverDocumentUploadProps = {
+function basenameFromKey(key: string): string {
+  const parts = key.split("/");
+  return parts[parts.length - 1] ?? key;
+}
+
+type UploadResponse = {
+  ok?: boolean;
+  error?: string;
+  objectKey?: string;
+  signedUrl?: string;
+  sizeBytes?: number | null;
+  contentType?: string | null;
+  source?: "driver" | "intake";
+};
+
+type SharedProps = {
   docType: DriverDocumentType;
+  disabled?: boolean;
+  error?: string;
+};
+
+type InlineProps = SharedProps & {
+  mode: "inline";
   file: File | null;
   onChange: (file: File | null) => void;
-  error?: string;
   isSubmitting?: boolean;
 };
 
-export function DriverDocumentUpload({
+type RemoteProps = SharedProps & {
+  mode: "remote";
+  intakeId: string;
+  driverProfileId: string | null;
+  existing: DriverRemoteDocument | null;
+  onChanged: (next: DriverRemoteDocument | null) => void;
+};
+
+export type DriverDocumentUploadProps = InlineProps | RemoteProps;
+
+export function DriverDocumentUpload(props: DriverDocumentUploadProps) {
+  if (props.mode === "inline") {
+    return <InlineDocumentUpload {...props} />;
+  }
+  return <RemoteDocumentUpload {...props} />;
+}
+
+function InlineDocumentUpload({
   docType,
   file,
   onChange,
   error,
   isSubmitting = false,
-}: DriverDocumentUploadProps) {
+  disabled,
+}: InlineProps) {
   const t = useTranslations("pages.driverNew");
   const inputRef = useRef<HTMLInputElement>(null);
   const [localErrorKey, setLocalErrorKey] = useState<string | null>(null);
@@ -83,109 +135,459 @@ export function DriverDocumentUpload({
       : "border-border bg-muted/20";
 
   return (
-    <div className="space-y-2">
-      <p className="text-sm font-medium text-foreground">{label}</p>
-
+    <DocumentSlotShell
+      label={label}
+      borderClass={borderClass}
+      displayError={displayError}
+      inputRef={inputRef}
+      disabled={disabled || isSubmitting}
+      onPick={handlePick}
+    >
       {!file ? (
-        <button
-          type="button"
+        <EmptyDropzone
           onClick={() => inputRef.current?.click()}
-          disabled={isSubmitting}
-          className={cn(
-            "flex min-h-[7.5rem] w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed px-4 py-6 transition-colors hover:bg-muted/40 disabled:cursor-not-allowed disabled:opacity-50",
-            borderClass,
-          )}
-        >
-          <Upload className="h-5 w-5 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">{t("uploadDocument")}</span>
-          <span className="text-[11px] text-muted-foreground">{t("uploadFormats")}</span>
-        </button>
+          disabled={disabled || isSubmitting}
+          uploadLabel={t("uploadDocument")}
+          formatsLabel={t("uploadFormats")}
+        />
       ) : (
-        <div
-          className={cn(
-            "rounded-lg border p-3 transition-colors",
-            borderClass,
-            !isSubmitting && "cursor-pointer hover:bg-muted/30",
-          )}
-          onClick={() => {
-            if (!isSubmitting) inputRef.current?.click();
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !isSubmitting) inputRef.current?.click();
-          }}
-          role="button"
-          tabIndex={0}
-          aria-label={t("replaceDocument")}
-        >
-          <div className="flex items-start gap-3">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted">
-              {previewUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={previewUrl}
-                  alt=""
-                  className="h-full w-full object-cover"
-                />
-              ) : isImageFile(file) ? (
-                <ImageIcon className="h-5 w-5 text-muted-foreground" />
-              ) : (
-                <FileText className="h-5 w-5 text-muted-foreground" />
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">{file.name}</p>
-              <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
-              <div className="mt-2 flex items-center gap-1.5">
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-                    <span className="text-xs text-primary">{t("documentUploading")}</span>
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-primary" />
-                    <span className="text-xs text-primary">{t("documentSelected")}</span>
-                  </>
-                )}
-              </div>
-              {!isSubmitting ? (
-                <p className="mt-0.5 text-[11px] text-muted-foreground">
-                  {t("documentPendingHint")}
-                </p>
-              ) : null}
-            </div>
+        <FileCard
+          previewUrl={previewUrl}
+          isImage={isImageFile(file)}
+          name={file.name}
+          sizeLabel={formatFileSize(file.size)}
+          status={
+            isSubmitting ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                <span className="text-xs text-primary">{t("documentUploading")}</span>
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-primary" />
+                <span className="text-xs text-primary">{t("documentSelected")}</span>
+              </>
+            )
+          }
+          hint={!isSubmitting ? t("documentPendingHint") : undefined}
+          onReplace={() => inputRef.current?.click()}
+          replaceLabel={t("replaceDocument")}
+          removeLabel={t("removeDocument")}
+          onRemove={removeFile}
+          removeDisabled={isSubmitting}
+        />
+      )}
+    </DocumentSlotShell>
+  );
+}
+
+function RemoteDocumentUpload({
+  docType,
+  intakeId,
+  driverProfileId,
+  existing: existingProp,
+  onChanged,
+  error,
+  disabled,
+}: RemoteProps) {
+  const t = useTranslations("pages.driverDetail");
+  const tErr = useTranslations("pages.driverNew");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  const [remote, setRemote] = useState<DriverRemoteDocument | null>(
+    existingProp,
+  );
+  const [uploading, setUploading] = useState(false);
+  const [removing, setRemoving] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [failed, setFailed] = useState(false);
+  const [localErrorKey, setLocalErrorKey] = useState<string | null>(null);
+  const [localPreview, setLocalPreview] = useState<string | null>(null);
+
+  useEffect(() => {
+    setRemote(existingProp);
+  }, [existingProp]);
+
+  const label = tErr(`documents.${docType}`);
+
+  const displayError =
+    error ??
+    (localErrorKey && isDriverErrorKey(localErrorKey)
+      ? tErr(`errors.${localErrorKey}`)
+      : localErrorKey
+        ? localErrorKey
+        : failed
+          ? t("uploadFailed")
+          : undefined);
+
+  const busy = uploading || removing || disabled;
+
+  const uploadFile = async (file: File) => {
+    const validationError = validateDocumentFile(file);
+    if (validationError) {
+      setLocalErrorKey(validationError);
+      setFailed(false);
+      return;
+    }
+
+    setLocalErrorKey(null);
+    setFailed(false);
+    setUploading(true);
+    setProgress(0);
+
+    if (isImageFile(file)) {
+      const url = URL.createObjectURL(file);
+      setLocalPreview(url);
+    } else {
+      setLocalPreview(null);
+    }
+
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    const body = new FormData();
+    body.append("intakeId", intakeId);
+    if (driverProfileId) body.append("driverProfileId", driverProfileId);
+    body.append("docType", docType);
+    body.append("file", file);
+
+    try {
+      const { status, json } = await xhrUpload<UploadResponse>({
+        url: "/api/admin/driver-documents/upload",
+        formData: body,
+        signal: controller.signal,
+        onProgress: (p) => setProgress(p.percent),
+      });
+
+      if (status < 200 || status >= 300 || !json.ok) {
+        setFailed(true);
+        setLocalErrorKey(json.error ?? "upload_failed");
+        return;
+      }
+
+      const next: DriverRemoteDocument = {
+        objectKey: json.objectKey!,
+        signedUrl: json.signedUrl!,
+        sizeBytes: json.sizeBytes ?? file.size,
+        contentType: json.contentType ?? file.type,
+        source: json.source ?? "intake",
+      };
+      setRemote(next);
+      setProgress(100);
+      onChanged(next);
+    } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") return;
+      setFailed(true);
+      setLocalErrorKey("upload_failed");
+    } finally {
+      setUploading(false);
+      setLocalPreview((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  };
+
+  const handleRemove = async () => {
+    setRemoving(true);
+    setLocalErrorKey(null);
+    setFailed(false);
+    try {
+      const res = await fetch("/api/admin/driver-documents", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          intakeId,
+          driverProfileId: driverProfileId ?? undefined,
+          docType,
+        }),
+      });
+      const json = (await res.json()) as { ok?: boolean; error?: string };
+      if (!res.ok || !json.ok) {
+        setLocalErrorKey(
+          json.error && isDriverErrorKey(json.error)
+            ? json.error
+            : "save_failed",
+        );
+        return;
+      }
+      setRemote(null);
+      onChanged(null);
+    } catch {
+      setLocalErrorKey("save_failed");
+    } finally {
+      setRemoving(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  };
+
+  const borderClass = displayError
+    ? "border-destructive/60 bg-destructive/5"
+    : remote
+      ? "border-primary/30 bg-primary/5"
+      : "border-border bg-muted/20";
+
+  const showRemote = remote && !uploading;
+  const previewUrl =
+    localPreview ??
+    (showRemote && isImageMime(remote.contentType) ? remote.signedUrl : null);
+
+  return (
+    <DocumentSlotShell
+      label={label}
+      borderClass={borderClass}
+      displayError={displayError}
+      inputRef={inputRef}
+      disabled={busy}
+      onPick={(f) => void uploadFile(f!)}
+    >
+      {uploading ? (
+        <div className={cn("rounded-lg border p-3", borderClass)}>
+          <p className="mb-2 text-xs font-medium text-foreground">
+            {t("uploadProgress", { pct: progress })}
+          </p>
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-primary transition-[width] duration-150"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            {tErr("documentUploading")}
+          </p>
+        </div>
+      ) : !showRemote ? (
+        failed ? (
+          <div className="space-y-2">
+            <EmptyDropzone
+              onClick={() => inputRef.current?.click()}
+              disabled={busy}
+              uploadLabel={tErr("uploadDocument")}
+              formatsLabel={tErr("uploadFormats")}
+            />
             <Button
               type="button"
-              variant="ghost"
-              size="icon-sm"
-              className="shrink-0 cursor-pointer text-destructive hover:text-destructive"
-              disabled={isSubmitting}
-              onClick={(e) => {
-                e.stopPropagation();
-                removeFile();
-              }}
-              aria-label={t("removeDocument")}
+              variant="outline"
+              size="sm"
+              className="h-8 w-full cursor-pointer rounded-lg text-xs"
+              onClick={() => inputRef.current?.click()}
+              disabled={busy}
             >
-              <Trash2 className="h-3.5 w-3.5" />
+              <RefreshCw className="me-1.5 h-3.5 w-3.5" />
+              {t("tryAgain")}
             </Button>
           </div>
-        </div>
+        ) : (
+          <EmptyDropzone
+            onClick={() => inputRef.current?.click()}
+            disabled={busy}
+            uploadLabel={tErr("uploadDocument")}
+            formatsLabel={tErr("uploadFormats")}
+          />
+        )
+      ) : (
+        <FileCard
+          previewUrl={previewUrl}
+          isImage={Boolean(previewUrl)}
+          name={basenameFromKey(remote.objectKey)}
+          sizeLabel={sizeLabelFromRemote(remote, t)}
+          status={
+            removing ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">
+                  {t("removingDocument")}
+                </span>
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-primary" />
+                <span className="text-xs text-primary">
+                  {sizeLabelFromRemote(remote, t)}
+                </span>
+              </>
+            )
+          }
+          viewHref={remote.signedUrl}
+          viewLabel={t("viewDocument")}
+          onReplace={() => inputRef.current?.click()}
+          replaceLabel={tErr("replaceDocument")}
+          removeLabel={tErr("removeDocument")}
+          onRemove={() => void handleRemove()}
+          removeDisabled={busy}
+        />
       )}
+    </DocumentSlotShell>
+  );
+}
 
+function sizeLabelFromRemote(
+  remote: DriverRemoteDocument,
+  t: ReturnType<typeof useTranslations<"pages.driverDetail">>,
+): string {
+  const size =
+    remote.sizeBytes != null ? formatFileSize(remote.sizeBytes) : "—";
+  return t("documentUploaded", { size });
+}
+
+function DocumentSlotShell({
+  label,
+  borderClass,
+  displayError,
+  inputRef,
+  disabled,
+  onPick,
+  children,
+}: {
+  label: string;
+  borderClass: string;
+  displayError?: string;
+  inputRef: React.RefObject<HTMLInputElement | null>;
+  disabled?: boolean;
+  onPick: (file: File | null) => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <p className="text-sm font-medium text-foreground">{label}</p>
+      {children}
       <input
         ref={inputRef}
         type="file"
         accept="application/pdf,image/png,image/jpeg,image/webp"
         className="hidden"
-        disabled={isSubmitting}
-        onChange={(e) => handlePick(e.target.files?.[0] ?? null)}
+        disabled={disabled}
+        onChange={(e) => onPick(e.target.files?.[0] ?? null)}
       />
-
       {displayError ? (
         <p className="text-xs text-destructive" role="alert">
           {displayError}
         </p>
       ) : null}
+    </div>
+  );
+}
+
+function EmptyDropzone({
+  onClick,
+  disabled,
+  uploadLabel,
+  formatsLabel,
+}: {
+  onClick: () => void;
+  disabled?: boolean;
+  uploadLabel: string;
+  formatsLabel: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        "flex min-h-[6.5rem] w-full cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed px-3 py-4 transition-colors hover:bg-muted/40 disabled:cursor-not-allowed disabled:opacity-50",
+        "border-border bg-muted/20",
+      )}
+    >
+      <Upload className="h-4 w-4 text-muted-foreground" />
+      <span className="text-xs text-muted-foreground">{uploadLabel}</span>
+      <span className="text-[10px] text-muted-foreground">{formatsLabel}</span>
+    </button>
+  );
+}
+
+function FileCard({
+  previewUrl,
+  isImage,
+  name,
+  sizeLabel,
+  status,
+  hint,
+  viewHref,
+  viewLabel,
+  onReplace,
+  replaceLabel,
+  removeLabel,
+  onRemove,
+  removeDisabled,
+}: {
+  previewUrl: string | null;
+  isImage: boolean;
+  name: string;
+  sizeLabel: string;
+  status: React.ReactNode;
+  hint?: string;
+  viewHref?: string;
+  viewLabel?: string;
+  onReplace: () => void;
+  replaceLabel: string;
+  removeLabel: string;
+  onRemove: () => void;
+  removeDisabled?: boolean;
+}) {
+  return (
+    <div className="rounded-lg border border-border bg-muted/10 p-2.5">
+      <div className="flex items-start gap-2.5">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted">
+          {previewUrl && isImage ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={previewUrl} alt="" className="h-full w-full object-cover" />
+          ) : isImage ? (
+            <ImageIcon className="h-4 w-4 text-muted-foreground" />
+          ) : (
+            <FileText className="h-4 w-4 text-muted-foreground" />
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-xs font-medium">{name}</p>
+          <div className="mt-1 flex flex-wrap items-center gap-1.5">{status}</div>
+          {hint ? (
+            <p className="mt-0.5 text-[10px] text-muted-foreground">{hint}</p>
+          ) : null}
+        </div>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          className="shrink-0 cursor-pointer text-destructive hover:text-destructive"
+          disabled={removeDisabled}
+          onClick={onRemove}
+          aria-label={removeLabel}
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {viewHref && viewLabel ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-7 cursor-pointer rounded-md px-2 text-xs"
+            nativeButton={false}
+            render={
+              <a href={viewHref} target="_blank" rel="noopener noreferrer" />
+            }
+          >
+            <ExternalLink className="me-1 h-3 w-3" />
+            {viewLabel}
+          </Button>
+        ) : null}
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-7 cursor-pointer rounded-md px-2 text-xs"
+          disabled={removeDisabled}
+          onClick={onReplace}
+        >
+          {replaceLabel}
+        </Button>
+      </div>
     </div>
   );
 }

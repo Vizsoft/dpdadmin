@@ -76,6 +76,14 @@ export type PendingDocumentFile = {
   previewName: string;
 };
 
+export type DriverRemoteDocument = {
+  objectKey: string;
+  signedUrl: string;
+  sizeBytes: number | null;
+  contentType: string | null;
+  source: "driver" | "intake";
+};
+
 export type DriverListRow = {
   id: string;
   driver_code: string;
@@ -123,4 +131,5 @@ export type DriverDetailModel = {
   app_passcode: string | null;
   account_status: DriverAccountStatus;
   archived_at: string | null;
+  documents: Partial<Record<DriverDocumentType, DriverRemoteDocument>>;
 };

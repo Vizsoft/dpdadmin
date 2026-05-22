@@ -43,11 +43,15 @@ import {
 import type { DriverErrorKey } from "./driver-errors";
 import {
   ASSET_TYPES,
+  DOCUMENT_TYPES,
   DRIVER_WORKFLOW_STATUSES,
   type DriverAssetType,
   type DriverDetailModel,
+  type DriverDocumentType,
+  type DriverRemoteDocument,
   type DriverWorkflowStatus,
 } from "./types";
+import { DriverDocumentUpload } from "./driver-document-upload";
 import { DriverRestaurantPicker } from "./driver-restaurant-picker";
 import { selectOptions, selectOptionsFrom } from "@/lib/select-items";
 import { useDriverFormOptions } from "./use-driver-form-options";
@@ -126,6 +130,9 @@ export function DriverEditSheet({
   });
   const [fieldErrors, setFieldErrors] = useState<DriverFormErrors>({});
   const [showErrors, setShowErrors] = useState(false);
+  const [remoteDocuments, setRemoteDocuments] = useState<
+    Partial<Record<DriverDocumentType, DriverRemoteDocument>>
+  >(driver.documents ?? {});
 
   useEffect(() => {
     if (!open) return;
@@ -155,6 +162,7 @@ export function DriverEditSheet({
     });
     setFieldErrors({});
     setShowErrors(false);
+    setRemoteDocuments(driver.documents ?? {});
   }, [open, driver]);
 
   const errorMessage = (key?: DriverErrorKey) =>
@@ -286,11 +294,11 @@ export function DriverEditSheet({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[min(90vh,720px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl">
-        <DialogHeader className="border-b border-border px-6 py-4">
+      <DialogContent className="flex max-h-[min(94vh,900px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-4xl">
+        <DialogHeader className="shrink-0 border-b border-border px-5 py-3">
           <DialogTitle>{t("editTitle")}</DialogTitle>
         </DialogHeader>
-        <div className="flex-1 space-y-6 overflow-y-auto px-6 py-4">
+        <div className="flex-1 space-y-4 overflow-y-auto px-5 py-3">
           <div className="space-y-1.5">
             <Label htmlFor="edit-workflow-status">{tList("fieldWorkflowStatus")}</Label>
               <Select
@@ -321,7 +329,7 @@ export function DriverEditSheet({
             </Select>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor="edit-full-name">{tNew("fields.fullName")}</Label>
               <Input
@@ -463,7 +471,7 @@ export function DriverEditSheet({
             </div>
           </div>
 
-          <div className="space-y-2 rounded-xl border border-border p-4">
+          <div className="space-y-2 rounded-xl border border-border p-3">
             <Label className="text-sm font-medium">{tNew("sections.restaurants")}</Label>
             <p className="text-xs text-muted-foreground">
               {tNew("sections.restaurantsDescription")}
@@ -477,7 +485,7 @@ export function DriverEditSheet({
             />
           </div>
 
-          <div className="space-y-3 rounded-xl border border-border p-4">
+          <div className="space-y-2 rounded-xl border border-border p-3">
             <div className="flex items-center justify-between gap-2">
               <Label className="text-sm font-medium">{tNew("sections.assets")}</Label>
               <Switch
@@ -510,8 +518,39 @@ export function DriverEditSheet({
               <p className="text-sm text-muted-foreground">{tNew("assetsDisabled")}</p>
             )}
           </div>
+
+          <div className="space-y-2 rounded-xl border border-border p-3">
+            <div>
+              <Label className="text-sm font-medium">{t("documentsTitle")}</Label>
+              <p className="text-xs text-muted-foreground">{t("documentsDescription")}</p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {DOCUMENT_TYPES.map((docType) => (
+                <DriverDocumentUpload
+                  key={docType}
+                  mode="remote"
+                  docType={docType}
+                  intakeId={intakeId}
+                  driverProfileId={driver.linked_profile_id}
+                  existing={remoteDocuments[docType] ?? null}
+                  disabled={isPending}
+                  onChanged={(next) => {
+                    setRemoteDocuments((prev) => {
+                      const updated = { ...prev };
+                      if (next) updated[docType] = next;
+                      else delete updated[docType];
+                      return updated;
+                    });
+                    void queryClient.invalidateQueries({
+                      queryKey: queryKeys.drivers.detail(driver.id),
+                    });
+                  }}
+                />
+              ))}
+            </div>
+          </div>
         </div>
-        <DialogFooter className="border-t border-border px-6 py-4">
+        <DialogFooter className="shrink-0 border-t border-border px-5 py-3">
           <Button
             type="button"
             variant="outline"
