@@ -423,6 +423,8 @@ export type Database = {
         Row: {
           created_at: string
           delivered_at: string
+          delivered_lat: number | null
+          delivered_lng: number | null
           driver_id: string
           external_order_id: string | null
           id: string
@@ -437,6 +439,8 @@ export type Database = {
         Insert: {
           created_at?: string
           delivered_at?: string
+          delivered_lat?: number | null
+          delivered_lng?: number | null
           driver_id: string
           external_order_id?: string | null
           id?: string
@@ -451,6 +455,8 @@ export type Database = {
         Update: {
           created_at?: string
           delivered_at?: string
+          delivered_lat?: number | null
+          delivered_lng?: number | null
           driver_id?: string
           external_order_id?: string | null
           id?: string
@@ -2111,6 +2117,40 @@ export type Database = {
         Args: { p_driver_code: string; p_passcode: string }
         Returns: Json
       }
+      driver_check_order_id_available: {
+        Args: { p_external_order_id: string }
+        Returns: boolean
+      }
+      driver_create_delivery: {
+        Args: {
+          p_delivered_lat?: number
+          p_delivered_lng?: number
+          p_external_order_id: string
+          p_order_proof_url?: string
+        }
+        Returns: {
+          created_at: string
+          delivered_at: string
+          delivered_lat: number | null
+          delivered_lng: number | null
+          driver_id: string
+          external_order_id: string | null
+          id: string
+          order_proof_url: string | null
+          partner_id: string | null
+          rejection_reason: string | null
+          restaurant_id: string | null
+          status: Database["public"]["Enums"]["delivery_status"]
+          updated_at: string
+          zone_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "deliveries"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       generate_driver_app_passcode: { Args: never; Returns: string }
       is_admin_panel_user: { Args: never; Returns: boolean }
       is_current_driver: { Args: { driver_uuid: string }; Returns: boolean }
@@ -2124,6 +2164,7 @@ export type Database = {
         Returns: boolean
       }
       next_restaurant_code: { Args: never; Returns: string }
+      normalize_external_order_id: { Args: { p_raw: string }; Returns: string }
       preview_driver_earnings: { Args: { p_earn_date: string }; Returns: Json }
       recalculate_driver_earnings: {
         Args: { p_driver_id: string; p_earn_date: string }
