@@ -54,6 +54,69 @@ export async function testR2Connection(): Promise<{ ok: boolean; error?: string 
   }
 }
 
+const PROBE_BODY = "DPD admin R2 probe";
+
+export type R2ProbeStep = "bucket" | "write" | "read" | "delete";
+
+export async function runR2StorageProbe(): Promise<{
+  ok: boolean;
+  key?: string;
+  steps?: R2ProbeStep[];
+  error?: string;
+}> {
+  const steps: R2ProbeStep[] = [];
+
+  try {
+    const s3 = await getR2Client();
+    const bucket = await getR2BucketName();
+
+    await s3.send(new HeadBucketCommand({ Bucket: bucket }));
+    steps.push("bucket");
+
+    const key = `healthcheck/dpd-admin-probe-${new Date().toISOString().replace(/[:.]/g, "-")}.txt`;
+
+    await s3.send(
+      new PutObjectCommand({
+        Bucket: bucket,
+        Key: key,
+        Body: PROBE_BODY,
+        ContentType: "text/plain",
+      }),
+    );
+    steps.push("write");
+
+    const getRes = await s3.send(
+      new GetObjectCommand({
+        Bucket: bucket,
+        Key: key,
+      }),
+    );
+    const body = await getRes.Body?.transformToString();
+    if (body !== PROBE_BODY) {
+      return {
+        ok: false,
+        key,
+        steps,
+        error: "Probe read mismatch",
+      };
+    }
+    steps.push("read");
+
+    await s3.send(
+      new DeleteObjectCommand({
+        Bucket: bucket,
+        Key: key,
+      }),
+    );
+    steps.push("delete");
+
+    return { ok: true, key, steps };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Connection failed";
+    return { ok: false, steps, error: message };
+  }
+}
+
 export async function putObject(
   key: string,
   body: Buffer | Uint8Array,

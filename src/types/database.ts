@@ -1672,6 +1672,7 @@ export type Database = {
       }
       storage_config: {
         Row: {
+          cloudflare_api_token: string | null
           id: number
           r2_access_key_id: string | null
           r2_account_id: string | null
@@ -1682,6 +1683,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          cloudflare_api_token?: string | null
           id?: number
           r2_access_key_id?: string | null
           r2_account_id?: string | null
@@ -1692,6 +1694,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          cloudflare_api_token?: string | null
           id?: number
           r2_access_key_id?: string | null
           r2_account_id?: string | null

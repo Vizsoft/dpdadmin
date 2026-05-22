@@ -10,8 +10,10 @@ import { Label } from "@/components/ui/label";
 import { FormSectionCard } from "@/components/form-section-card";
 import {
   getStorageSettings,
+  saveCloudflareApiToken,
   saveStorageSettings,
   testStorageConnection,
+  verifyCloudflareApiToken,
   type StorageSettingsView,
 } from "@/features/settings/storage-actions";
 
@@ -21,25 +23,33 @@ export function StorageSettingsPanel() {
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState<StorageSettingsView | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [lastProbeKey, setLastProbeKey] = useState<string | null>(null);
 
+  const [cloudflareApiToken, setCloudflareApiToken] = useState("");
   const [accountId, setAccountId] = useState("");
   const [accessKeyId, setAccessKeyId] = useState("");
   const [secretAccessKey, setSecretAccessKey] = useState("");
   const [bucketName, setBucketName] = useState("");
   const [s3Endpoint, setS3Endpoint] = useState("");
 
-  useEffect(() => {
-    void getStorageSettings().then((result) => {
-      setLoading(false);
-      if ("error" in result) {
-        setError(result.error);
-        return;
-      }
+  const refreshSettings = async () => {
+    const result = await getStorageSettings();
+    if (!("error" in result)) {
       setSettings(result);
       setAccountId(result.accountId);
       setAccessKeyId(result.accessKeyId);
       setBucketName(result.bucketName);
       setS3Endpoint(result.s3Endpoint);
+    }
+    return result;
+  };
+
+  useEffect(() => {
+    void refreshSettings().then((result) => {
+      setLoading(false);
+      if ("error" in result) {
+        setError(result.error);
+      }
     });
   }, []);
 
@@ -52,6 +62,9 @@ export function StorageSettingsPanel() {
       formData.append("secretAccessKey", secretAccessKey);
       formData.append("bucketName", bucketName);
       formData.append("s3Endpoint", s3Endpoint);
+      if (cloudflareApiToken) {
+        formData.append("cloudflareApiToken", cloudflareApiToken);
+      }
 
       const result = await saveStorageSettings(formData);
       if (result.error) {
@@ -61,19 +74,76 @@ export function StorageSettingsPanel() {
       }
       toast.success(t("saved"));
       setSecretAccessKey("");
-      const refreshed = await getStorageSettings();
-      if (!("error" in refreshed)) setSettings(refreshed);
+      setCloudflareApiToken("");
+      await refreshSettings();
+    });
+  };
+
+  const handleSaveCloudflareToken = () => {
+    startTransition(async () => {
+      const result = await saveCloudflareApiToken(cloudflareApiToken);
+      if (result.error) {
+        toast.error(t(`errors.${result.error}`));
+        return;
+      }
+      toast.success(t("cloudflareTokenSaved"));
+      setCloudflareApiToken("");
+      await refreshSettings();
+    });
+  };
+
+  const handleVerifyToken = () => {
+    startTransition(async () => {
+      if (cloudflareApiToken.trim()) {
+        const saveResult = await saveCloudflareApiToken(cloudflareApiToken);
+        if (saveResult.error) {
+          toast.error(t(`errors.${saveResult.error}`));
+          return;
+        }
+        setCloudflareApiToken("");
+        await refreshSettings();
+      }
+
+      const result = await verifyCloudflareApiToken();
+      if (result.ok) {
+        toast.success(
+          t("verifyTokenSuccess", { status: result.status ?? result.message ?? "active" }),
+        );
+        return;
+      }
+      const errKey = result.error;
+      if (errKey && errKey in { missing_cloudflare_token: 1, verify_failed: 1 }) {
+        toast.error(t(`errors.${errKey}`));
+      } else {
+        toast.error(result.error ?? t("verifyTokenFailed"));
+      }
     });
   };
 
   const handleTest = () => {
     startTransition(async () => {
+      setLastProbeKey(null);
       const result = await testStorageConnection();
       if (result.ok) {
-        toast.success(t("testSuccess"));
+        if (result.key) setLastProbeKey(result.key);
+        toast.success(
+          result.key
+            ? t("testSuccessDetail", { key: result.key })
+            : t("testSuccess"),
+        );
         return;
       }
-      toast.error(result.error ?? t("errors.connection_failed"));
+      const errKey = result.error;
+      if (
+        errKey &&
+        (errKey === "missing_r2_s3_credentials" ||
+          errKey === "connection_failed" ||
+          errKey === "missing_secret")
+      ) {
+        toast.error(t(`errors.${errKey}`));
+      } else {
+        toast.error(result.error ?? t("errors.connection_failed"));
+      }
     });
   };
 
@@ -86,6 +156,8 @@ export function StorageSettingsPanel() {
   }
 
   const envLocked = settings?.source === "env";
+  const cfTokenEnvLocked = settings?.cloudflareTokenSource === "env";
+  const canTestR2 = settings?.configured && !envLocked;
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 pb-10">
@@ -123,9 +195,76 @@ export function StorageSettingsPanel() {
       ) : null}
 
       <FormSectionCard
+        title={t("cloudflareTokenTitle")}
+        description={t("cloudflareTokenDescription")}
+      >
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="cf-api-token">{t("cloudflareTokenField")}</Label>
+            <Input
+              id="cf-api-token"
+              type="password"
+              value={cloudflareApiToken}
+              onChange={(e) => setCloudflareApiToken(e.target.value)}
+              placeholder={t("cloudflareTokenPlaceholder")}
+              disabled={isPending || cfTokenEnvLocked}
+              className="rounded-lg font-mono text-sm"
+              autoComplete="off"
+            />
+            <p className="text-xs text-muted-foreground">
+              {settings?.hasCloudflareToken
+                ? t("cloudflareTokenHintKeep", {
+                    masked: settings.cloudflareTokenMasked,
+                  })
+                : t("cloudflareTokenHint")}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="cursor-pointer rounded-lg"
+              disabled={
+                isPending ||
+                cfTokenEnvLocked ||
+                (!cloudflareApiToken.trim() && !settings?.hasCloudflareToken)
+              }
+              onClick={handleVerifyToken}
+            >
+              {isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                t("verifyToken")
+              )}
+            </Button>
+            {!cfTokenEnvLocked && cloudflareApiToken.trim() ? (
+              <Button
+                type="button"
+                variant="secondary"
+                className="cursor-pointer rounded-lg"
+                disabled={isPending}
+                onClick={handleSaveCloudflareToken}
+              >
+                {t("saveCloudflareToken")}
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      </FormSectionCard>
+
+      <FormSectionCard
         title={t("credentialsTitle")}
         description={t("credentialsDescription")}
       >
+        {!settings?.configured ? (
+          <div className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
+            <p className="font-medium text-foreground">{t("r2S3CalloutTitle")}</p>
+            <p className="mt-1 text-muted-foreground">
+              {t("r2S3Callout", { bucket: bucketName || "dpd-private" })}
+            </p>
+          </div>
+        ) : null}
+
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5 sm:col-span-2">
             <Label htmlFor="r2-account-id">{t("fields.accountId")}</Label>
@@ -202,12 +341,18 @@ export function StorageSettingsPanel() {
           </p>
         ) : null}
 
+        {lastProbeKey ? (
+          <p className="mt-3 text-xs text-muted-foreground">
+            {t("probeResult", { key: lastProbeKey })}
+          </p>
+        ) : null}
+
         <div className="mt-6 flex flex-wrap justify-end gap-2">
           <Button
             type="button"
             variant="outline"
             className="cursor-pointer rounded-lg"
-            disabled={isPending || envLocked}
+            disabled={isPending || !canTestR2}
             onClick={handleTest}
           >
             {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : t("testConnection")}
