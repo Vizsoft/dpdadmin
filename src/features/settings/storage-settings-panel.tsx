@@ -177,13 +177,14 @@ export function StorageSettingsPanel() {
           <li>{t("steps.createToken")}</li>
           <li>{t("steps.fillForm")}</li>
         </ol>
+        <p className="mt-3 text-xs text-muted-foreground">{t("cfutVsR2Hint")}</p>
         <a
           href="https://dash.cloudflare.com/?to=/:account/r2/overview"
           target="_blank"
           rel="noopener noreferrer"
           className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
         >
-          {t("openCloudflare")}
+          {t("openR2Overview")}
           <ExternalLink className="h-3.5 w-3.5" />
         </a>
       </FormSectionCard>
