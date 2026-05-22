@@ -879,6 +879,7 @@ export type Database = {
       }
       drivers: {
         Row: {
+          app_passcode: string | null
           base_earnings_kwd: number | null
           civil_id: string | null
           created_at: string
@@ -896,6 +897,7 @@ export type Database = {
           zone_id: string | null
         }
         Insert: {
+          app_passcode?: string | null
           base_earnings_kwd?: number | null
           civil_id?: string | null
           created_at?: string
@@ -913,6 +915,7 @@ export type Database = {
           zone_id?: string | null
         }
         Update: {
+          app_passcode?: string | null
           base_earnings_kwd?: number | null
           civil_id?: string | null
           created_at?: string
@@ -1955,6 +1958,11 @@ export type Database = {
         Args: { p_delivery_id: string; p_on_date?: string }
         Returns: boolean
       }
+      driver_app_lookup_by_passcode: {
+        Args: { p_driver_code: string; p_passcode: string }
+        Returns: Json
+      }
+      generate_driver_app_passcode: { Args: never; Returns: string }
       is_admin_panel_user: { Args: never; Returns: boolean }
       is_current_driver: { Args: { driver_uuid: string }; Returns: boolean }
       is_rider: { Args: never; Returns: boolean }
@@ -1975,6 +1983,10 @@ export type Database = {
       recalculate_earnings_for_date: {
         Args: { p_earn_date: string }
         Returns: number
+      }
+      regenerate_driver_app_passcode: {
+        Args: { p_driver_id: string }
+        Returns: Json
       }
       register_or_sync_rider_profile: {
         Args: { p_full_name: string }

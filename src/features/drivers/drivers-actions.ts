@@ -475,7 +475,7 @@ export async function fetchDriversForAdmin(): Promise<DriverListRow[]> {
 
   const driverByProfileId = new Map<
     string,
-    { status: DriverAccountStatus; is_on_duty: boolean }
+    { status: DriverAccountStatus; is_on_duty: boolean; app_passcode: string | null }
   >();
   const deliveryCountByDriverId = new Map<string, number>();
 
@@ -483,7 +483,7 @@ export async function fetchDriversForAdmin(): Promise<DriverListRow[]> {
     const [{ data: driverRows }, { data: deliveryRows }] = await Promise.all([
       supabase
         .from("drivers")
-        .select("id, status, is_on_duty")
+        .select("id, status, is_on_duty, app_passcode")
         .in("id", linkedIds),
       (() => {
         const { start, end } = kuwaitDayBounds();
@@ -500,6 +500,7 @@ export async function fetchDriversForAdmin(): Promise<DriverListRow[]> {
       driverByProfileId.set(driver.id, {
         status: driver.status as DriverAccountStatus,
         is_on_duty: driver.is_on_duty,
+        app_passcode: driver.app_passcode ?? null,
       });
     }
 
@@ -558,6 +559,8 @@ export async function fetchDriversForAdmin(): Promise<DriverListRow[]> {
         today_deliveries: row.linked_profile_id
           ? (deliveryCountByDriverId.get(row.linked_profile_id) ?? 0)
           : 0,
+        app_passcode:
+          account_status === "active" ? (linkedDriver?.app_passcode ?? null) : null,
       };
     }),
   );
@@ -731,13 +734,24 @@ export async function fetchDriverDetail(
       full_name: string | null;
       phone: string | null;
     } | null = null;
+    let linkedDriver: { app_passcode: string | null; status: DriverAccountStatus } | null = null;
     if (linkedId) {
-      const { data: prof } = await supabase
-        .from("profiles")
-        .select("email, avatar_url, full_name, phone")
-        .eq("id", linkedId)
-        .maybeSingle();
+      const [{ data: prof }, { data: drv }] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("email, avatar_url, full_name, phone")
+          .eq("id", linkedId)
+          .maybeSingle(),
+        supabase
+          .from("drivers")
+          .select("app_passcode, status")
+          .eq("id", linkedId)
+          .maybeSingle(),
+      ]);
       profile = prof;
+      linkedDriver = drv
+        ? { app_passcode: drv.app_passcode, status: drv.status as DriverAccountStatus }
+        : null;
     }
 
     const vehicle = intake.vehicles as
@@ -778,6 +792,15 @@ export async function fetchDriverDetail(
       assets_issued: parseAssetsIssued(intake.assets_issued),
       restaurant_ids,
       restaurant_names,
+      app_passcode:
+        linkedDriver && linkedDriver.status === "active"
+          ? linkedDriver.app_passcode
+          : null,
+      account_status: deriveAccountStatus(
+        intake.linked,
+        intake.workflow_status as DriverWorkflowStatus,
+        linkedDriver?.status,
+      ),
     };
   }
 
@@ -795,6 +818,7 @@ export async function fetchDriverDetail(
       vehicle_id,
       partner_id,
       zone_id,
+      app_passcode,
       partners (name),
       zones (name, code)
     `,
@@ -860,5 +884,50 @@ export async function fetchDriverDetail(
     assets_issued: parseAssetsIssued(intakeForDriver?.assets_issued),
     restaurant_ids,
     restaurant_names,
+    app_passcode:
+      driverRow.status === ("active" as DriverAccountStatus)
+        ? (driverRow.app_passcode ?? null)
+        : null,
+    account_status: deriveAccountStatus(
+      intakeForDriver?.linked ?? true,
+      (intakeForDriver?.workflow_status as DriverWorkflowStatus) ?? "approved",
+      driverRow.status as DriverAccountStatus,
+    ),
   };
+}
+
+export type RegeneratePasscodeResult =
+  | { success: true; passcode: string }
+  | { error: string };
+
+export async function regenerateDriverPasscode(
+  driverId: string,
+): Promise<RegeneratePasscodeResult> {
+  const auth = await requireDriversManager();
+  if (auth.error) return { error: auth.error };
+
+  if (!driverId) return { error: "missing_fields" };
+
+  const supabase = await createClient();
+  const { data: existing } = await supabase
+    .from("drivers")
+    .select("id, status")
+    .eq("id", driverId)
+    .maybeSingle();
+
+  if (!existing) return { error: "driver_not_found" };
+  if (existing.status !== "active") return { error: "driver_not_active" };
+
+  const { data, error } = await supabase.rpc("regenerate_driver_app_passcode", {
+    p_driver_id: driverId,
+  });
+
+  if (error) return { error: "save_failed" };
+
+  const payload = (data ?? {}) as { ok?: boolean; error?: string; passcode?: string };
+  if (!payload.ok || !payload.passcode) {
+    return { error: payload.error ?? "save_failed" };
+  }
+
+  return { success: true, passcode: payload.passcode };
 }

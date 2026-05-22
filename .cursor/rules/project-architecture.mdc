@@ -224,6 +224,7 @@ Change-log format:
 
 ## Change log
 
+- `[admin+app] 2026-06-02` — Driver app passcode: 6-digit `drivers.app_passcode`, auto-minted on `status='active'` via `drivers_assign_passcode_on_active` trigger. Admin RPC `regenerate_driver_app_passcode(uuid)`, anon-callable login RPC `driver_app_lookup_by_passcode(driver_code, passcode)`. New passcode card on `/drivers/[id]` and masked column on `/drivers`. Migration `20260602100000_driver_app_passcode.sql`.
 - `[admin only] 2026-05-21` — Agent ops rule: auto `supabase db push` after migrations, auto local dev restart when needed (`.cursor/rules/ops-automation.mdc`).
 - `[admin+app] 2026-05-24` — DPD module `/dpd` (dedicated page): `restaurants`, `delivery_rules`, `incentive_rules`; `deliveries.restaurant_id`; RPC `recalculate_driver_earnings` + trigger on verify; migration `20260524100000_dpd_incentives_rules.sql`
 - `[admin+app] 2026-05-20` — Zones module at `/zones`: `zone_type` + `geometry` GeoJSON (polygon/circle), Leaflet map UI, shared `zone-geometry` validation; migration `20260520140000_zones_geometry.sql`

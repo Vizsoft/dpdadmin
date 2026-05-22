@@ -18,11 +18,32 @@ The **admin panel** verifies deliveries, approves requests, manages zones/vehicl
 
 | Item | Value |
 |------|-------|
-| Method | Phone **+965** + OTP (`supabase.auth.signInWithOtp`) |
+| **Primary method** | `driver_code` + **6-digit App Passcode** (issued by admin) |
+| Fallback (first link) | Phone **+965** + OTP (`supabase.auth.signInWithOtp`) — used **once** to bind the auth user to the intake/driver row |
 | Profile table | `profiles` where `role = 'rider'` |
 | Driver row | `drivers` where `id = auth.uid()` (1:1 with profile) |
 | Locale | `profiles.locale` — `en` \| `ar` |
 | Admin block | `role = 'staff'` users use email login on web only |
+
+### 2a. App passcode login (default after first link)
+
+The admin panel auto-issues a **6-digit numeric passcode** (`drivers.app_passcode`) the moment a driver row transitions to `status = 'active'`. Admins share it privately with the driver and the driver enters `driver_code + passcode` on the login screen.
+
+1. App calls RPC `select * from public.driver_app_lookup_by_passcode(p_driver_code, p_passcode)` (granted to `anon`).
+2. RPC returns `{ ok: true, user_id }` only when the driver row is `active` and both values match. Any failure returns `{ ok: false, error: 'invalid_credentials' }` — same payload for wrong code or wrong passcode (no enumeration).
+3. With `user_id` in hand, exchange for a real Supabase session — easiest path: call a service-role edge function that issues an OTP / magic-link / signed JWT for that `auth.users.id` (we do **not** ship the service-role key in the app).
+4. Admin can rotate via `select public.regenerate_driver_app_passcode(p_driver_id)` (staff only via RLS helper `is_admin_panel_user()`); rotation invalidates the old code immediately.
+5. The passcode is plaintext in `drivers.app_passcode` so admin staff can read it out to the driver. Treat it as a shared secret — show it only behind the staff "reveal" gesture.
+
+**Constraints already enforced in DB:**
+
+- `app_passcode ~ '^[0-9]{6}$'` (check constraint)
+- `UNIQUE` partial index across non-null values (no two drivers share a code)
+- `BEFORE INSERT OR UPDATE OF status` trigger mints a code the first time `status` becomes `active`
+
+### 2b. First-time link (OTP — kept as a one-shot bootstrap)
+
+The very first time a driver opens the app — before they have a `drivers` row — they still need to bind their phone to an `auth.users` row. Use OTP for that single bootstrap step, then switch to passcode for subsequent sessions.
 
 **On first login (OTP success):** call `link_driver_by_phone(phone)` (RPC or edge function — implement in Supabase when wiring the app):
 
@@ -54,8 +75,9 @@ Admin panel **does not** create auth users; it only inserts `driver_intakes` via
 
 | # | Driver screen | Admin module | Tables (read / write) |
 |---|---------------|--------------|------------------------|
-| 1 | Login (8-digit mobile) | — | `auth.users` |
-| 2 | OTP verification | — | `auth` session |
+| 1 | Login (driver code + 6-digit passcode) | Drivers | `drivers` R via `driver_app_lookup_by_passcode` |
+| 1a | First-time link (8-digit mobile + OTP) | — | `auth.users` (one-shot bootstrap only) |
+| 2 | OTP verification (first link only) | — | `auth` session |
 | 3 | Home (online toggle, weekly KPIs, bumper bonus) | Dashboard, Earnings | `driver_sessions`, `driver_earnings_daily`, `offers`, `deliveries` |
 | 4 | Deliveries list (calendar, + Add Delivery) | Live Deliveries | `deliveries` **W**, `partners` R |
 | 5 | Add delivery (order ID + proof photo) | Live Deliveries (verify tab) | `deliveries` **W** → `status=pending` |
@@ -322,4 +344,4 @@ Never ship `SUPABASE_SERVICE_ROLE_KEY` in the mobile app.
 
 ---
 
-*Last synced: 2026-05-18 — Base scaffold (admin panel modules + core schema migration)*
+*Last synced: 2026-06-02 — [admin+app] Driver app passcode: `drivers.app_passcode` 6-digit PIN, auto-issued on active, RPC `driver_app_lookup_by_passcode` + `regenerate_driver_app_passcode`. Mobile login is now driver_code + passcode; OTP becomes a one-shot first-link bootstrap.*

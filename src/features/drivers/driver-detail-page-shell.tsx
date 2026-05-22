@@ -2,7 +2,16 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { ArrowLeft, Check, Loader2, Minus } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  Copy,
+  Eye,
+  EyeOff,
+  Loader2,
+  Minus,
+  RefreshCw,
+} from "lucide-react";
 import { toast } from "sonner";
 import { TabBar, type TabItem } from "@/components/dashboard/tab-bar";
 import { AppPage } from "@/components/app/app-page";
@@ -26,7 +35,7 @@ import { DriverEditSheet } from "./driver-edit-sheet";
 import { LinkedBadge, WorkflowStatusPill } from "./driver-workflow-ui";
 import { formatPhoneDisplay } from "./driver-phone";
 import { ASSET_TYPES, type DriverWorkflowStatus } from "./types";
-import { useDriverDetail } from "./use-drivers";
+import { useDriverDetail, useRegenerateDriverPasscode } from "./use-drivers";
 
 type DetailTabId =
   | "attendance"
@@ -43,6 +52,120 @@ function DetailSkeleton() {
     <div className="flex h-48 items-center justify-center">
       <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
     </div>
+  );
+}
+
+function PasscodeCard({
+  driverId,
+  passcode,
+  isActive,
+  canManage,
+}: {
+  driverId: string;
+  passcode: string | null;
+  isActive: boolean;
+  canManage: boolean;
+}) {
+  const t = useTranslations("pages.driverDetail.passcode");
+  const [revealed, setRevealed] = useState(false);
+  const regenerate = useRegenerateDriverPasscode();
+
+  const masked = passcode ? "••••••" : "—";
+  const display = revealed && passcode ? passcode : masked;
+
+  const handleCopy = async () => {
+    if (!passcode) return;
+    try {
+      await navigator.clipboard.writeText(passcode);
+      toast.success(t("copied"));
+    } catch {
+      toast.error(t("copyFailed"));
+    }
+  };
+
+  const handleRegenerate = async () => {
+    if (!canManage) return;
+    if (!window.confirm(t("regenerateConfirm"))) return;
+    try {
+      await regenerate.mutateAsync(driverId);
+      setRevealed(true);
+      toast.success(t("regenerated"));
+    } catch {
+      toast.error(t("regenerateFailed"));
+    }
+  };
+
+  return (
+    <Card className="rounded-xl border-border shadow-sm">
+      <CardHeader className="border-b border-border py-4">
+        <CardTitle className="text-sm font-semibold">{t("title")}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3 py-4">
+        {!isActive ? (
+          <p className="text-sm text-muted-foreground">{t("inactiveHint")}</p>
+        ) : (
+          <>
+            <div className="flex items-center justify-between gap-2">
+              <span
+                className={cn(
+                  "tabular-nums font-mono text-2xl font-semibold tracking-[0.35em] text-foreground",
+                  !passcode && "text-muted-foreground",
+                )}
+                aria-label={revealed && passcode ? t("ariaRevealed") : t("ariaHidden")}
+              >
+                {display}
+              </span>
+              <div className="flex shrink-0 items-center gap-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  className="cursor-pointer"
+                  disabled={!passcode}
+                  onClick={() => setRevealed((v) => !v)}
+                  aria-label={revealed ? t("hide") : t("reveal")}
+                >
+                  {revealed ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  className="cursor-pointer"
+                  disabled={!passcode}
+                  onClick={handleCopy}
+                  aria-label={t("copy")}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">{t("description")}</p>
+            {canManage ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full cursor-pointer rounded-lg"
+                onClick={handleRegenerate}
+                disabled={regenerate.isPending}
+              >
+                {regenerate.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                )}
+                {t("regenerate")}
+              </Button>
+            ) : null}
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -297,6 +420,14 @@ function DriverDetailContent({ id }: { id: string }) {
         </div>
 
         <aside className="space-y-4">
+          {driver.linked_profile_id ? (
+            <PasscodeCard
+              driverId={driver.linked_profile_id}
+              passcode={driver.app_passcode}
+              isActive={driver.account_status === "active"}
+              canManage={canManage}
+            />
+          ) : null}
           <Card className="rounded-xl border-border shadow-sm">
             <CardHeader className="border-b border-border py-4">
               <CardTitle className="text-sm font-semibold">{t("quickStats")}</CardTitle>

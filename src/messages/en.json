@@ -175,6 +175,7 @@
       "colTodayDeliveries": "Today Deliveries",
       "colStatus": "Status",
       "colAttendance": "Attendance",
+      "colPasscode": "App Passcode",
       "colActions": "Action",
       "statusActive": "Active",
       "statusSuspended": "Suspended",
@@ -196,7 +197,12 @@
         "save_failed": "Could not update status. Please try again."
       },
       "emptyTitle": "No drivers yet",
-      "emptyDescription": "Add your first driver to get started"
+      "emptyDescription": "Add your first driver to get started",
+      "passcode": {
+        "copied": "Passcode copied",
+        "copyFailed": "Could not copy passcode",
+        "copyAria": "Copy app passcode to clipboard"
+      }
     },
     "partners": {
       "title": "Partners",
@@ -305,7 +311,23 @@
       "earningsTrend": "Earnings trend",
       "chartPlaceholder": "Chart data will appear here",
       "emptyTitle": "No records yet",
-      "emptyTabDescription": "This section will be available in a future update."
+      "emptyTabDescription": "This section will be available in a future update.",
+      "passcode": {
+        "title": "Driver App Passcode",
+        "description": "6-digit PIN the driver uses to sign in to the mobile app. Share it privately.",
+        "inactiveHint": "Passcode is generated automatically once the driver is set to active.",
+        "reveal": "Show passcode",
+        "hide": "Hide passcode",
+        "copy": "Copy passcode",
+        "copied": "Passcode copied",
+        "copyFailed": "Could not copy passcode",
+        "regenerate": "Regenerate passcode",
+        "regenerateConfirm": "Generate a new passcode? The driver's current passcode will stop working immediately.",
+        "regenerated": "New passcode generated",
+        "regenerateFailed": "Could not regenerate the passcode. Please try again.",
+        "ariaRevealed": "Driver app passcode revealed",
+        "ariaHidden": "Driver app passcode hidden"
+      }
     },
     "driverNew": {
       "title": "Add Driver",

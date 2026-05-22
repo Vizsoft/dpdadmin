@@ -175,6 +175,7 @@
       "colTodayDeliveries": "توصيلات اليوم",
       "colStatus": "الحالة",
       "colAttendance": "الحضور",
+      "colPasscode": "رمز التطبيق",
       "colActions": "إجراء",
       "statusActive": "نشط",
       "statusSuspended": "موقوف",
@@ -196,7 +197,12 @@
         "save_failed": "تعذر تحديث الحالة. حاول مرة أخرى."
       },
       "emptyTitle": "لا يوجد سائقون بعد",
-      "emptyDescription": "أضف أول سائق للبدء"
+      "emptyDescription": "أضف أول سائق للبدء",
+      "passcode": {
+        "copied": "تم نسخ الرمز",
+        "copyFailed": "تعذر نسخ الرمز",
+        "copyAria": "نسخ رمز التطبيق"
+      }
     },
     "partners": {
       "title": "الشركاء",
@@ -305,7 +311,23 @@
       "earningsTrend": "اتجاه الأرباح",
       "chartPlaceholder": "ستظهر بيانات الرسم البياني هنا",
       "emptyTitle": "لا توجد سجلات بعد",
-      "emptyTabDescription": "سيُتاح هذا القسم في تحديث لاحق."
+      "emptyTabDescription": "سيُتاح هذا القسم في تحديث لاحق.",
+      "passcode": {
+        "title": "رمز تطبيق السائق",
+        "description": "رمز من 6 أرقام يستخدمه السائق لتسجيل الدخول إلى التطبيق. شاركه بسرية.",
+        "inactiveHint": "يُنشأ الرمز تلقائياً عند تفعيل السائق.",
+        "reveal": "إظهار الرمز",
+        "hide": "إخفاء الرمز",
+        "copy": "نسخ الرمز",
+        "copied": "تم نسخ الرمز",
+        "copyFailed": "تعذر نسخ الرمز",
+        "regenerate": "إعادة إنشاء الرمز",
+        "regenerateConfirm": "إنشاء رمز جديد؟ سيتوقف الرمز الحالي عن العمل فوراً.",
+        "regenerated": "تم إنشاء رمز جديد",
+        "regenerateFailed": "تعذر إعادة إنشاء الرمز. حاول مرة أخرى.",
+        "ariaRevealed": "تم كشف رمز تطبيق السائق",
+        "ariaHidden": "رمز تطبيق السائق مخفي"
+      }
     },
     "driverNew": {
       "title": "إضافة سائق",

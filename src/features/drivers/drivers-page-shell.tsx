@@ -56,6 +56,7 @@ import {
   formatDriverCodeDisplay,
   formatPhoneInternational,
   PartnerCell,
+  PasscodeCell,
 } from "./driver-list-ui";
 import {
   DRIVER_ACCOUNT_STATUSES,
@@ -76,6 +77,7 @@ function exportDriversCsv(rows: DriverListRow[]) {
     "today_deliveries",
     "workflow_status",
     "linked",
+    "app_passcode",
   ];
   const escape = (v: string | number | boolean) => {
     const s = String(v);
@@ -96,6 +98,7 @@ function exportDriversCsv(rows: DriverListRow[]) {
         r.today_deliveries,
         r.workflow_status,
         r.linked ? "yes" : "no",
+        r.app_passcode ?? "",
       ]
         .map(escape)
         .join(","),
@@ -477,6 +480,9 @@ function DriversPageContent() {
                   </TableHead>
                   <TableHead className={TABLE_HEAD_CLASS}>{t("colStatus")}</TableHead>
                   <TableHead className={TABLE_HEAD_CLASS}>{t("colAttendance")}</TableHead>
+                  <TableHead className={cn("hidden lg:table-cell", TABLE_HEAD_CLASS)}>
+                    {t("colPasscode")}
+                  </TableHead>
                   <TableHead className={cn("w-12 text-end", TABLE_HEAD_CLASS)}>
                     {t("colActions")}
                   </TableHead>
@@ -485,7 +491,7 @@ function DriversPageContent() {
               <TableBody>
                 {showEmptySearch ? (
                   <TableRow className="hover:bg-transparent">
-                    <TableCell colSpan={10} className="border-t border-border py-12">
+                    <TableCell colSpan={11} className="border-t border-border py-12">
                       <AppEmptyState
                         title={t("emptySearchTitle")}
                         description={t("emptySearchDescription")}
@@ -549,6 +555,9 @@ function DriversPageContent() {
                           onDutyLabel={t("attendanceOnDuty")}
                           offDutyLabel={t("attendanceOffDuty")}
                         />
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        <PasscodeCell passcode={driver.app_passcode} />
                       </TableCell>
                       <TableCell className="text-end">
                         <DropdownMenu>

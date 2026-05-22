@@ -91,6 +91,7 @@ export type DriverListRow = {
   account_status: DriverAccountStatus;
   is_on_duty: boolean;
   today_deliveries: number;
+  app_passcode: string | null;
 };
 
 export type DriverDetailModel = {
@@ -118,4 +119,6 @@ export type DriverDetailModel = {
   assets_issued: Record<string, boolean>;
   restaurant_ids: string[];
   restaurant_names: string[];
+  app_passcode: string | null;
+  account_status: DriverAccountStatus;
 };
