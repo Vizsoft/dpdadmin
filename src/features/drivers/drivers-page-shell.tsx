@@ -126,10 +126,11 @@ function DriversPageSkeleton() {
 function DriversPageContent() {
   const t = useTranslations("pages.drivers");
   const router = useRouter();
-  const { data: drivers = [], isLoading, refetch } = useDriversList();
+  const [tabFilter, setTabFilter] = useState<DriversTabFilter>("all");
+  const listArchived = tabFilter === "archived";
+  const { data: drivers = [], isLoading, refetch } = useDriversList(listArchived);
   const { data: formOptions } = useDriverFormOptions();
   const [search, setSearch] = useState("");
-  const [tabFilter, setTabFilter] = useState<DriversTabFilter>("all");
   const [zoneFilter, setZoneFilter] = useState("all");
   const [partnerFilter, setPartnerFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<"all" | DriverAccountStatus>("all");
@@ -188,6 +189,7 @@ function DriversPageContent() {
   const accountStatusLabel = accountStatusLabelFor;
 
   const tabFiltered = useMemo(() => {
+    if (tabFilter === "archived") return drivers;
     return drivers.filter((d) => {
       if (tabFilter === "pending") {
         return (
@@ -282,6 +284,7 @@ function DriversPageContent() {
     { id: "all" as const, label: t("tabAll") },
     { id: "pending" as const, label: t("tabPendingVerification") },
     { id: "on_duty" as const, label: t("tabOnDuty") },
+    { id: "archived" as const, label: t("tabArchived") },
   ];
 
   const hasActiveFilters =

@@ -29,7 +29,7 @@ import {
   KUWAIT_PHONE_DIGIT_COUNT,
   restrictDigits,
 } from "./driver-phone";
-import { createDriverIntake, generateDriverCode } from "./drivers-actions";
+import { createDriverIntake } from "./drivers-actions";
 import { isDriverErrorKey } from "./driver-errors";
 import { DriverDocumentUpload } from "./driver-document-upload";
 import {
@@ -79,7 +79,6 @@ function AddDriverForm() {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [civilId, setCivilId] = useState("");
-  const [driverCode, setDriverCode] = useState("");
   const [partnerId, setPartnerId] = useState("");
   const [restaurantIds, setRestaurantIds] = useState<string[]>([]);
   const [zoneId, setZoneId] = useState("");
@@ -131,18 +130,11 @@ function AddDriverForm() {
     });
   };
 
-  useEffect(() => {
-    void generateDriverCode().then((result) => {
-      if ("code" in result && result.code) setDriverCode(result.code);
-    });
-  }, []);
-
   const handleSubmit = () => {
     const validation = validateDriverForm({
       fullName,
       phone,
       civilId,
-      driverCode,
       partnerId,
       zoneId,
       documents,
@@ -165,7 +157,6 @@ function AddDriverForm() {
       formData.append("fullName", fullName);
       formData.append("phone", phone);
       formData.append("civilId", civilId);
-      formData.append("driverCode", driverCode);
       formData.append("partnerId", partnerId);
       formData.append("zoneId", zoneId);
       if (vehicleId && vehicleId !== NONE_VEHICLE) {
@@ -188,7 +179,11 @@ function AddDriverForm() {
         toast.error(driverErrorToast(t, result.error));
         return;
       }
-      toast.success(t("created"));
+      if (result.driver_code) {
+        toast.success(t("createdWithCode", { code: result.driver_code }));
+      } else {
+        toast.success(t("created"));
+      }
       void queryClient.invalidateQueries({ queryKey: queryKeys.drivers.all() });
       router.push("/drivers");
     });
@@ -347,15 +342,12 @@ function AddDriverForm() {
             <Label htmlFor="driver-code">{t("fields.driverCode")}</Label>
             <Input
               id="driver-code"
-              value={driverCode}
-              onChange={(e) => {
-                setDriverCode(e.target.value.toUpperCase());
-                clearFieldError("driverCode");
-              }}
-              aria-invalid={Boolean(showFieldError("driverCode"))}
-              className="rounded-lg font-mono"
+              readOnly
+              value=""
+              placeholder={t("placeholders.driverCodeAuto")}
+              className="rounded-lg font-mono bg-muted/40"
             />
-            <FieldError message={showFieldError("driverCode")} />
+            <p className="text-xs text-muted-foreground">{t("hints.driverCodeAuto")}</p>
           </div>
         </div>
         </FormSectionCard>

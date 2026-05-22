@@ -98,7 +98,6 @@ export function DriverEditSheet({
   const [civilId, setCivilId] = useState(() =>
     restrictDigits(driver.civil_id, CIVIL_ID_DIGIT_COUNT),
   );
-  const [driverCode, setDriverCode] = useState(driver.driver_code);
   const [partnerId, setPartnerId] = useState(driver.partner_id);
   const [restaurantIds, setRestaurantIds] = useState<string[]>(driver.restaurant_ids);
   const [zoneId, setZoneId] = useState(driver.zone_id);
@@ -133,7 +132,6 @@ export function DriverEditSheet({
     setFullName(driver.full_name);
     setPhone(phoneStorageToDigits(driver.phone));
     setCivilId(restrictDigits(driver.civil_id, CIVIL_ID_DIGIT_COUNT));
-    setDriverCode(driver.driver_code);
     setPartnerId(driver.partner_id);
     setRestaurantIds(driver.restaurant_ids);
     setZoneId(driver.zone_id);
@@ -243,7 +241,6 @@ export function DriverEditSheet({
       fullName,
       phone,
       civilId,
-      driverCode,
       partnerId,
       zoneId,
       documents: emptyDocuments,
@@ -262,7 +259,6 @@ export function DriverEditSheet({
       formData.append("fullName", fullName);
       formData.append("phone", phone);
       formData.append("civilId", civilId);
-      formData.append("driverCode", driverCode);
       formData.append("partnerId", partnerId);
       formData.append("zoneId", zoneId);
       if (vehicleId && vehicleId !== NONE_VEHICLE) {
@@ -378,15 +374,11 @@ export function DriverEditSheet({
               <Label htmlFor="edit-driver-code">{tNew("fields.driverCode")}</Label>
               <Input
                 id="edit-driver-code"
-                value={driverCode}
-                onChange={(e) => {
-                  setDriverCode(e.target.value.toUpperCase());
-                  clearFieldError("driverCode");
-                }}
-                className="rounded-lg font-mono"
-                aria-invalid={Boolean(showFieldError("driverCode"))}
+                readOnly
+                value={driver.driver_code}
+                className="rounded-lg font-mono bg-muted/40"
               />
-              <FieldError message={showFieldError("driverCode")} />
+              <p className="text-xs text-muted-foreground">{tNew("hints.driverCodeLocked")}</p>
             </div>
             <div className="space-y-1.5">
               <Label>{tNew("fields.partner")}</Label>

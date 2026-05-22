@@ -30,7 +30,7 @@ The **admin panel** verifies deliveries, approves requests, manages zones/vehicl
 The admin panel auto-issues a **6-digit numeric passcode** (`drivers.app_passcode`) the moment a driver row transitions to `status = 'active'`. Admins share it privately with the driver and the driver enters `driver_code + passcode` on the login screen.
 
 1. App calls RPC `select * from public.driver_app_lookup_by_passcode(p_driver_code, p_passcode)` (granted to `anon`).
-2. RPC returns `{ ok: true, user_id }` only when the driver row is `active` and both values match. Any failure returns `{ ok: false, error: 'invalid_credentials' }` — same payload for wrong code or wrong passcode (no enumeration).
+2. RPC returns `{ ok: true, user_id }` only when the driver row is `active`, not archived, and both values match. Errors: `invalid_credentials`, `driver_not_active`, `driver_archived`.
 3. With `user_id` in hand, exchange for a real Supabase session — easiest path: call a service-role edge function that issues an OTP / magic-link / signed JWT for that `auth.users.id` (we do **not** ship the service-role key in the app).
 4. Admin can rotate via `select public.regenerate_driver_app_passcode(p_driver_id)` (staff only via RLS helper `is_admin_panel_user()`); rotation invalidates the old code immediately.
 5. The passcode is plaintext in `drivers.app_passcode` so admin staff can read it out to the driver. Treat it as a shared secret — show it only behind the staff "reveal" gesture.
@@ -113,7 +113,8 @@ Admin panel **does not** create auth users; it only inserts `driver_intakes` via
 | Column | Type | Notes |
 |--------|------|-------|
 | id | uuid PK | FK → profiles.id |
-| driver_code | text | DR-####, admin-assigned |
+| driver_code | text | Plain numeric from global sequence (e.g. `100001`), auto-assigned on admin create; never reused after archive |
+| archived_at | timestamptz | Set when admin archives driver; archived drivers cannot log in |
 | partner_id | uuid | Talabat etc. |
 | zone_id | uuid | Assigned zone |
 | status | enum | active, suspended, pending |
@@ -344,4 +345,6 @@ Never ship `SUPABASE_SERVICE_ROLE_KEY` in the mobile app.
 
 ---
 
-*Last synced: 2026-06-02 — [admin+app] Driver app passcode: `drivers.app_passcode` 6-digit PIN, auto-issued on active, RPC `driver_app_lookup_by_passcode` + `regenerate_driver_app_passcode`. Mobile login is now driver_code + passcode; OTP becomes a one-shot first-link bootstrap.*
+*Last synced: 2026-06-03 — [admin+app] Driver codes: global sequence from `100001` (`allocate_driver_code`, auto on intake insert). Archive via `archived_at` + `archive_driver_intake` RPC; codes never reused. Login rejects archived drivers.*
+
+*Prior: 2026-06-02 — Driver app passcode + driver_code/passcode login.*

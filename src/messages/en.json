@@ -157,6 +157,7 @@
       "tabAll": "All Drivers",
       "tabPendingVerification": "Pending Verification",
       "tabOnDuty": "On Duty",
+      "tabArchived": "Archived",
       "totalDrivers": "{count, plural, one {# driver} other {# drivers}}",
       "ofTotal": "of {total} total",
       "emptySearchTitle": "No drivers match your search",
@@ -275,6 +276,11 @@
       "subtitle": "Profile and operational history",
       "backToList": "Back to drivers",
       "editDriver": "Edit driver",
+      "archiveDriver": "Archive driver",
+      "archiveConfirm": "Archive this driver? They will be hidden from the active list and cannot sign in to the app. Their driver ID will not be reused.",
+      "archived": "Driver archived",
+      "archiveFailed": "Could not archive the driver. Please try again.",
+      "archivedBadge": "Archived",
       "editTitle": "Edit driver",
       "saveChanges": "Save changes",
       "cancel": "Cancel",
@@ -338,6 +344,7 @@
       "configureStorage": "Configure R2 storage",
       "cancel": "Cancel",
       "created": "Driver registered. They can link their account via the mobile app.",
+      "createdWithCode": "Driver registered with ID {code}. Share this ID and their app passcode when active.",
       "sections": {
         "basic": "Basic Details",
         "assignment": "Assignment",
@@ -361,6 +368,7 @@
         "fullName": "Enter full name",
         "phone": "12345678",
         "civilId": "123456789012",
+        "driverCodeAuto": "Assigned on save",
         "partner": "Select partner",
         "zone": "Select zone",
         "vehicle": "Select vehicle"
@@ -388,7 +396,9 @@
       "removeDocument": "Remove file",
       "hints": {
         "phone": "8 digits only — Kuwait mobile, no country code",
-        "civilId": "12 digits — civil ID number"
+        "civilId": "12 digits — civil ID number",
+        "driverCodeAuto": "System assigns the next available ID (starting at 100001).",
+        "driverCodeLocked": "Driver ID cannot be changed after assignment."
       },
       "noVehicle": "No vehicle",
       "emptyPartners": "No partners yet.",
@@ -401,7 +411,7 @@
       "errors": {
         "not_authorized": "You do not have permission to manage drivers",
         "missing_fields": "This field is required",
-        "invalid_driver_code": "Use format DR-#### (e.g. DR-1001)",
+        "invalid_driver_code": "Driver ID must be a numeric code (e.g. 100001)",
         "invalid_phone": "Enter exactly 8 digits for the mobile number",
         "invalid_civil_id": "Enter exactly 12 digits for the civil ID",
         "phone_exists": "This phone number is already registered",

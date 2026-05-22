@@ -3,7 +3,6 @@ import {
   isValidKuwaitPhoneDigits,
   restrictDigits,
 } from "./driver-phone";
-import { parseDriverCodeNumber } from "./driver-code";
 import {
   DOCUMENT_TYPES,
   type DriverDocumentType,
@@ -16,7 +15,6 @@ export type DriverFormField =
   | "fullName"
   | "phone"
   | "civilId"
-  | "driverCode"
   | "partnerId"
   | "zoneId";
 
@@ -43,7 +41,6 @@ export type ValidateDriverFormInput = {
   fullName: string;
   phone: string;
   civilId: string;
-  driverCode: string;
   partnerId: string;
   zoneId: string;
   documents: Record<DriverDocumentType, File | null>;
@@ -70,13 +67,6 @@ export function validateDriverForm(
     errors.civilId = "missing_fields";
   } else if (!isValidCivilIdDigits(civilDigits)) {
     errors.civilId = "invalid_civil_id";
-  }
-
-  const code = input.driverCode.trim().toUpperCase();
-  if (!code) {
-    errors.driverCode = "missing_fields";
-  } else if (parseDriverCodeNumber(code) === null) {
-    errors.driverCode = "invalid_driver_code";
   }
 
   if (!input.partnerId.trim()) {

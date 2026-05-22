@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import {
+  Archive,
   ArrowLeft,
   Check,
   Copy,
@@ -20,7 +21,7 @@ import { AppEmptyState } from "@/components/app/app-empty-state";
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import {
   Table,
   TableBody,
@@ -35,7 +36,12 @@ import { DriverEditSheet } from "./driver-edit-sheet";
 import { LinkedBadge, WorkflowStatusPill } from "./driver-workflow-ui";
 import { formatPhoneDisplay } from "./driver-phone";
 import { ASSET_TYPES, type DriverWorkflowStatus } from "./types";
-import { useDriverDetail, useRegenerateDriverPasscode } from "./use-drivers";
+import {
+  useArchiveDriverIntake,
+  useDriverDetail,
+  useRegenerateDriverPasscode,
+} from "./use-drivers";
+import { formatDriverCodeDisplay } from "./driver-list-ui";
 
 type DetailTabId =
   | "attendance"
@@ -173,11 +179,15 @@ function DriverDetailContent({ id }: { id: string }) {
   const t = useTranslations("pages.driverDetail");
   const tNew = useTranslations("pages.driverNew");
   const tList = useTranslations("pages.drivers");
+  const router = useRouter();
   const { can } = useAuth();
   const canManage = can("drivers.manage");
   const { data: driver, isLoading, isError } = useDriverDetail(id);
+  const archiveDriver = useArchiveDriverIntake();
   const [activeTab, setActiveTab] = useState<DetailTabId>("assets");
   const [editOpen, setEditOpen] = useState(false);
+
+  const isArchived = Boolean(driver?.archived_at);
 
   const workflowLabel = (status: DriverWorkflowStatus) => {
     switch (status) {
@@ -361,16 +371,21 @@ function DriverDetailContent({ id }: { id: string }) {
                     yesLabel={tList("linkedYes")}
                     noLabel={tList("linkedNo")}
                   />
+                  {isArchived ? (
+                    <span className="rounded-md border border-border bg-muted/50 px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                      {t("archivedBadge")}
+                    </span>
+                  ) : null}
                 </div>
                 <p className="mt-1 font-mono text-sm text-muted-foreground">
-                  {driver.driver_code}
+                  {formatDriverCodeDisplay(driver.driver_code)}
                 </p>
                 <p className="mt-0.5 text-sm text-muted-foreground">
                   {driver.zone_label} · {driver.partner_name}
                 </p>
               </div>
             </div>
-            {canManage && driver.intake_id ? (
+            {canManage && driver.intake_id && !isArchived ? (
               <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:items-end">
                 <Button
                   type="button"
@@ -380,6 +395,30 @@ function DriverDetailContent({ id }: { id: string }) {
                   onClick={() => setEditOpen(true)}
                 >
                   {t("editDriver")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="cursor-pointer rounded-lg text-destructive hover:text-destructive"
+                  disabled={archiveDriver.isPending}
+                  onClick={async () => {
+                    if (!window.confirm(t("archiveConfirm"))) return;
+                    try {
+                      await archiveDriver.mutateAsync(driver.intake_id!);
+                      toast.success(t("archived"));
+                      router.push("/drivers");
+                    } catch {
+                      toast.error(t("archiveFailed"));
+                    }
+                  }}
+                >
+                  {archiveDriver.isPending ? (
+                    <Loader2 className="me-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Archive className="me-2 h-4 w-4" />
+                  )}
+                  {t("archiveDriver")}
                 </Button>
                 <DriverEditSheet
                   driver={driver}
@@ -420,7 +459,7 @@ function DriverDetailContent({ id }: { id: string }) {
         </div>
 
         <aside className="space-y-4">
-          {driver.linked_profile_id ? (
+          {driver.linked_profile_id && !isArchived ? (
             <PasscodeCard
               driverId={driver.linked_profile_id}
               passcode={driver.app_passcode}

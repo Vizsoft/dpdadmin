@@ -3,7 +3,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/auth/get-session";
 import { hasPermissionInSet } from "@/lib/auth/permissions";
-import { parseDriverCodeNumber, suggestDriverCode } from "./driver-code";
 import { normalizeCivilId, normalizeKuwaitPhone } from "./driver-phone";
 import { mapDriverDbError } from "./driver-errors";
 import {
@@ -72,36 +71,8 @@ export type DriverMutationResult = {
   error?: string;
   success?: boolean;
   id?: string;
+  driver_code?: string;
 };
-
-async function nextDriverCodeNumber(): Promise<number> {
-  const supabase = await createClient();
-  const codes: string[] = [];
-
-  const { data: intakes } = await supabase.from("driver_intakes").select("driver_code");
-  for (const row of intakes ?? []) {
-    if (row.driver_code) codes.push(row.driver_code);
-  }
-
-  const { data: drivers } = await supabase.from("drivers").select("driver_code");
-  for (const row of drivers ?? []) {
-    if (row.driver_code) codes.push(row.driver_code);
-  }
-
-  let max = 1000;
-  for (const code of codes) {
-    const n = parseDriverCodeNumber(code);
-    if (n !== null && n >= max) max = n + 1;
-  }
-  return max;
-}
-
-export async function generateDriverCode(): Promise<{ code: string } | { error: string }> {
-  const auth = await requireDriversManager();
-  if (auth.error) return { error: auth.error };
-  const seq = await nextDriverCodeNumber();
-  return { code: suggestDriverCode(seq) };
-}
 
 function buildAssetsMap(
   assetsEnabled: boolean,
@@ -209,7 +180,7 @@ async function phoneExists(phone: string, excludeIntakeId?: string): Promise<boo
     .from("driver_intakes")
     .select("id")
     .eq("phone", phone)
-    .neq("status", "cancelled");
+    .is("archived_at", null);
   if (excludeIntakeId) intakeQuery = intakeQuery.neq("id", excludeIntakeId);
 
   const { data: intake } = await intakeQuery.maybeSingle();
@@ -231,31 +202,6 @@ async function phoneExists(phone: string, excludeIntakeId?: string): Promise<boo
     if (linkedIntake?.id === excludeIntakeId) return false;
   }
   return true;
-}
-
-async function driverCodeExists(
-  code: string,
-  excludeIntakeId?: string,
-): Promise<boolean> {
-  const supabase = await createClient();
-  const normalized = code.trim().toUpperCase();
-
-  let intakeQuery = supabase
-    .from("driver_intakes")
-    .select("id")
-    .eq("driver_code", normalized);
-  if (excludeIntakeId) intakeQuery = intakeQuery.neq("id", excludeIntakeId);
-
-  const { data: intake } = await intakeQuery.maybeSingle();
-  if (intake) return true;
-
-  const { data: driver } = await supabase
-    .from("drivers")
-    .select("id")
-    .eq("driver_code", normalized)
-    .maybeSingle();
-
-  return Boolean(driver);
 }
 
 async function uploadIntakeDocument(
@@ -288,13 +234,12 @@ export async function createDriverIntake(
   const fullName = String(formData.get("fullName") ?? "").trim();
   const phoneRaw = String(formData.get("phone") ?? "").trim();
   const civilId = String(formData.get("civilId") ?? "").trim();
-  const driverCode = String(formData.get("driverCode") ?? "").trim().toUpperCase();
   const partnerId = String(formData.get("partnerId") ?? "").trim();
   const zoneId = String(formData.get("zoneId") ?? "").trim();
   const vehicleId = String(formData.get("vehicleId") ?? "").trim();
   const assetsEnabled = formData.get("assetsEnabled") === "true";
 
-  if (!fullName || !phoneRaw || !civilId || !driverCode || !partnerId || !zoneId) {
+  if (!fullName || !phoneRaw || !civilId || !partnerId || !zoneId) {
     return { error: "missing_fields" };
   }
 
@@ -304,12 +249,7 @@ export async function createDriverIntake(
   const civilIdNormalized = normalizeCivilId(civilId);
   if (!civilIdNormalized) return { error: "invalid_civil_id" };
 
-  if (parseDriverCodeNumber(driverCode) === null) {
-    return { error: "invalid_driver_code" };
-  }
-
   if (await phoneExists(phone)) return { error: "phone_exists" };
-  if (await driverCodeExists(driverCode)) return { error: "driver_code_exists" };
 
   const restaurantIds = parseRestaurantIds(formData);
   const supabase = await createClient();
@@ -354,7 +294,6 @@ export async function createDriverIntake(
       phone,
       full_name: fullName,
       civil_id: civilIdNormalized,
-      driver_code: driverCode,
       partner_id: partnerId,
       zone_id: zoneId,
       vehicle_id: vehicleId || null,
@@ -363,7 +302,7 @@ export async function createDriverIntake(
       workflow_status: "draft",
       linked: false,
     })
-    .select("id")
+    .select("id, driver_code")
     .single();
 
   if (error) {
@@ -377,7 +316,7 @@ export async function createDriverIntake(
 
   await syncIntakeRestaurants(supabase, data.id, restaurantIds);
 
-  return { success: true, id: data.id };
+  return { success: true, id: data.id, driver_code: data.driver_code };
 }
 
 type IntakeListRow = {
@@ -390,6 +329,7 @@ type IntakeListRow = {
   linked_profile_id: string | null;
   workflow_status: DriverWorkflowStatus;
   linked: boolean;
+  archived_at: string | null;
   partners:
     | { name: string; logo_url: string | null }
     | { name: string; logo_url: string | null }[]
@@ -438,11 +378,14 @@ function relZone(
   return row.code ? `${row.name} (${row.code})` : row.name;
 }
 
-export async function fetchDriversForAdmin(): Promise<DriverListRow[]> {
+export async function fetchDriversForAdmin(options?: {
+  archived?: boolean;
+}): Promise<DriverListRow[]> {
   await requireDriversView();
   const supabase = await createClient();
+  const archivedOnly = options?.archived === true;
 
-  const { data: intakes, error } = await supabase
+  let query = supabase
     .from("driver_intakes")
     .select(
       `
@@ -455,12 +398,18 @@ export async function fetchDriversForAdmin(): Promise<DriverListRow[]> {
       linked_profile_id,
       workflow_status,
       linked,
+      archived_at,
       partners (name, logo_url),
       zones (name)
     `,
     )
-    .neq("status", "cancelled")
     .order("created_at", { ascending: false });
+
+  query = archivedOnly
+    ? query.not("archived_at", "is", null)
+    : query.is("archived_at", null);
+
+  const { data: intakes, error } = await query;
 
   if (error) throw error;
 
@@ -561,9 +510,33 @@ export async function fetchDriversForAdmin(): Promise<DriverListRow[]> {
           : 0,
         app_passcode:
           account_status === "active" ? (linkedDriver?.app_passcode ?? null) : null,
+        archived_at: row.archived_at,
       };
     }),
   );
+}
+
+export async function archiveDriverIntake(
+  intakeId: string,
+): Promise<DriverMutationResult> {
+  const auth = await requireDriversManager();
+  if (auth.error) return { error: auth.error };
+  if (!intakeId) return { error: "missing_fields" };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("archive_driver_intake", {
+    p_intake_id: intakeId,
+  });
+
+  if (error) return { error: mapDriverDbError(error) };
+
+  const payload = (data ?? {}) as { ok?: boolean; error?: string };
+  if (!payload.ok) {
+    if (payload.error === "intake_not_found") return { error: "save_failed" };
+    return { error: payload.error ?? "save_failed" };
+  }
+
+  return { success: true, id: intakeId };
 }
 
 export async function updateDriverWorkflowStatus(
@@ -581,7 +554,7 @@ export async function updateDriverWorkflowStatus(
       updated_at: new Date().toISOString(),
     })
     .eq("id", intakeId)
-    .neq("status", "cancelled");
+    .is("archived_at", null);
 
   if (error) return { error: mapDriverDbError(error) };
   return { success: true };
@@ -597,14 +570,13 @@ export async function updateDriverIntake(
   const fullName = String(formData.get("fullName") ?? "").trim();
   const phoneRaw = String(formData.get("phone") ?? "").trim();
   const civilId = String(formData.get("civilId") ?? "").trim();
-  const driverCode = String(formData.get("driverCode") ?? "").trim().toUpperCase();
   const partnerId = String(formData.get("partnerId") ?? "").trim();
   const zoneId = String(formData.get("zoneId") ?? "").trim();
   const vehicleId = String(formData.get("vehicleId") ?? "").trim();
   const assetsEnabled = formData.get("assetsEnabled") === "true";
   const workflowStatus = String(formData.get("workflowStatus") ?? "").trim() as DriverWorkflowStatus;
 
-  if (!intakeId || !fullName || !phoneRaw || !civilId || !driverCode || !partnerId || !zoneId) {
+  if (!intakeId || !fullName || !phoneRaw || !civilId || !partnerId || !zoneId) {
     return { error: "missing_fields" };
   }
 
@@ -618,21 +590,14 @@ export async function updateDriverIntake(
   const civilIdNormalized = normalizeCivilId(civilId);
   if (!civilIdNormalized) return { error: "invalid_civil_id" };
 
-  if (parseDriverCodeNumber(driverCode) === null) {
-    return { error: "invalid_driver_code" };
-  }
-
   if (await phoneExists(phone, intakeId)) return { error: "phone_exists" };
-  if (await driverCodeExists(driverCode, intakeId)) {
-    return { error: "driver_code_exists" };
-  }
 
   const supabase = await createClient();
   const { data: existing } = await supabase
     .from("driver_intakes")
-    .select("id, linked_profile_id")
+    .select("id, linked_profile_id, driver_code")
     .eq("id", intakeId)
-    .neq("status", "cancelled")
+    .is("archived_at", null)
     .maybeSingle();
 
   if (!existing) return { error: "save_failed" };
@@ -653,7 +618,6 @@ export async function updateDriverIntake(
       full_name: fullName,
       phone,
       civil_id: civilIdNormalized,
-      driver_code: driverCode,
       partner_id: partnerId,
       zone_id: zoneId,
       vehicle_id: vehicleId || null,
@@ -680,7 +644,6 @@ export async function updateDriverIntake(
     await supabase
       .from("drivers")
       .update({
-        driver_code: driverCode,
         partner_id: partnerId,
         zone_id: zoneId,
         vehicle_id: vehicleId || null,
@@ -718,6 +681,7 @@ export async function fetchDriverDetail(
       vehicle_id,
       assets_issued,
       created_at,
+      archived_at,
       partners (name),
       zones (name, code),
       vehicles (bike_id, reg_number)
@@ -801,6 +765,7 @@ export async function fetchDriverDetail(
         intake.workflow_status as DriverWorkflowStatus,
         linkedDriver?.status,
       ),
+      archived_at: intake.archived_at,
     };
   }
 
@@ -819,6 +784,7 @@ export async function fetchDriverDetail(
       partner_id,
       zone_id,
       app_passcode,
+      archived_at,
       partners (name),
       zones (name, code)
     `,
@@ -847,7 +813,7 @@ export async function fetchDriverDetail(
   const { data: intakeForDriver } = await supabase
     .from("driver_intakes")
     .select(
-      "id, assets_issued, workflow_status, linked, partner_id, zone_id, vehicle_id",
+      "id, assets_issued, workflow_status, linked, partner_id, zone_id, vehicle_id, archived_at",
     )
     .eq("linked_profile_id", id)
     .maybeSingle();
@@ -893,6 +859,7 @@ export async function fetchDriverDetail(
       (intakeForDriver?.workflow_status as DriverWorkflowStatus) ?? "approved",
       driverRow.status as DriverAccountStatus,
     ),
+    archived_at: intakeForDriver?.archived_at ?? driverRow.archived_at,
   };
 }
 

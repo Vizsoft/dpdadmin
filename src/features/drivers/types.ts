@@ -92,6 +92,7 @@ export type DriverListRow = {
   is_on_duty: boolean;
   today_deliveries: number;
   app_passcode: string | null;
+  archived_at: string | null;
 };
 
 export type DriverDetailModel = {
@@ -121,4 +122,5 @@ export type DriverDetailModel = {
   restaurant_names: string[];
   app_passcode: string | null;
   account_status: DriverAccountStatus;
+  archived_at: string | null;
 };

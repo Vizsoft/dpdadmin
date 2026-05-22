@@ -712,6 +712,7 @@ export type Database = {
       }
       driver_intakes: {
         Row: {
+          archived_at: string | null
           assets_issued: Json
           civil_id: string
           created_at: string
@@ -731,6 +732,7 @@ export type Database = {
           zone_id: string
         }
         Insert: {
+          archived_at?: string | null
           assets_issued?: Json
           civil_id: string
           created_at?: string
@@ -750,6 +752,7 @@ export type Database = {
           zone_id: string
         }
         Update: {
+          archived_at?: string | null
           assets_issued?: Json
           civil_id?: string
           created_at?: string
@@ -880,6 +883,7 @@ export type Database = {
       drivers: {
         Row: {
           app_passcode: string | null
+          archived_at: string | null
           base_earnings_kwd: number | null
           civil_id: string | null
           created_at: string
@@ -898,6 +902,7 @@ export type Database = {
         }
         Insert: {
           app_passcode?: string | null
+          archived_at?: string | null
           base_earnings_kwd?: number | null
           civil_id?: string | null
           created_at?: string
@@ -916,6 +921,7 @@ export type Database = {
         }
         Update: {
           app_passcode?: string | null
+          archived_at?: string | null
           base_earnings_kwd?: number | null
           civil_id?: string | null
           created_at?: string
@@ -1937,6 +1943,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      allocate_driver_code: { Args: never; Returns: string }
+      archive_driver_intake: { Args: { p_intake_id: string }; Returns: Json }
       claim_super_admin: { Args: { p_user_id: string }; Returns: boolean }
       compute_incentive_amount: {
         Args: { p_eligible_count: number; p_rule_id: string }

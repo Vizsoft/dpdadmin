@@ -3,22 +3,23 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query/query-keys";
 import {
+  archiveDriverIntake,
   fetchDriverDetail,
   fetchDriversForAdmin,
   regenerateDriverPasscode,
 } from "./drivers-actions";
 import type { DriverListRow } from "./types";
 
-export type DriversTabFilter = "all" | "pending" | "on_duty";
+export type DriversTabFilter = "all" | "pending" | "on_duty" | "archived";
 
-export async function fetchDriversList(): Promise<DriverListRow[]> {
-  return fetchDriversForAdmin();
+export async function fetchDriversList(archived = false): Promise<DriverListRow[]> {
+  return fetchDriversForAdmin({ archived });
 }
 
-export function useDriversList() {
+export function useDriversList(archived = false) {
   return useQuery({
-    queryKey: queryKeys.drivers.list(),
-    queryFn: fetchDriversList,
+    queryKey: queryKeys.drivers.list({ archived }),
+    queryFn: () => fetchDriversList(archived),
   });
 }
 
@@ -37,6 +38,20 @@ export function useRegenerateDriverPasscode() {
       const result = await regenerateDriverPasscode(driverId);
       if ("error" in result) throw new Error(result.error);
       return result.passcode;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.drivers.all() });
+    },
+  });
+}
+
+export function useArchiveDriverIntake() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (intakeId: string) => {
+      const result = await archiveDriverIntake(intakeId);
+      if (result.error) throw new Error(result.error);
+      return result;
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.drivers.all() });

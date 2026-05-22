@@ -71,7 +71,9 @@ Deno.serve(async (req) => {
     const err =
       lookup?.error === "driver_not_active"
         ? "driver_not_active"
-        : "invalid_credentials";
+        : lookup?.error === "driver_archived"
+          ? "driver_archived"
+          : "invalid_credentials";
     return json({ error: err }, 401);
   }
 
