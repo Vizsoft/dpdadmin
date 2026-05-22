@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
+  Camera,
   Download,
   Eye,
   Loader2,
@@ -392,7 +393,9 @@ function DeliveriesPageContent() {
                   <TableHead className={cn("hidden sm:table-cell", TABLE_HEAD_CLASS)}>
                     {t("colZone")}
                   </TableHead>
-                  <TableHead className={TABLE_HEAD_CLASS}>{t("colStatus")}</TableHead>
+                  <TableHead className={cn("text-end", TABLE_HEAD_CLASS)}>
+                    {t("colStatus")}
+                  </TableHead>
                   <TableHead className={cn("hidden lg:table-cell", TABLE_HEAD_CLASS)}>
                     {t("colOrderId")}
                   </TableHead>
@@ -421,8 +424,16 @@ function DeliveriesPageContent() {
                       className="cursor-pointer hover:bg-muted/40"
                       onClick={() => setSelectedDelivery(delivery)}
                     >
-                      <TableCell className="font-mono text-sm text-muted-foreground">
-                        #{delivery.short_id}
+                      <TableCell className="font-mono text-sm tabular-nums text-muted-foreground">
+                        <span className="inline-flex items-center gap-1.5">
+                          #{delivery.short_id}
+                          {delivery.order_proof_url ? (
+                            <Camera
+                              className="h-3.5 w-3.5 shrink-0 text-primary/70"
+                              aria-label={t("hasProof")}
+                            />
+                          ) : null}
+                        </span>
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col">
@@ -458,12 +469,12 @@ function DeliveriesPageContent() {
                       <TableCell className="hidden text-sm text-muted-foreground sm:table-cell">
                         {delivery.zone_name}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="text-end">
                         <StatusPill variant={deliveryStatusVariant(delivery.status)} dot>
                           {t(`status${delivery.status.charAt(0).toUpperCase() + delivery.status.slice(1)}` as "statusPending")}
                         </StatusPill>
                       </TableCell>
-                      <TableCell className="hidden text-sm text-muted-foreground lg:table-cell">
+                      <TableCell className="hidden font-mono text-sm tabular-nums text-muted-foreground lg:table-cell">
                         {delivery.external_order_id ?? "—"}
                       </TableCell>
                       <TableCell className="hidden text-sm text-muted-foreground sm:table-cell">
@@ -502,6 +513,7 @@ function DeliveriesPageContent() {
         delivery={selectedDelivery}
         open={selectedDelivery !== null}
         onClose={() => setSelectedDelivery(null)}
+        onUpdated={() => void refetch()}
       />
     </AppPage>
   );
