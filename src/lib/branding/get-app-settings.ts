@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   DEFAULT_APP_SETTINGS,
+  DEFAULT_DRIVER_APP_SETTINGS,
   type FontFamilyId,
   type LogoType,
   isFontFamilyId,
@@ -27,6 +28,11 @@ export type AppSettings = {
   appName: string;
   appSubtitle: string;
   driverAppLoginHint: string;
+  driverAppTitle: string;
+  driverAppLogoUrl: string | null;
+  driverAppSplashUrl: string | null;
+  driverAppMaintenanceMode: boolean;
+  driverAppMaintenanceMessage: string;
   fontFamily: FontFamilyId;
   logoUrl: string | null;
   logoType: LogoType;
@@ -45,6 +51,11 @@ function normalizeRow(
     app_name: string;
     app_subtitle: string;
     driver_app_login_hint?: string | null;
+    driver_app_title?: string | null;
+    driver_app_logo_url?: string | null;
+    driver_app_splash_url?: string | null;
+    driver_app_maintenance_mode?: boolean | null;
+    driver_app_maintenance_message?: string | null;
     font_family: string;
     logo_url: string | null;
     logo_type: string;
@@ -58,6 +69,14 @@ function normalizeRow(
     driverAppLoginHint:
       row.driver_app_login_hint?.trim() ||
       "Enter your ID and passcode from admin",
+    driverAppTitle:
+      row.driver_app_title?.trim() || DEFAULT_DRIVER_APP_SETTINGS.driver_app_title,
+    driverAppLogoUrl: row.driver_app_logo_url ?? null,
+    driverAppSplashUrl: row.driver_app_splash_url ?? null,
+    driverAppMaintenanceMode: row.driver_app_maintenance_mode ?? false,
+    driverAppMaintenanceMessage:
+      row.driver_app_maintenance_message?.trim() ||
+      DEFAULT_DRIVER_APP_SETTINGS.driver_app_maintenance_message,
     fontFamily: isFontFamilyId(row.font_family) ? row.font_family : "inter",
     logoUrl: row.logo_url,
     logoType: row.logo_type === "svg" ? "svg" : "image",
@@ -93,12 +112,17 @@ async function fetchCustomThemes(): Promise<AppThemeRecord[]> {
 const getCustomThemes = cache(fetchCustomThemes);
 
 const APP_SETTINGS_SELECT =
-  "app_name, app_subtitle, driver_app_login_hint, font_family, logo_url, logo_type, theme_id";
+  "app_name, app_subtitle, driver_app_login_hint, driver_app_title, driver_app_logo_url, driver_app_splash_url, driver_app_maintenance_mode, driver_app_maintenance_message, font_family, logo_url, logo_type, theme_id";
 
 async function loadAppSettingsRow(): Promise<{
   app_name: string;
   app_subtitle: string;
   driver_app_login_hint?: string | null;
+  driver_app_title?: string | null;
+  driver_app_logo_url?: string | null;
+  driver_app_splash_url?: string | null;
+  driver_app_maintenance_mode?: boolean | null;
+  driver_app_maintenance_message?: string | null;
   font_family: string;
   logo_url: string | null;
   logo_type: string;
@@ -159,6 +183,12 @@ async function fetchAppSettings(): Promise<AppSettings> {
       appName: DEFAULT_APP_SETTINGS.app_name,
       appSubtitle: DEFAULT_APP_SETTINGS.app_subtitle,
       driverAppLoginHint: "Enter your ID and passcode from admin",
+      driverAppTitle: DEFAULT_DRIVER_APP_SETTINGS.driver_app_title,
+      driverAppLogoUrl: null,
+      driverAppSplashUrl: null,
+      driverAppMaintenanceMode: false,
+      driverAppMaintenanceMessage:
+        DEFAULT_DRIVER_APP_SETTINGS.driver_app_maintenance_message,
       fontFamily: DEFAULT_APP_SETTINGS.font_family,
       logoUrl: DEFAULT_APP_SETTINGS.logo_url,
       logoType: DEFAULT_APP_SETTINGS.logo_type,

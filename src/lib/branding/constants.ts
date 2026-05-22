@@ -22,6 +22,18 @@ export const FONT_OPTIONS: { id: FontFamilyId; label: string }[] = [
 export const ALLOWED_LOGO_EXTENSIONS = ["png", "jpg", "jpeg", "webp", "svg"] as const;
 export const MAX_LOGO_BYTES = 2 * 1024 * 1024;
 
+export const ALLOWED_SPLASH_EXTENSIONS = ["png", "jpg", "jpeg", "webp"] as const;
+export const MAX_SPLASH_BYTES = 5 * 1024 * 1024;
+
+export const DEFAULT_DRIVER_APP_SETTINGS = {
+  driver_app_title: "Musallam Delivery",
+  driver_app_maintenance_message:
+    "The driver app is temporarily unavailable. Please try again later.",
+} as const;
+
+export const DRIVER_APP_LOGO_PREFIX = "driver-app/logo";
+export const DRIVER_APP_SPLASH_PREFIX = "driver-app/splash";
+
 export const LOGO_MIME_TYPES: Record<string, LogoType> = {
   "image/png": "image",
   "image/jpeg": "image",

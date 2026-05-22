@@ -184,6 +184,11 @@ export type Database = {
           app_name: string
           app_subtitle: string
           driver_app_login_hint: string
+          driver_app_logo_url: string | null
+          driver_app_maintenance_message: string
+          driver_app_maintenance_mode: boolean
+          driver_app_splash_url: string | null
+          driver_app_title: string
           font_family: string
           id: number
           logo_type: string
@@ -199,6 +204,11 @@ export type Database = {
           app_name?: string
           app_subtitle?: string
           driver_app_login_hint?: string
+          driver_app_logo_url?: string | null
+          driver_app_maintenance_message?: string
+          driver_app_maintenance_mode?: boolean
+          driver_app_splash_url?: string | null
+          driver_app_title?: string
           font_family?: string
           id?: number
           logo_type?: string
@@ -214,6 +224,11 @@ export type Database = {
           app_name?: string
           app_subtitle?: string
           driver_app_login_hint?: string
+          driver_app_logo_url?: string | null
+          driver_app_maintenance_message?: string
+          driver_app_maintenance_mode?: boolean
+          driver_app_splash_url?: string | null
+          driver_app_title?: string
           font_family?: string
           id?: number
           logo_type?: string

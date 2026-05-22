@@ -281,7 +281,28 @@ Shared validation logic (admin): `src/lib/geo/zone-geometry.ts` — mirror in mo
 
 ---
 
-## 9. Brand / UI
+## 9. App settings (read at app start + on reconnect)
+
+```sql
+select driver_app_title,
+       driver_app_logo_url,
+       driver_app_splash_url,
+       driver_app_maintenance_mode,
+       driver_app_maintenance_message,
+       driver_app_login_hint
+  from public.app_settings
+ where id = 1;
+```
+
+- **Anon-readable** via policy `app_settings_public_branding_read` (same row as admin branding).
+- When `driver_app_maintenance_mode = true`: render a full-screen maintenance view using `driver_app_maintenance_message`. Block login and in-app actions; allow retry/poll.
+- **Separate** from `maintenance_mode` on the same row (that flag gates the **admin panel** only).
+- `driver_app_logo_url` / `driver_app_splash_url` are public Supabase Storage URLs under bucket `branding`, paths `driver-app/logo.*` and `driver-app/splash.*`. Uploads append a `?v=` cache-bust query param.
+- `driver_app_title` is the mobile app display name (defaults to `Musallam Delivery`). Admin subtitle/login hint remain on `app_subtitle` / `driver_app_login_hint` (configured under Settings → Branding).
+
+---
+
+## 10. Brand / UI
 
 Match admin semantic tokens: `docs/DESIGN_SYSTEM.md` (CSS variables: `primary`, `background`, `muted`, etc.)
 
@@ -294,7 +315,7 @@ Bottom nav (driver app): **Home · Deliveries · Earnings · Vehicle · Profile*
 
 ---
 
-## 10. Status flows (admin ↔ app)
+## 11. Status flows (admin ↔ app)
 
 ### Delivery
 `driver submits (pending)` → `admin verifies (verified)` or `rejects (rejected + reason)` → app shows badge
@@ -310,7 +331,7 @@ Bottom nav (driver app): **Home · Deliveries · Earnings · Vehicle · Profile*
 
 ---
 
-## 11. How to keep this file updated
+## 12. How to keep this file updated
 
 When implementing an **admin panel** feature, update this file if you change:
 
@@ -325,7 +346,7 @@ Tag admin PRs: `[admin+app]` in `.cursor/rules/project-architecture.mdc` change 
 
 ---
 
-## 12. Suggested mobile stack (not prescriptive)
+## 13. Suggested mobile stack (not prescriptive)
 
 - **React Native / Expo** or **Flutter**
 - **Supabase JS** client with secure storage for session
@@ -334,7 +355,7 @@ Tag admin PRs: `[admin+app]` in `.cursor/rules/project-architecture.mdc` change 
 
 ---
 
-## 13. Supabase connection
+## 14. Supabase connection
 
 ```env
 EXPO_PUBLIC_SUPABASE_URL=https://ytfmsgckjatiserpgdbz.supabase.co
@@ -345,7 +366,9 @@ Never ship `SUPABASE_SERVICE_ROLE_KEY` in the mobile app.
 
 ---
 
-*Last synced: 2026-06-04 — [admin+app] Driver codes shortened to exactly 5 digits (`10001`–`99999`). Migration renumbers existing rows; `allocate_driver_code` enforces capacity.*
+*Last synced: 2026-06-05 — [admin+app] Driver app settings: `driver_app_title`, logo/splash URLs, `driver_app_maintenance_mode` + message. Admin page `/settings/app`. Migration `20260605100000_driver_app_settings.sql`.*
+
+*Prior: 2026-06-04 — [admin+app] Driver codes shortened to exactly 5 digits (`10001`–`99999`). Migration renumbers existing rows; `allocate_driver_code` enforces capacity.*
 
 *Prior: 2026-06-03 — Global sequence + archive (`archived_at`).*
 
