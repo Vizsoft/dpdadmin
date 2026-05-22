@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/table";
 import { useHasMounted } from "@/hooks/use-has-mounted";
 import { cn } from "@/lib/utils";
+import { DriverDocumentsTab } from "./driver-documents-tab";
 import { DriverEditSheet } from "./driver-edit-sheet";
 import { LinkedBadge, WorkflowStatusPill } from "./driver-workflow-ui";
 import { formatPhoneDisplay } from "./driver-phone";
@@ -269,6 +270,16 @@ function DriverDetailContent({ id }: { id: string }) {
   ];
 
   const renderTabPanel = () => {
+    if (activeTab === "documents") {
+      return (
+        <DriverDocumentsTab
+          driver={driver}
+          canManage={canManage}
+          onEdit={() => setEditOpen(true)}
+        />
+      );
+    }
+
     if (activeTab === "assets") {
       return (
         <Card className="rounded-xl border-border shadow-sm">
