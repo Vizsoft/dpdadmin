@@ -29,7 +29,11 @@ export const DEFAULT_DRIVER_APP_SETTINGS = {
   driver_app_title: "Musallam Delivery",
   driver_app_maintenance_message:
     "The driver app is temporarily unavailable. Please try again later.",
+  driver_app_delivery_proximity_meters: 500,
 } as const;
+
+export const MIN_DELIVERY_PROXIMITY_METERS = 0;
+export const MAX_DELIVERY_PROXIMITY_METERS = 10_000;
 
 export const DRIVER_APP_LOGO_PREFIX = "driver-app/logo";
 export const DRIVER_APP_SPLASH_PREFIX = "driver-app/splash";

@@ -1240,6 +1240,10 @@
         "categoryProgress": "{checked}/{total} enabled",
         "searchPermission": "Search permissions…",
         "noSearchResults": "No permissions match your search.",
+        "permissionColumn": "Permission",
+        "roleColumnSummary": "{checked}/{total} enabled",
+        "enableAllForRole": "Enable all for {role}",
+        "clearAllForRole": "Clear all for {role}",
         "categories": {
           "admin": "Admin",
           "dashboard": "Dashboard",
@@ -1537,11 +1541,20 @@
         "reset": "Reset to defaults",
         "resetConfirm": "Reset all driver app settings to defaults? Uploaded logo and splash will be removed.",
         "resetDone": "Driver app settings reset",
+        "deliveryProximityTitle": "Delivery location check",
+        "deliveryProximitySubtitle": "Universal distance limit used by the driver app when logging a delivery",
+        "deliveryProximityLabel": "Allowed distance",
+        "deliveryProximityHint": "Driver must be within this distance of their assigned zone or one of their assigned restaurants to submit a delivery entry.",
+        "deliveryProximityUnit": "meters",
+        "deliveryProximityDisabledHint": "Set to 0 to disable the location check.",
+        "saveDeliveryProximity": "Save distance",
+        "deliveryProximitySaved": "Delivery distance saved",
         "errors": {
           "missingFields": "App title and maintenance message are required.",
           "missingFile": "Choose a file to upload.",
           "fileTooLarge": "File exceeds the size limit.",
           "invalidType": "Unsupported file type.",
+          "invalidProximity": "Enter a whole number from 0 to 10,000 meters.",
           "saveFailed": "Could not save. Try again.",
           "notAuthorized": "You do not have permission to change driver app settings."
         }

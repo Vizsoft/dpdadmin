@@ -21,6 +21,7 @@ export default async function DriverAppSettingsPage({
       driverAppSplashUrl={settings.driverAppSplashUrl}
       driverAppMaintenanceMode={settings.driverAppMaintenanceMode}
       driverAppMaintenanceMessage={settings.driverAppMaintenanceMessage}
+      driverAppDeliveryProximityMeters={settings.driverAppDeliveryProximityMeters}
     />
   );
 }

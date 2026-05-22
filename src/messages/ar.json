@@ -1238,6 +1238,10 @@
         "categoryProgress": "{checked}/{total} مفعّلة",
         "searchPermission": "بحث في الصلاحيات…",
         "noSearchResults": "لا توجد صلاحيات مطابقة.",
+        "permissionColumn": "الصلاحية",
+        "roleColumnSummary": "{checked}/{total} مفعّلة",
+        "enableAllForRole": "تفعيل الكل لـ {role}",
+        "clearAllForRole": "مسح الكل لـ {role}",
         "categories": {
           "admin": "الإدارة",
           "dashboard": "لوحة التحكم",
@@ -1530,11 +1534,20 @@
         "reset": "إعادة للافتراضي",
         "resetConfirm": "إعادة جميع إعدادات تطبيق السائق للافتراضي؟ سيتم حذف الشعار وشاشة البداية.",
         "resetDone": "تمت إعادة إعدادات تطبيق السائق",
+        "deliveryProximityTitle": "التحقق من موقع التسليم",
+        "deliveryProximitySubtitle": "حد المسافة العام الذي يستخدمه تطبيق السائق عند تسجيل التسليم",
+        "deliveryProximityLabel": "المسافة المسموحة",
+        "deliveryProximityHint": "يجب أن يكون السائق ضمن هذه المسافة من منطقته المعيّنة أو أحد المطاعم المعيّنة له لتسجيل التسليم.",
+        "deliveryProximityUnit": "متر",
+        "deliveryProximityDisabledHint": "اضبط القيمة على 0 لتعطيل التحقق من الموقع.",
+        "saveDeliveryProximity": "حفظ المسافة",
+        "deliveryProximitySaved": "تم حفظ مسافة التسليم",
         "errors": {
           "missingFields": "عنوان التطبيق ورسالة الصيانة مطلوبان.",
           "missingFile": "اختر ملفاً للرفع.",
           "fileTooLarge": "الملف يتجاوز الحد المسموح.",
           "invalidType": "نوع ملف غير مدعوم.",
+          "invalidProximity": "أدخل رقماً صحيحاً من 0 إلى 10,000 متر.",
           "saveFailed": "تعذر الحفظ. حاول مرة أخرى.",
           "notAuthorized": "ليس لديك صلاحية تغيير إعدادات تطبيق السائق."
         }

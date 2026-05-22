@@ -10,8 +10,10 @@ import {
   DEFAULT_DRIVER_APP_SETTINGS,
   DRIVER_APP_LOGO_PREFIX,
   DRIVER_APP_SPLASH_PREFIX,
+  MAX_DELIVERY_PROXIMITY_METERS,
   MAX_LOGO_BYTES,
   MAX_SPLASH_BYTES,
+  MIN_DELIVERY_PROXIMITY_METERS,
   resolveLogoUploadMeta,
 } from "@/lib/branding/constants";
 
@@ -113,6 +115,39 @@ export async function updateDriverAppMaintenanceMessage(
     .from("app_settings")
     .update({
       driver_app_maintenance_message: trimmed,
+      updated_at: new Date().toISOString(),
+      updated_by: auth.session.id,
+    })
+    .eq("id", 1);
+
+  if (error) {
+    return { error: "save_failed" };
+  }
+
+  revalidateDriverAppSettings(locale);
+  return { success: true };
+}
+
+export async function updateDriverAppDeliveryProximity(
+  locale: string,
+  meters: number,
+): Promise<{ error?: string; success?: boolean }> {
+  const auth = await requireSettingsManager();
+  if ("error" in auth) return auth;
+
+  if (
+    !Number.isFinite(meters) ||
+    meters < MIN_DELIVERY_PROXIMITY_METERS ||
+    meters > MAX_DELIVERY_PROXIMITY_METERS
+  ) {
+    return { error: "invalid_proximity" };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("app_settings")
+    .update({
+      driver_app_delivery_proximity_meters: Math.round(meters),
       updated_at: new Date().toISOString(),
       updated_by: auth.session.id,
     })
@@ -295,6 +330,8 @@ export async function resetDriverAppSettings(
       driver_app_maintenance_mode: false,
       driver_app_maintenance_message:
         DEFAULT_DRIVER_APP_SETTINGS.driver_app_maintenance_message,
+      driver_app_delivery_proximity_meters:
+        DEFAULT_DRIVER_APP_SETTINGS.driver_app_delivery_proximity_meters,
       updated_at: new Date().toISOString(),
       updated_by: auth.session.id,
     })

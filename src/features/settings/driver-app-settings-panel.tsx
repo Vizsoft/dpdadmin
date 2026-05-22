@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import {
   resetDriverAppSettings,
   setDriverAppMaintenanceMode,
+  updateDriverAppDeliveryProximity,
   updateDriverAppMaintenanceMessage,
   updateDriverAppSettings,
   uploadDriverAppLogo,
@@ -17,6 +18,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  MAX_DELIVERY_PROXIMITY_METERS,
+  MIN_DELIVERY_PROXIMITY_METERS,
+  DEFAULT_DRIVER_APP_SETTINGS,
+} from "@/lib/branding/constants";
 import { cn } from "@/lib/utils";
 
 type DriverAppSettingsPanelProps = {
@@ -25,6 +31,7 @@ type DriverAppSettingsPanelProps = {
   driverAppSplashUrl: string | null;
   driverAppMaintenanceMode: boolean;
   driverAppMaintenanceMessage: string;
+  driverAppDeliveryProximityMeters: number;
 };
 
 function AssetUploadBlock({
@@ -108,6 +115,7 @@ export function DriverAppSettingsPanel({
   driverAppSplashUrl,
   driverAppMaintenanceMode,
   driverAppMaintenanceMessage,
+  driverAppDeliveryProximityMeters,
 }: DriverAppSettingsPanelProps) {
   const t = useTranslations("pages.settings.driverApp");
   const locale = useLocale();
@@ -118,6 +126,9 @@ export function DriverAppSettingsPanel({
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [splashPreview, setSplashPreview] = useState<string | null>(null);
   const [maintenanceMode, setMaintenanceMode] = useState(driverAppMaintenanceMode);
+  const [proximityMeters, setProximityMeters] = useState(
+    String(driverAppDeliveryProximityMeters),
+  );
   const [isPending, startTransition] = useTransition();
 
   const logoDisplay = logoPreview ?? driverAppLogoUrl;
@@ -136,7 +147,9 @@ export function DriverAppSettingsPanel({
               ? t("errors.saveFailed")
               : error === "not_authorized"
                 ? t("errors.notAuthorized")
-                : null;
+                : error === "invalid_proximity"
+                  ? t("errors.invalidProximity")
+                  : null;
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
@@ -261,6 +274,63 @@ export function DriverAppSettingsPanel({
 
       <Card>
         <CardHeader className="pb-3">
+          <CardTitle className="text-base">{t("deliveryProximityTitle")}</CardTitle>
+          <CardDescription>{t("deliveryProximitySubtitle")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form
+            className="space-y-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const parsed = Number(proximityMeters);
+              startTransition(async () => {
+                setError(null);
+                const result = await updateDriverAppDeliveryProximity(locale, parsed);
+                if (result.error) {
+                  setError(result.error);
+                  toast.error(
+                    result.error === "invalid_proximity"
+                      ? t("errors.invalidProximity")
+                      : t("errors.saveFailed"),
+                  );
+                  return;
+                }
+                toast.success(t("deliveryProximitySaved"));
+                router.refresh();
+              });
+            }}
+          >
+            <div className="space-y-2">
+              <Label htmlFor="driverAppDeliveryProximity">{t("deliveryProximityLabel")}</Label>
+              <p className="text-xs text-muted-foreground">{t("deliveryProximityHint")}</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <Input
+                  id="driverAppDeliveryProximity"
+                  type="number"
+                  min={MIN_DELIVERY_PROXIMITY_METERS}
+                  max={MAX_DELIVERY_PROXIMITY_METERS}
+                  step={1}
+                  value={proximityMeters}
+                  onChange={(e) => setProximityMeters(e.target.value)}
+                  disabled={isPending}
+                  className="w-28 tabular-nums"
+                  required
+                />
+                <span className="text-sm text-muted-foreground">{t("deliveryProximityUnit")}</span>
+              </div>
+              <p className="text-xs text-muted-foreground">{t("deliveryProximityDisabledHint")}</p>
+            </div>
+            <div className="flex justify-end border-t border-border pt-4">
+              <Button type="submit" disabled={isPending} className="cursor-pointer rounded-lg">
+                {isPending ? t("saving") : t("saveDeliveryProximity")}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3">
           <CardTitle className="text-base">{t("maintenanceTitle")}</CardTitle>
           <CardDescription>{t("maintenanceSubtitle")}</CardDescription>
         </CardHeader>
@@ -367,6 +437,9 @@ export function DriverAppSettingsPanel({
             setLogoPreview(null);
             setSplashPreview(null);
             setMaintenanceMode(false);
+            setProximityMeters(
+              String(DEFAULT_DRIVER_APP_SETTINGS.driver_app_delivery_proximity_meters),
+            );
             if (logoRef.current) logoRef.current.value = "";
             if (splashRef.current) splashRef.current.value = "";
             toast.success(t("resetDone"));

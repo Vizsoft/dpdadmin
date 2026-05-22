@@ -24,6 +24,7 @@ import {
   LayoutDashboard,
   LifeBuoy,
   Map as MapIcon,
+  MoreHorizontal,
   Package,
   Pencil,
   Plus,
@@ -66,7 +67,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+
+const ROLE_COL_CLASS = "w-[5.5rem] shrink-0";
 
 export type PermissionRow = {
   slug: string;
@@ -74,7 +83,7 @@ export type PermissionRow = {
   category: string;
 };
 
-const COLLAPSED_STORAGE_KEY = "dpd-roles-collapsed-categories";
+const COLLAPSED_STORAGE_KEY = "dpd-roles-collapsed-categories:v2";
 
 const CATEGORY_META: Record<string, { icon: LucideIcon; labelKey: string }> = {
   admin: { icon: Shield, labelKey: "categories.admin" },
@@ -123,8 +132,7 @@ function clonePermissionsByRole(
 
 function loadCollapsedCategories(allCategories: string[]): Set<string> {
   if (typeof window === "undefined") {
-    const expanded = new Set(allCategories.slice(0, 2));
-    return new Set(allCategories.filter((c) => !expanded.has(c)));
+    return new Set(allCategories);
   }
   try {
     const raw = localStorage.getItem(COLLAPSED_STORAGE_KEY);
@@ -135,8 +143,7 @@ function loadCollapsedCategories(allCategories: string[]): Set<string> {
   } catch {
     /* ignore */
   }
-  const expanded = new Set(allCategories.slice(0, 2));
-  return new Set(allCategories.filter((c) => !expanded.has(c)));
+  return new Set(allCategories);
 }
 
 function saveCollapsedCategories(collapsed: Set<string>) {
@@ -176,33 +183,35 @@ function RolesPanelHeader({
   onCollapseAll: () => void;
 }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="flex flex-wrap items-start justify-between gap-3">
       <div>
-        <CardTitle className="text-base">{t("title")}</CardTitle>
-        <CardDescription className="text-xs">{t("subtitle")}</CardDescription>
+        <h2 className="text-base font-semibold text-foreground">{t("title")}</h2>
+        <p className="text-xs text-muted-foreground">{t("subtitle")}</p>
       </div>
-      <div className="flex flex-wrap items-center gap-1.5">
+      <div className="flex flex-wrap items-center gap-1">
         <Button
           type="button"
-          size="sm"
+          size="icon"
           variant="ghost"
-          className="h-8 cursor-pointer gap-1 rounded-lg text-xs"
+          className="size-8 cursor-pointer"
+          title={t("expandAll")}
+          aria-label={t("expandAll")}
           onClick={onExpandAll}
           disabled={isPending}
         >
-          <ChevronsUpDown className="size-3.5" />
-          {t("expandAll")}
+          <ChevronsUpDown className="size-4" />
         </Button>
         <Button
           type="button"
-          size="sm"
+          size="icon"
           variant="ghost"
-          className="h-8 cursor-pointer gap-1 rounded-lg text-xs"
+          className="size-8 cursor-pointer"
+          title={t("collapseAll")}
+          aria-label={t("collapseAll")}
           onClick={onCollapseAll}
           disabled={isPending}
         >
-          <ChevronsDownUp className="size-3.5" />
-          {t("collapseAll")}
+          <ChevronsDownUp className="size-4" />
         </Button>
         <Button
           type="button"
@@ -250,73 +259,118 @@ function RoleToolbar({
   onDelete: (role: AdminRoleRow) => void;
 }) {
   return (
-    <div className="sticky top-0 z-10 flex gap-2 overflow-x-auto border-b border-border bg-card px-4 py-2.5">
+    <div className="flex flex-wrap items-center gap-1.5">
       {roles.map((role) => {
         const selected = role.id === selectedColumnId;
         const dirty = dirtyRoleIds.has(role.id);
         const userCount = usageMap.get(role.id) ?? 0;
         return (
-          <div
-            key={role.id}
-            role="button"
-            tabIndex={0}
-            className={cn(
-              "flex min-w-[140px] shrink-0 cursor-pointer flex-col gap-1 rounded-lg border px-3 py-2 text-start transition-colors",
-              selected
-                ? "border-primary bg-primary/5 ring-1 ring-primary/20"
-                : "border-border bg-muted/30 hover:bg-muted/50",
-            )}
-            onClick={() => onSelect(role.id)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                onSelect(role.id);
-              }
-            }}
-          >
-            <div className="flex items-center gap-1.5">
-              <span className="truncate text-sm font-semibold">{role.name}</span>
+          <div key={role.id} className="flex items-center">
+            <button
+              type="button"
+              className={cn(
+                "inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full px-3 text-xs font-medium transition-colors",
+                selected
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "border border-border bg-background text-foreground hover:bg-muted/60",
+              )}
+              onClick={() => onSelect(role.id)}
+            >
+              <span className="max-w-[10rem] truncate">{role.name}</span>
+              <span className={cn("opacity-70", selected && "text-primary-foreground/80")}>
+                · {t("usersAssigned", { count: userCount })}
+              </span>
               {dirty ? (
                 <span
-                  className="size-1.5 shrink-0 rounded-full bg-amber-500"
+                  className={cn(
+                    "size-1.5 shrink-0 rounded-full",
+                    selected ? "bg-primary-foreground" : "bg-amber-500",
+                  )}
                   title={t("unsaved")}
                 />
               ) : null}
-            </div>
-            <span className="text-[11px] text-muted-foreground">
-              {t("usersAssigned", { count: userCount })}
-            </span>
-            {!role.isSystem ? (
-              <div
-                className="flex items-center gap-0.5"
-                onClick={(e) => e.stopPropagation()}
-                onKeyDown={(e) => e.stopPropagation()}
-              >
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  className="size-6 cursor-pointer"
+            </button>
+            {selected && !role.isSystem ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  className="ms-0.5 inline-flex size-8 cursor-pointer items-center justify-center rounded-full text-primary-foreground hover:bg-primary-foreground/15"
                   aria-label={t("renameRole")}
-                  onClick={() => onRename(role)}
                 >
-                  <Pencil className="size-3" />
-                </Button>
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  className="size-6 cursor-pointer text-destructive hover:text-destructive"
-                  aria-label={t("deleteRole")}
-                  onClick={() => onDelete(role)}
-                >
-                  <Trash2 className="size-3" />
-                </Button>
-              </div>
+                  <MoreHorizontal className="size-4" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem className="cursor-pointer" onClick={() => onRename(role)}>
+                    <Pencil className="me-2 size-3.5" />
+                    {t("renameRole")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    variant="destructive"
+                    className="cursor-pointer"
+                    onClick={() => onDelete(role)}
+                  >
+                    <Trash2 className="me-2 size-3.5" />
+                    {t("deleteRole")}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             ) : null}
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function MatrixColumnHeader({
+  roles,
+  selectedColumnId,
+  permissionsByRole,
+  totalPermissions,
+  t,
+  onSelectRole,
+}: {
+  roles: AdminRoleRow[];
+  selectedColumnId: string;
+  permissionsByRole: Record<string, Set<string>>;
+  totalPermissions: number;
+  t: RolesT;
+  onSelectRole: (id: string) => void;
+}) {
+  return (
+    <div className="sticky top-0 z-10 flex items-end gap-2 border-b border-border bg-card px-4 py-2">
+            <div className="min-w-0 flex-1 pb-0.5">
+        <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          {t("permissionColumn")}
+        </p>
+      </div>
+      <div className="flex shrink-0 items-end gap-1">
+        {roles.map((role) => {
+          const selected = role.id === selectedColumnId;
+          const enabled = permissionsByRole[role.id]?.size ?? 0;
+          return (
+            <button
+              key={role.id}
+              type="button"
+              className={cn(
+                ROLE_COL_CLASS,
+                "cursor-pointer rounded-t-md px-1 pb-1.5 pt-1 text-center transition-colors",
+                selected
+                  ? "border-b-2 border-primary bg-primary/5 text-primary"
+                  : "text-muted-foreground hover:bg-muted/40 hover:text-foreground",
+              )}
+              onClick={() => onSelectRole(role.id)}
+            >
+              <p className="truncate text-xs font-semibold">{role.name}</p>
+              <p className="truncate text-[10px] tabular-nums opacity-80">
+                {t("roleColumnSummary", {
+                  checked: enabled,
+                  total: totalPermissions,
+                })}
+              </p>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -331,16 +385,14 @@ function PermissionSearchBar({
   placeholder: string;
 }) {
   return (
-    <div className="border-b border-border px-4 py-2">
-      <div className="relative">
-        <Search className="pointer-events-none absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          className="h-8 rounded-lg ps-8 text-sm"
-        />
-      </div>
+    <div className="relative min-w-[12rem] flex-1">
+      <Search className="pointer-events-none absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+      <Input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="h-8 rounded-md border-border/80 bg-background ps-8 text-xs"
+      />
     </div>
   );
 }
@@ -349,19 +401,51 @@ function CategorySectionBody({
   perms,
   editableRoles,
   selectedColumnId,
+  selectedColumn,
   permissionsByRole,
   isPending,
+  t,
   toggle,
+  setCategoryForRole,
 }: {
   perms: PermissionRow[];
   editableRoles: AdminRoleRow[];
   selectedColumnId: string;
+  selectedColumn: AdminRoleRow | undefined;
   permissionsByRole: Record<string, Set<string>>;
   isPending: boolean;
+  t: RolesT;
   toggle: (roleId: string, slug: string, on: boolean) => void;
+  setCategoryForRole: (roleId: string, slugs: string[], enabled: boolean) => void;
 }) {
+  const slugs = perms.map((p) => p.slug);
+
   return (
-    <div className="border-t border-border/60 bg-muted/20">
+    <div className="border-t border-border/60 bg-muted/10">
+      {selectedColumn ? (
+        <div className="flex flex-wrap items-center gap-2 border-b border-border/40 px-4 py-1.5">
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-7 cursor-pointer px-2 text-xs"
+            disabled={isPending}
+            onClick={() => setCategoryForRole(selectedColumn.id, slugs, true)}
+          >
+            {t("enableAllForRole", { role: selectedColumn.name })}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-7 cursor-pointer px-2 text-xs"
+            disabled={isPending}
+            onClick={() => setCategoryForRole(selectedColumn.id, slugs, false)}
+          >
+            {t("clearAllForRole", { role: selectedColumn.name })}
+          </Button>
+        </div>
+      ) : null}
       {perms.map((perm) => (
         <PermissionRowItem
           key={perm.slug}
@@ -393,7 +477,7 @@ function PermissionRowItem({
   toggle: (roleId: string, slug: string, on: boolean) => void;
 }) {
   return (
-    <div className="flex items-center gap-3 border-b border-border/40 px-4 py-2 last:border-b-0">
+    <div className="flex items-center gap-2 border-b border-border/30 px-4 py-1.5 last:border-b-0">
       <p className="min-w-0 flex-1 text-sm text-foreground">{perm.label}</p>
       <div className="flex shrink-0 items-center gap-1">
         {editableRoles.map((role) => {
@@ -403,15 +487,16 @@ function PermissionRowItem({
             <div
               key={role.id}
               className={cn(
-                "flex w-10 items-center justify-center rounded-md py-1",
-                highlighted && "bg-primary/5",
+                ROLE_COL_CLASS,
+                "flex items-center justify-center py-0.5",
+                highlighted && "bg-primary/8",
               )}
             >
               <Switch
                 checked={checked}
                 disabled={isPending}
                 onCheckedChange={(on) => toggle(role.id, perm.slug, on)}
-                className="cursor-pointer"
+                className="cursor-pointer scale-90"
               />
             </div>
           );
@@ -677,41 +762,50 @@ export function RolesPermissionsPanel({
 
   return (
     <>
-      <Card className="w-full min-w-0 overflow-hidden">
-        <CardHeader className="border-b border-border px-4 py-3">
-          <RolesPanelHeader
-            t={t}
-            isPending={isPending}
-            onNew={openNewDialog}
-            onDuplicate={openDuplicateDialog}
-            onExpandAll={expandAll}
-            onCollapseAll={collapseAll}
-          />
-          <p className="mt-2 text-xs text-muted-foreground">{t("superAdminNote")}</p>
-        </CardHeader>
+      <div className="space-y-3">
+        <RolesPanelHeader
+          t={t}
+          isPending={isPending}
+          onNew={openNewDialog}
+          onDuplicate={openDuplicateDialog}
+          onExpandAll={expandAll}
+          onCollapseAll={collapseAll}
+        />
+        <p className="text-xs text-muted-foreground">{t("superAdminNote")}</p>
+        <RoleToolbar
+          roles={editableRoles}
+          selectedColumnId={selectedColumnId}
+          dirtyRoleIds={dirtyRoleIds}
+          usageMap={usageMap}
+          t={t}
+          onSelect={setSelectedColumnId}
+          onRename={openRenameDialog}
+          onDelete={(role) => {
+            setSelectedColumnId(role.id);
+            setDeleteOpen(true);
+          }}
+        />
 
-        <CardContent className="flex flex-col p-0">
-          <RoleToolbar
-            roles={editableRoles}
-            selectedColumnId={selectedColumnId}
-            dirtyRoleIds={dirtyRoleIds}
-            usageMap={usageMap}
-            t={t}
-            onSelect={setSelectedColumnId}
-            onRename={openRenameDialog}
-            onDelete={(role) => {
-              setSelectedColumnId(role.id);
-              setDeleteOpen(true);
-            }}
-          />
+        <Card className="w-full min-w-0 overflow-hidden">
+          <CardContent className="flex flex-col p-0">
+            <div className="flex items-center gap-3 border-b border-border px-4 py-2">
+              <PermissionSearchBar
+                value={permissionSearch}
+                onChange={setPermissionSearch}
+                placeholder={t("searchPermission")}
+              />
+            </div>
 
-          <PermissionSearchBar
-            value={permissionSearch}
-            onChange={setPermissionSearch}
-            placeholder={t("searchPermission")}
-          />
+            <MatrixColumnHeader
+              roles={editableRoles}
+              selectedColumnId={selectedColumnId}
+              permissionsByRole={permissionsByRole}
+              totalPermissions={permissions.length}
+              t={t}
+              onSelectRole={setSelectedColumnId}
+            />
 
-          <div className="max-h-[min(60vh,640px)] overflow-y-auto">
+            <div className="max-h-[min(60vh,640px)] overflow-y-auto">
             {visibleCategories.length === 0 ? (
               <p className="px-4 py-8 text-center text-sm text-muted-foreground">
                 {t("noSearchResults")}
@@ -726,7 +820,6 @@ export function RolesPermissionsPanel({
                 const checkedCount = perms.filter((p) =>
                   selectedPerms?.has(p.slug),
                 ).length;
-                const slugs = perms.map((p) => p.slug);
 
                 return (
                   <section
@@ -741,17 +834,17 @@ export function RolesPermissionsPanel({
                         aria-expanded={!isCollapsed}
                       >
                         <CategoryIcon category={category} />
-                        <div className="min-w-0 flex-1">
+                        <div className="flex min-w-0 flex-1 items-center gap-2">
                           <p className="text-sm font-semibold text-foreground">
                             {categoryLabel(category, t)}
                           </p>
                           {selectedColumn ? (
-                            <p className="text-xs text-muted-foreground">
+                            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] tabular-nums text-muted-foreground">
                               {t("categoryProgress", {
                                 checked: checkedCount,
                                 total: perms.length,
                               })}
-                            </p>
+                            </span>
                           ) : null}
                         </div>
                         <ChevronDown
@@ -761,44 +854,19 @@ export function RolesPermissionsPanel({
                           )}
                         />
                       </button>
-                      {selectedColumn && !isCollapsed ? (
-                        <div className="flex shrink-0 items-center gap-1">
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 cursor-pointer px-2 text-xs"
-                            disabled={isPending}
-                            onClick={() =>
-                              setCategoryForRole(selectedColumn.id, slugs, true)
-                            }
-                          >
-                            {t("selectAll")}
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 cursor-pointer px-2 text-xs"
-                            disabled={isPending}
-                            onClick={() =>
-                              setCategoryForRole(selectedColumn.id, slugs, false)
-                            }
-                          >
-                            {t("clearAll")}
-                          </Button>
-                        </div>
-                      ) : null}
-                    </div>
+                      </div>
 
                     {!isCollapsed ? (
                       <CategorySectionBody
                         perms={perms}
                         editableRoles={editableRoles}
                         selectedColumnId={selectedColumnId}
+                        selectedColumn={selectedColumn}
                         permissionsByRole={permissionsByRole}
                         isPending={isPending}
+                        t={t}
                         toggle={toggle}
+                        setCategoryForRole={setCategoryForRole}
                       />
                     ) : null}
                   </section>
@@ -836,7 +904,8 @@ export function RolesPermissionsPanel({
             </Button>
           </div>
         </CardContent>
-      </Card>
+        </Card>
+      </div>
 
       <Dialog open={newOpen} onOpenChange={setNewOpen}>
         <DialogContent className="sm:max-w-md">
