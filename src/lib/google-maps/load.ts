@@ -1,6 +1,48 @@
-/** Minimal surface used by restaurant place search (avoids @types/google.maps dependency). */
-export type GoogleMapsPlacesApi = {
+/** Minimal Google Maps JS API surface (avoids @types/google.maps dependency). */
+
+export type GoogleMapLatLng = { lat: number; lng: number };
+
+export type GoogleMapInstance = {
+  setCenter: (center: GoogleMapLatLng) => void;
+  setZoom: (zoom: number) => void;
+  panTo: (center: GoogleMapLatLng) => void;
+};
+
+export type GoogleMarkerInstance = {
+  setPosition: (position: GoogleMapLatLng) => void;
+  setMap: (map: GoogleMapInstance | null) => void;
+  getPosition: () => { lat: () => number; lng: () => number } | null | undefined;
+  addListener: (event: string, handler: () => void) => void;
+};
+
+export type GoogleMapsApi = {
   maps: {
+    Map: new (
+      el: HTMLElement,
+      opts: {
+        center: GoogleMapLatLng;
+        zoom: number;
+        disableDefaultUI?: boolean;
+        zoomControl?: boolean;
+        mapTypeControl?: boolean;
+        streetViewControl?: boolean;
+        fullscreenControl?: boolean;
+        clickableIcons?: boolean;
+      },
+    ) => GoogleMapInstance;
+    Marker: new (opts: {
+      position: GoogleMapLatLng;
+      map: GoogleMapInstance | null;
+      draggable?: boolean;
+    }) => GoogleMarkerInstance;
+    event: {
+      clearInstanceListeners: (instance: object) => void;
+      addListener: (
+        instance: GoogleMapInstance,
+        event: string,
+        handler: (e: { latLng: { lat: () => number; lng: () => number } | null }) => void,
+      ) => void;
+    };
     places: {
       AutocompleteService: new () => {
         getPlacePredictions: (
@@ -32,16 +74,19 @@ export type GoogleMapsPlacesApi = {
   };
 };
 
+/** @deprecated Use GoogleMapsApi */
+export type GoogleMapsPlacesApi = GoogleMapsApi;
+
 declare global {
   interface Window {
-    google?: GoogleMapsPlacesApi;
+    google?: GoogleMapsApi;
   }
 }
 
-let loadPromise: Promise<GoogleMapsPlacesApi | null> | null = null;
+let loadPromise: Promise<GoogleMapsApi | null> | null = null;
 
 /** Lazy-load Google Maps JS API with Places library. Returns null when key is unset. */
-export function loadGoogleMaps(): Promise<GoogleMapsPlacesApi | null> {
+export function loadGoogleMaps(): Promise<GoogleMapsApi | null> {
   if (typeof window === "undefined") {
     return Promise.resolve(null);
   }

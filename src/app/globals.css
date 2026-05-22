@@ -174,21 +174,7 @@ html[data-font="plus-jakarta-sans"] {
   height: 100%;
 }
 
-.restaurant-draw-map-wrapper--modal .leaflet-top.leaflet-right {
-  top: 3.5rem;
-}
-
-.restaurant-draw-map-wrapper .leaflet-control-zoom {
-  border: 1px solid var(--border);
-  border-radius: 0.5rem;
-  overflow: hidden;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 0.12);
-}
-
-.restaurant-draw-map-wrapper .leaflet-control-zoom a {
-  background: var(--background);
-  color: var(--foreground);
-  width: 2rem;
-  height: 2rem;
-  line-height: 2rem;
+/* Google Maps zoom control — offset below place search overlay */
+.restaurant-draw-map-wrapper--modal .gm-bundled-control {
+  margin-top: 3.5rem !important;
 }

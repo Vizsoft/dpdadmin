@@ -502,7 +502,7 @@
         "mapLink": "Optional — paste a Google Maps or Apple Maps share link.",
         "pickLocation": "Search for a place or click the map to pin the restaurant. Coordinates are saved automatically.",
         "mapAutoFilled": "Auto-filled from pin — you can edit.",
-        "googleKeyMissing": "Set NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to enable place search. Click-to-pin still works.",
+        "googleKeyMissing": "Set NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to enable Google Maps and place search.",
         "status": "Only published restaurants are selectable when adding a driver."
       },
       "errors": {

@@ -51,6 +51,7 @@ export function RestaurantLocationPicker({
         onChange={onChange}
         defaultCenter={defaultCenter}
         className="restaurant-location-map h-full w-full"
+        keyMissingHint={t("hints.googleKeyMissing")}
       />
 
       {value ? (

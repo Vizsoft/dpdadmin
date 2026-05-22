@@ -4,10 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Loader2, MapPin, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import {
-  loadGoogleMaps,
-  type GoogleMapsPlacesApi,
-} from "@/lib/google-maps/load";
+import { loadGoogleMaps, type GoogleMapsApi } from "@/lib/google-maps/load";
 import type { RestaurantLocation } from "./restaurant-location-utils";
 
 type Prediction = { placeId: string; description: string };
@@ -31,10 +28,10 @@ export function RestaurantPlaceSearch({
   const attributionRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autocompleteRef = useRef<InstanceType<
-    GoogleMapsPlacesApi["maps"]["places"]["AutocompleteService"]
+    GoogleMapsApi["maps"]["places"]["AutocompleteService"]
   > | null>(null);
   const placesRef = useRef<InstanceType<
-    GoogleMapsPlacesApi["maps"]["places"]["PlacesService"]
+    GoogleMapsApi["maps"]["places"]["PlacesService"]
   > | null>(null);
   const placesStatusOkRef = useRef<string>("OK");
 
