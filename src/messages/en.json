@@ -859,16 +859,24 @@
         "active": "Active"
       },
       "placeholders": {
-        "selectZone": "Select zone",
-        "selectPartner": "Select partner",
-        "selectRestaurant": "Select restaurant",
+        "pickZones": "Pick zones…",
+        "pickPartners": "Pick partners…",
+        "pickRestaurants": "Pick restaurants…",
         "priority": "Auto by scope if empty"
+      },
+      "multiSelect": {
+        "search": "Search…",
+        "selectAll": "Select all (filtered)",
+        "clear": "Clear",
+        "empty": "No matches",
+        "selectedSummary": "{count} selected",
+        "moreLabel": "+{count} more"
       },
       "errors": {
         "not_authorized": "You do not have permission to manage earnings",
         "missing_fields": "Required fields are missing",
         "invalid_dates": "End date must be on or after start date",
-        "invalid_scope": "Select a valid scope",
+        "invalid_scope": "Select at least one option for the chosen scope",
         "invalid_target": "Target must be greater than base minimum",
         "invalid_base": "Base minimum must be zero or greater",
         "invalid_tiers": "Add at least one tier with increasing thresholds above base",

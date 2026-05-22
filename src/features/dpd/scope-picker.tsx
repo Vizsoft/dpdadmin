@@ -9,29 +9,30 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { MultiCombobox } from "@/components/multi-combobox";
 import { selectOptions, selectOptionsFrom } from "@/lib/select-items";
 import type { DpdScopeOptions, RuleScopeType } from "./types";
 
 export function ScopePicker({
   scopeType,
-  zoneId,
-  partnerId,
-  restaurantId,
+  zoneIds,
+  partnerIds,
+  restaurantIds,
   onScopeTypeChange,
-  onZoneIdChange,
-  onPartnerIdChange,
-  onRestaurantIdChange,
+  onZoneIdsChange,
+  onPartnerIdsChange,
+  onRestaurantIdsChange,
   options,
   disabled,
 }: {
   scopeType: RuleScopeType;
-  zoneId: string;
-  partnerId: string;
-  restaurantId: string;
+  zoneIds: string[];
+  partnerIds: string[];
+  restaurantIds: string[];
   onScopeTypeChange: (v: RuleScopeType) => void;
-  onZoneIdChange: (v: string) => void;
-  onPartnerIdChange: (v: string) => void;
-  onRestaurantIdChange: (v: string) => void;
+  onZoneIdsChange: (v: string[]) => void;
+  onPartnerIdsChange: (v: string[]) => void;
+  onRestaurantIdsChange: (v: string[]) => void;
   options: DpdScopeOptions | undefined;
   disabled?: boolean;
 }) {
@@ -46,21 +47,25 @@ export function ScopePicker({
     { value: "partner", label: t("scope.partner") },
     { value: "restaurant", label: t("scope.restaurant") },
   ]);
+
   const zoneItems = selectOptionsFrom(
     zones,
     (z) => z.id,
     (z) => `${z.name} (${z.code})`,
-  );
+  ).map((i) => ({ value: i.value, label: String(i.label) }));
   const partnerItems = selectOptionsFrom(
     partners,
     (p) => p.id,
     (p) => p.name,
-  );
+  ).map((i) => ({ value: i.value, label: String(i.label) }));
   const restaurantItems = selectOptionsFrom(
     restaurants,
     (r) => r.id,
     (r) => `${r.name} · ${r.partner_name}`,
-  );
+  ).map((i) => ({ value: i.value, label: String(i.label) }));
+
+  const selectedSummary = (count: number) =>
+    t("multiSelect.selectedSummary", { count });
 
   return (
     <div className="grid gap-4 sm:grid-cols-2">
@@ -94,73 +99,54 @@ export function ScopePicker({
       {scopeType === "zone" ? (
         <div className="space-y-1.5 sm:col-span-2">
           <Label>{t("fields.zone")}</Label>
-          <Select
+          <MultiCombobox
             items={zoneItems}
-            value={zoneId || null}
-            onValueChange={(v) => onZoneIdChange(v ?? "")}
+            value={zoneIds}
+            onChange={onZoneIdsChange}
+            placeholder={t("placeholders.pickZones")}
+            searchPlaceholder={t("multiSelect.search")}
+            emptyText={t("multiSelect.empty")}
+            selectAllLabel={t("multiSelect.selectAll")}
+            clearLabel={t("multiSelect.clear")}
+            selectedSummary={selectedSummary}
             disabled={disabled}
-          >
-            <SelectTrigger className="h-9 w-full cursor-pointer rounded-lg bg-background">
-              <SelectValue placeholder={t("placeholders.selectZone")} />
-            </SelectTrigger>
-            <SelectContent>
-              {zones.map((z) => (
-                <SelectItem key={z.id} value={z.id} label={`${z.name} (${z.code})`}>
-                  {z.name} ({z.code})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          />
         </div>
       ) : null}
 
       {scopeType === "partner" ? (
         <div className="space-y-1.5 sm:col-span-2">
           <Label>{t("fields.partner")}</Label>
-          <Select
+          <MultiCombobox
             items={partnerItems}
-            value={partnerId || null}
-            onValueChange={(v) => onPartnerIdChange(v ?? "")}
+            value={partnerIds}
+            onChange={onPartnerIdsChange}
+            placeholder={t("placeholders.pickPartners")}
+            searchPlaceholder={t("multiSelect.search")}
+            emptyText={t("multiSelect.empty")}
+            selectAllLabel={t("multiSelect.selectAll")}
+            clearLabel={t("multiSelect.clear")}
+            selectedSummary={selectedSummary}
             disabled={disabled}
-          >
-            <SelectTrigger className="h-9 w-full cursor-pointer rounded-lg bg-background">
-              <SelectValue placeholder={t("placeholders.selectPartner")} />
-            </SelectTrigger>
-            <SelectContent>
-              {partners.map((p) => (
-                <SelectItem key={p.id} value={p.id} label={p.name}>
-                  {p.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          />
         </div>
       ) : null}
 
       {scopeType === "restaurant" ? (
         <div className="space-y-1.5 sm:col-span-2">
           <Label>{t("fields.restaurant")}</Label>
-          <Select
+          <MultiCombobox
             items={restaurantItems}
-            value={restaurantId || null}
-            onValueChange={(v) => onRestaurantIdChange(v ?? "")}
+            value={restaurantIds}
+            onChange={onRestaurantIdsChange}
+            placeholder={t("placeholders.pickRestaurants")}
+            searchPlaceholder={t("multiSelect.search")}
+            emptyText={t("multiSelect.empty")}
+            selectAllLabel={t("multiSelect.selectAll")}
+            clearLabel={t("multiSelect.clear")}
+            selectedSummary={selectedSummary}
             disabled={disabled}
-          >
-            <SelectTrigger className="h-9 w-full cursor-pointer rounded-lg bg-background">
-              <SelectValue placeholder={t("placeholders.selectRestaurant")} />
-            </SelectTrigger>
-            <SelectContent>
-              {restaurants.map((r) => (
-                <SelectItem
-                  key={r.id}
-                  value={r.id}
-                  label={`${r.name} · ${r.partner_name}`}
-                >
-                  {r.name} · {r.partner_name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          />
         </div>
       ) : null}
     </div>

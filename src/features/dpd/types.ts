@@ -38,6 +38,9 @@ export type DeliveryRuleRow = {
   zone_id: string | null;
   partner_id: string | null;
   restaurant_id: string | null;
+  zone_ids: string[];
+  partner_ids: string[];
+  restaurant_ids: string[];
   scope_label: string;
   start_date: string;
   end_date: string;
@@ -61,6 +64,9 @@ export type IncentiveRuleRow = {
   zone_id: string | null;
   partner_id: string | null;
   restaurant_id: string | null;
+  zone_ids: string[];
+  partner_ids: string[];
+  restaurant_ids: string[];
   scope_label: string;
   period: IncentivePeriod;
   target_mode: IncentiveTargetMode;

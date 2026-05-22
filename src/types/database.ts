@@ -493,6 +493,62 @@ export type Database = {
           },
         ]
       }
+      delivery_rule_scopes: {
+        Row: {
+          created_at: string
+          delivery_rule_id: string
+          id: string
+          partner_id: string | null
+          restaurant_id: string | null
+          zone_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          delivery_rule_id: string
+          id?: string
+          partner_id?: string | null
+          restaurant_id?: string | null
+          zone_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          delivery_rule_id?: string
+          id?: string
+          partner_id?: string | null
+          restaurant_id?: string | null
+          zone_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_rule_scopes_delivery_rule_id_fkey"
+            columns: ["delivery_rule_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_rule_scopes_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_rule_scopes_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_rule_scopes_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "zones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       delivery_rules: {
         Row: {
           created_at: string
@@ -1077,6 +1133,62 @@ export type Database = {
           window_start?: string | null
         }
         Relationships: []
+      }
+      incentive_rule_scopes: {
+        Row: {
+          created_at: string
+          id: string
+          incentive_rule_id: string
+          partner_id: string | null
+          restaurant_id: string | null
+          zone_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          incentive_rule_id: string
+          partner_id?: string | null
+          restaurant_id?: string | null
+          zone_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          incentive_rule_id?: string
+          partner_id?: string | null
+          restaurant_id?: string | null
+          zone_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "incentive_rule_scopes_incentive_rule_id_fkey"
+            columns: ["incentive_rule_id"]
+            isOneToOne: false
+            referencedRelation: "incentive_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "incentive_rule_scopes_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "incentive_rule_scopes_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "incentive_rule_scopes_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "zones"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       incentive_rule_tiers: {
         Row: {
@@ -1987,11 +2099,7 @@ export type Database = {
         Args: {
           p_driver_id: string
           p_earn_date: string
-          p_partner_id: string
-          p_period: Database["public"]["Enums"]["incentive_period"]
-          p_restaurant_id: string
-          p_scope_type: Database["public"]["Enums"]["rule_scope_type"]
-          p_zone_id: string
+          p_incentive_rule_id: string
         }
         Returns: number
       }

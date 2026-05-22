@@ -55,48 +55,128 @@ async function requireEarningsManage() {
   return { session };
 }
 
-function scopeLabel(
-  scopeType: RuleScopeType,
-  zone?: { name: string; code: string } | null,
-  partner?: { name: string } | null,
-  restaurant?: { name: string } | null,
-): string {
-  switch (scopeType) {
-    case "zone":
-      return zone ? `${zone.name} (${zone.code})` : "—";
-    case "partner":
-      return partner?.name ?? "—";
-    case "restaurant":
-      return restaurant?.name ?? "—";
-    default:
-      return "—";
+type RuleScopeRow = {
+  zone_id: string | null;
+  partner_id: string | null;
+  restaurant_id: string | null;
+};
+
+function extractScopeIds(scopes: RuleScopeRow[] | null | undefined): {
+  zone_ids: string[];
+  partner_ids: string[];
+  restaurant_ids: string[];
+} {
+  const zone_ids: string[] = [];
+  const partner_ids: string[] = [];
+  const restaurant_ids: string[] = [];
+  for (const s of scopes ?? []) {
+    if (s.zone_id) zone_ids.push(s.zone_id);
+    if (s.partner_id) partner_ids.push(s.partner_id);
+    if (s.restaurant_id) restaurant_ids.push(s.restaurant_id);
   }
+  return { zone_ids, partner_ids, restaurant_ids };
+}
+
+function scopeLabelMulti(
+  scopeType: RuleScopeType,
+  ids: string[],
+  maps: Awaited<ReturnType<typeof loadScopeLabelMaps>>,
+): string {
+  if (ids.length === 0) return "—";
+
+  const labels: string[] = [];
+  for (const id of ids) {
+    if (scopeType === "zone") {
+      const z = maps.zones.get(id);
+      if (z) labels.push(`${z.name} (${z.code})`);
+    } else if (scopeType === "partner") {
+      const p = maps.partners.get(id);
+      if (p) labels.push(p.name);
+    } else {
+      const r = maps.restaurants.get(id);
+      if (r) labels.push(r.name);
+    }
+  }
+
+  if (labels.length === 0) return "—";
+  if (labels.length <= 2) return labels.join(", ");
+  return `${labels.slice(0, 2).join(", ")} +${labels.length - 2}`;
 }
 
 function parseScopeFromForm(formData: FormData): {
   scopeType: RuleScopeType;
-  zoneId: string | null;
-  partnerId: string | null;
-  restaurantId: string | null;
+  ids: string[];
 } | { error: DpdErrorKey } {
   const scopeType = String(formData.get("scopeType") ?? "").trim() as RuleScopeType;
-  const zoneId = String(formData.get("zoneId") ?? "").trim() || null;
-  const partnerId = String(formData.get("partnerId") ?? "").trim() || null;
-  const restaurantId = String(formData.get("restaurantId") ?? "").trim() || null;
+  const raw = String(formData.get("scopeIdsJson") ?? "").trim();
 
   if (!["zone", "partner", "restaurant"].includes(scopeType)) {
     return { error: "invalid_scope" };
   }
-  if (scopeType === "zone" && !zoneId) return { error: "invalid_scope" };
-  if (scopeType === "partner" && !partnerId) return { error: "invalid_scope" };
-  if (scopeType === "restaurant" && !restaurantId) return { error: "invalid_scope" };
 
-  return {
-    scopeType,
-    zoneId: scopeType === "zone" ? zoneId : null,
-    partnerId: scopeType === "partner" ? partnerId : null,
-    restaurantId: scopeType === "restaurant" ? restaurantId : null,
-  };
+  let ids: string[] = [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return { error: "invalid_scope" };
+    ids = [
+      ...new Set(
+        parsed
+          .filter((x): x is string => typeof x === "string")
+          .map((x) => x.trim())
+          .filter(Boolean),
+      ),
+    ];
+  } catch {
+    return { error: "invalid_scope" };
+  }
+
+  if (ids.length === 0) return { error: "invalid_scope" };
+
+  return { scopeType, ids };
+}
+
+async function replaceIncentiveRuleScopes(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  ruleId: string,
+  scopeType: RuleScopeType,
+  ids: string[],
+) {
+  const { error: delErr } = await supabase
+    .from("incentive_rule_scopes")
+    .delete()
+    .eq("incentive_rule_id", ruleId);
+  if (delErr) return delErr;
+
+  const rows = ids.map((id) => ({
+    incentive_rule_id: ruleId,
+    zone_id: scopeType === "zone" ? id : null,
+    partner_id: scopeType === "partner" ? id : null,
+    restaurant_id: scopeType === "restaurant" ? id : null,
+  }));
+
+  return supabase.from("incentive_rule_scopes").insert(rows).then((r) => r.error);
+}
+
+async function replaceDeliveryRuleScopes(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  ruleId: string,
+  scopeType: RuleScopeType,
+  ids: string[],
+) {
+  const { error: delErr } = await supabase
+    .from("delivery_rule_scopes")
+    .delete()
+    .eq("delivery_rule_id", ruleId);
+  if (delErr) return delErr;
+
+  const rows = ids.map((id) => ({
+    delivery_rule_id: ruleId,
+    zone_id: scopeType === "zone" ? id : null,
+    partner_id: scopeType === "partner" ? id : null,
+    restaurant_id: scopeType === "restaurant" ? id : null,
+  }));
+
+  return supabase.from("delivery_rule_scopes").insert(rows).then((r) => r.error);
 }
 
 function parseDates(formData: FormData): { startDate: string; endDate: string } | { error: DpdErrorKey } {
@@ -210,7 +290,8 @@ export async function fetchDeliveryRulesForAdmin(): Promise<DeliveryRuleRow[]> {
   const { data, error } = await supabase
     .from("delivery_rules")
     .select(
-      "id, name, status, scope_type, zone_id, partner_id, restaurant_id, start_date, end_date, priority",
+      `id, name, status, scope_type, zone_id, partner_id, restaurant_id, start_date, end_date, priority,
+       delivery_rule_scopes (zone_id, partner_id, restaurant_id)`,
     )
     .order("priority", { ascending: false })
     .order("created_at", { ascending: false });
@@ -220,20 +301,27 @@ export async function fetchDeliveryRulesForAdmin(): Promise<DeliveryRuleRow[]> {
   const maps = await loadScopeLabelMaps(supabase);
 
   return (data ?? []).map((row) => {
-    const zone = row.zone_id ? maps.zones.get(row.zone_id) : null;
-    const partner = row.partner_id ? maps.partners.get(row.partner_id) : null;
-    const restaurant = row.restaurant_id
-      ? maps.restaurants.get(row.restaurant_id)
-      : null;
+    const scopes = extractScopeIds(
+      row.delivery_rule_scopes as RuleScopeRow[] | null,
+    );
+    const activeIds =
+      row.scope_type === "zone"
+        ? scopes.zone_ids
+        : row.scope_type === "partner"
+          ? scopes.partner_ids
+          : scopes.restaurant_ids;
     return {
       id: row.id,
       name: row.name,
       status: row.status,
       scope_type: row.scope_type,
-      zone_id: row.zone_id,
-      partner_id: row.partner_id,
-      restaurant_id: row.restaurant_id,
-      scope_label: scopeLabel(row.scope_type, zone, partner, restaurant),
+      zone_id: null,
+      partner_id: null,
+      restaurant_id: null,
+      zone_ids: scopes.zone_ids,
+      partner_ids: scopes.partner_ids,
+      restaurant_ids: scopes.restaurant_ids,
+      scope_label: scopeLabelMulti(row.scope_type, activeIds, maps),
       start_date: row.start_date,
       end_date: row.end_date,
       priority: row.priority,
@@ -297,6 +385,7 @@ export async function fetchIncentiveRulesForAdmin(): Promise<IncentiveRuleRow[]>
        target_mode, base_minimum_deliveries, target_deliveries, reward_mode,
        reward_kwd, reward_per_delivery_kwd, payout_mode, overrides_others,
        start_date, end_date, priority,
+       incentive_rule_scopes (zone_id, partner_id, restaurant_id),
        incentive_rule_tiers (id, threshold_deliveries, reward_mode, reward_kwd, reward_per_delivery_kwd, sort_order)`,
     )
     .order("priority", { ascending: false })
@@ -307,11 +396,16 @@ export async function fetchIncentiveRulesForAdmin(): Promise<IncentiveRuleRow[]>
   const maps = await loadScopeLabelMaps(supabase);
 
   return ((data ?? []) as IncentiveRuleDbRow[]).map((row) => {
-    const zone = row.zone_id ? maps.zones.get(row.zone_id) : null;
-    const partner = row.partner_id ? maps.partners.get(row.partner_id) : null;
-    const restaurant = row.restaurant_id
-      ? maps.restaurants.get(row.restaurant_id)
-      : null;
+    const scopes = extractScopeIds(
+      (row as IncentiveRuleDbRow & { incentive_rule_scopes?: RuleScopeRow[] })
+        .incentive_rule_scopes,
+    );
+    const activeIds =
+      row.scope_type === "zone"
+        ? scopes.zone_ids
+        : row.scope_type === "partner"
+          ? scopes.partner_ids
+          : scopes.restaurant_ids;
     const tiers = (row.incentive_rule_tiers ?? [])
       .map(mapIncentiveTierRow)
       .sort((a, b) => a.sort_order - b.sort_order || a.threshold_deliveries - b.threshold_deliveries);
@@ -320,10 +414,13 @@ export async function fetchIncentiveRulesForAdmin(): Promise<IncentiveRuleRow[]>
       name: row.name,
       status: row.status,
       scope_type: row.scope_type,
-      zone_id: row.zone_id,
-      partner_id: row.partner_id,
-      restaurant_id: row.restaurant_id,
-      scope_label: scopeLabel(row.scope_type, zone, partner, restaurant),
+      zone_id: null,
+      partner_id: null,
+      restaurant_id: null,
+      zone_ids: scopes.zone_ids,
+      partner_ids: scopes.partner_ids,
+      restaurant_ids: scopes.restaurant_ids,
+      scope_label: scopeLabelMulti(row.scope_type, activeIds, maps),
       period: row.period,
       target_mode: row.target_mode ?? "single",
       base_minimum_deliveries: row.base_minimum_deliveries ?? 0,
@@ -439,9 +536,9 @@ export async function saveDeliveryRule(formData: FormData): Promise<DpdMutationR
     name,
     status,
     scope_type: scope.scopeType,
-    zone_id: scope.zoneId,
-    partner_id: scope.partnerId,
-    restaurant_id: scope.restaurantId,
+    zone_id: null,
+    partner_id: null,
+    restaurant_id: null,
     start_date: dates.startDate,
     end_date: dates.endDate,
     priority,
@@ -449,20 +546,30 @@ export async function saveDeliveryRule(formData: FormData): Promise<DpdMutationR
     updated_at: new Date().toISOString(),
   };
 
+  let ruleId = id;
+
   if (id) {
     const { error } = await supabase.from("delivery_rules").update(payload).eq("id", id);
     if (error) return { error: "save_failed" };
-    return { success: true, id };
+  } else {
+    const { data, error } = await supabase
+      .from("delivery_rules")
+      .insert(payload)
+      .select("id")
+      .single();
+    if (error) return { error: "save_failed" };
+    ruleId = data.id;
   }
 
-  const { data, error } = await supabase
-    .from("delivery_rules")
-    .insert(payload)
-    .select("id")
-    .single();
+  const scopeErr = await replaceDeliveryRuleScopes(
+    supabase,
+    ruleId,
+    scope.scopeType,
+    scope.ids,
+  );
+  if (scopeErr) return { error: "save_failed" };
 
-  if (error) return { error: "save_failed" };
-  return { success: true, id: data.id };
+  return { success: true, id: ruleId };
 }
 
 export async function deleteDeliveryRule(id: string): Promise<DpdMutationResult> {
@@ -602,9 +709,9 @@ export async function saveIncentiveRule(formData: FormData): Promise<DpdMutation
     name,
     status,
     scope_type: scope.scopeType,
-    zone_id: scope.zoneId,
-    partner_id: scope.partnerId,
-    restaurant_id: scope.restaurantId,
+    zone_id: null,
+    partner_id: null,
+    restaurant_id: null,
     period,
     target_mode: targetMode,
     base_minimum_deliveries: baseMinimum,
@@ -659,6 +766,14 @@ export async function saveIncentiveRule(formData: FormData): Promise<DpdMutation
       .insert(tierRows);
     if (insertTiersError) return { error: "save_failed" };
   }
+
+  const scopeErr = await replaceIncentiveRuleScopes(
+    supabase,
+    ruleId,
+    scope.scopeType,
+    scope.ids,
+  );
+  if (scopeErr) return { error: "save_failed" };
 
   return { success: true, id: ruleId };
 }

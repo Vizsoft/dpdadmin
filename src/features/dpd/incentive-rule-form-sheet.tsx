@@ -97,9 +97,11 @@ export function IncentiveRuleFormSheet({
   const [name, setName] = useState(rule?.name ?? "");
   const [status, setStatus] = useState<RuleStatus>(rule?.status ?? "draft");
   const [scopeType, setScopeType] = useState<RuleScopeType>(rule?.scope_type ?? "zone");
-  const [zoneId, setZoneId] = useState(rule?.zone_id ?? "");
-  const [partnerId, setPartnerId] = useState(rule?.partner_id ?? "");
-  const [restaurantId, setRestaurantId] = useState(rule?.restaurant_id ?? "");
+  const [zoneIds, setZoneIds] = useState<string[]>(rule?.zone_ids ?? []);
+  const [partnerIds, setPartnerIds] = useState<string[]>(rule?.partner_ids ?? []);
+  const [restaurantIds, setRestaurantIds] = useState<string[]>(
+    rule?.restaurant_ids ?? [],
+  );
   const [startDate, setStartDate] = useState(rule?.start_date ?? "");
   const [endDate, setEndDate] = useState(rule?.end_date ?? "");
   const [priority, setPriority] = useState(String(rule?.priority ?? ""));
@@ -136,9 +138,9 @@ export function IncentiveRuleFormSheet({
     setName(rule?.name ?? "");
     setStatus(rule?.status ?? "draft");
     setScopeType(rule?.scope_type ?? "zone");
-    setZoneId(rule?.zone_id ?? "");
-    setPartnerId(rule?.partner_id ?? "");
-    setRestaurantId(rule?.restaurant_id ?? "");
+    setZoneIds(rule?.zone_ids ?? []);
+    setPartnerIds(rule?.partner_ids ?? []);
+    setRestaurantIds(rule?.restaurant_ids ?? []);
     setStartDate(rule?.start_date ?? "");
     setEndDate(rule?.end_date ?? "");
     setPriority(String(rule?.priority ?? ""));
@@ -223,9 +225,13 @@ export function IncentiveRuleFormSheet({
       formData.append("name", name);
       formData.append("status", status);
       formData.append("scopeType", scopeType);
-      if (zoneId) formData.append("zoneId", zoneId);
-      if (partnerId) formData.append("partnerId", partnerId);
-      if (restaurantId) formData.append("restaurantId", restaurantId);
+      const scopeIds =
+        scopeType === "zone"
+          ? zoneIds
+          : scopeType === "partner"
+            ? partnerIds
+            : restaurantIds;
+      formData.append("scopeIdsJson", JSON.stringify(scopeIds));
       formData.append("startDate", startDate);
       formData.append("endDate", endDate);
       if (priority) formData.append("priority", priority);
@@ -267,7 +273,7 @@ export function IncentiveRuleFormSheet({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[min(92vh,800px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl">
+      <DialogContent className="flex max-h-[min(92vh,860px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-5xl">
         <DialogHeader className="border-b border-border px-6 py-4">
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
@@ -325,18 +331,18 @@ export function IncentiveRuleFormSheet({
 
             <ScopePicker
               scopeType={scopeType}
-              zoneId={zoneId}
-              partnerId={partnerId}
-              restaurantId={restaurantId}
+              zoneIds={zoneIds}
+              partnerIds={partnerIds}
+              restaurantIds={restaurantIds}
               onScopeTypeChange={(v) => {
                 setScopeType(v);
-                setZoneId("");
-                setPartnerId("");
-                setRestaurantId("");
+                setZoneIds([]);
+                setPartnerIds([]);
+                setRestaurantIds([]);
               }}
-              onZoneIdChange={setZoneId}
-              onPartnerIdChange={setPartnerId}
-              onRestaurantIdChange={setRestaurantId}
+              onZoneIdsChange={setZoneIds}
+              onPartnerIdsChange={setPartnerIds}
+              onRestaurantIdsChange={setRestaurantIds}
               options={options}
               disabled={isPending}
             />

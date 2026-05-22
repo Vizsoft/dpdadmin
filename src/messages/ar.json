@@ -859,16 +859,24 @@
         "active": "نشط"
       },
       "placeholders": {
-        "selectZone": "اختر المنطقة",
-        "selectPartner": "اختر الشريك",
-        "selectRestaurant": "اختر المطعم",
+        "pickZones": "اختر المناطق…",
+        "pickPartners": "اختر الشركاء…",
+        "pickRestaurants": "اختر المطاعم…",
         "priority": "تلقائي حسب النطاق إن تُرك فارغاً"
+      },
+      "multiSelect": {
+        "search": "بحث…",
+        "selectAll": "تحديد الكل (المصفّى)",
+        "clear": "مسح",
+        "empty": "لا توجد نتائج",
+        "selectedSummary": "{count} محدد",
+        "moreLabel": "+{count} أخرى"
       },
       "errors": {
         "not_authorized": "ليس لديك صلاحية إدارة الأرباح",
         "missing_fields": "الحقول المطلوبة ناقصة",
         "invalid_dates": "تاريخ النهاية يجب أن يكون بعد البداية أو مساوياً لها",
-        "invalid_scope": "اختر نطاقاً صالحاً",
+        "invalid_scope": "اختر خياراً واحداً على الأقل للنطاق المحدد",
         "invalid_target": "يجب أن يكون الهدف أكبر من الحد الأدنى",
         "invalid_base": "الحد الأدنى يجب أن يكون صفراً أو أكثر",
         "invalid_tiers": "أضف مستوى واحداً على الأقل بعتبات متزايدة فوق الأساس",
