@@ -4,7 +4,10 @@ import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { LayoutDashboard } from "lucide-react";
 import { useSidebarMenu } from "@/hooks/use-sidebar-menu";
-import { findInlineGroupForPath } from "@/lib/menu/inline-group-nav";
+import {
+  findActiveLeafId,
+  findInlineGroupForPath,
+} from "@/lib/menu/inline-group-nav";
 import { APP_NAV_KEY_BY_ID, ICON_MAP } from "@/lib/menu/menu-registry";
 import type { ResolvedMenuNode } from "@/lib/menu/menu-merge";
 import {
@@ -48,6 +51,7 @@ export function AppSecondaryNav() {
   const children = group.children ?? [];
   if (children.length === 0) return null;
 
+  const activeLeafId = findActiveLeafId(tree, pathname);
   const groupLabel = group.label;
 
   return (
@@ -66,11 +70,7 @@ export function AppSecondaryNav() {
             <SidebarMenu>
               {children.map((child) => {
                 if (!child.href) return null;
-                const isActive =
-                  child.href === "/settings"
-                    ? pathname === "/settings"
-                    : pathname === child.href ||
-                      pathname.startsWith(`${child.href}/`);
+                const isActive = child.id === activeLeafId;
                 const label = tItemLabel(child);
                 return (
                   <SidebarMenuItem key={child.id}>

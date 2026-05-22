@@ -27,6 +27,81 @@ type DriverAppSettingsPanelProps = {
   driverAppMaintenanceMessage: string;
 };
 
+function AssetUploadBlock({
+  label,
+  hint,
+  previewUrl,
+  placeholder,
+  fileRef,
+  accept,
+  uploadLabel,
+  disabled,
+  previewClassName,
+  onFileChange,
+  onUpload,
+}: {
+  label: string;
+  hint: string;
+  previewUrl: string | null;
+  placeholder: string;
+  fileRef: React.RefObject<HTMLInputElement | null>;
+  accept: string;
+  uploadLabel: string;
+  disabled: boolean;
+  previewClassName: string;
+  onFileChange: (file: File) => void;
+  onUpload: () => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      <p className="text-xs text-muted-foreground">{hint}</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+        {previewUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={previewUrl}
+            alt=""
+            className={cn("shrink-0 rounded-lg border border-border bg-muted/30", previewClassName)}
+          />
+        ) : (
+          <div
+            className={cn(
+              "flex shrink-0 items-center justify-center rounded-lg border border-dashed border-border bg-muted/20 text-xs text-muted-foreground",
+              previewClassName,
+            )}
+          >
+            {placeholder}
+          </div>
+        )}
+        <div className="flex min-w-0 flex-1 flex-col gap-2">
+          <Input
+            ref={fileRef}
+            type="file"
+            accept={accept}
+            disabled={disabled}
+            className="cursor-pointer"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) onFileChange(file);
+            }}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={disabled}
+            className="w-fit cursor-pointer rounded-lg"
+            onClick={onUpload}
+          >
+            {uploadLabel}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function DriverAppSettingsPanel({
   driverAppTitle,
   driverAppLogoUrl,
@@ -64,22 +139,22 @@ export function DriverAppSettingsPanel({
                 : null;
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-3xl space-y-4">
       <Card>
-        <CardHeader>
+        <CardHeader className="pb-3">
           <CardTitle className="text-base">{t("brandingTitle")}</CardTitle>
           <CardDescription>{t("brandingSubtitle")}</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent>
           <form
-            className="grid gap-4"
+            className="space-y-4"
             action={(formData) => {
               startTransition(async () => {
                 setError(null);
                 const result = await updateDriverAppSettings(locale, formData);
                 if (result.error) {
                   setError(result.error);
-                  toast.error(errorMessage ?? t("errors.saveFailed"));
+                  toast.error(t("errors.saveFailed"));
                   return;
                 }
                 toast.success(t("saved"));
@@ -100,43 +175,23 @@ export function DriverAppSettingsPanel({
                 defaultValue={driverAppTitle}
                 required
                 disabled={isPending}
+                className="sm:max-w-md"
               />
             </div>
 
-            <div className="space-y-3 border-t border-border pt-4">
-              <Label>{t("logo")}</Label>
-              <p className="text-xs text-muted-foreground">{t("logoHint")}</p>
-              <div className="flex items-center gap-4">
-                {logoDisplay ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={logoDisplay}
-                    alt={driverAppTitle}
-                    className="h-14 w-14 rounded-lg border border-border object-contain bg-muted/30 p-1"
-                  />
-                ) : (
-                  <div className="flex h-14 w-14 items-center justify-center rounded-lg border border-dashed border-border bg-muted/20 text-xs text-muted-foreground">
-                    {t("noImage")}
-                  </div>
-                )}
-                <Input
-                  ref={logoRef}
-                  type="file"
-                  accept=".png,.jpg,.jpeg,.webp,.svg,image/png,image/jpeg,image/webp,image/svg+xml"
-                  disabled={isPending}
-                  className="max-w-sm cursor-pointer"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) setLogoPreview(URL.createObjectURL(file));
-                  }}
-                />
-              </div>
-              <Button
-                type="button"
-                variant="outline"
+            <div className="grid gap-6 border-t border-border pt-4 sm:grid-cols-2">
+              <AssetUploadBlock
+                label={t("logo")}
+                hint={t("logoHint")}
+                previewUrl={logoDisplay}
+                placeholder={t("noImage")}
+                fileRef={logoRef}
+                accept=".png,.jpg,.jpeg,.webp,.svg,image/png,image/jpeg,image/webp,image/svg+xml"
+                uploadLabel={t("uploadLogo")}
                 disabled={isPending}
-                className="cursor-pointer rounded-lg"
-                onClick={() => {
+                previewClassName="h-14 w-14 object-contain p-1"
+                onFileChange={(file) => setLogoPreview(URL.createObjectURL(file))}
+                onUpload={() => {
                   const file = logoRef.current?.files?.[0];
                   if (!file) {
                     setError("missing_file");
@@ -158,45 +213,19 @@ export function DriverAppSettingsPanel({
                     router.refresh();
                   });
                 }}
-              >
-                {t("uploadLogo")}
-              </Button>
-            </div>
-
-            <div className="space-y-3 border-t border-border pt-4">
-              <Label>{t("splash")}</Label>
-              <p className="text-xs text-muted-foreground">{t("splashHint")}</p>
-              <div className="flex flex-wrap items-start gap-4">
-                {splashDisplay ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={splashDisplay}
-                    alt=""
-                    className="h-32 w-[4.5rem] rounded-lg border border-border object-cover bg-muted/30"
-                  />
-                ) : (
-                  <div className="flex h-32 w-[4.5rem] items-center justify-center rounded-lg border border-dashed border-border bg-muted/20 text-xs text-muted-foreground">
-                    {t("noImage")}
-                  </div>
-                )}
-                <Input
-                  ref={splashRef}
-                  type="file"
-                  accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
-                  disabled={isPending}
-                  className="max-w-sm cursor-pointer"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) setSplashPreview(URL.createObjectURL(file));
-                  }}
-                />
-              </div>
-              <Button
-                type="button"
-                variant="outline"
+              />
+              <AssetUploadBlock
+                label={t("splash")}
+                hint={t("splashHint")}
+                previewUrl={splashDisplay}
+                placeholder={t("noImage")}
+                fileRef={splashRef}
+                accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+                uploadLabel={t("uploadSplash")}
                 disabled={isPending}
-                className="cursor-pointer rounded-lg"
-                onClick={() => {
+                previewClassName="h-24 w-14 object-cover"
+                onFileChange={(file) => setSplashPreview(URL.createObjectURL(file))}
+                onUpload={() => {
                   const file = splashRef.current?.files?.[0];
                   if (!file) {
                     setError("missing_file");
@@ -218,12 +247,10 @@ export function DriverAppSettingsPanel({
                     router.refresh();
                   });
                 }}
-              >
-                {t("uploadSplash")}
-              </Button>
+              />
             </div>
 
-            <div className="border-t border-border pt-4">
+            <div className="flex justify-end border-t border-border pt-4">
               <Button type="submit" disabled={isPending} className="cursor-pointer rounded-lg">
                 {isPending ? t("saving") : t("save")}
               </Button>
@@ -233,12 +260,12 @@ export function DriverAppSettingsPanel({
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="pb-3">
           <CardTitle className="text-base">{t("maintenanceTitle")}</CardTitle>
           <CardDescription>{t("maintenanceSubtitle")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="space-y-1">
               <span
                 className={cn(
@@ -250,7 +277,7 @@ export function DriverAppSettingsPanel({
               >
                 {maintenanceMode ? t("statusMaintenance") : t("statusLive")}
               </span>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 {maintenanceMode ? t("maintenanceOnHint") : t("maintenanceOffHint")}
               </p>
             </div>
@@ -271,7 +298,9 @@ export function DriverAppSettingsPanel({
                       return;
                     }
                     setMaintenanceMode(checked);
-                    toast.success(checked ? t("maintenanceEnabled") : t("maintenanceDisabled"));
+                    toast.success(
+                      checked ? t("maintenanceEnabled") : t("maintenanceDisabled"),
+                    );
                     router.refresh();
                   });
                 }}
@@ -280,7 +309,7 @@ export function DriverAppSettingsPanel({
           </div>
 
           <form
-            className="space-y-2"
+            className="flex flex-col gap-2 sm:flex-row sm:items-end"
             action={(formData) => {
               startTransition(async () => {
                 setError(null);
@@ -296,54 +325,57 @@ export function DriverAppSettingsPanel({
               });
             }}
           >
-            <Label htmlFor="driverAppMaintenanceMessage">{t("maintenanceMessage")}</Label>
-            <textarea
-              id="driverAppMaintenanceMessage"
-              name="driverAppMaintenanceMessage"
-              defaultValue={driverAppMaintenanceMessage}
-              required
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <Label htmlFor="driverAppMaintenanceMessage">{t("maintenanceMessage")}</Label>
+              <textarea
+                id="driverAppMaintenanceMessage"
+                name="driverAppMaintenanceMessage"
+                defaultValue={driverAppMaintenanceMessage}
+                required
+                disabled={isPending}
+                rows={2}
+                className="flex min-h-[56px] w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50"
+              />
+            </div>
+            <Button
+              type="submit"
+              variant="outline"
               disabled={isPending}
-              rows={3}
-              className="flex min-h-[80px] w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50"
-            />
-            <Button type="submit" variant="outline" disabled={isPending} className="cursor-pointer rounded-lg">
+              className="shrink-0 cursor-pointer rounded-lg sm:mb-0"
+            >
               {isPending ? t("saving") : t("saveMessage")}
             </Button>
           </form>
         </CardContent>
       </Card>
 
-      <Card>
-        <CardContent className="pt-6">
-          <Button
-            type="button"
-            variant="ghost"
-            disabled={isPending}
-            className="cursor-pointer text-destructive hover:text-destructive"
-            onClick={() => {
-              if (!window.confirm(t("resetConfirm"))) return;
-              startTransition(async () => {
-                setError(null);
-                const result = await resetDriverAppSettings(locale);
-                if (result.error) {
-                  setError(result.error);
-                  toast.error(t("errors.saveFailed"));
-                  return;
-                }
-                setLogoPreview(null);
-                setSplashPreview(null);
-                setMaintenanceMode(false);
-                if (logoRef.current) logoRef.current.value = "";
-                if (splashRef.current) splashRef.current.value = "";
-                toast.success(t("resetDone"));
-                router.refresh();
-              });
-            }}
-          >
-            {t("reset")}
-          </Button>
-        </CardContent>
-      </Card>
+      <Button
+        type="button"
+        variant="ghost"
+        disabled={isPending}
+        className="cursor-pointer text-destructive hover:text-destructive"
+        onClick={() => {
+          if (!window.confirm(t("resetConfirm"))) return;
+          startTransition(async () => {
+            setError(null);
+            const result = await resetDriverAppSettings(locale);
+            if (result.error) {
+              setError(result.error);
+              toast.error(t("errors.saveFailed"));
+              return;
+            }
+            setLogoPreview(null);
+            setSplashPreview(null);
+            setMaintenanceMode(false);
+            if (logoRef.current) logoRef.current.value = "";
+            if (splashRef.current) splashRef.current.value = "";
+            toast.success(t("resetDone"));
+            router.refresh();
+          });
+        }}
+      >
+        {t("reset")}
+      </Button>
 
       {errorMessage ? (
         <p className="text-sm text-destructive" role="alert">

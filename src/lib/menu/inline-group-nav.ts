@@ -31,6 +31,51 @@ export function pathnameMatchesInlineGroup(
   return false;
 }
 
+function flattenLeafItems(tree: ResolvedMenuNode[]): ResolvedMenuNode[] {
+  const out: ResolvedMenuNode[] = [];
+  for (const n of tree) {
+    if (n.type === "item" && n.href) out.push(n);
+    if (n.type === "group" && n.children) {
+      out.push(...flattenLeafItems(n.children));
+    }
+  }
+  return out;
+}
+
+/** Longest matching href wins — avoids double-active when `/settings` is a prefix of `/settings/menu-editor`. */
+export function findActiveLeafId(
+  tree: ResolvedMenuNode[],
+  pathname: string,
+): string | null {
+  let bestId: string | null = null;
+  let bestLen = -1;
+  for (const item of flattenLeafItems(tree)) {
+    const href = item.href!;
+    if (pathname === href || pathname.startsWith(`${href}/`)) {
+      if (href.length > bestLen) {
+        bestLen = href.length;
+        bestId = item.id;
+      }
+    }
+  }
+  return bestId;
+}
+
+export function groupContainsLeaf(
+  group: ResolvedMenuNode,
+  leafId: string | null,
+): boolean {
+  if (!leafId) return false;
+  function walk(nodes: ResolvedMenuNode[]): boolean {
+    for (const n of nodes) {
+      if (n.id === leafId) return true;
+      if (n.children && walk(n.children)) return true;
+    }
+    return false;
+  }
+  return walk(group.children ?? []);
+}
+
 export function findInlineGroupForPath(
   tree: ResolvedMenuNode[],
   pathname: string,
@@ -38,9 +83,10 @@ export function findInlineGroupForPath(
   if (pathnameUsesFullWidthWithoutSecondaryNav(pathname)) {
     return null;
   }
+  const activeLeafId = findActiveLeafId(tree, pathname);
   for (const node of tree) {
     if (node.type !== "group" || node.displayMode !== "inline") continue;
-    if (pathnameMatchesInlineGroup(node, pathname)) return node;
+    if (groupContainsLeaf(node, activeLeafId)) return node;
   }
   return null;
 }

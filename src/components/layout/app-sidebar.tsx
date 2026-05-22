@@ -1,9 +1,17 @@
 "use client";
 
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import {
   Check,
+  ChevronRight,
   LayoutDashboard,
   Monitor,
   Moon,
@@ -12,8 +20,9 @@ import {
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import {
+  findActiveLeafId,
   firstChildHref,
-  pathnameMatchesInlineGroup,
+  groupContainsLeaf,
 } from "@/lib/menu/inline-group-nav";
 import { useLocale } from "next-intl";
 import { BrandMark } from "@/components/brand/brand-mark";
@@ -53,6 +62,24 @@ import {
   SidebarMenuSkeleton,
   useSidebar,
 } from "@/components/ui/sidebar";
+
+const ActiveNavContext = createContext<string | null>(null);
+
+function sidebarGroupStorageKey(groupId: string) {
+  return `sidebar-group:${groupId}`;
+}
+
+function readPanelGroupOpen(groupId: string): boolean {
+  if (typeof window === "undefined") return false;
+  return localStorage.getItem(sidebarGroupStorageKey(groupId)) === "open";
+}
+
+function writePanelGroupOpen(groupId: string, open: boolean) {
+  localStorage.setItem(
+    sidebarGroupStorageKey(groupId),
+    open ? "open" : "collapsed",
+  );
+}
 
 function MenuIcon({ name, className }: { name: string; className?: string }) {
   const Icon = ICON_MAP[name] ?? LayoutDashboard;
@@ -107,10 +134,9 @@ function NavItemLink({
   node: ResolvedMenuNode;
   label: string;
 }) {
-  const pathname = usePathname();
+  const activeLeafId = useContext(ActiveNavContext);
   if (!node.href) return null;
-  const isActive =
-    pathname === node.href || pathname.startsWith(`${node.href}/`);
+  const isActive = node.id === activeLeafId;
 
   return (
     <SidebarMenuItem>
@@ -154,18 +180,20 @@ function NavGroup({
   tItemLabel: (n: ResolvedMenuNode) => string;
   tGroupLabel: (label: string) => string;
 }) {
-  const pathname = usePathname();
+  const activeLeafId = useContext(ActiveNavContext);
   const { state } = useSidebar();
   const children = node.children ?? [];
   const groupLabel = tGroupLabel(node.label);
   const collapsed = state === "collapsed";
   const isInline = node.displayMode === "inline";
+  const isPanel = node.displayMode === "panel";
+  const hasActiveChild = groupContainsLeaf(node, activeLeafId);
 
   if (isInline) {
     const href = firstChildHref(node);
     if (!href) return null;
 
-    const isActive = pathnameMatchesInlineGroup(node, pathname);
+    const isActive = hasActiveChild;
 
     return (
       <SidebarMenuItem>
@@ -198,6 +226,18 @@ function NavGroup({
     );
   }
 
+  if (isPanel) {
+    return (
+      <PanelGroupChildren
+        groupId={node.id}
+        groupLabel={groupLabel}
+        forceOpen={hasActiveChild}
+        children={children}
+        tItemLabel={tItemLabel}
+      />
+    );
+  }
+
   return (
     <>
       <NavGroupLabel label={groupLabel} />
@@ -210,9 +250,78 @@ function NavGroup({
   );
 }
 
+function PanelGroupChildren({
+  groupId,
+  groupLabel,
+  forceOpen,
+  children,
+  tItemLabel,
+}: {
+  groupId: string;
+  groupLabel: string;
+  forceOpen: boolean;
+  children: ResolvedMenuNode[];
+  tItemLabel: (n: ResolvedMenuNode) => string;
+}) {
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    setOpen(readPanelGroupOpen(groupId));
+  }, [groupId]);
+
+  useEffect(() => {
+    if (forceOpen) setOpen(true);
+  }, [forceOpen]);
+
+  const toggle = useCallback(() => {
+    setOpen((prev) => {
+      const next = !prev;
+      writePanelGroupOpen(groupId, next);
+      return next;
+    });
+  }, [groupId]);
+
+  const showChildren = open || forceOpen;
+
+  return (
+    <>
+      <li
+        data-slot="sidebar-menu-item"
+        className="group/menu-item relative px-2.5 pt-2 pb-0.5"
+      >
+        <button
+          type="button"
+          onClick={toggle}
+          className="flex w-full cursor-pointer items-center gap-1 text-start hover:text-foreground"
+          aria-expanded={showChildren}
+        >
+          <span className="flex-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            {groupLabel}
+          </span>
+          <ChevronRight
+            className={cn(
+              "h-3 w-3 shrink-0 text-muted-foreground transition-transform duration-200",
+              showChildren && "rotate-90",
+            )}
+          />
+        </button>
+      </li>
+      {showChildren ? (
+        <ul className="ms-3 flex list-none flex-col gap-0.5 border-s border-sidebar-border/60 ps-1.5">
+          {children.map((child) => (
+            <NavItemLink key={child.id} node={child} label={tItemLabel(child)} />
+          ))}
+        </ul>
+      ) : null}
+    </>
+  );
+}
+
 function NavTree({ nodes }: { nodes: ResolvedMenuNode[] }) {
+  const pathname = usePathname();
   const tItemLabel = useItemLabel();
   const tGroupLabel = useGroupLabel();
+  const activeLeafId = findActiveLeafId(nodes, pathname);
 
   const main: ResolvedMenuNode[] = [];
   const footer: ResolvedMenuNode[] = [];
@@ -230,28 +339,30 @@ function NavTree({ nodes }: { nodes: ResolvedMenuNode[] }) {
   const navNodes = [...main, ...footer];
 
   return (
-    <SidebarGroup>
-      <SidebarGroupContent>
-        <SidebarMenu>
-          {navNodes.map((node) =>
-            node.type === "group" ? (
-              <NavGroup
-                key={node.id}
-                node={node}
-                tItemLabel={tItemLabel}
-                tGroupLabel={tGroupLabel}
-              />
-            ) : (
-              <NavItemLink
-                key={node.id}
-                node={node}
-                label={tItemLabel(node)}
-              />
-            ),
-          )}
-        </SidebarMenu>
-      </SidebarGroupContent>
-    </SidebarGroup>
+    <ActiveNavContext.Provider value={activeLeafId}>
+      <SidebarGroup>
+        <SidebarGroupContent>
+          <SidebarMenu>
+            {navNodes.map((node) =>
+              node.type === "group" ? (
+                <NavGroup
+                  key={node.id}
+                  node={node}
+                  tItemLabel={tItemLabel}
+                  tGroupLabel={tGroupLabel}
+                />
+              ) : (
+                <NavItemLink
+                  key={node.id}
+                  node={node}
+                  label={tItemLabel(node)}
+                />
+              ),
+            )}
+          </SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
+    </ActiveNavContext.Provider>
   );
 }
 
