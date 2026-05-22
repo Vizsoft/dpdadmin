@@ -10,9 +10,11 @@ import { cn } from "@/lib/utils";
 export function IconPicker({
   value,
   onChange,
+  compact = false,
 }: {
   value: string;
   onChange: (icon: string) => void;
+  compact?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -25,10 +27,13 @@ export function IconPicker({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         type="button"
-        className="flex h-8 w-8 items-center justify-center rounded-md border border-border transition-colors hover:bg-muted"
+        className={cn(
+          "flex items-center justify-center rounded-md border border-border transition-colors hover:bg-muted",
+          compact ? "size-7" : "size-8",
+        )}
         aria-label="Pick icon"
       >
-        <Icon className="h-4 w-4" />
+        <Icon className={compact ? "size-3.5" : "size-4"} />
       </PopoverTrigger>
       <PopoverContent className="w-64 p-2" align="start">
         <Input

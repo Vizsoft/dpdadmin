@@ -4,8 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
-  ArrowDown,
-  ArrowUp,
   ArrowRight,
   Copy,
   Eye,
@@ -40,6 +38,16 @@ import { mergeMenu } from "@/lib/menu/menu-merge";
 import { MENU_REGISTRY } from "@/lib/menu/menu-registry";
 import { cn } from "@/lib/utils";
 import type { AdminRoleRow } from "@/lib/auth/get-role-permissions";
+import {
+  MenuEditorDndProvider,
+  SortableDragHandle,
+  SortableShell,
+  orderEntryId,
+  reorderById,
+  rowItemId,
+  type SortableHandleProps,
+} from "@/features/menu-editor/menu-editor-sortable";
+import { arrayMove } from "@dnd-kit/sortable";
 
 const NONE_GROUP = "__none__";
 
@@ -75,6 +83,12 @@ type FlatRow = {
 };
 
 type OrderEntry = { kind: "group" | "item"; id: string };
+
+function parseOrderSortId(id: string): OrderEntry | null {
+  const match = /^order:(group|item):(.+)$/.exec(id);
+  if (!match) return null;
+  return { kind: match[1] as "group" | "item", id: match[2]! };
+}
 
 function flattenTree(tree: MenuNode[]): {
   rows: FlatRow[];
@@ -255,52 +269,46 @@ export function MenuEditorPanel({ roles }: { roles: AdminRoleRow[] }) {
     setDirty(true);
   };
 
-  const moveRow = (itemId: string, dir: -1 | 1) => {
-    const row = rows.find((r) => r.itemId === itemId);
-    if (!row) return;
-    if (row.groupId === NONE_GROUP) {
-      setOrder((o) => {
-        const idx = o.findIndex((e) => e.kind === "item" && e.id === itemId);
-        if (idx < 0) return o;
-        const target = idx + dir;
-        if (target < 0 || target >= o.length) return o;
-        const copy = [...o];
-        const [moved] = copy.splice(idx, 1);
-        copy.splice(target, 0, moved!);
-        return copy;
-      });
-      setDirty(true);
-      return;
-    }
-    setRows((rs) => {
-      const sameGroup = rs.filter((r) => r.groupId === row.groupId);
-      const idxInGroup = sameGroup.findIndex((r) => r.itemId === itemId);
-      const targetIdx = idxInGroup + dir;
-      if (targetIdx < 0 || targetIdx >= sameGroup.length) return rs;
-      const groupRowsReordered = [...sameGroup];
-      const [moved] = groupRowsReordered.splice(idxInGroup, 1);
-      groupRowsReordered.splice(targetIdx, 0, moved!);
-      const newOrder: FlatRow[] = [];
-      let gc = 0;
-      for (const r of rs) {
-        newOrder.push(r.groupId === row.groupId ? groupRowsReordered[gc++]! : r);
-      }
-      return newOrder;
-    });
-    setDirty(true);
-  };
-
-  const moveEntry = (idx: number, dir: -1 | 1) => {
+  const handleOrderDragEnd = useCallback((activeId: string, overId: string) => {
+    const activeEntry = parseOrderSortId(activeId);
+    const overEntry = parseOrderSortId(overId);
+    if (!activeEntry || !overEntry) return;
     setOrder((o) => {
-      const target = idx + dir;
-      if (target < 0 || target >= o.length) return o;
-      const copy = [...o];
-      const [moved] = copy.splice(idx, 1);
-      copy.splice(target, 0, moved!);
-      return copy;
+      const oldIndex = o.findIndex(
+        (e) => e.kind === activeEntry.kind && e.id === activeEntry.id,
+      );
+      const newIndex = o.findIndex(
+        (e) => e.kind === overEntry.kind && e.id === overEntry.id,
+      );
+      if (oldIndex < 0 || newIndex < 0) return o;
+      return arrayMove(o, oldIndex, newIndex);
     });
     setDirty(true);
-  };
+  }, []);
+
+  const handleRowDragEnd = useCallback((activeId: string, overId: string) => {
+    const activeItemId = activeId.replace(/^row:/, "");
+    const overItemId = overId.replace(/^row:/, "");
+    const activeRow = rows.find((r) => r.itemId === activeItemId);
+    const overRow = rows.find((r) => r.itemId === overItemId);
+    if (!activeRow || !overRow || activeRow.groupId !== overRow.groupId) return;
+    if (activeRow.groupId === NONE_GROUP) return;
+
+    setRows((rs) => {
+      const sameGroup = rs.filter((r) => r.groupId === activeRow.groupId);
+      const reordered = reorderById(
+        sameGroup,
+        activeItemId,
+        overItemId,
+        (r) => r.itemId,
+      );
+      let gc = 0;
+      return rs.map((r) =>
+        r.groupId === activeRow.groupId ? reordered[gc++]! : r,
+      );
+    });
+    setDirty(true);
+  }, [rows]);
 
   const addGroup = () => {
     const id = `group-custom-${Date.now()}`;
@@ -473,48 +481,58 @@ export function MenuEditorPanel({ roles }: { roles: AdminRoleRow[] }) {
     return map;
   }, [rows]);
 
+  const sortableIds = useMemo(() => {
+    const ids = order.map((entry) => orderEntryId(entry));
+    for (const r of rows) {
+      if (r.groupId !== NONE_GROUP) ids.push(rowItemId(r.itemId));
+    }
+    return ids;
+  }, [order, rows]);
+
   if (roles.length === 0 && !loading) {
     return <p className="text-sm text-muted-foreground">{t("noRoles")}</p>;
   }
 
-  const renderRowControls = (r: FlatRow, idx: number, total: number) => (
+
+  const renderRowControls = (
+    r: FlatRow,
+    orderNum: string,
+    drag?: SortableHandleProps,
+  ) => (
     <div
-      key={r.itemId}
       className={cn(
-        "flex items-center gap-1.5 rounded-md px-1.5 py-1 hover:bg-muted/50",
+        "flex items-center gap-1 rounded-md border border-border/60 bg-background px-1.5 py-1 shadow-sm",
         r.hidden && "opacity-50",
       )}
     >
-      <div className="flex flex-col">
-        <button
-          type="button"
-          onClick={() => moveRow(r.itemId, -1)}
-          disabled={idx === 0}
-          className="h-3 text-muted-foreground hover:text-foreground disabled:opacity-30"
-        >
-          <ArrowUp className="h-3 w-3" />
-        </button>
-        <button
-          type="button"
-          onClick={() => moveRow(r.itemId, 1)}
-          disabled={idx === total - 1}
-          className="h-3 text-muted-foreground hover:text-foreground disabled:opacity-30"
-        >
-          <ArrowDown className="h-3 w-3" />
-        </button>
-      </div>
-      <IconPicker value={r.icon} onChange={(icon) => updateRow(r.itemId, { icon })} />
+      {drag ? (
+        <SortableDragHandle
+          title={t("dragToReorder")}
+          attributes={drag.attributes}
+          listeners={drag.listeners}
+        />
+      ) : (
+        <span className="w-5 shrink-0" />
+      )}
+      <span className="w-6 shrink-0 text-center text-[10px] font-medium tabular-nums text-muted-foreground">
+        {orderNum}
+      </span>
+      <IconPicker
+        value={r.icon}
+        onChange={(icon) => updateRow(r.itemId, { icon })}
+        compact
+      />
       <Input
         value={r.label}
         onChange={(e) => updateRow(r.itemId, { label: e.target.value })}
-        className="h-6 flex-1 text-xs"
+        className="h-7 min-w-0 flex-1 text-xs"
       />
       <Select
         items={groupOptions}
         value={r.groupId}
         onValueChange={(v) => v && updateRow(r.itemId, { groupId: v })}
       >
-        <SelectTrigger className="h-6 w-[120px] text-xs">
+        <SelectTrigger className="h-7 w-[108px] text-xs">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -536,9 +554,9 @@ export function MenuEditorPanel({ roles }: { roles: AdminRoleRow[] }) {
         variant="ghost"
         onClick={() => updateRow(r.itemId, { hidden: !r.hidden })}
         title={r.hidden ? t("show") : t("hide")}
-        className="h-6 w-6"
+        className="size-7 shrink-0 cursor-pointer"
       >
-        {r.hidden ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+        {r.hidden ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
       </Button>
       <Button
         type="button"
@@ -546,20 +564,20 @@ export function MenuEditorPanel({ roles }: { roles: AdminRoleRow[] }) {
         variant="ghost"
         onClick={() => resetRow(r.itemId)}
         title={t("resetDefault")}
-        className="h-6 w-6"
+        className="size-7 shrink-0 cursor-pointer"
       >
-        <RotateCcw className="h-3.5 w-3.5 text-muted-foreground" />
+        <RotateCcw className="size-3.5 text-muted-foreground" />
       </Button>
     </div>
   );
 
   return (
-    <div className="max-w-3xl space-y-4">
+    <div className="max-w-6xl space-y-3">
       {roles.length > 0 && (
         <Tabs value={role} onValueChange={setRole}>
-          <TabsList className="h-9">
+          <TabsList className="h-8">
             {roles.map((r) => (
-              <TabsTrigger key={r.id} value={r.slug} className="text-xs">
+              <TabsTrigger key={r.id} value={r.slug} className="cursor-pointer text-xs">
                 {r.name}
               </TabsTrigger>
             ))}
@@ -568,17 +586,17 @@ export function MenuEditorPanel({ roles }: { roles: AdminRoleRow[] }) {
       )}
 
       {roles.length > 1 && (
-        <div className="rounded-xl border border-border bg-muted/30 p-4">
-          <p className="mb-3 text-sm font-medium text-foreground">{t("copySectionTitle")}</p>
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="min-w-[140px] flex-1 space-y-1.5">
-              <Label className="text-xs text-muted-foreground">{t("copyFrom")}</Label>
+            <div className="rounded-lg border border-border bg-muted/20 px-3 py-2.5">
+          <p className="mb-2 text-xs font-medium text-foreground">{t("copySectionTitle")}</p>
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="min-w-[120px] flex-1 space-y-1">
+              <Label className="text-[11px] text-muted-foreground">{t("copyFrom")}</Label>
               <Select
                 items={roleSelectItems}
                 value={copyFromRole}
                 onValueChange={(v) => v && setCopyFromRole(v)}
               >
-                <SelectTrigger className="h-9 w-full">
+                <SelectTrigger className="h-8 w-full text-xs">
                   <SelectValue placeholder={t("copyFrom")} />
                 </SelectTrigger>
                 <SelectContent>
@@ -590,15 +608,15 @@ export function MenuEditorPanel({ roles }: { roles: AdminRoleRow[] }) {
                 </SelectContent>
               </Select>
             </div>
-            <ArrowRight className="mb-2 hidden h-4 w-4 shrink-0 text-muted-foreground sm:block" />
-            <div className="min-w-[140px] flex-1 space-y-1.5">
-              <Label className="text-xs text-muted-foreground">{t("copyTo")}</Label>
+            <ArrowRight className="mb-1.5 hidden size-3.5 shrink-0 text-muted-foreground sm:block" />
+            <div className="min-w-[120px] flex-1 space-y-1">
+              <Label className="text-[11px] text-muted-foreground">{t("copyTo")}</Label>
               <Select
                 items={roleSelectItems}
                 value={copyToRole}
                 onValueChange={(v) => v && setCopyToRole(v)}
               >
-                <SelectTrigger className="h-9 w-full">
+                <SelectTrigger className="h-8 w-full text-xs">
                   <SelectValue placeholder={t("copyTo")} />
                 </SelectTrigger>
                 <SelectContent>
@@ -613,14 +631,14 @@ export function MenuEditorPanel({ roles }: { roles: AdminRoleRow[] }) {
             <Button
               type="button"
               size="sm"
-              className="h-9 cursor-pointer"
+              className="h-8 cursor-pointer text-xs"
               disabled={copyRolesDisabled || copying || saving}
               onClick={() => void handleCopySettings()}
             >
               {copying ? (
-                <Loader2 className="me-1.5 h-3.5 w-3.5 animate-spin" />
+                <Loader2 className="me-1 size-3.5 animate-spin" />
               ) : (
-                <Copy className="me-1.5 h-3.5 w-3.5" />
+                <Copy className="me-1 size-3.5" />
               )}
               {copying ? t("copying") : t("copySettings")}
             </Button>
@@ -629,7 +647,7 @@ export function MenuEditorPanel({ roles }: { roles: AdminRoleRow[] }) {
                 type="button"
                 size="sm"
                 variant="outline"
-                className="h-9 cursor-pointer"
+                className="h-8 cursor-pointer text-xs"
                 disabled={loading || copying || saving}
                 onClick={() => void handleLoadFromRole()}
               >
@@ -637,145 +655,145 @@ export function MenuEditorPanel({ roles }: { roles: AdminRoleRow[] }) {
               </Button>
             )}
           </div>
-          <p className="mt-2 text-xs text-muted-foreground">{t("copySectionHint")}</p>
+          <p className="mt-1.5 text-[11px] text-muted-foreground">{t("copySectionHint")}</p>
         </div>
       )}
 
-      <Card className="rounded-xl border-border shadow-sm">
+      <Card className="rounded-lg border-border shadow-sm">
         <CardContent className="p-0">
           {loading ? (
-            <div className="flex justify-center py-16">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            <div className="flex justify-center py-12">
+              <Loader2 className="size-5 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <div className="divide-y divide-border">
-              {order.map((entry, entryIdx) => {
-                if (entry.kind === "item") {
-                  const r = rowByItem.get(entry.id);
-                  if (!r || r.groupId !== NONE_GROUP) return null;
-                  return (
-                    <div key={`item-${entry.id}`} className="p-2">
-                      <div className="mb-0.5 flex items-center gap-1.5">
-                        <div className="flex flex-col">
-                          <button
-                            type="button"
-                            onClick={() => moveEntry(entryIdx, -1)}
-                            disabled={entryIdx === 0}
-                            className="h-3 text-muted-foreground disabled:opacity-30"
-                          >
-                            <ArrowUp className="h-3 w-3" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => moveEntry(entryIdx, 1)}
-                            disabled={entryIdx === order.length - 1}
-                            className="h-3 text-muted-foreground disabled:opacity-30"
-                          >
-                            <ArrowDown className="h-3 w-3" />
-                          </button>
-                        </div>
-                        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">
-                          {t("topLevel")}
-                        </span>
-                      </div>
-                      {renderRowControls(r, 0, 1)}
-                    </div>
-                  );
-                }
-                const g = groups.find((x) => x.id === entry.id);
-                if (!g) return null;
-                const sectionRows = rowsByGroup.get(g.id) || [];
-                const isPanel = g.displayMode === "panel";
-                return (
-                  <div key={`group-${g.id}`} className="p-2">
-                    <div className="mb-1 flex items-center gap-1.5">
-                      <div className="flex flex-col">
-                        <button
-                          type="button"
-                          onClick={() => moveEntry(entryIdx, -1)}
-                          disabled={entryIdx === 0}
-                          className="h-3 text-muted-foreground disabled:opacity-30"
-                        >
-                          <ArrowUp className="h-3 w-3" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => moveEntry(entryIdx, 1)}
-                          disabled={entryIdx === order.length - 1}
-                          className="h-3 text-muted-foreground disabled:opacity-30"
-                        >
-                          <ArrowDown className="h-3 w-3" />
-                        </button>
-                      </div>
-                      <IconPicker
-                        value={g.icon || "Folder"}
-                        onChange={(icon) => {
-                          setGroups((gs) =>
-                            gs.map((x) => (x.id === g.id ? { ...x, icon } : x)),
-                          );
-                          setDirty(true);
-                        }}
-                      />
-                      <Input
-                        value={g.label}
-                        onChange={(e) => renameGroup(g.id, e.target.value)}
-                        className="h-6 max-w-[180px] text-[10px] font-semibold uppercase tracking-wider"
-                      />
-                      <span className="text-[10px] text-muted-foreground">
-                        ({sectionRows.length})
-                      </span>
-                      <div className="flex-1" />
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant={isPanel ? "default" : "outline"}
-                        onClick={() => toggleGroupMode(g.id)}
-                        title={
-                          isPanel ? t("modeHintPanel") : t("modeHintInline")
-                        }
-                        className="h-5 gap-1 px-2 text-[10px]"
+            <MenuEditorDndProvider
+              sortableIds={sortableIds}
+              onOrderDragEnd={handleOrderDragEnd}
+              onRowDragEnd={handleRowDragEnd}
+            >
+              <div className="grid grid-cols-1 gap-2 p-3 xl:grid-cols-2">
+                {order.map((entry, entryIdx) => {
+                  const orderNum = String(entryIdx + 1);
+                  if (entry.kind === "item") {
+                    const r = rowByItem.get(entry.id);
+                    if (!r || r.groupId !== NONE_GROUP) return null;
+                    return (
+                      <SortableShell
+                        key={`item-${entry.id}`}
+                        id={orderEntryId(entry)}
+                        className="min-w-0"
                       >
-                        <PanelRight className="h-3 w-3" />
-                        {isPanel ? t("panel") : t("inline")}
-                      </Button>
-                      {g.id.startsWith("group-custom-") && (
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => deleteGroup(g.id)}
-                          className="h-6 w-6"
-                        >
-                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                        </Button>
+                        {({ attributes, listeners }) => (
+                          <div>
+                            <span className="mb-0.5 block px-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                              {orderNum}. {t("topLevel")}
+                            </span>
+                            {renderRowControls(r, orderNum, { attributes, listeners })}
+                          </div>
+                        )}
+                      </SortableShell>
+                    );
+                  }
+                  const g = groups.find((x) => x.id === entry.id);
+                  if (!g) return null;
+                  const sectionRows = rowsByGroup.get(g.id) || [];
+                  const isPanel = g.displayMode === "panel";
+                  return (
+                    <SortableShell
+                      key={`group-${g.id}`}
+                      id={orderEntryId(entry)}
+                      className="col-span-full min-w-0"
+                    >
+                      {({ attributes, listeners }) => (
+                        <div className="rounded-md border border-border/70 bg-muted/15 p-2">
+                          <div className="mb-2 flex flex-wrap items-center gap-1.5">
+                            <SortableDragHandle
+                              title={t("dragToReorder")}
+                              attributes={attributes}
+                              listeners={listeners}
+                            />
+                            <span className="w-5 text-center text-[10px] font-medium tabular-nums text-muted-foreground">
+                              {orderNum}
+                            </span>
+                            <IconPicker
+                              value={g.icon || "Folder"}
+                              compact
+                              onChange={(icon) => {
+                                setGroups((gs) =>
+                                  gs.map((x) => (x.id === g.id ? { ...x, icon } : x)),
+                                );
+                                setDirty(true);
+                              }}
+                            />
+                            <Input
+                              value={g.label}
+                              onChange={(e) => renameGroup(g.id, e.target.value)}
+                              className="h-7 max-w-[160px] text-[10px] font-semibold uppercase tracking-wide"
+                            />
+                            <span className="text-[10px] text-muted-foreground">
+                              ({sectionRows.length})
+                            </span>
+                            <div className="ms-auto flex items-center gap-1">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant={isPanel ? "default" : "outline"}
+                                onClick={() => toggleGroupMode(g.id)}
+                                title={isPanel ? t("modeHintPanel") : t("modeHintInline")}
+                                className="h-6 gap-1 px-2 text-[10px] cursor-pointer"
+                              >
+                                <PanelRight className="size-3" />
+                                {isPanel ? t("panel") : t("inline")}
+                              </Button>
+                              {g.id.startsWith("group-custom-") && (
+                                <Button
+                                  type="button"
+                                  size="icon"
+                                  variant="ghost"
+                                  onClick={() => deleteGroup(g.id)}
+                                  className="size-6 cursor-pointer"
+                                >
+                                  <Trash2 className="size-3.5 text-destructive" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-1 gap-1.5 md:grid-cols-2">
+                            {sectionRows.map((r, idx) => (
+                              <SortableShell key={r.itemId} id={rowItemId(r.itemId)}>
+                                {({ attributes, listeners }) =>
+                                  renderRowControls(r, `${orderNum}.${idx + 1}`, {
+                                    attributes,
+                                    listeners,
+                                  })
+                                }
+                              </SortableShell>
+                            ))}
+                          </div>
+                        </div>
                       )}
-                    </div>
-                    <div className="space-y-0.5">
-                      {sectionRows.map((r, idx) =>
-                        renderRowControls(r, idx, sectionRows.length),
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                    </SortableShell>
+                  );
+                })}
+              </div>
+            </MenuEditorDndProvider>
           )}
         </CardContent>
       </Card>
 
-      <div className="flex items-center gap-2">
-        <Button type="button" size="sm" variant="outline" onClick={addGroup}>
-          <FolderPlus className="me-1.5 h-3.5 w-3.5" />
+      <div className="flex flex-wrap items-center gap-2">
+        <Button type="button" size="sm" variant="outline" className="h-8 cursor-pointer text-xs" onClick={addGroup}>
+          <FolderPlus className="me-1 size-3.5" />
           {t("addGroup")}
         </Button>
-        <Button type="button" size="sm" variant="outline" onClick={handleReset}>
+        <Button type="button" size="sm" variant="outline" className="h-8 cursor-pointer text-xs" onClick={handleReset}>
           {t("resetAll")}
         </Button>
         <div className="flex-1" />
         {dirty && (
-          <span className="text-xs text-muted-foreground">{t("unsavedChanges")}</span>
+          <span className="text-xs text-amber-600 dark:text-amber-400">{t("unsavedChanges")}</span>
         )}
-        <Button type="button" size="sm" onClick={handleSave} disabled={saving || !dirty}>
+        <Button type="button" size="sm" className="h-8 cursor-pointer text-xs" onClick={handleSave} disabled={saving || !dirty}>
           {saving ? t("saving") : t("save")}
         </Button>
       </div>

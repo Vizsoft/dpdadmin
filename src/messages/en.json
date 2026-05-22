@@ -1408,6 +1408,7 @@
         "copyDoneDesc": "Settings from {from} were applied to {to}.",
         "copyFailed": "Could not copy menu settings",
         "loadIntoEditor": "Load into editor",
+        "dragToReorder": "Drag to reorder",
         "loadFromDiscard": "You have unsaved changes. Load from another role and discard them?",
         "loadedFrom": "Menu loaded",
         "loadedFromDesc": "Loaded settings from {role}. Save to apply to this role."
