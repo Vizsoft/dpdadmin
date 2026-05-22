@@ -26,6 +26,7 @@ export type AppThemeRecord = {
 export type AppSettings = {
   appName: string;
   appSubtitle: string;
+  driverAppLoginHint: string;
   fontFamily: FontFamilyId;
   logoUrl: string | null;
   logoType: LogoType;
@@ -43,6 +44,7 @@ function normalizeRow(
   row: {
     app_name: string;
     app_subtitle: string;
+    driver_app_login_hint?: string | null;
     font_family: string;
     logo_url: string | null;
     logo_type: string;
@@ -53,6 +55,9 @@ function normalizeRow(
   return {
     appName: row.app_name,
     appSubtitle: row.app_subtitle,
+    driverAppLoginHint:
+      row.driver_app_login_hint?.trim() ||
+      "Enter your ID and passcode from admin",
     fontFamily: isFontFamilyId(row.font_family) ? row.font_family : "inter",
     logoUrl: row.logo_url,
     logoType: row.logo_type === "svg" ? "svg" : "image",
@@ -88,11 +93,12 @@ async function fetchCustomThemes(): Promise<AppThemeRecord[]> {
 const getCustomThemes = cache(fetchCustomThemes);
 
 const APP_SETTINGS_SELECT =
-  "app_name, app_subtitle, font_family, logo_url, logo_type, theme_id";
+  "app_name, app_subtitle, driver_app_login_hint, font_family, logo_url, logo_type, theme_id";
 
 async function loadAppSettingsRow(): Promise<{
   app_name: string;
   app_subtitle: string;
+  driver_app_login_hint?: string | null;
   font_family: string;
   logo_url: string | null;
   logo_type: string;
@@ -152,6 +158,7 @@ async function fetchAppSettings(): Promise<AppSettings> {
     return {
       appName: DEFAULT_APP_SETTINGS.app_name,
       appSubtitle: DEFAULT_APP_SETTINGS.app_subtitle,
+      driverAppLoginHint: "Enter your ID and passcode from admin",
       fontFamily: DEFAULT_APP_SETTINGS.font_family,
       logoUrl: DEFAULT_APP_SETTINGS.logo_url,
       logoType: DEFAULT_APP_SETTINGS.logo_type,

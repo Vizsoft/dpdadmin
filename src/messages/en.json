@@ -397,7 +397,7 @@
       "hints": {
         "phone": "8 digits only — Kuwait mobile, no country code",
         "civilId": "12 digits — civil ID number",
-        "driverCodeAuto": "System assigns the next available ID (starting at 100001).",
+        "driverCodeAuto": "System assigns the next 5-digit ID (starting at 10001).",
         "driverCodeLocked": "Driver ID cannot be changed after assignment."
       },
       "noVehicle": "No vehicle",
@@ -411,7 +411,7 @@
       "errors": {
         "not_authorized": "You do not have permission to manage drivers",
         "missing_fields": "This field is required",
-        "invalid_driver_code": "Driver ID must be a numeric code (e.g. 100001)",
+        "invalid_driver_code": "Driver ID must be a 5-digit code (e.g. 10001)",
         "invalid_phone": "Enter exactly 8 digits for the mobile number",
         "invalid_civil_id": "Enter exactly 12 digits for the civil ID",
         "phone_exists": "This phone number is already registered",
@@ -1155,6 +1155,9 @@
         "subtitle": "Application name, logo, and font used across the admin panel",
         "appName": "Application name",
         "appSubtitle": "Subtitle",
+        "appSubtitleDriverHint": "Also shown as the tagline on the driver app login screen.",
+        "driverAppLoginHint": "Driver app login message",
+        "driverAppLoginHintHelp": "Helper text below the tagline on the driver mobile app login screen.",
         "font": "Site font",
         "logo": "Logo",
         "logoHint": "PNG, JPG, WebP, or SVG. Recommended 128×128 or larger. SVG scales best on all screens.",

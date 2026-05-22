@@ -40,9 +40,10 @@ export async function updateBranding(
 
   const appName = String(formData.get("appName") ?? "").trim();
   const appSubtitle = String(formData.get("appSubtitle") ?? "").trim();
+  const driverAppLoginHint = String(formData.get("driverAppLoginHint") ?? "").trim();
   const fontFamily = String(formData.get("fontFamily") ?? "");
 
-  if (!appName || !appSubtitle) {
+  if (!appName || !appSubtitle || !driverAppLoginHint) {
     return { error: "missing_fields" };
   }
   if (!isFontFamilyId(fontFamily)) {
@@ -55,6 +56,7 @@ export async function updateBranding(
     .update({
       app_name: appName,
       app_subtitle: appSubtitle,
+      driver_app_login_hint: driverAppLoginHint,
       font_family: fontFamily,
       updated_at: new Date().toISOString(),
       updated_by: auth.session.id,

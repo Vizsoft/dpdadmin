@@ -113,7 +113,7 @@ Admin panel **does not** create auth users; it only inserts `driver_intakes` via
 | Column | Type | Notes |
 |--------|------|-------|
 | id | uuid PK | FK → profiles.id |
-| driver_code | text | Plain numeric from global sequence (e.g. `100001`), auto-assigned on admin create; never reused after archive |
+| driver_code | text | Exactly 5 digits from global sequence (`10001`–`99999`), auto-assigned on admin create; never reused after archive |
 | archived_at | timestamptz | Set when admin archives driver; archived drivers cannot log in |
 | partner_id | uuid | Talabat etc. |
 | zone_id | uuid | Assigned zone |
@@ -345,6 +345,8 @@ Never ship `SUPABASE_SERVICE_ROLE_KEY` in the mobile app.
 
 ---
 
-*Last synced: 2026-06-03 — [admin+app] Driver codes: global sequence from `100001` (`allocate_driver_code`, auto on intake insert). Archive via `archived_at` + `archive_driver_intake` RPC; codes never reused. Login rejects archived drivers.*
+*Last synced: 2026-06-04 — [admin+app] Driver codes shortened to exactly 5 digits (`10001`–`99999`). Migration renumbers existing rows; `allocate_driver_code` enforces capacity.*
+
+*Prior: 2026-06-03 — Global sequence + archive (`archived_at`).*
 
 *Prior: 2026-06-02 — Driver app passcode + driver_code/passcode login.*

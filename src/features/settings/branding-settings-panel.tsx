@@ -88,6 +88,18 @@ export function BrandingSettingsPanel() {
               required
               disabled={isPending}
             />
+            <p className="text-xs text-muted-foreground">{t("appSubtitleDriverHint")}</p>
+          </div>
+          <div className="space-y-2 sm:col-span-2">
+            <Label htmlFor="driverAppLoginHint">{t("driverAppLoginHint")}</Label>
+            <Input
+              id="driverAppLoginHint"
+              name="driverAppLoginHint"
+              defaultValue={branding.driverAppLoginHint}
+              required
+              disabled={isPending}
+            />
+            <p className="text-xs text-muted-foreground">{t("driverAppLoginHintHelp")}</p>
           </div>
           <div className="space-y-2 sm:col-span-2">
             <Label htmlFor="fontFamily">{t("font")}</Label>

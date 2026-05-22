@@ -224,6 +224,7 @@ Change-log format:
 
 ## Change log
 
+- `[admin+app] 2026-06-04` — Driver codes: exactly 5 digits (`10001`–`99999`), renumber migration + updated `allocate_driver_code` / CHECK constraints. Config in `src/features/drivers/driver-code.ts`. Migration `20260604100000_driver_code_five_digits.sql`.
 - `[admin+app] 2026-06-03` — Driver codes: Postgres sequence `driver_code_seq` from `100001`, auto-assign on intake insert, backfill + format check. Soft-archive `archived_at` on `driver_intakes`/`drivers`, RPC `archive_driver_intake`. Admin UI: read-only ID, Archived tab, archive on detail. Migration `20260603100000_driver_code_sequence_archive.sql`.
 - `[admin+app] 2026-06-02` — Driver app passcode: 6-digit `drivers.app_passcode`, auto-minted on `status='active'` via `drivers_assign_passcode_on_active` trigger. Admin RPC `regenerate_driver_app_passcode(uuid)`, anon-callable login RPC `driver_app_lookup_by_passcode(driver_code, passcode)`. New passcode card on `/drivers/[id]` and masked column on `/drivers`. Migration `20260602100000_driver_app_passcode.sql`.
 - `[admin only] 2026-05-21` — Agent ops rule: auto `supabase db push` after migrations, auto local dev restart when needed (`.cursor/rules/ops-automation.mdc`).

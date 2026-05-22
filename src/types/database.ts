@@ -183,6 +183,7 @@ export type Database = {
         Row: {
           app_name: string
           app_subtitle: string
+          driver_app_login_hint: string
           font_family: string
           id: number
           logo_type: string
@@ -197,6 +198,7 @@ export type Database = {
         Insert: {
           app_name?: string
           app_subtitle?: string
+          driver_app_login_hint?: string
           font_family?: string
           id?: number
           logo_type?: string
@@ -211,6 +213,7 @@ export type Database = {
         Update: {
           app_name?: string
           app_subtitle?: string
+          driver_app_login_hint?: string
           font_family?: string
           id?: number
           logo_type?: string
