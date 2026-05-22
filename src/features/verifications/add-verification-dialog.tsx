@@ -2,12 +2,22 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
-import { Loader2 } from "lucide-react";
+import {
+  Calendar,
+  ClipboardCheck,
+  Loader2,
+  Search,
+  Sparkles,
+  UtensilsCrossed,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -23,7 +33,22 @@ import {
 } from "@/components/ui/select";
 import { useRestaurantsList } from "@/features/restaurants/use-restaurants";
 import { selectOptionsFrom } from "@/lib/select-items";
+import { cn } from "@/lib/utils";
+import type { VerificationDriverOption } from "./types";
 import { useCreateVerification, useVerificationDriverOptions } from "./use-verifications";
+
+function todayKuwait(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kuwait" }).format(
+    new Date(),
+  );
+}
+
+function driverInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
+  return `${parts[0]![0] ?? ""}${parts[1]![0] ?? ""}`.toUpperCase();
+}
 
 export function AddVerificationDialog({
   open,
@@ -34,59 +59,84 @@ export function AddVerificationDialog({
 }) {
   const t = useTranslations("pages.verifications");
   const [driverSearch, setDriverSearch] = useState("");
-  const [driverId, setDriverId] = useState("");
-  const [restaurantId, setRestaurantId] = useState("");
-  const [serviceDate, setServiceDate] = useState(
-    () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kuwait" }).format(new Date()),
+  const [selectedDriver, setSelectedDriver] = useState<VerificationDriverOption | null>(
+    null,
   );
+  const [restaurantId, setRestaurantId] = useState("");
+  const [showAllRestaurants, setShowAllRestaurants] = useState(false);
+  const [serviceDate, setServiceDate] = useState(todayKuwait);
   const [reportedCount, setReportedCount] = useState("");
   const [notes, setNotes] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isPending, startTransition] = useTransition();
 
   const { data: drivers = [] } = useVerificationDriverOptions(driverSearch);
   const { data: restaurants = [] } = useRestaurantsList();
 
-  const driverItems = useMemo(
-    () =>
-      selectOptionsFrom(
-        drivers,
-        (d) => d.id,
-        (d) =>
-          `${d.full_name} · ${d.driver_code}${
-            d.employee_id ? ` · ${d.employee_id}` : ""
-          }`,
-      ),
-    [drivers],
+  const publishedRestaurants = useMemo(
+    () => restaurants.filter((r) => r.status === "published"),
+    [restaurants],
   );
 
-  const restaurantItems = useMemo(() => {
-    const published = restaurants.filter((r) => r.status === "published");
-    return selectOptionsFrom(published, (r) => r.id, (r) => r.name);
-  }, [restaurants]);
+  const filteredRestaurants = useMemo(() => {
+    if (showAllRestaurants || !selectedDriver?.partner_id) {
+      return publishedRestaurants;
+    }
+    return publishedRestaurants.filter(
+      (r) => r.partner_id === selectedDriver.partner_id,
+    );
+  }, [publishedRestaurants, selectedDriver, showAllRestaurants]);
+
+  const restaurantItems = useMemo(
+    () =>
+      selectOptionsFrom(filteredRestaurants, (r) => r.id, (r) => r.name),
+    [filteredRestaurants],
+  );
 
   const create = useCreateVerification();
+  const maxDate = todayKuwait();
 
   const reset = () => {
     setDriverSearch("");
-    setDriverId("");
+    setSelectedDriver(null);
     setRestaurantId("");
+    setShowAllRestaurants(false);
+    setServiceDate(todayKuwait());
     setReportedCount("");
     setNotes("");
+    setFieldErrors({});
+  };
+
+  const clearFieldError = (key: string) => {
+    setFieldErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
   };
 
   const handleSubmit = () => {
+    const errors: Record<string, string> = {};
+    if (!selectedDriver) errors.driver = t("errors.missingFields");
+    if (!restaurantId) errors.restaurant = t("errors.missingFields");
+    if (!serviceDate) errors.date = t("errors.missingFields");
+
     const count = parseInt(reportedCount, 10);
-    if (!driverId || !restaurantId || !serviceDate) {
-      toast.error(t("errors.missingFields"));
-      return;
-    }
     if (!Number.isFinite(count) || count < 0) {
-      toast.error(t("errors.invalidCount"));
+      errors.count = t("errors.invalidCount");
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
       return;
     }
+
+    if (!selectedDriver) return;
+
     startTransition(async () => {
       const result = await create.mutateAsync({
-        driverId,
+        driverId: selectedDriver.id,
         restaurantId,
         serviceDate,
         reportedCount: count,
@@ -103,6 +153,10 @@ export function AddVerificationDialog({
     });
   };
 
+  const visibleDrivers = selectedDriver
+    ? drivers.filter((d) => d.id !== selectedDriver.id)
+    : drivers;
+
   return (
     <Dialog
       open={open}
@@ -111,75 +165,176 @@ export function AddVerificationDialog({
         onOpenChange(v);
       }}
     >
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{t("addVerification")}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label>{t("searchDriver")}</Label>
-            <Input
-              value={driverSearch}
-              onChange={(e) => setDriverSearch(e.target.value)}
-              placeholder={t("searchDriverPlaceholder")}
-              className="rounded-lg"
-            />
+      <DialogContent className="flex max-h-[min(90vh,720px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
+        <DialogHeader className="border-b border-border px-5 py-3">
+          <div className="flex items-start gap-3 pe-6">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <ClipboardCheck className="size-4" aria-hidden />
+            </div>
+            <div>
+              <DialogTitle>{t("addVerification")}</DialogTitle>
+              <DialogDescription className="mt-0.5 text-xs">
+                {t("createSubtitle")}
+              </DialogDescription>
+            </div>
           </div>
+        </DialogHeader>
+
+        <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
           <div className="space-y-1.5">
             <Label>{t("fieldDriver")}</Label>
+            {selectedDriver ? (
+              <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2">
+                <Avatar size="sm">
+                  <AvatarFallback>{driverInitials(selectedDriver.full_name)}</AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{selectedDriver.full_name}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {selectedDriver.driver_code}
+                    {selectedDriver.employee_id
+                      ? ` · ${selectedDriver.employee_id}`
+                      : ""}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="size-7 shrink-0 cursor-pointer"
+                  aria-label={t("clearDriver")}
+                  onClick={() => {
+                    setSelectedDriver(null);
+                    setDriverSearch("");
+                    setRestaurantId("");
+                    clearFieldError("driver");
+                  }}
+                >
+                  <X className="size-3.5" />
+                </Button>
+              </div>
+            ) : (
+              <>
+                <div className="relative">
+                  <Search className="pointer-events-none absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={driverSearch}
+                    onChange={(e) => {
+                      setDriverSearch(e.target.value);
+                      clearFieldError("driver");
+                    }}
+                    placeholder={t("searchDriverPlaceholder")}
+                    className="rounded-lg ps-8"
+                  />
+                </div>
+                {driverSearch.trim() && visibleDrivers.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">{t("noDriverResults")}</p>
+                ) : driverSearch.trim() && visibleDrivers.length > 0 ? (
+                  <div className="max-h-40 space-y-1 overflow-y-auto rounded-lg border border-border p-1">
+                    <p className="px-2 py-1 text-[11px] text-muted-foreground">
+                      {t("selectFromList")}
+                    </p>
+                    {visibleDrivers.map((d) => (
+                      <button
+                        key={d.id}
+                        type="button"
+                        className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-start hover:bg-muted/60"
+                        onClick={() => {
+                          setSelectedDriver(d);
+                          setDriverSearch("");
+                          setRestaurantId("");
+                          setShowAllRestaurants(false);
+                          clearFieldError("driver");
+                        }}
+                      >
+                        <Avatar size="sm">
+                          <AvatarFallback>{driverInitials(d.full_name)}</AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium">{d.full_name}</p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {d.driver_code}
+                            {d.employee_id ? ` · ${d.employee_id}` : ""}
+                          </p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </>
+            )}
+            {fieldErrors.driver ? (
+              <p className="text-xs text-destructive">{fieldErrors.driver}</p>
+            ) : null}
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between gap-2">
+              <Label>{t("fieldRestaurant")}</Label>
+              {selectedDriver?.partner_id ? (
+                <Button
+                  type="button"
+                  variant="link"
+                  className="h-auto cursor-pointer px-0 text-xs"
+                  onClick={() => {
+                    setShowAllRestaurants((v) => !v);
+                    setRestaurantId("");
+                  }}
+                >
+                  {showAllRestaurants
+                    ? t("filterByPartner")
+                    : t("showAllRestaurants")}
+                </Button>
+              ) : null}
+            </div>
+            {!showAllRestaurants && selectedDriver?.partner_id ? (
+              <p className="text-[11px] text-muted-foreground">{t("filterByPartner")}</p>
+            ) : null}
             <Select
-              items={driverItems}
-              value={driverId || null}
-              onValueChange={(v) => setDriverId(v ?? "")}
+              items={restaurantItems}
+              value={restaurantId || null}
+              onValueChange={(v) => {
+                setRestaurantId(v ?? "");
+                clearFieldError("restaurant");
+              }}
             >
               <SelectTrigger className="w-full cursor-pointer rounded-lg">
-                <SelectValue placeholder={t("selectDriver")} />
+                <UtensilsCrossed className="me-2 size-3.5 shrink-0 text-muted-foreground" />
+                <SelectValue placeholder={t("selectRestaurant")} />
               </SelectTrigger>
               <SelectContent>
-                {drivers.map((d) => (
-                  <SelectItem
-                    key={d.id}
-                    value={d.id}
-                    label={`${d.full_name} · ${d.driver_code}`}
-                  >
-                    {d.full_name} · {d.driver_code}
-                    {d.employee_id ? ` · ${d.employee_id}` : ""}
+                {filteredRestaurants.map((r) => (
+                  <SelectItem key={r.id} value={r.id} label={r.name}>
+                    {r.name}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            {fieldErrors.restaurant ? (
+              <p className="text-xs text-destructive">{fieldErrors.restaurant}</p>
+            ) : null}
           </div>
-          <div className="space-y-1.5">
-            <Label>{t("fieldRestaurant")}</Label>
-            <Select
-              items={restaurantItems}
-              value={restaurantId || null}
-              onValueChange={(v) => setRestaurantId(v ?? "")}
-            >
-              <SelectTrigger className="w-full cursor-pointer rounded-lg">
-                <SelectValue placeholder={t("selectRestaurant")} />
-              </SelectTrigger>
-              <SelectContent>
-                {restaurants
-                  .filter((r) => r.status === "published")
-                  .map((r) => (
-                    <SelectItem key={r.id} value={r.id} label={r.name}>
-                      {r.name}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-          </div>
+
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="service-date">{t("fieldDate")}</Label>
-              <Input
-                id="service-date"
-                type="date"
-                value={serviceDate}
-                onChange={(e) => setServiceDate(e.target.value)}
-                className="rounded-lg"
-              />
+              <div className="relative">
+                <Calendar className="pointer-events-none absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="service-date"
+                  type="date"
+                  max={maxDate}
+                  value={serviceDate}
+                  onChange={(e) => {
+                    setServiceDate(e.target.value);
+                    clearFieldError("date");
+                  }}
+                  className="rounded-lg ps-8"
+                />
+              </div>
+              {fieldErrors.date ? (
+                <p className="text-xs text-destructive">{fieldErrors.date}</p>
+              ) : null}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="reported-count">{t("fieldReported")}</Label>
@@ -187,39 +342,67 @@ export function AddVerificationDialog({
                 id="reported-count"
                 type="number"
                 min={0}
+                step={1}
                 value={reportedCount}
-                onChange={(e) => setReportedCount(e.target.value)}
+                onChange={(e) => {
+                  setReportedCount(e.target.value);
+                  clearFieldError("count");
+                }}
                 className="rounded-lg tabular-nums"
               />
+              <p className="text-[11px] text-muted-foreground">
+                {t("enterRestaurantCount")}
+              </p>
+              {fieldErrors.count ? (
+                <p className="text-xs text-destructive">{fieldErrors.count}</p>
+              ) : null}
             </div>
           </div>
+
           <div className="space-y-1.5">
             <Label htmlFor="notes">{t("fieldNotes")}</Label>
-            <Input
+            <textarea
               id="notes"
+              rows={2}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="rounded-lg"
+              className={cn(
+                "border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex min-h-[4rem] w-full rounded-lg border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50",
+              )}
             />
           </div>
         </div>
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            className="cursor-pointer rounded-lg"
-            onClick={() => onOpenChange(false)}
-          >
-            {t("cancel")}
-          </Button>
-          <Button
-            type="button"
-            className="cursor-pointer rounded-lg"
-            disabled={isPending}
-            onClick={handleSubmit}
-          >
-            {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : t("save")}
-          </Button>
+
+        <DialogFooter className="border-t border-border px-5 py-3 sm:justify-between">
+          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Sparkles className="size-3.5 shrink-0 text-primary" aria-hidden />
+            {t("autoReconcileHint")}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="cursor-pointer rounded-lg"
+              onClick={() => onOpenChange(false)}
+            >
+              {t("cancel")}
+            </Button>
+            <Button
+              type="button"
+              className="cursor-pointer rounded-lg"
+              disabled={isPending}
+              onClick={handleSubmit}
+            >
+              {isPending ? (
+                <>
+                  <Loader2 className="me-1.5 size-4 animate-spin" />
+                  {t("save")}
+                </>
+              ) : (
+                t("save")
+              )}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
