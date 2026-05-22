@@ -305,7 +305,7 @@ export const MENU_REGISTRY: MenuRegistryItem[] = [
     defaultIcon: "Languages",
     href: "/settings/languages",
     defaultGroup: "Settings",
-    defaultOrder: 7,
+    defaultOrder: 8,
     superAdminOnly: true,
   },
   {
@@ -338,6 +338,7 @@ export const APP_NAV_KEY_BY_ID: Record<string, string> = {
   support: "support",
   profile: "profile",
   branding: "branding",
+  "driver-app": "driverApp",
   storage: "storage",
   roles: "roles",
   "access-requests": "accessRequests",
