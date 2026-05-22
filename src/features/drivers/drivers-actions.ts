@@ -287,6 +287,13 @@ export async function createDriverIntake(
     }
   }
 
+  const { data: allocatedCode, error: allocateError } = await supabase.rpc(
+    "allocate_driver_code",
+  );
+  if (allocateError || !allocatedCode || typeof allocatedCode !== "string") {
+    return { error: "save_failed" };
+  }
+
   const { data, error } = await supabase
     .from("driver_intakes")
     .insert({
@@ -294,6 +301,7 @@ export async function createDriverIntake(
       phone,
       full_name: fullName,
       civil_id: civilIdNormalized,
+      driver_code: allocatedCode,
       partner_id: partnerId,
       zone_id: zoneId,
       vehicle_id: vehicleId || null,
