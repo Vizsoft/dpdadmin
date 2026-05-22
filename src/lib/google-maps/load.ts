@@ -77,15 +77,38 @@ export type GoogleMapsApi = {
 /** @deprecated Use GoogleMapsApi */
 export type GoogleMapsPlacesApi = GoogleMapsApi;
 
+export type GoogleMapsLoadFailure =
+  | "missing_key"
+  | "auth_failure"
+  | "load_error";
+
 declare global {
   interface Window {
     google?: GoogleMapsApi;
+    gm_authFailure?: () => void;
+    __dpdGoogleMapsInit?: () => void;
   }
 }
 
 let loadPromise: Promise<GoogleMapsApi | null> | null = null;
+let lastFailure: GoogleMapsLoadFailure | null = null;
+let pendingResolve: ((api: GoogleMapsApi | null) => void) | null = null;
 
-/** Lazy-load Google Maps JS API with Places library. Returns null when key is unset. */
+export function getGoogleMapsLoadFailure(): GoogleMapsLoadFailure | null {
+  return lastFailure;
+}
+
+function installAuthFailureHandler() {
+  if (typeof window === "undefined") return;
+  window.gm_authFailure = () => {
+    lastFailure = "auth_failure";
+    loadPromise = null;
+    pendingResolve?.(null);
+    pendingResolve = null;
+  };
+}
+
+/** Lazy-load Google Maps JS API with Places library. Returns null when key is unset or blocked. */
 export function loadGoogleMaps(): Promise<GoogleMapsApi | null> {
   if (typeof window === "undefined") {
     return Promise.resolve(null);
@@ -93,30 +116,68 @@ export function loadGoogleMaps(): Promise<GoogleMapsApi | null> {
 
   const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim();
   if (!key) {
+    lastFailure = "missing_key";
     return Promise.resolve(null);
   }
 
-  if (window.google?.maps?.places) {
+  if (lastFailure === "auth_failure") {
+    return Promise.resolve(null);
+  }
+
+  if (window.google?.maps?.Map && window.google.maps.places) {
+    lastFailure = null;
     return Promise.resolve(window.google);
   }
 
   if (!loadPromise) {
+    installAuthFailureHandler();
+
     loadPromise = new Promise((resolve) => {
+      pendingResolve = resolve;
+      const finish = (api: GoogleMapsApi | null) => {
+        pendingResolve = null;
+        if (!api?.maps?.Map) {
+          if (lastFailure !== "auth_failure") {
+            lastFailure = lastFailure ?? "load_error";
+          }
+          resolve(null);
+          return;
+        }
+        lastFailure = null;
+        resolve(api);
+      };
+
+      const callbackName = "__dpdGoogleMapsInit";
+      window[callbackName] = () => {
+        delete window[callbackName];
+        finish(window.google ?? null);
+      };
+
       const existing = document.querySelector<HTMLScriptElement>(
         'script[data-google-maps="true"]',
       );
       if (existing) {
-        existing.addEventListener("load", () => resolve(window.google ?? null));
-        existing.addEventListener("error", () => resolve(null));
+        if (window.google?.maps?.Map) {
+          finish(window.google);
+          return;
+        }
+        existing.addEventListener("load", () => finish(window.google ?? null));
+        existing.addEventListener("error", () => {
+          lastFailure = "load_error";
+          finish(null);
+        });
         return;
       }
 
       const script = document.createElement("script");
       script.dataset.googleMaps = "true";
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&libraries=places&loading=async`;
       script.async = true;
-      script.onload = () => resolve(window.google ?? null);
-      script.onerror = () => resolve(null);
+      script.defer = true;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&libraries=places&callback=${callbackName}&loading=async`;
+      script.onerror = () => {
+        lastFailure = "load_error";
+        finish(null);
+      };
       document.head.appendChild(script);
     });
   }

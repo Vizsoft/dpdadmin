@@ -510,7 +510,10 @@
         "mapLink": "اختياري — الصق رابط مشاركة من Google Maps أو Apple Maps.",
         "pickLocation": "ابحث عن مكان أو انقر على الخريطة لتثبيت المطعم. يتم حفظ الإحداثيات تلقائياً.",
         "mapAutoFilled": "يُملأ تلقائياً من التثبيت — يمكنك التعديل.",
-        "googleKeyMissing": "أضف NEXT_PUBLIC_GOOGLE_MAPS_API_KEY لتفعيل البحث. التثبيت بالنقر ما زال يعمل.",
+        "googleKeyMissing": "اضبط NEXT_PUBLIC_GOOGLE_MAPS_API_KEY على Vercel (وفي .env.local) ثم أعد النشر.",
+        "googleMapsAuthFailed": "Google Maps رفض هذا الموقع (المرجع غير مسموح لهذا المفتاح).",
+        "googleMapsReferrerFix": "في Google Cloud → Credentials → مفتاح Maps → قيود المواقع، أضف https://dpdadmin.vercel.app/* و http://localhost:3000/*. فعّل Maps JavaScript API و Places API. تأكد أن Vercel يستخدم نفس المفتاح.",
+        "googleMapsLoadFailed": "تعذر تحميل Google Maps. تحقق من حاصر الإعلانات وقيود المفتاح وأعد النشر بعد تغيير المتغيرات."
         "status": "يظهر المطاعم المنشورة فقط عند إضافة سائق."
       },
       "errors": {

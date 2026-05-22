@@ -2,7 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
-import { loadGoogleMaps, type GoogleMapsApi } from "@/lib/google-maps/load";
+import {
+  getGoogleMapsLoadFailure,
+  loadGoogleMaps,
+  type GoogleMapsApi,
+} from "@/lib/google-maps/load";
+import { GoogleMapsStatusBanner } from "./google-maps-status-banner";
 import { DEFAULT_MAP_ZOOM, KUWAIT_MAP_CENTER } from "@/features/zones/constants";
 import type { RestaurantLocation } from "./restaurant-location-utils";
 
@@ -149,15 +154,21 @@ export function RestaurantLocationPickerInner({
   }, [value, defaultCenter, mapState]);
 
   if (mapState === "unavailable") {
+    const failure = getGoogleMapsLoadFailure();
     return (
       <div
         className={
           className ??
-          "flex h-full w-full items-center justify-center rounded-lg border border-dashed border-border bg-muted/30 px-4 text-center text-xs text-muted-foreground"
+          "flex h-full w-full flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border bg-muted/30 px-4 py-6"
         }
       >
-        {keyMissingHint ??
-          "Set NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to enable the map and place search."}
+        <GoogleMapsStatusBanner className="max-w-md text-center" />
+        {!failure ? (
+          <p className="text-center text-xs text-muted-foreground">
+            {keyMissingHint ??
+              "Set NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to enable the map and place search."}
+          </p>
+        ) : null}
       </div>
     );
   }

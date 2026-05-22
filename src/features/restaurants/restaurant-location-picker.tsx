@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { GoogleMapsStatusBanner } from "./google-maps-status-banner";
 import { RestaurantPlaceSearch } from "./restaurant-place-search";
 import type { RestaurantLocation } from "./restaurant-location-utils";
 
@@ -38,7 +39,8 @@ export function RestaurantLocationPicker({
 
   return (
     <div className={cn("relative h-full min-h-0 w-full", className)}>
-      <div className="absolute start-3 end-3 top-3 z-10">
+      <div className="absolute start-3 end-3 top-3 z-10 flex flex-col gap-2">
+        <GoogleMapsStatusBanner />
         <RestaurantPlaceSearch
           onSelect={onChange}
           placeholder={t("placeholders.searchPlace")}
