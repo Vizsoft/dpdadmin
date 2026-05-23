@@ -2,6 +2,23 @@
 
 Master ship log for DPD Admin. Newest entries at the top.
 
+## 2026-05-23 — ship `8da100f`
+
+### ✨ Features
+- `8da100f` — Earnings transparency: date-range recalc, per-driver drilldown (orders + rules), data-backed `/earnings` and upgraded `/earnings-calculation`
+- `8da100f` — Wallet ledger `driver_wallet_entries` with auto-approved `earning_credit` synced from `driver_earnings_daily` on recalc
+- `8da100f` — Admin activity logging: `admin_activity_logs`, `logAdminActivity` helper, `/settings/logs` with filters/export/before-after diff (`audit.view`, `audit.export`)
+- `8da100f` — Driver delivery proximity gate RPC + migration `20260613110000_driver_delivery_proximity_gate.sql`
+- `8da100f` — SQL RPCs: `recalculate_earnings_for_range`, `get_driver_earnings_detail`, `list_driver_earnings_daily`
+
+### 🎨 UI / UX & performance
+- `8da100f` — Earnings detail sheet, activity logs page shell, en/ar i18n for earnings and audit modules
+
+### 🔧 Remaining enhancements
+- `8da100f` — Supabase migration history repaired (`20260523002256`, `20260523002515` reverted) before push
+
+---
+
 ## 2026-05-20 — ship `59508b8`
 
 ### ✨ Features
