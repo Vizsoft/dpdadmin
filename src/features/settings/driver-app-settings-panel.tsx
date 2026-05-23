@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -402,14 +403,14 @@ export function DriverAppSettingsPanel({
               >
                 <div className="space-y-1.5">
                   <Label htmlFor="driverAppMaintenanceMessage">{t("maintenanceMessage")}</Label>
-                  <textarea
+                  <Textarea
                     id="driverAppMaintenanceMessage"
                     name="driverAppMaintenanceMessage"
                     defaultValue={driverAppMaintenanceMessage}
                     required
                     disabled={isPending}
                     rows={3}
-                    className="flex min-h-[72px] w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50"
+                    className="min-h-[72px] resize-none"
                   />
                 </div>
                 <Button

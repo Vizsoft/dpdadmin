@@ -16,11 +16,13 @@ import {
 } from "@/components/ui/select";
 import {
   Sheet,
+  SheetBody,
   SheetContent,
   SheetFooter,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { Textarea } from "@/components/ui/textarea";
 import { useCorrectAttendance } from "./use-attendance";
 import { ATTENDANCE_STATUSES, type AttendanceListRow, type AttendanceStatus } from "./types";
 
@@ -106,25 +108,28 @@ export function AttendanceCorrectionSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="flex w-full flex-col sm:max-w-md">
+      <SheetContent className="flex w-full flex-col p-0 sm:max-w-md">
         <SheetHeader>
           <SheetTitle>
             {createMode || !row.id ? t("correctionCreateTitle") : t("correctionTitle")}
           </SheetTitle>
         </SheetHeader>
 
-        <div className="flex-1 space-y-4 overflow-y-auto py-4">
-          <div className="space-y-1.5">
-            <Label>{t("colDriver")}</Label>
-            <p className="text-sm font-medium">
-              {row.driver_name}{" "}
-              <span className="text-muted-foreground">#{row.driver_code}</span>
-            </p>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>{t("colDate")}</Label>
-            <p className="text-sm font-medium">{row.log_date}</p>
+        <SheetBody>
+          <div className="rounded-lg border border-border bg-muted/20 px-3 py-2.5">
+            <div className="grid gap-2 text-sm sm:grid-cols-2">
+              <div>
+                <p className="text-xs text-muted-foreground">{t("colDriver")}</p>
+                <p className="font-medium">
+                  {row.driver_name}{" "}
+                  <span className="text-muted-foreground">#{row.driver_code}</span>
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">{t("colDate")}</p>
+                <p className="font-medium tabular-nums">{row.log_date}</p>
+              </div>
+            </div>
           </div>
 
           <div className="space-y-1.5">
@@ -135,6 +140,7 @@ export function AttendanceCorrectionSheet({
               value={checkIn}
               onChange={(e) => setCheckIn(e.target.value)}
               disabled={!canManage || isPending}
+              className="rounded-lg"
             />
           </div>
 
@@ -146,6 +152,7 @@ export function AttendanceCorrectionSheet({
               value={checkOut}
               onChange={(e) => setCheckOut(e.target.value)}
               disabled={!canManage || isPending}
+              className="rounded-lg"
             />
           </div>
 
@@ -156,7 +163,7 @@ export function AttendanceCorrectionSheet({
               onValueChange={(v) => setStatus(v as AttendanceStatus)}
               disabled={!canManage || isPending}
             >
-              <SelectTrigger id="attendanceStatus">
+              <SelectTrigger id="attendanceStatus" className="w-full cursor-pointer rounded-lg">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -171,20 +178,18 @@ export function AttendanceCorrectionSheet({
 
           <div className="space-y-1.5">
             <Label htmlFor="attendanceNote">{t("correctionNote")}</Label>
-            <textarea
+            <Textarea
               id="attendanceNote"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               rows={3}
-              required
               disabled={!canManage || isPending}
               placeholder={t("correctionNotePlaceholder")}
-              className="flex min-h-[72px] w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50"
             />
           </div>
-        </div>
+        </SheetBody>
 
-        <SheetFooter className="mt-auto gap-2 sm:flex-col sm:space-x-0">
+        <SheetFooter>
           <Button
             type="button"
             variant="outline"

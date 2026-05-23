@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Loader2 } from "lucide-react";
 import {
   Sheet,
+  SheetBody,
   SheetContent,
   SheetDescription,
   SheetHeader,
@@ -60,7 +61,7 @@ export function EarningsDetailSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full overflow-y-auto sm:max-w-2xl">
+      <SheetContent className="flex w-full flex-col p-0 sm:max-w-2xl">
         <SheetHeader>
           <SheetTitle>{t("detailTitle")}</SheetTitle>
           <SheetDescription>
@@ -68,12 +69,13 @@ export function EarningsDetailSheet({
           </SheetDescription>
         </SheetHeader>
 
+        <SheetBody>
         {isPending ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="size-6 animate-spin text-muted-foreground" />
           </div>
         ) : detail ? (
-          <div className="mt-4 space-y-6">
+          <div className="space-y-6">
             <section className="grid gap-2 rounded-lg border border-border p-3 text-sm sm:grid-cols-2">
               <div>
                 <p className="text-muted-foreground">{t("colBase")}</p>
@@ -164,6 +166,7 @@ export function EarningsDetailSheet({
         ) : (
           <p className="py-8 text-center text-sm text-muted-foreground">{t("detailEmpty")}</p>
         )}
+        </SheetBody>
       </SheetContent>
     </Sheet>
   );

@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Sheet,
+  SheetBody,
   SheetContent,
   SheetFooter,
   SheetHeader,
@@ -146,7 +147,7 @@ export function VerificationDetailSheet({
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent className="flex w-full flex-col gap-0 p-0 sm:max-w-lg">
-          <SheetHeader className="border-b border-border px-5 py-4">
+          <SheetHeader>
             <SheetTitle>{t("detailTitle")}</SheetTitle>
             <div className="flex flex-wrap items-center gap-2 pt-1">
               <StatusPill variant={statusVariant(display.status)} dot={false}>
@@ -157,7 +158,7 @@ export function VerificationDetailSheet({
               </span>
             </div>
           </SheetHeader>
-          <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
+          <SheetBody>
             {isLoading ? (
               <div className="flex justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -250,8 +251,8 @@ export function VerificationDetailSheet({
                 ) : null}
               </>
             )}
-          </div>
-          <SheetFooter className="flex-col gap-2 border-t border-border px-5 py-3 sm:flex-row">
+          </SheetBody>
+          <SheetFooter className="flex-wrap justify-start gap-2">
             <Button
               type="button"
               variant="outline"

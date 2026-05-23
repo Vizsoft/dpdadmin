@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import {
   Sheet,
+  SheetBody,
   SheetContent,
   SheetDescription,
   SheetHeader,
@@ -208,7 +209,7 @@ export function ActivityLogsPageShell() {
       </AppListCard>
 
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
+        <SheetContent className="flex w-full flex-col p-0 sm:max-w-xl">
           <SheetHeader>
             <SheetTitle>{t("detailTitle")}</SheetTitle>
             <SheetDescription>
@@ -216,7 +217,7 @@ export function ActivityLogsPageShell() {
             </SheetDescription>
           </SheetHeader>
           {selected ? (
-            <div className="mt-4 space-y-4 text-sm">
+            <SheetBody className="space-y-4 text-sm">
               <div className="grid gap-2 sm:grid-cols-2">
                 <div>
                   <p className="text-muted-foreground">{t("colUser")}</p>
@@ -253,7 +254,7 @@ export function ActivityLogsPageShell() {
                   </pre>
                 </div>
               ) : null}
-            </div>
+            </SheetBody>
           ) : null}
         </SheetContent>
       </Sheet>

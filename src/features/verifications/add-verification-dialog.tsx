@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/select";
 import { useRestaurantsList } from "@/features/restaurants/use-restaurants";
 import { selectOptionsFrom } from "@/lib/select-items";
-import { cn } from "@/lib/utils";
+import { Textarea } from "@/components/ui/textarea";
 import type { VerificationDriverOption } from "./types";
 import { useCreateVerification, useVerificationDriverOptions } from "./use-verifications";
 
@@ -166,7 +166,7 @@ export function AddVerificationDialog({
       }}
     >
       <DialogContent className="flex max-h-[min(90vh,720px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
-        <DialogHeader className="border-b border-border px-5 py-3">
+        <DialogHeader className="border-b border-border px-5 py-4 pe-12">
           <div className="flex items-start gap-3 pe-6">
             <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <ClipboardCheck className="size-4" aria-hidden />
@@ -361,19 +361,16 @@ export function AddVerificationDialog({
 
           <div className="space-y-1.5">
             <Label htmlFor="notes">{t("fieldNotes")}</Label>
-            <textarea
+            <Textarea
               id="notes"
-              rows={2}
+              rows={3}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className={cn(
-                "border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex min-h-[4rem] w-full rounded-lg border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50",
-              )}
             />
           </div>
         </div>
 
-        <DialogFooter className="border-t border-border px-5 py-3 sm:justify-between">
+        <DialogFooter className="flex-row flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-3">
           <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Sparkles className="size-3.5 shrink-0 text-primary" aria-hidden />
             {t("autoReconcileHint")}

@@ -15,8 +15,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
-import { cn } from "@/lib/utils";
 import { createPartner, deletePartner, updatePartner } from "./partners-actions";
 import { isPartnerErrorKey } from "./partner-errors";
 import type { PartnerRow } from "./types";
@@ -121,15 +121,13 @@ function PartnerFormBody({
 
         <div className="space-y-1.5">
           <Label htmlFor="partner-description">{t("fieldDescription")}</Label>
-          <textarea
+          <Textarea
             id="partner-description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder={t("fieldDescriptionPlaceholder")}
             rows={3}
-            className={cn(
-              "w-full resize-none rounded-lg border border-input bg-transparent px-2.5 py-2 text-base transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm dark:bg-input/30",
-            )}
+            className="resize-none"
           />
           <p className="text-[11px] text-muted-foreground">{t("descriptionHint")}</p>
         </div>

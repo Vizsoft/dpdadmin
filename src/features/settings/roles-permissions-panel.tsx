@@ -14,6 +14,7 @@ import {
   AlertTriangle,
   Bell,
   Bike,
+  Copy,
   ChevronDown,
   ChevronsDownUp,
   ChevronsUpDown,
@@ -167,28 +168,125 @@ function CategoryIcon({ category }: { category: string }) {
   return <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden />;
 }
 
-function RolesPanelHeader({
+function RolesActionBar({
+  roles,
+  selectedColumnId,
+  dirtyRoleIds,
+  usageMap,
+  permissionSearch,
+  onSearchChange,
+  searchPlaceholder,
   t,
   isPending,
-  onNew,
-  onDuplicate,
+  onSelect,
+  onClone,
+  onRename,
+  onDelete,
   onExpandAll,
   onCollapseAll,
+  onNew,
 }: {
+  roles: AdminRoleRow[];
+  selectedColumnId: string;
+  dirtyRoleIds: Set<string>;
+  usageMap: Map<string, number>;
+  permissionSearch: string;
+  onSearchChange: (value: string) => void;
+  searchPlaceholder: string;
   t: RolesT;
   isPending: boolean;
-  onNew: () => void;
-  onDuplicate: () => void;
+  onSelect: (id: string) => void;
+  onClone: (role: AdminRoleRow) => void;
+  onRename: (role: AdminRoleRow) => void;
+  onDelete: (role: AdminRoleRow) => void;
   onExpandAll: () => void;
   onCollapseAll: () => void;
+  onNew: () => void;
 }) {
   return (
-    <div className="flex flex-wrap items-start justify-between gap-3">
-      <div>
-        <h2 className="text-base font-semibold text-foreground">{t("title")}</h2>
-        <p className="text-xs text-muted-foreground">{t("subtitle")}</p>
+    <div className="grid grid-cols-1 items-end gap-3 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+      <div className="flex min-w-0 flex-wrap items-end gap-2 lg:justify-self-start">
+        {roles.map((role) => {
+          const selected = role.id === selectedColumnId;
+          const dirty = dirtyRoleIds.has(role.id);
+          const userCount = usageMap.get(role.id) ?? 0;
+          return (
+            <div key={role.id} className="flex flex-col items-center gap-0.5">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-6 cursor-pointer rounded-md text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                title={t("duplicateRole")}
+                aria-label={`${t("duplicateRole")}: ${role.name}`}
+                onClick={() => onClone(role)}
+                disabled={isPending}
+              >
+                <Copy className="size-3" />
+              </Button>
+              <div className="flex items-center">
+                <button
+                  type="button"
+                  className={cn(
+                    "inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full px-3 text-xs font-medium transition-colors",
+                    selected
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "border border-border bg-background text-foreground hover:bg-muted/60",
+                  )}
+                  onClick={() => onSelect(role.id)}
+                >
+                  <span className="max-w-[10rem] truncate">{role.name}</span>
+                  <span className={cn("opacity-70", selected && "text-primary-foreground/80")}>
+                    · {t("usersAssigned", { count: userCount })}
+                  </span>
+                  {dirty ? (
+                    <span
+                      className={cn(
+                        "size-1.5 shrink-0 rounded-full",
+                        selected ? "bg-primary-foreground" : "bg-amber-500",
+                      )}
+                      title={t("unsaved")}
+                    />
+                  ) : null}
+                </button>
+                {selected && !role.isSystem ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      className="ms-0.5 inline-flex size-8 cursor-pointer items-center justify-center rounded-full text-primary-foreground hover:bg-primary-foreground/15"
+                      aria-label={t("renameRole")}
+                    >
+                      <MoreHorizontal className="size-4" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      <DropdownMenuItem className="cursor-pointer" onClick={() => onRename(role)}>
+                        <Pencil className="me-2 size-3.5" />
+                        {t("renameRole")}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        variant="destructive"
+                        className="cursor-pointer"
+                        onClick={() => onDelete(role)}
+                      >
+                        <Trash2 className="me-2 size-3.5" />
+                        {t("deleteRole")}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : null}
+              </div>
+            </div>
+          );
+        })}
       </div>
-      <div className="flex flex-wrap items-center gap-1">
+
+      <PermissionSearchBar
+        value={permissionSearch}
+        onChange={onSearchChange}
+        placeholder={searchPlaceholder}
+        className="mx-auto w-full max-w-[14rem] lg:justify-self-center"
+      />
+
+      <div className="flex items-center justify-end gap-1 lg:justify-self-end">
         <Button
           type="button"
           size="icon"
@@ -224,99 +322,7 @@ function RolesPanelHeader({
           <Plus className="size-3.5" />
           {t("newRole")}
         </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          className="h-8 cursor-pointer gap-1 rounded-lg text-xs"
-          onClick={onDuplicate}
-          disabled={isPending}
-        >
-          {t("duplicateRole")}
-        </Button>
       </div>
-    </div>
-  );
-}
-
-function RoleToolbar({
-  roles,
-  selectedColumnId,
-  dirtyRoleIds,
-  usageMap,
-  t,
-  onSelect,
-  onRename,
-  onDelete,
-}: {
-  roles: AdminRoleRow[];
-  selectedColumnId: string;
-  dirtyRoleIds: Set<string>;
-  usageMap: Map<string, number>;
-  t: RolesT;
-  onSelect: (id: string) => void;
-  onRename: (role: AdminRoleRow) => void;
-  onDelete: (role: AdminRoleRow) => void;
-}) {
-  return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      {roles.map((role) => {
-        const selected = role.id === selectedColumnId;
-        const dirty = dirtyRoleIds.has(role.id);
-        const userCount = usageMap.get(role.id) ?? 0;
-        return (
-          <div key={role.id} className="flex items-center">
-            <button
-              type="button"
-              className={cn(
-                "inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full px-3 text-xs font-medium transition-colors",
-                selected
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "border border-border bg-background text-foreground hover:bg-muted/60",
-              )}
-              onClick={() => onSelect(role.id)}
-            >
-              <span className="max-w-[10rem] truncate">{role.name}</span>
-              <span className={cn("opacity-70", selected && "text-primary-foreground/80")}>
-                · {t("usersAssigned", { count: userCount })}
-              </span>
-              {dirty ? (
-                <span
-                  className={cn(
-                    "size-1.5 shrink-0 rounded-full",
-                    selected ? "bg-primary-foreground" : "bg-amber-500",
-                  )}
-                  title={t("unsaved")}
-                />
-              ) : null}
-            </button>
-            {selected && !role.isSystem ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  className="ms-0.5 inline-flex size-8 cursor-pointer items-center justify-center rounded-full text-primary-foreground hover:bg-primary-foreground/15"
-                  aria-label={t("renameRole")}
-                >
-                  <MoreHorizontal className="size-4" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start">
-                  <DropdownMenuItem className="cursor-pointer" onClick={() => onRename(role)}>
-                    <Pencil className="me-2 size-3.5" />
-                    {t("renameRole")}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    variant="destructive"
-                    className="cursor-pointer"
-                    onClick={() => onDelete(role)}
-                  >
-                    <Trash2 className="me-2 size-3.5" />
-                    {t("deleteRole")}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : null}
-          </div>
-        );
-      })}
     </div>
   );
 }
@@ -379,13 +385,15 @@ function PermissionSearchBar({
   value,
   onChange,
   placeholder,
+  className,
 }: {
   value: string;
   onChange: (value: string) => void;
   placeholder: string;
+  className?: string;
 }) {
   return (
-    <div className="relative min-w-[12rem] flex-1">
+    <div className={cn("relative w-full", className)}>
       <Search className="pointer-events-none absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
       <Input
         value={value}
@@ -710,13 +718,10 @@ export function RolesPermissionsPanel({
     setNewOpen(true);
   }
 
-  function openDuplicateDialog() {
-    if (!selectedColumn) {
-      toast.message(t("selectColumn"));
-      return;
-    }
-    setFormName(`${selectedColumn.name} Copy`);
-    setFormSlug(slugifyRoleName(`${selectedColumn.slug}_copy`));
+  function openDuplicateDialog(role: AdminRoleRow) {
+    setFormName(`${role.name} Copy`);
+    setFormSlug(slugifyRoleName(`${role.slug}_copy`));
+    setSelectedColumnId(role.id);
     setDupOpen(true);
   }
 
@@ -763,39 +768,30 @@ export function RolesPermissionsPanel({
   return (
     <>
       <div className="space-y-3">
-        <RolesPanelHeader
-          t={t}
-          isPending={isPending}
-          onNew={openNewDialog}
-          onDuplicate={openDuplicateDialog}
-          onExpandAll={expandAll}
-          onCollapseAll={collapseAll}
-        />
-        <p className="text-xs text-muted-foreground">{t("superAdminNote")}</p>
-        <RoleToolbar
+        <RolesActionBar
           roles={editableRoles}
           selectedColumnId={selectedColumnId}
           dirtyRoleIds={dirtyRoleIds}
           usageMap={usageMap}
+          permissionSearch={permissionSearch}
+          onSearchChange={setPermissionSearch}
+          searchPlaceholder={t("searchPermission")}
           t={t}
+          isPending={isPending}
           onSelect={setSelectedColumnId}
+          onClone={openDuplicateDialog}
           onRename={openRenameDialog}
           onDelete={(role) => {
             setSelectedColumnId(role.id);
             setDeleteOpen(true);
           }}
+          onExpandAll={expandAll}
+          onCollapseAll={collapseAll}
+          onNew={openNewDialog}
         />
 
         <Card className="w-full min-w-0 overflow-hidden">
           <CardContent className="flex flex-col p-0">
-            <div className="flex items-center gap-3 border-b border-border px-4 py-2">
-              <PermissionSearchBar
-                value={permissionSearch}
-                onChange={setPermissionSearch}
-                placeholder={t("searchPermission")}
-              />
-            </div>
-
             <MatrixColumnHeader
               roles={editableRoles}
               selectedColumnId={selectedColumnId}

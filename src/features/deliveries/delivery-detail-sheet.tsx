@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -402,13 +403,13 @@ export function DeliveryDetailSheet({
                       <Label htmlFor="reject-reason" className="text-sm text-destructive">
                         {t("rejectReasonLabel")}
                       </Label>
-                      <textarea
+                      <Textarea
                         id="reject-reason"
                         value={rejectReason}
                         onChange={(e) => setRejectReason(e.target.value)}
                         placeholder={t("rejectReasonLabel")}
                         rows={3}
-                        className="border-input bg-background placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 w-full resize-none rounded-lg border px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-[3px]"
+                        className="resize-none"
                       />
                     </div>
                   ) : null}
