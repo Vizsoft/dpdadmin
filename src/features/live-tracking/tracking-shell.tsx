@@ -27,13 +27,11 @@ export function TrackingGlassCard({
 export function TrackingCommandLayout({
   left,
   center,
-  right,
   className,
   fullscreen,
 }: {
   left: ReactNode;
   center: ReactNode;
-  right: ReactNode;
   className?: string;
   fullscreen?: boolean;
 }) {
@@ -42,8 +40,8 @@ export function TrackingCommandLayout({
       className={cn(
         "grid gap-2",
         fullscreen
-          ? "h-full min-h-0 grid-rows-1 xl:grid-cols-[300px_minmax(0,1fr)_340px]"
-          : "min-h-[560px] xl:grid-cols-[300px_minmax(0,1fr)_340px]",
+          ? "h-full min-h-0 grid-rows-1 xl:grid-cols-[300px_minmax(0,1fr)]"
+          : "min-h-[560px] xl:grid-cols-[300px_minmax(0,1fr)]",
         "max-xl:grid-cols-1",
         className,
       )}
@@ -54,7 +52,6 @@ export function TrackingCommandLayout({
       <section className="flex min-h-0 min-h-[560px] flex-col gap-2 max-xl:min-h-[480px]">
         {center}
       </section>
-      <aside className="flex min-h-0 flex-col gap-2 max-xl:order-last">{right}</aside>
     </div>
   );
 }

@@ -11,13 +11,15 @@ import {
   Users,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { MetricTile, Pill, type Tone } from "@/components/ui/metric-tile";
-import { cn } from "@/lib/utils";
+import { ToggleChip } from "@/components/app/toggle-chip";
+import { Badge } from "@/components/ui/badge";
+import { MetricTile } from "@/components/ui/metric-tile";
 import type { DriverLiveLocation } from "@/features/locations/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LiveDriverList } from "./live-driver-list";
 import { TrackingGlassCard } from "./tracking-shell";
 import type { LiveTrackingFilterState } from "./live-tracking-filters";
+import { TrackingTabSwitcher, type TrackingViewTab } from "./tracking-tab-switcher";
 
 export function FleetOverviewPanel({
   totalDrivers,
@@ -31,6 +33,8 @@ export function FleetOverviewPanel({
   onChange,
   zoneOptions,
   partnerOptions,
+  activeTab,
+  onTabChange,
 }: {
   totalDrivers: number;
   trackedCount: number;
@@ -43,19 +47,20 @@ export function FleetOverviewPanel({
   onChange: (next: LiveTrackingFilterState) => void;
   zoneOptions: Array<{ id: string; label: string }>;
   partnerOptions: Array<{ id: string; label: string }>;
+  activeTab: TrackingViewTab;
+  onTabChange: (tab: TrackingViewTab) => void;
 }) {
   const t = useTranslations("pages.liveTracking");
 
   const statusChips: Array<{
     id: LiveTrackingFilterState["statusChips"][number];
     label: string;
-    tone: Tone;
   }> = [
-    { id: "online", label: t("chipOnline"), tone: "emerald" },
-    { id: "on_duty", label: t("chipOnDuty"), tone: "blue" },
-    { id: "idle", label: t("chipIdle"), tone: "amber" },
-    { id: "alert", label: t("chipAlert"), tone: "rose" },
-    { id: "offline", label: t("chipOffline"), tone: "slate" },
+    { id: "online", label: t("chipOnline") },
+    { id: "on_duty", label: t("chipOnDuty") },
+    { id: "idle", label: t("chipIdle") },
+    { id: "alert", label: t("chipAlert") },
+    { id: "offline", label: t("chipOffline") },
   ];
 
   const selectedChipCount = filters.statusChips.length;
@@ -68,7 +73,6 @@ export function FleetOverviewPanel({
         value: totalDrivers.toLocaleString(),
         tone: "blue" as const,
         icon: Users,
-        trend: "+8.2%",
       },
       {
         id: "active",
@@ -76,7 +80,6 @@ export function FleetOverviewPanel({
         value: trackedCount.toLocaleString(),
         tone: "emerald" as const,
         icon: UserCheck,
-        trend: "+7.1%",
       },
       {
         id: "progress",
@@ -84,13 +87,6 @@ export function FleetOverviewPanel({
         value: inProgressCount.toLocaleString(),
         tone: "indigo" as const,
         icon: Package,
-      },
-      {
-        id: "delayed",
-        label: t("metricDelayed"),
-        value: Math.max(0, Math.round(alertsCount * 1.3)).toLocaleString(),
-        tone: "amber" as const,
-        icon: Clock3,
       },
       {
         id: "sos",
@@ -106,7 +102,8 @@ export function FleetOverviewPanel({
   return (
     <TrackingGlassCard className="flex min-h-0 flex-col overflow-hidden border-slate-200 bg-white dark:border-slate-700/80 dark:bg-slate-900">
       <div className="border-b border-slate-200 px-3 py-2.5 dark:border-slate-700/80">
-        <div className="mt-3 grid grid-cols-2 gap-2">
+        <TrackingTabSwitcher value={activeTab} onChange={onTabChange} className="mb-2" />
+        <div className="grid grid-cols-2 gap-2">
           {stats.map((tile) => (
             <MetricTile
               key={tile.id}
@@ -114,6 +111,7 @@ export function FleetOverviewPanel({
               value={tile.value}
               tone={tile.tone}
               icon={tile.icon}
+              trendPercent={undefined}
             />
           ))}
         </div>
@@ -157,9 +155,10 @@ export function FleetOverviewPanel({
 
           <div className="flex flex-wrap items-center gap-1.5">
             {statusChips.map((chip) => (
-              <button
+              <ToggleChip
                 key={chip.id}
-                type="button"
+                size="md"
+                selected={filters.statusChips.includes(chip.id)}
                 onClick={() => {
                   const exists = filters.statusChips.includes(chip.id);
                   onChange({
@@ -169,20 +168,9 @@ export function FleetOverviewPanel({
                       : [...filters.statusChips, chip.id],
                   });
                 }}
-                className="cursor-pointer"
               >
-                <Pill
-                  tone={chip.tone}
-                  className={cn(
-                    "px-2.5 py-1 text-[11px]",
-                    filters.statusChips.includes(chip.id)
-                      ? ""
-                      : "bg-white text-slate-500 ring-slate-200 dark:bg-slate-950 dark:text-slate-400 dark:ring-slate-700",
-                  )}
-                >
-                  {chip.label}
-                </Pill>
-              </button>
+                {chip.label}
+              </ToggleChip>
             ))}
             <span className="ms-auto inline-flex items-center text-[11px] font-medium text-slate-500 dark:text-slate-400">
               {t("selectedCount", { count: selectedChipCount })}
@@ -221,6 +209,54 @@ export function FleetOverviewPanel({
                   {opt.label}
                 </SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+          <Select
+            disabled
+            items={[
+              { value: "all", label: t("filterVehicleAll") },
+              { value: "bike", label: t("filterVehicleBike") },
+              { value: "car", label: t("filterVehicleCar") },
+            ]}
+            value="all"
+            onValueChange={() => {}}
+          >
+            <SelectTrigger className="h-8 cursor-not-allowed rounded-lg text-xs opacity-80">
+              <div className="flex w-full items-center justify-between gap-2">
+                <span className="truncate">{t("filterVehicleType")}</span>
+                <Badge variant="secondary" className="h-5 rounded-full px-2 text-[10px]">
+                  {t("comingSoon")}
+                </Badge>
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" label={t("filterVehicleAll")}>
+                {t("filterVehicleAll")}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
+            disabled
+            items={[
+              { value: "all", label: t("filterSpeedAll") },
+              { value: "overspeed", label: t("filterSpeedOverspeed") },
+              { value: "normal", label: t("filterSpeedNormal") },
+            ]}
+            value="all"
+            onValueChange={() => {}}
+          >
+            <SelectTrigger className="h-8 cursor-not-allowed rounded-lg text-xs opacity-80">
+              <div className="flex w-full items-center justify-between gap-2">
+                <span className="truncate">{t("filterSpeedAlerts")}</span>
+                <Badge variant="secondary" className="h-5 rounded-full px-2 text-[10px]">
+                  {t("comingSoon")}
+                </Badge>
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" label={t("filterSpeedAll")}>
+                {t("filterSpeedAll")}
+              </SelectItem>
             </SelectContent>
           </Select>
           <Select

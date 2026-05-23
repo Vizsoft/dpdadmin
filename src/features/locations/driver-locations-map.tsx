@@ -10,6 +10,7 @@ import {
   circleFromZoneFeature,
   polygonFromFeature,
 } from "@/features/zones/zone-map-google-utils";
+import { circleFromFeature, polygonPositionsFromFeature } from "@/lib/geo/zone-geometry";
 import {
   geofenceFillOpacity,
   type GeofenceMapOverlay,
@@ -23,6 +24,7 @@ import {
   isHeatmapLayerEnabled,
   isTrafficLayerEnabled,
 } from "@/features/live-tracking/tracking-map-layer-controller";
+import { createZoneLabelOverlay } from "./zone-label-overlay";
 
 export function DriverLocationsMap({
   markers,
@@ -50,7 +52,7 @@ export function DriverLocationsMap({
   mapHeightClass?: string;
   fitToMarkers?: boolean;
   focusMarkerId?: string | null;
-  onMarkerSelect?: (markerId: string) => void;
+  onMarkerSelect?: (markerId: string | null) => void;
   geofenceOverlays?: GeofenceMapOverlay[];
   frameless?: boolean;
   mapStyles?: import("@/lib/google-maps/load").GoogleMapStyleRule[];
@@ -74,6 +76,9 @@ export function DriverLocationsMap({
   const geofenceRefs = useRef<
     Array<{ setMap: (map: import("@/lib/google-maps/load").GoogleMapInstance | null) => void }>
   >([]);
+  const geofenceLabelRefs = useRef<
+    Array<{ setMap: (map: import("@/lib/google-maps/load").GoogleMapInstance | null) => void }>
+  >([]);
   const polylineRef = useRef<{ setMap: (map: unknown) => void } | null>(null);
   const trafficRef = useRef<import("@/lib/google-maps/load").GoogleOverlayLayer | null>(null);
   const heatmapRef = useRef<import("@/lib/google-maps/load").GoogleHeatmapLayerInstance | null>(
@@ -81,6 +86,7 @@ export function DriverLocationsMap({
   );
   const clustererRef = useRef<MarkerClusterer | null>(null);
   const pulseRefs = useRef<Array<{ setMap: (map: import("@/lib/google-maps/load").GoogleMapInstance | null) => void }>>([]);
+  const mapClickListenerRef = useRef<{ remove: () => void } | null>(null);
   const hasInitialFitRef = useRef(false);
   const [mapState, setMapState] = useState<"loading" | "ready" | "unavailable">("loading");
   const stableStyles = useMemo(() => mapStyles ?? [], [mapStyles]);
@@ -117,6 +123,7 @@ export function DriverLocationsMap({
         styles: stableStyles,
       });
       mapRef.current = map;
+      mapClickListenerRef.current = map.addListener("click", () => onMarkerSelect?.(null));
       onMapReady?.(map);
       onMapActionsReady?.({
         recenter: () => {
@@ -147,10 +154,14 @@ export function DriverLocationsMap({
 
     return () => {
       cancelled = true;
+      mapClickListenerRef.current?.remove();
+      mapClickListenerRef.current = null;
       for (const m of markerRefs.current) m.setMap(null);
       markerRefs.current = [];
       for (const g of geofenceRefs.current) g.setMap(null);
       geofenceRefs.current = [];
+      for (const label of geofenceLabelRefs.current) label.setMap(null);
+      geofenceLabelRefs.current = [];
       for (const pulse of pulseRefs.current) pulse.setMap(null);
       pulseRefs.current = [];
       trafficRef.current?.setMap(null);
@@ -197,12 +208,15 @@ export function DriverLocationsMap({
           icon: createFleetMarkerIcon({
             pinStatus: pin.pinStatus,
             selected: Boolean(pin.highlight),
-            vehicle: pin.trackingStatus === "delivery_submit" ? "car" : "bike",
+            vehicle: pin.vehicleType ?? "bike",
           }),
           zIndex: pin.highlight ? 999 : undefined,
         });
         if (onMarkerSelect) {
-          marker.addListener("click", () => onMarkerSelect(pin.id));
+          marker.addListener("click", () => {
+            const shouldClear = pin.id === focusMarkerId;
+            onMarkerSelect(shouldClear ? null : pin.id);
+          });
         }
         markerRefs.current.push(marker);
 
@@ -248,6 +262,8 @@ export function DriverLocationsMap({
 
       for (const g of geofenceRefs.current) g.setMap(null);
       geofenceRefs.current = [];
+      for (const label of geofenceLabelRefs.current) label.setMap(null);
+      geofenceLabelRefs.current = [];
 
       for (const zone of geofenceOverlays ?? []) {
         const fillOpacity = geofenceFillOpacity(zone.status);
@@ -262,6 +278,18 @@ export function DriverLocationsMap({
                 clickable: false,
               });
         if (shape) geofenceRefs.current.push(shape);
+        if (zone.name) {
+          const center = getOverlayCenter(zone);
+          if (center) {
+            const label = createZoneLabelOverlay(google, mapRef.current, {
+              position: center,
+              zoneName: zone.name,
+              zoneColor: zone.color,
+              driverCount: zone.driverCount ?? 0,
+            });
+            geofenceLabelRefs.current.push(label);
+          }
+        }
       }
 
       if (
@@ -339,6 +367,7 @@ export function DriverLocationsMap({
     fitToMarkers,
     geofenceOverlays,
     onMarkerSelect,
+    focusMarkerId,
     initialFitPadding,
     mapLayer,
     onClusterCountChange,
@@ -378,4 +407,31 @@ export function DriverLocationsMap({
       </div>
     </div>
   );
+}
+
+function getOverlayCenter(zone: GeofenceMapOverlay): { lat: number; lng: number } | null {
+  if (zone.zone_type === "circle") {
+    const circle = circleFromFeature(zone.geometry);
+    if (!circle) return null;
+    return { lat: circle.center[0], lng: circle.center[1] };
+  }
+  const positions = polygonPositionsFromFeature(zone.geometry);
+  if (positions.length === 0) return null;
+  let minLat = Infinity;
+  let maxLat = -Infinity;
+  let minLng = Infinity;
+  let maxLng = -Infinity;
+  for (const [lat, lng] of positions) {
+    minLat = Math.min(minLat, lat);
+    maxLat = Math.max(maxLat, lat);
+    minLng = Math.min(minLng, lng);
+    maxLng = Math.max(maxLng, lng);
+  }
+  if (!Number.isFinite(minLat) || !Number.isFinite(maxLat) || !Number.isFinite(minLng) || !Number.isFinite(maxLng)) {
+    return null;
+  }
+  return {
+    lat: (minLat + maxLat) / 2,
+    lng: (minLng + maxLng) / 2,
+  };
 }

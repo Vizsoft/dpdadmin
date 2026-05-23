@@ -3,8 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
-import { Link } from "@/i18n/navigation";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -14,26 +12,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { TABLE_HEAD_CLASS } from "@/components/app/constants";
-import { cn } from "@/lib/utils";
+import { ToggleChip } from "@/components/app/toggle-chip";
 import { DriverLocationsMap } from "@/features/locations/driver-locations-map";
-import {
-  formatBatteryPct,
-  formatSpeedMps,
-} from "@/features/locations/location-status";
 import { fetchDriversForAdmin } from "@/features/drivers/drivers-actions";
 import { queryKeys } from "@/lib/query/query-keys";
 import type { DriverLocationEvent } from "@/features/locations/types";
 import { HistoryPlaybackControls } from "./history-playback-controls";
 import { useLiveHistory } from "./use-live-history";
+import { TrackingTabSwitcher, type TrackingViewTab } from "./tracking-tab-switcher";
+import { TrackingCommandLayout, TrackingMapFrame } from "./tracking-shell";
+import { HistorySummaryKpis, computeHistorySummary } from "./history-summary-kpis";
+import {
+  HistoryLoadingSkeleton,
+  NoDataForDateEmpty,
+  SelectDriverEmpty,
+} from "./history-empty-states";
+import { HistoryDriverHeader } from "./history-driver-header";
+import { HistoryRecentStops } from "./history-recent-stops";
+import { HistoryEventsTable } from "./history-events-table";
 
 const KUWAIT_TZ = "Asia/Kuwait";
 
@@ -60,7 +56,29 @@ function formatTime(iso: string, locale?: string): string {
   }
 }
 
-export function LiveTrackingHistoryView() {
+function kuwaitDateShift(daysBack: number): string {
+  const now = new Date();
+  const shifted = new Date(now.getTime() - daysBack * 24 * 60 * 60 * 1000);
+  return new Intl.DateTimeFormat("en-CA", { timeZone: KUWAIT_TZ }).format(shifted);
+}
+
+function formatDateLabel(date: string, locale?: string): string {
+  const parsed = new Date(`${date}T00:00:00+03:00`);
+  return new Intl.DateTimeFormat(locale ?? "en", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: KUWAIT_TZ,
+  }).format(parsed);
+}
+
+export function LiveTrackingHistoryView({
+  activeTab,
+  onTabChange,
+}: {
+  activeTab: TrackingViewTab;
+  onTabChange: (tab: TrackingViewTab) => void;
+}) {
   const t = useTranslations("pages.liveTracking");
   const [driverId, setDriverId] = useState<string>("");
   const [date, setDate] = useState(kuwaitToday());
@@ -107,6 +125,7 @@ export function LiveTrackingHistoryView() {
   );
 
   const currentEvent: DriverLocationEvent | null = sortedEvents[index] ?? null;
+  const summary = useMemo(() => computeHistorySummary(sortedEvents), [sortedEvents]);
 
   const markers = useMemo(() => {
     const list: Array<{
@@ -139,11 +158,21 @@ export function LiveTrackingHistoryView() {
         title: formatTime(currentEvent.recordedAt),
         pinStatus: "active",
         trackingStatus: currentEvent.trackingStatus,
+        highlight: true,
       });
     }
 
     return list;
   }, [sortedEvents, currentEvent, t]);
+
+  const deliverySubmitIndices = useMemo(
+    () =>
+      sortedEvents.reduce<number[]>((acc, event, idx) => {
+        if (event.trackingStatus === "delivery_submit") acc.push(idx);
+        return acc;
+      }, []),
+    [sortedEvents],
+  );
 
   const durationLabel = useMemo(() => {
     if (sortedEvents.length < 2) return "—";
@@ -188,145 +217,163 @@ export function LiveTrackingHistoryView() {
     };
   }, [playing, speed, sortedEvents.length]);
 
-  const trackingStatusLabel = (status: DriverLocationEvent["trackingStatus"]) => {
-    if (status === "moving") return t("statusMoving");
-    if (status === "delivery_submit") return t("statusDeliverySubmit");
-    return t("statusIdle");
-  };
+  const selectedDriverMeta = useMemo(
+    () => driversMeta.find((row) => row.linked_profile_id === driverId) ?? null,
+    [driverId, driversMeta],
+  );
+
+  const quickRange = useMemo(() => {
+    if (date === kuwaitToday()) return "today";
+    if (date === kuwaitDateShift(1)) return "yesterday";
+    if (date === kuwaitDateShift(7)) return "last7";
+    return "custom";
+  }, [date]);
 
   return (
-    <div className="space-y-4">
-      <div className="grid gap-4 rounded-xl border border-border bg-card p-4 shadow-sm sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">{t("historyDriver")}</Label>
-          <Select
-            value={driverId || undefined}
-            onValueChange={(id) => setDriverId(id ?? "")}
-          >
-            <SelectTrigger className="h-9 w-full cursor-pointer rounded-lg">
-              <SelectValue placeholder={t("selectDriver")} />
-            </SelectTrigger>
-            <SelectContent>
-              {linkedDrivers.map((d) => (
-                <SelectItem key={d.profileId} value={d.profileId}>
-                  {d.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="history-date" className="text-xs text-muted-foreground">
-            {t("historyDate")}
-          </Label>
-          <Input
-            id="history-date"
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="h-9 cursor-pointer rounded-lg"
-          />
-        </div>
-      </div>
+    <div className="space-y-3">
+      <TrackingCommandLayout
+        left={
+          <div className="space-y-3">
+            <TrackingTabSwitcher value={activeTab} onChange={onTabChange} className="max-w-sm" />
+            <HistorySummaryKpis summary={summary} loading={isLoading} />
 
-      {!driverId ? (
-        <p className="text-center text-sm text-muted-foreground">{t("selectDriver")}</p>
-      ) : isLoading ? (
-        <div className="flex justify-center py-12">
-          <Loader2 className="size-6 animate-spin text-muted-foreground" />
-        </div>
-      ) : sortedEvents.length === 0 ? (
-        <p className="text-center text-sm text-muted-foreground">{t("noHistory")}</p>
-      ) : (
-        <>
-          <HistoryPlaybackControls
-            playing={playing}
-            onTogglePlay={() => {
-              lastTickRef.current = 0;
-              setPlaying((p) => !p);
-            }}
-            speed={speed}
-            onSpeedChange={(v) => {
-              setSpeed(v);
-              lastTickRef.current = 0;
-            }}
-            index={index}
-            maxIndex={sortedEvents.length - 1}
-            onIndexChange={(i) => {
-              setPlaying(false);
-              setIndex(i);
-            }}
-            currentLabel={
-              currentEvent ? formatTime(currentEvent.recordedAt) : "—"
-            }
-            durationLabel={durationLabel}
-          />
+            <div className="space-y-3 rounded-xl border border-border bg-card p-3 shadow-sm">
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">{t("historyDriver")}</Label>
+                <Select value={driverId || undefined} onValueChange={(id) => setDriverId(id ?? "")}>
+                  <SelectTrigger className="h-9 w-full cursor-pointer rounded-lg">
+                    <SelectValue placeholder={t("selectDriver")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {linkedDrivers.map((d) => (
+                      <SelectItem key={d.profileId} value={d.profileId} label={d.label}>
+                        {d.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="history-date" className="text-xs text-muted-foreground">
+                  {t("historyDate")}
+                </Label>
+                <Input
+                  id="history-date"
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="h-9 cursor-pointer rounded-lg"
+                />
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                <ToggleChip selected={quickRange === "today"} onClick={() => setDate(kuwaitToday())}>
+                  {t("historyToday")}
+                </ToggleChip>
+                <ToggleChip selected={quickRange === "yesterday"} onClick={() => setDate(kuwaitDateShift(1))}>
+                  {t("historyYesterday")}
+                </ToggleChip>
+                <ToggleChip selected={quickRange === "last7"} onClick={() => setDate(kuwaitDateShift(7))}>
+                  {t("historyLast7Days")}
+                </ToggleChip>
+              </div>
+            </div>
 
-          <DriverLocationsMap
-            markers={markers}
-            path={path}
-            mapHeightClass="h-[min(50vh,480px)] min-h-[320px]"
-            fitToMarkers={path.length > 0}
-            className="rounded-xl"
-          />
-
-          <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className={TABLE_HEAD_CLASS}>{t("colTime")}</TableHead>
-                  <TableHead className={TABLE_HEAD_CLASS}>{t("colTrackingStatus")}</TableHead>
-                  <TableHead className={TABLE_HEAD_CLASS}>{t("colZoneStatus")}</TableHead>
-                  <TableHead className={TABLE_HEAD_CLASS}>{t("colSpeed")}</TableHead>
-                  <TableHead className={TABLE_HEAD_CLASS}>{t("colBattery")}</TableHead>
-                  <TableHead className={TABLE_HEAD_CLASS}>{t("colAccuracy")}</TableHead>
-                  <TableHead className={TABLE_HEAD_CLASS}>{t("colDelivery")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedEvents.map((e, i) => (
-                  <TableRow
-                    key={e.id}
-                    className={cn(
-                      "cursor-pointer",
-                      i === index ? "bg-muted/50" : undefined,
-                    )}
-                    onClick={() => {
-                      setPlaying(false);
-                      setIndex(i);
-                    }}
-                  >
-                    <TableCell className="font-mono text-xs">
-                      {formatTime(e.recordedAt)}
-                    </TableCell>
-                    <TableCell className="text-xs">{trackingStatusLabel(e.trackingStatus)}</TableCell>
-                    <TableCell className="text-xs">
-                      {e.zoneStatus ? t(`zoneStatus.${e.zoneStatus}`) : "—"}
-                    </TableCell>
-                    <TableCell className="text-xs">{formatSpeedMps(e.speedMps)}</TableCell>
-                    <TableCell className="text-xs">{formatBatteryPct(e.batteryPct)}</TableCell>
-                    <TableCell className="text-xs">
-                      {e.accuracyMeters != null ? `±${e.accuracyMeters.toFixed(0)} m` : "—"}
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      {e.deliveryId ? (
-                        <Link
-                          href={`/deliveries?highlight=${e.deliveryId}`}
-                          className="text-primary hover:underline"
-                        >
-                          {t("viewDelivery")}
-                        </Link>
-                      ) : (
-                        "—"
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            {driverId && sortedEvents.length > 0 ? (
+              <HistoryRecentStops
+                events={sortedEvents}
+                selectedIndex={index}
+                onSelectIndex={(nextIndex) => {
+                  setPlaying(false);
+                  setIndex(nextIndex);
+                }}
+                formatTime={(iso) => formatTime(iso)}
+              />
+            ) : null}
           </div>
-        </>
-      )}
+        }
+        center={
+          <TrackingMapFrame mapHeightClass="h-[min(58vh,560px)] min-h-[360px]">
+            {!driverId ? (
+              <SelectDriverEmpty />
+            ) : isLoading ? (
+              <div className="h-full w-full bg-muted/40 p-4">
+                <HistoryLoadingSkeleton />
+              </div>
+            ) : sortedEvents.length === 0 ? (
+              <NoDataForDateEmpty
+                dateLabel={formatDateLabel(date)}
+                onPickYesterday={() => setDate(kuwaitDateShift(1))}
+                onPickLast7Days={() => setDate(kuwaitDateShift(7))}
+              />
+            ) : (
+              <>
+                <DriverLocationsMap
+                  markers={markers}
+                  path={path}
+                  mapHeightClass="h-full min-h-[360px]"
+                  fitToMarkers={path.length > 0}
+                  className="h-full rounded-none border-0"
+                  frameless
+                />
+                {selectedDriverMeta ? (
+                  <div className="pointer-events-none absolute left-3 top-3 z-20 max-w-[280px]">
+                    <div className="pointer-events-auto">
+                      <HistoryDriverHeader
+                        name={selectedDriverMeta.full_name}
+                        code={selectedDriverMeta.driver_code}
+                        zoneName={selectedDriverMeta.zone_name}
+                        isOnDuty={selectedDriverMeta.is_on_duty}
+                        dateLabel={formatDateLabel(date)}
+                      />
+                    </div>
+                  </div>
+                ) : null}
+                <div className="pointer-events-none absolute inset-x-3 bottom-3 z-20">
+                  <div className="pointer-events-auto">
+                    <HistoryPlaybackControls
+                      playing={playing}
+                      onTogglePlay={() => {
+                        lastTickRef.current = 0;
+                        setPlaying((prev) => !prev);
+                      }}
+                      onRestart={() => {
+                        setPlaying(false);
+                        setIndex(0);
+                      }}
+                      speed={speed}
+                      onSpeedChange={(value) => {
+                        setSpeed(value);
+                        lastTickRef.current = 0;
+                      }}
+                      index={index}
+                      maxIndex={sortedEvents.length - 1}
+                      onIndexChange={(nextIndex) => {
+                        setPlaying(false);
+                        setIndex(nextIndex);
+                      }}
+                      currentLabel={currentEvent ? formatTime(currentEvent.recordedAt) : "—"}
+                      durationLabel={durationLabel}
+                      deliverySubmitIndices={deliverySubmitIndices}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+          </TrackingMapFrame>
+        }
+      />
+
+      {driverId && !isLoading && sortedEvents.length > 0 ? (
+        <HistoryEventsTable
+          events={sortedEvents}
+          currentIndex={index}
+          onSelectIndex={(nextIndex) => {
+            setPlaying(false);
+            setIndex(nextIndex);
+          }}
+          formatTime={(iso) => formatTime(iso)}
+        />
+      ) : null}
     </div>
   );
 }

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import {
   Expand,
+  X,
   LocateFixed,
   Mail,
   MapPin,
@@ -12,6 +13,7 @@ import {
   Phone,
   Plus,
 } from "lucide-react";
+import { ToggleChip } from "@/components/app/toggle-chip";
 import { Pill, SignalBars, StatusDot } from "@/components/ui/metric-tile";
 import { cn } from "@/lib/utils";
 import type { DriverLiveLocation } from "@/features/locations/types";
@@ -82,7 +84,7 @@ export function TrackingMapToolbar({
                 className={cn(
                   "cursor-pointer rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
                   isActive
-                    ? "bg-blue-600 text-white shadow-sm"
+                    ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-muted-foreground hover:bg-accent hover:text-foreground",
                 )}
               >
@@ -188,24 +190,23 @@ export function TrackingMapLegend({
             const active = activeStatuses.includes(status);
             return (
               <li key={status}>
-                <button
-                  type="button"
+                <ToggleChip
+                  selected={active}
                   disabled={!isInteractive}
                   onClick={() => (isInteractive ? onToggleStatus(status) : undefined)}
                   className={cn(
-                    "inline-flex items-center gap-1.5 text-[11px] text-slate-700 transition-opacity dark:text-slate-200",
-                    !isInteractive && "cursor-default",
+                    "h-6 rounded-full px-2 text-[11px] font-medium shadow-none transition-opacity",
                     isInteractive && !active && "opacity-45",
                   )}
                 >
                   <StatusDot tone={toneByStatus[status]} />
                   <span>{t(`fleetStatus.${status}`)}</span>
-                </button>
+                </ToggleChip>
               </li>
             );
           })}
           <li className="inline-flex items-center gap-1.5 text-[11px] text-slate-700 dark:text-slate-200">
-            <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-600 px-1 text-[10px] font-semibold text-white">
+            <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
               {clusterCount}
             </span>
             <span>{t("fleetStatus.cluster")}</span>
@@ -220,10 +221,12 @@ export function TrackingSelectedDriverPopup({
   driver,
   meta,
   onViewDetails,
+  onClose,
 }: {
   driver: DriverLiveLocation;
   meta?: LiveDriverMeta;
   onViewDetails?: () => void;
+  onClose?: () => void;
 }) {
   const t = useTranslations("pages.liveTracking");
   const fleetStatus = fleetStatusFromLocation({
@@ -249,6 +252,16 @@ export function TrackingSelectedDriverPopup({
 
   return (
     <TrackingGlassCard className="pointer-events-auto absolute left-1/2 top-1/2 z-20 w-[360px] max-w-[calc(100%-24px)] -translate-x-1/2 -translate-y-1/2 rounded-xl border-slate-200 bg-white/98 p-3 shadow-xl dark:border-slate-700 dark:bg-slate-900/96">
+      {onClose ? (
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute end-2 top-2 inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+          aria-label="Close selected driver"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      ) : null}
       <div className="flex items-start gap-3">
         <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-sm font-semibold text-blue-700 dark:bg-blue-500/20 dark:text-blue-200">
           {driverInitials(driver.driverName)}
@@ -310,8 +323,8 @@ export function TrackingSelectedDriverPopup({
       </div>
 
       <div className="mt-2 flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-300">
+        <Pill tone={toneByStatus[fleetStatus]}>{t(`fleetStatus.${fleetStatus}`)}</Pill>
         <StatusDot tone={toneByStatus[fleetStatus]} />
-        <span>{t(`fleetStatus.${fleetStatus}`)}</span>
         <span className="mx-1">•</span>
         <span>{t(`gpsQualityLevel.${gpsQuality}`)}</span>
         <SignalBars

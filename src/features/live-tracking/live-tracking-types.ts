@@ -13,3 +13,12 @@ export type LiveDriverMeta = {
 export type LiveTrackingEnrichedDriver = DriverLiveLocation & {
   meta?: LiveDriverMeta;
 };
+
+export type LiveRecentDelivery = {
+  id: string;
+  driverId: string;
+  shortId: string;
+  status: "pending" | "verified" | "rejected" | "under_review";
+  partnerName: string;
+  deliveredAt: string;
+};

@@ -107,6 +107,23 @@ type DeliveryDbRow = {
   zones: { name: string } | { name: string }[] | null;
 };
 
+type RecentDeliveryDbRow = {
+  id: string;
+  driver_id: string;
+  status: DeliveryStatus;
+  delivered_at: string;
+  partners: { name: string } | { name: string }[] | null;
+};
+
+export type RecentDeliveryForDriver = {
+  id: string;
+  driver_id: string;
+  short_id: string;
+  status: DeliveryStatus;
+  partner_name: string;
+  delivered_at: string;
+};
+
 export async function fetchDeliveriesForAdmin(): Promise<DeliveryListRow[]> {
   await requireDeliveriesView();
   void logAdminRead("deliveries", "fetchDeliveriesForAdmin");
@@ -209,6 +226,45 @@ export async function fetchDeliveriesForAdmin(): Promise<DeliveryListRow[]> {
       };
     }),
   );
+}
+
+export async function fetchRecentDeliveriesForDriver(
+  driverId: string,
+  limit = 2,
+): Promise<RecentDeliveryForDriver[]> {
+  await requireDeliveriesView();
+  void logAdminRead("deliveries", "fetchRecentDeliveriesForDriver");
+
+  if (!driverId) return [];
+
+  const supabase = await createClient();
+  const safeLimit = Math.max(1, Math.min(limit, 10));
+  const { data, error } = await supabase
+    .from("deliveries")
+    .select(
+      `
+      id,
+      driver_id,
+      status,
+      delivered_at,
+      partners (name)
+    `,
+    )
+    .eq("driver_id", driverId)
+    .order("delivered_at", { ascending: false })
+    .limit(safeLimit);
+
+  if (error) throw error;
+
+  const rows = (data ?? []) as unknown as RecentDeliveryDbRow[];
+  return rows.map((row) => ({
+    id: row.id,
+    driver_id: row.driver_id,
+    short_id: shortId(row.id),
+    status: row.status,
+    partner_name: relName(row.partners),
+    delivered_at: row.delivered_at,
+  }));
 }
 
 export async function updateDeliveryStatus(

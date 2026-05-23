@@ -14,6 +14,7 @@ export type DriverLiveLocation = {
   latitude: number;
   longitude: number;
   speedMps: number | null;
+  distanceTodayMeters: number;
   accuracyMeters: number | null;
   batteryPct: number | null;
   heading: number | null;
@@ -45,6 +46,7 @@ export type DriverLocationMapMarker = {
   title?: string;
   pinStatus?: PinStatus;
   trackingStatus?: TrackingStatus;
+  vehicleType?: "bike" | "car";
   heading?: number | null;
   highlight?: boolean;
 };

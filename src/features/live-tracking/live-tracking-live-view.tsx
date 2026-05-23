@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { DriverLocationsMap } from "@/features/locations/driver-locations-map";
 import { useDriverLocationsRealtime } from "@/features/locations/use-driver-locations-realtime";
 import { fetchDriversForAdmin } from "@/features/drivers/drivers-actions";
+import { fetchRecentDeliveriesForDriver } from "@/features/deliveries/deliveries-actions";
 import { fetchZones } from "@/features/zones/use-zones";
 import { normalizeZoneColor } from "@/features/zones/zone-colors";
 import { queryKeys } from "@/lib/query/query-keys";
@@ -25,7 +26,6 @@ import {
 import {
   TrackingMapLegend,
   TrackingMapToolbar,
-  TrackingSelectedDriverPopup,
   type MapLayerToggle,
 } from "./tracking-map-overlays";
 import {
@@ -33,7 +33,7 @@ import {
   fleetStatusFromLocation,
   type FleetStatusKey,
 } from "./tracking-status";
-import type { LiveDriverMeta } from "./live-tracking-types";
+import type { LiveDriverMeta, LiveRecentDelivery } from "./live-tracking-types";
 import type { GeofenceMapOverlay } from "@/features/locations/geofence-map-overlays";
 import { buildTrackingMapStyles } from "./tracking-map-google-styles";
 import {
@@ -43,8 +43,17 @@ import {
   type TrackingMapLayerPrefs,
 } from "./tracking-map-layer-prefs";
 import { cn } from "@/lib/utils";
+import type { TrackingViewTab } from "./tracking-tab-switcher";
 
-export function LiveTrackingLiveView({ fullscreen }: { fullscreen?: boolean }) {
+export function LiveTrackingLiveView({
+  fullscreen,
+  activeTab,
+  onTabChange,
+}: {
+  fullscreen?: boolean;
+  activeTab: TrackingViewTab;
+  onTabChange: (tab: TrackingViewTab) => void;
+}) {
   const t = useTranslations("pages.liveTracking");
   const { locations } = useDriverLocationsRealtime();
   const [filters, setFilters] = useState<LiveTrackingFilterState>(DEFAULT_LIVE_TRACKING_FILTERS);
@@ -113,6 +122,28 @@ export function LiveTrackingLiveView({ fullscreen }: { fullscreen?: boolean }) {
   );
 
   const selectedMeta = selectedDriver ? profileMeta.get(selectedDriver.driverId) : undefined;
+  const selectedIntakeId = selectedMeta?.intakeId ?? null;
+
+  const { data: selectedRecentOrders = [] } = useQuery({
+    queryKey: ["live-tracking", "recent-deliveries", selectedIntakeId],
+    enabled: Boolean(selectedIntakeId),
+    queryFn: async () => {
+      if (!selectedIntakeId) return [];
+      try {
+        const rows = await fetchRecentDeliveriesForDriver(selectedIntakeId, 2);
+        return rows.map<LiveRecentDelivery>((row) => ({
+          id: row.id,
+          driverId: row.driver_id,
+          shortId: row.short_id,
+          status: row.status,
+          partnerName: row.partner_name,
+          deliveredAt: row.delivered_at,
+        }));
+      } catch {
+        return [];
+      }
+    },
+  });
 
   const alertsCount = useMemo(
     () => locations.filter((l) => l.pinStatus === "alert").length,
@@ -128,6 +159,7 @@ export function LiveTrackingLiveView({ fullscreen }: { fullscreen?: boolean }) {
         title: loc.driverName,
         pinStatus: loc.pinStatus,
         trackingStatus: loc.trackingStatus,
+        vehicleType: undefined as "bike" | "car" | undefined,
         heading: loc.heading,
         highlight: loc.driverId === selectedId,
       })),
@@ -139,19 +171,31 @@ export function LiveTrackingLiveView({ fullscreen }: { fullscreen?: boolean }) {
     [locations],
   );
 
+  const zoneDriverCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const loc of filtered) {
+      const zoneId = profileMeta.get(loc.driverId)?.zoneId;
+      if (!zoneId) continue;
+      counts.set(zoneId, (counts.get(zoneId) ?? 0) + 1);
+    }
+    return counts;
+  }, [filtered, profileMeta]);
+
   const geofenceOverlays = useMemo((): GeofenceMapOverlay[] => {
     if (!geofencesEnabled) return [];
     return zones
       .filter((z) => z.geometry && z.status !== "inactive")
       .map((z) => ({
         id: z.id,
+        name: z.name,
+        driverCount: zoneDriverCounts.get(z.id) ?? 0,
         zone_type: z.zone_type,
         geometry: z.geometry!,
         geofence_kind: z.geofence_kind,
         color: normalizeZoneColor(z.color),
         status: z.status,
       }));
-  }, [zones, geofencesEnabled]);
+  }, [zones, geofencesEnabled, zoneDriverCounts]);
 
   const mapHeightClass = fullscreen || mapOnlyFullscreen ? "min-h-0 flex-1 h-full" : "min-h-[560px] flex-1";
 
@@ -188,6 +232,8 @@ export function LiveTrackingLiveView({ fullscreen }: { fullscreen?: boolean }) {
           onChange={setFilters}
           zoneOptions={zoneFilterOptions}
           partnerOptions={partnerFilterOptions}
+          activeTab={activeTab}
+          onTabChange={onTabChange}
         />
       }
       center={
@@ -241,10 +287,17 @@ export function LiveTrackingLiveView({ fullscreen }: { fullscreen?: boolean }) {
             clusterCount={clusterCount}
           />
           {selectedDriver ? (
-            <TrackingSelectedDriverPopup
-              driver={selectedDriver}
-              meta={selectedMeta}
-            />
+            <div className="pointer-events-none absolute end-2 top-2 z-30 flex max-h-[calc(100%-120px)] w-[min(340px,calc(100%-16px))] flex-col">
+              <div className="pointer-events-auto min-h-0 flex-1 overflow-hidden shadow-xl">
+                <LiveDriverDetailsPanel
+                  driver={selectedDriver}
+                  meta={selectedMeta}
+                  recentOrders={selectedRecentOrders}
+                  variant="stacked"
+                  onClose={() => setSelectedId(null)}
+                />
+              </div>
+            </div>
           ) : null}
           <div className="pointer-events-none absolute inset-x-2 bottom-2 z-20 grid gap-2 md:grid-cols-2">
             <div className="pointer-events-auto">
@@ -255,9 +308,6 @@ export function LiveTrackingLiveView({ fullscreen }: { fullscreen?: boolean }) {
             </div>
           </div>
         </TrackingMapFrame>
-      }
-      right={
-        <LiveDriverDetailsPanel driver={selectedDriver} meta={selectedMeta} />
       }
     />
   );

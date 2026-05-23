@@ -4,17 +4,16 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Minimize2, Radio } from "lucide-react";
 import { AppPage } from "@/components/app/app-page";
-import { AppPageHeader } from "@/components/app/app-page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { cn } from "@/lib/utils";
 import { LiveTrackingLiveView } from "./live-tracking-live-view";
 import { LiveTrackingHistoryView } from "./live-tracking-history-view";
+import type { TrackingViewTab } from "./tracking-tab-switcher";
 
 export function LiveTrackingPageShell() {
   const t = useTranslations("pages.liveTracking");
   const [isCommandFullscreen, setIsCommandFullscreen] = useState(false);
+  const [activeTab, setActiveTab] = useState<TrackingViewTab>("live");
 
   useEffect(() => {
     if (!isCommandFullscreen) return;
@@ -25,26 +24,16 @@ export function LiveTrackingPageShell() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [isCommandFullscreen]);
 
-  const tabs = (
-    <Tabs defaultValue="live" className="flex min-h-0 flex-1 flex-col gap-4">
-      <TabsList className="w-fit rounded-lg">
-        <TabsTrigger value="live" className="cursor-pointer rounded-md">
-          {t("tabLive")}
-        </TabsTrigger>
-        <TabsTrigger value="history" className="cursor-pointer rounded-md">
-          {t("tabHistory")}
-        </TabsTrigger>
-      </TabsList>
-
-      <TabsContent value="live" className="mt-0 min-h-0 flex-1 data-[state=inactive]:hidden">
-        <LiveTrackingLiveView fullscreen={isCommandFullscreen} />
-      </TabsContent>
-
-      <TabsContent value="history" className="mt-0 data-[state=inactive]:hidden">
-        <LiveTrackingHistoryView />
-      </TabsContent>
-    </Tabs>
-  );
+  const content =
+    activeTab === "live" ? (
+      <LiveTrackingLiveView
+        fullscreen={isCommandFullscreen}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      />
+    ) : (
+      <LiveTrackingHistoryView activeTab={activeTab} onTabChange={setActiveTab} />
+    );
 
   if (isCommandFullscreen) {
     return (
@@ -73,19 +62,10 @@ export function LiveTrackingPageShell() {
             </Button>
           </div>
         </header>
-        <div className="min-h-0 flex-1 overflow-hidden p-3">{tabs}</div>
+        <div className="min-h-0 flex-1 overflow-hidden p-3">{content}</div>
       </div>
     );
   }
 
-  return (
-    <AppPage>
-      <AppPageHeader
-        title={t("title")}
-        description={t("subtitle")}
-      />
-
-      <div className={cn("flex flex-col")}>{tabs}</div>
-    </AppPage>
-  );
+  return <AppPage>{content}</AppPage>;
 }

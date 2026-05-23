@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { History, MapPinned, Package, Siren } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TrackingGlassCard } from "./tracking-shell";
 
@@ -56,6 +57,11 @@ export function TrackingQuickActions() {
               <span className="text-center text-[11px] leading-tight text-slate-700 dark:text-slate-200">
                 {action.label}
               </span>
+              {!action.enabled ? (
+                <Badge variant="secondary" className="h-4 rounded-full px-1.5 text-[9px]">
+                  Soon
+                </Badge>
+              ) : null}
             </>
           );
           if (action.enabled && action.href) {

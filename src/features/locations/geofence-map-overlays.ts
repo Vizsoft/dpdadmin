@@ -4,6 +4,8 @@ export type GeofenceKind = "inclusion" | "exclusion";
 
 export type GeofenceMapOverlay = {
   id: string;
+  name?: string;
+  driverCount?: number;
   zone_type: ZoneGeometryType;
   geometry: ZoneGeoFeature;
   geofence_kind: GeofenceKind;
@@ -17,5 +19,5 @@ export function geofenceOverlayColor(kind: GeofenceKind): string {
 
 export function geofenceFillOpacity(status: GeofenceMapOverlay["status"]): number {
   if (status === "inactive" || status === "draft") return 0.08;
-  return 0.18;
+  return 0.22;
 }

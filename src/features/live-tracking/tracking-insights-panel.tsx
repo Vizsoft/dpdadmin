@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { AlertTriangle, BatteryLow, Gauge, Timer } from "lucide-react";
-import { Pill } from "@/components/ui/metric-tile";
+import { Badge } from "@/components/ui/badge";
 import type { DriverLiveLocation } from "@/features/locations/types";
 import { TrackingGlassCard } from "./tracking-shell";
 
@@ -72,9 +72,6 @@ export function TrackingInsightsPanel({
         <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
           {t("aiInsights")}
         </h3>
-        <Pill tone="blue" className="uppercase tracking-wide">
-          beta
-        </Pill>
       </div>
       <ul className="grid grid-cols-2 gap-2">
         {insights.map((item) => (
@@ -92,8 +89,15 @@ export function TrackingInsightsPanel({
           </li>
         ))}
       </ul>
-      <button type="button" className="mt-3 cursor-pointer text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400">
+      <button
+        type="button"
+        className="mt-3 inline-flex cursor-not-allowed items-center gap-2 text-xs font-medium text-primary/85"
+        disabled
+      >
         {t("viewAllInsights")}
+        <Badge variant="secondary" className="h-5 rounded-full px-2 text-[10px]">
+          {t("comingSoon")}
+        </Badge>
       </button>
     </TrackingGlassCard>
   );
