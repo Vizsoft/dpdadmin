@@ -55,13 +55,9 @@ export function DriverFormAssignmentCard({
   };
 }) {
   return (
-    <section
-      id="driver-section-assignment"
-      data-driver-section-id="assignment"
-      className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm"
-    >
+    <section className="space-y-3 rounded-lg border border-border bg-card p-4">
       <SectionLabel>{labels.section}</SectionLabel>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-2.5 sm:grid-cols-2">
         <FieldBlock>
           <Label className="inline-flex items-center gap-1.5">
             <Users className="h-3.5 w-3.5 text-muted-foreground" />

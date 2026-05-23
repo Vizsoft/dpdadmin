@@ -6,9 +6,7 @@ import { useRouter } from "@/i18n/navigation";
 import { useSearchParams } from "next/navigation";
 import {
   Download,
-  Eye,
   Loader2,
-  MoreVertical,
   Plus,
   RefreshCw,
   Search,
@@ -18,18 +16,10 @@ import { TABLE_HEAD_CLASS } from "@/components/app/constants";
 import { AppListCard } from "@/components/app/app-list-card";
 import { AppPage } from "@/components/app/app-page";
 import { AppEmptyState } from "@/components/app/app-empty-state";
-import { KpiGrid } from "@/components/dashboard/kpi-grid";
-import { TabBar } from "@/components/dashboard/tab-bar";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { CardContent } from "@/components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Select,
   SelectContent,
@@ -49,7 +39,7 @@ import {
 import { useHasMounted } from "@/hooks/use-has-mounted";
 import { cn } from "@/lib/utils";
 import { useDriverFormOptions } from "./use-driver-form-options";
-import { useDriversList, type DriversTabFilter } from "./use-drivers";
+import { useDriversList, useDriverDetail, type DriversTabFilter } from "./use-drivers";
 import {
   AccountStatusPill,
   AttendancePill,
@@ -58,8 +48,8 @@ import {
   PartnerCell,
   PasscodeCell,
 } from "./driver-list-ui";
-import { DriverLocationsLivePanel } from "./driver-locations-live-panel";
 import { DriverFormSheet } from "./driver-form-sheet";
+import { DriversKpiStrip } from "./drivers-kpi-strip";
 import {
   DRIVER_ACCOUNT_STATUSES,
   type DriverAccountStatus,
@@ -142,10 +132,19 @@ function DriversPageContent() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editDriverId, setEditDriverId] = useState<string | null>(null);
+  const { data: editDriver } = useDriverDetail(editDriverId ?? "");
 
   useEffect(() => {
     if (searchParams.get("add") === "1") {
       setAddOpen(true);
+      router.replace("/drivers");
+    }
+    const editId = searchParams.get("edit");
+    if (editId) {
+      setEditDriverId(editId);
+      setEditOpen(true);
       router.replace("/drivers");
     }
   }, [searchParams, router]);
@@ -214,14 +213,6 @@ function DriversPageContent() {
     });
   }, [drivers, tabFilter]);
 
-  const intakeIdByProfileId = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const d of drivers) {
-      if (d.linked_profile_id) map.set(d.linked_profile_id, d.id);
-    }
-    return map;
-  }, [drivers]);
-
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
     return tabFiltered.filter((d) => {
@@ -240,34 +231,20 @@ function DriversPageContent() {
     });
   }, [tabFiltered, search, zoneFilter, partnerFilter, statusFilter]);
 
-  const kpis = useMemo(() => {
+  const kpiCounts = useMemo(() => {
     const total = drivers.length;
-    const activeToday = drivers.filter(
-      (d) => d.account_status === "active",
-    ).length;
+    const activeToday = drivers.filter((d) => d.account_status === "active").length;
     const onlineNow = drivers.filter((d) => d.is_on_duty).length;
     const inactive = drivers.filter(
-      (d) =>
-        d.account_status === "active" &&
-        !d.is_on_duty,
+      (d) => d.account_status === "active" && !d.is_on_duty,
     ).length;
     const pendingVerification = drivers.filter(
-      (d) =>
-        d.workflow_status === "pending" || d.account_status === "pending",
+      (d) => d.workflow_status === "pending" || d.account_status === "pending",
     ).length;
-    const suspended = drivers.filter(
-      (d) => d.account_status === "suspended",
-    ).length;
+    const suspended = drivers.filter((d) => d.account_status === "suspended").length;
 
-    return [
-      { label: t("kpiTotal"), value: total },
-      { label: t("kpiActiveToday"), value: activeToday },
-      { label: t("kpiOnlineNow"), value: onlineNow },
-      { label: t("kpiInactive"), value: inactive },
-      { label: t("kpiPending"), value: pendingVerification },
-      { label: t("kpiSuspended"), value: suspended },
-    ];
-  }, [drivers, t]);
+    return { total, activeToday, onlineNow, inactive, pendingVerification, suspended };
+  }, [drivers]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -302,132 +279,63 @@ function DriversPageContent() {
     });
   };
 
-  const tabItems = [
-    { id: "all" as const, label: t("tabAll") },
-    { id: "pending" as const, label: t("tabPendingVerification") },
-    { id: "on_duty" as const, label: t("tabOnDuty") },
-    { id: "archived" as const, label: t("tabArchived") },
-  ];
+  const tabSelectItems = useMemo(
+    () => [
+      { value: "all" as const, label: t("tabAll") },
+      { value: "pending" as const, label: t("tabPendingVerification") },
+      { value: "on_duty" as const, label: t("tabOnDuty") },
+      { value: "archived" as const, label: t("tabArchived") },
+    ],
+    [t],
+  );
+
+  const openEditDriver = (id: string) => {
+    setEditDriverId(id);
+    setEditOpen(true);
+  };
 
   const hasActiveFilters =
     zoneFilter !== "all" || partnerFilter !== "all" || statusFilter !== "all";
 
   return (
-    <AppPage>
-      <div className="flex items-center justify-end gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-9 cursor-pointer rounded-lg"
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-            >
-              <RefreshCw
-                className={`me-2 h-3.5 w-3.5 ${isRefreshing ? "animate-spin" : ""}`}
-              />
-              {t("refresh")}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-9 cursor-pointer rounded-lg"
-              onClick={() => exportDriversCsv(visible)}
-              disabled={visible.length === 0}
-            >
-              <Download className="me-2 h-3.5 w-3.5" />
-              {t("export")}
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              className="h-9 cursor-pointer rounded-lg"
-              onClick={() => setAddOpen(true)}
-            >
-              <Plus className="me-2 h-3.5 w-3.5" />
-              {t("addDriver")}
-            </Button>
-      </div>
-
-      <KpiGrid items={kpis} />
-
-      <DriverLocationsLivePanel intakeIdByProfileId={intakeIdByProfileId} />
+    <AppPage className="space-y-4">
+      <DriversKpiStrip
+        {...kpiCounts}
+        labels={{
+          total: t("kpiTotal"),
+          activeToday: t("kpiActiveToday"),
+          onlineNow: t("kpiOnlineNow"),
+          inactive: t("kpiInactive"),
+          pending: t("kpiPending"),
+          suspended: t("kpiSuspended"),
+        }}
+      />
 
       <AppListCard
         toolbar={
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-              <TabBar
-                items={tabItems}
-                activeId={tabFilter}
-                onSelect={(id) => setTabFilter(id as DriversTabFilter)}
-                className="border-b-0"
-              />
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <Select
-                  items={zoneSelectItems}
-                  value={zoneFilter}
-                  onValueChange={(v) => setZoneFilter(v ?? "all")}
-                >
-                  <SelectTrigger className="h-9 w-full min-w-[140px] cursor-pointer rounded-lg sm:w-[160px]">
-                    <SelectValue placeholder={t("filterZone")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {zoneSelectItems.map((item) => (
-                      <SelectItem
-                        key={item.value}
-                        value={item.value}
-                        className="cursor-pointer"
-                      >
-                        {item.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select
-                  items={partnerSelectItems}
-                  value={partnerFilter}
-                  onValueChange={(v) => setPartnerFilter(v ?? "all")}
-                >
-                  <SelectTrigger className="h-9 w-full min-w-[140px] cursor-pointer rounded-lg sm:w-[160px]">
-                    <SelectValue placeholder={t("filterPartner")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {partnerSelectItems.map((item) => (
-                      <SelectItem
-                        key={item.value}
-                        value={item.value}
-                        className="cursor-pointer"
-                      >
-                        {item.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select
-                  items={statusSelectItems}
-                  value={statusFilter}
-                  onValueChange={(v) =>
-                    setStatusFilter((v ?? "all") as "all" | DriverAccountStatus)
-                  }
-                >
-                  <SelectTrigger className="h-9 w-full min-w-[140px] cursor-pointer rounded-lg sm:w-[160px]">
-                    <SelectValue placeholder={t("filterStatus")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {statusSelectItems.map((item) => (
-                      <SelectItem
-                        key={item.value}
-                        value={item.value}
-                        className="cursor-pointer"
-                      >
-                        {item.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <div className="relative min-w-0 flex-1 sm:min-w-[200px]">
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:gap-4">
+              <Select
+                items={tabSelectItems}
+                value={tabFilter}
+                onValueChange={(value) => {
+                  if (value) setTabFilter(value as DriversTabFilter);
+                }}
+              >
+                <SelectTrigger className="h-9 w-full cursor-pointer rounded-lg xl:w-[200px]">
+                  <SelectValue placeholder={t("filterView")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {tabSelectItems.map((item) => (
+                    <SelectItem key={item.value} value={item.value} className="cursor-pointer">
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center">
+                <div className="relative min-w-0 flex-1 sm:min-w-[220px] sm:max-w-[320px]">
                   <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     value={search}
@@ -447,6 +355,92 @@ function DriversPageContent() {
                     </button>
                   ) : null}
                 </div>
+                <Select
+                  items={zoneSelectItems}
+                  value={zoneFilter}
+                  onValueChange={(v) => setZoneFilter(v ?? "all")}
+                >
+                  <SelectTrigger className="h-9 w-full cursor-pointer rounded-lg sm:w-[150px]">
+                    <SelectValue placeholder={t("filterZone")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {zoneSelectItems.map((item) => (
+                      <SelectItem key={item.value} value={item.value} className="cursor-pointer">
+                        {item.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select
+                  items={partnerSelectItems}
+                  value={partnerFilter}
+                  onValueChange={(v) => setPartnerFilter(v ?? "all")}
+                >
+                  <SelectTrigger className="h-9 w-full cursor-pointer rounded-lg sm:w-[150px]">
+                    <SelectValue placeholder={t("filterPartner")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {partnerSelectItems.map((item) => (
+                      <SelectItem key={item.value} value={item.value} className="cursor-pointer">
+                        {item.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select
+                  items={statusSelectItems}
+                  value={statusFilter}
+                  onValueChange={(v) =>
+                    setStatusFilter((v ?? "all") as "all" | DriverAccountStatus)
+                  }
+                >
+                  <SelectTrigger className="h-9 w-full cursor-pointer rounded-lg sm:w-[150px]">
+                    <SelectValue placeholder={t("filterStatus")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {statusSelectItems.map((item) => (
+                      <SelectItem key={item.value} value={item.value} className="cursor-pointer">
+                        {item.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-9 cursor-pointer rounded-lg"
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                >
+                  <RefreshCw
+                    className={`me-2 h-3.5 w-3.5 ${isRefreshing ? "animate-spin" : ""}`}
+                  />
+                  {t("refresh")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-9 cursor-pointer rounded-lg"
+                  onClick={() => exportDriversCsv(visible)}
+                  disabled={visible.length === 0}
+                >
+                  <Download className="me-2 h-3.5 w-3.5" />
+                  {t("export")}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-9 cursor-pointer rounded-lg"
+                  onClick={() => setAddOpen(true)}
+                >
+                  <Plus className="me-2 h-3.5 w-3.5" />
+                  {t("addDriver")}
+                </Button>
               </div>
             </div>
             {(hasActiveFilters || search) && (
@@ -511,15 +505,12 @@ function DriversPageContent() {
                   <TableHead className={cn("hidden lg:table-cell", TABLE_HEAD_CLASS)}>
                     {t("colPasscode")}
                   </TableHead>
-                  <TableHead className={cn("w-12 text-end", TABLE_HEAD_CLASS)}>
-                    {t("colActions")}
-                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {showEmptySearch ? (
                   <TableRow className="hover:bg-transparent">
-                    <TableCell colSpan={12} className="border-t border-border py-12">
+                    <TableCell colSpan={11} className="border-t border-border py-12">
                       <AppEmptyState
                         title={t("emptySearchTitle")}
                         description={t("emptySearchDescription")}
@@ -531,17 +522,25 @@ function DriversPageContent() {
                     <TableRow
                       key={driver.id}
                       className={cn(
-                        "hover:bg-muted/40",
+                        "cursor-pointer hover:bg-muted/40",
                         selectedIds.has(driver.id) && "bg-muted/20",
                       )}
+                      onClick={() => openEditDriver(driver.id)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          openEditDriver(driver.id);
+                        }
+                      }}
+                      tabIndex={0}
+                      aria-label={t("viewDriver")}
                     >
-                      <TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
                         <Checkbox
                           checked={selectedIds.has(driver.id)}
                           onCheckedChange={() => toggleRow(driver.id)}
                           aria-label={t("selectDriver", { name: driver.full_name })}
                           className="cursor-pointer"
-                          onClick={(e) => e.stopPropagation()}
                         />
                       </TableCell>
                       <TableCell className="font-mono text-sm text-muted-foreground">
@@ -551,13 +550,9 @@ function DriversPageContent() {
                         {driver.employee_id ?? "—"}
                       </TableCell>
                       <TableCell>
-                        <button
-                          type="button"
-                          className="cursor-pointer truncate text-start font-medium text-foreground hover:underline"
-                          onClick={() => router.push(`/drivers/${driver.id}`)}
-                        >
+                        <span className="truncate font-medium text-foreground">
                           {driver.full_name}
-                        </button>
+                        </span>
                       </TableCell>
                       <TableCell className="hidden text-sm text-muted-foreground md:table-cell">
                         {formatPhoneInternational(driver.phone)}
@@ -587,28 +582,8 @@ function DriversPageContent() {
                           offDutyLabel={t("attendanceOffDuty")}
                         />
                       </TableCell>
-                      <TableCell className="hidden lg:table-cell">
+                      <TableCell className="hidden lg:table-cell" onClick={(e) => e.stopPropagation()}>
                         <PasscodeCell passcode={driver.app_passcode} />
-                      </TableCell>
-                      <TableCell className="text-end">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger
-                            className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-                            aria-label={t("rowActions")}
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <MoreVertical className="h-4 w-4" />
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              className="cursor-pointer"
-                              onClick={() => router.push(`/drivers/${driver.id}`)}
-                            >
-                              <Eye className="me-2 h-3.5 w-3.5" />
-                              {t("viewDriver")}
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))
@@ -619,6 +594,17 @@ function DriversPageContent() {
         )}
       </AppListCard>
       <DriverFormSheet mode="create" open={addOpen} onOpenChange={setAddOpen} />
+      <DriverFormSheet
+        mode="edit"
+        open={editOpen}
+        onOpenChange={(open) => {
+          setEditOpen(open);
+          if (!open) setEditDriverId(null);
+        }}
+        driver={editDriver}
+        intakeId={editDriver?.intake_id ?? editDriver?.id}
+        onSaved={() => void refetch()}
+      />
     </AppPage>
   );
 }

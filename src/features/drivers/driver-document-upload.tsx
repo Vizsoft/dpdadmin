@@ -298,29 +298,26 @@ function InlineDocumentUploadCard({
   return (
     <div
       className={cn(
-        "rounded-xl border bg-muted/10 p-3",
+        "rounded-md border bg-muted/10 p-2",
         displayError ? "border-destructive/60 bg-destructive/5" : "border-border",
       )}
     >
-      <div className="mb-2 flex items-start gap-2">
+      <div className="mb-1.5 flex items-center gap-1.5">
         {isImageFile(file) ? (
-          <ImageIcon className="mt-0.5 h-4 w-4 text-muted-foreground" />
+          <ImageIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
         ) : (
-          <FileText className="mt-0.5 h-4 w-4 text-muted-foreground" />
+          <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
         )}
-        <div className="min-w-0">
-          <p className="truncate text-sm font-medium text-foreground">{label}</p>
-          <p className="text-[11px] text-muted-foreground">PNG, JPG or PDF · max 16MB</p>
-        </div>
+        <p className="truncate text-xs font-medium text-foreground">{label}</p>
       </div>
 
       <button
         type="button"
         disabled={disabled || isSubmitting}
         onClick={() => inputRef.current?.click()}
-        className="flex h-10 w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-dashed border-border bg-background text-xs text-muted-foreground transition-colors hover:bg-muted/40 disabled:cursor-not-allowed disabled:opacity-50"
+        className="flex h-7 w-full cursor-pointer items-center justify-center gap-1 rounded-md border border-dashed border-border bg-background text-[11px] text-muted-foreground transition-colors hover:bg-muted/40 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        <Upload className="h-3.5 w-3.5" />
+        <Upload className="h-3 w-3" />
         {file ? t("replaceDocument") : t("uploadDocument")}
       </button>
 
@@ -873,29 +870,26 @@ function RemoteDocumentUploadCard({
   return (
     <div
       className={cn(
-        "rounded-xl border bg-muted/10 p-3",
+        "rounded-md border bg-muted/10 p-2",
         displayError ? "border-destructive/60 bg-destructive/5" : "border-border",
       )}
     >
-      <div className="mb-2 flex items-start gap-2">
+      <div className="mb-1.5 flex items-center gap-1.5">
         {isImageMime(remote?.contentType ?? null) ? (
-          <ImageIcon className="mt-0.5 h-4 w-4 text-muted-foreground" />
+          <ImageIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
         ) : (
-          <FileText className="mt-0.5 h-4 w-4 text-muted-foreground" />
+          <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
         )}
-        <div className="min-w-0">
-          <p className="truncate text-sm font-medium text-foreground">{tErr(`documents.${docType}`)}</p>
-          <p className="text-[11px] text-muted-foreground">PNG, JPG or PDF · max 16MB</p>
-        </div>
+        <p className="truncate text-xs font-medium text-foreground">{tErr(`documents.${docType}`)}</p>
       </div>
 
       <button
         type="button"
         disabled={disabled || busy}
         onClick={() => inputRef.current?.click()}
-        className="flex h-10 w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-dashed border-border bg-background text-xs text-muted-foreground transition-colors hover:bg-muted/40 disabled:cursor-not-allowed disabled:opacity-50"
+        className="flex h-7 w-full cursor-pointer items-center justify-center gap-1 rounded-md border border-dashed border-border bg-background text-[11px] text-muted-foreground transition-colors hover:bg-muted/40 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        <Upload className="h-3.5 w-3.5" />
+        <Upload className="h-3 w-3" />
         {remote ? tErr("replaceDocument") : tErr("uploadDocument")}
       </button>
 

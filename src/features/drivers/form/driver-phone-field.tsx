@@ -17,8 +17,8 @@ export function DriverPhoneField({
   onChange: (next: string) => void;
 }) {
   return (
-    <div className="flex h-11 items-center rounded-xl border border-input bg-background px-2 focus-within:ring-2 focus-within:ring-primary/30">
-      <div className="inline-flex h-8 items-center gap-1 rounded-md border border-border bg-muted/40 px-2 text-sm text-muted-foreground">
+    <div className="flex h-9 items-center rounded-md border border-input bg-background px-2 focus-within:ring-2 focus-within:ring-ring/40">
+      <div className="inline-flex h-6 items-center gap-1 rounded border border-border bg-muted/50 px-1.5 text-xs text-muted-foreground">
         <span aria-hidden="true">🇰🇼</span>
         <span className="font-medium">+965</span>
       </div>
@@ -31,9 +31,8 @@ export function DriverPhoneField({
         disabled={disabled}
         aria-invalid={ariaInvalid}
         onChange={(event) => onChange(restrictDigits(event.target.value, KUWAIT_PHONE_DIGIT_COUNT))}
-        className="h-full border-0 bg-transparent font-mono tabular-nums shadow-none ring-0 focus-visible:ring-0"
+        className="h-full border-0 bg-transparent text-sm font-mono tabular-nums shadow-none ring-0 focus-visible:ring-0"
       />
     </div>
   );
 }
-

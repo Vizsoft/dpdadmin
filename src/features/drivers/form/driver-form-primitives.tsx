@@ -1,13 +1,33 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
 export function SectionLabel({ children }: { children: ReactNode }) {
   return (
-    <p className="text-[13px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
       {children}
     </p>
+  );
+}
+
+export function FieldLabel({
+  htmlFor,
+  children,
+  required,
+  className,
+}: {
+  htmlFor?: string;
+  children: ReactNode;
+  required?: boolean;
+  className?: string;
+}) {
+  return (
+    <Label htmlFor={htmlFor} className={cn("text-xs font-medium", className)}>
+      {children}
+      {required ? <span className="text-destructive"> *</span> : null}
+    </Label>
   );
 }
 
@@ -18,13 +38,13 @@ export function FieldBlock({
   children: ReactNode;
   className?: string;
 }) {
-  return <div className={cn("space-y-1.5", className)}>{children}</div>;
+  return <div className={cn("space-y-1", className)}>{children}</div>;
 }
 
 export function FieldError({ message }: { message?: string }) {
   if (!message) return null;
   return (
-    <p className="text-xs text-destructive" role="alert">
+    <p className="text-[11px] text-destructive" role="alert">
       {message}
     </p>
   );
@@ -38,10 +58,9 @@ export function MetadataBadge({
   label: string;
 }) {
   return (
-    <div className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2">
-      <p className="text-sm font-semibold tracking-tight text-primary">{code}</p>
-      <p className="text-xs text-muted-foreground">{label}</p>
+    <div className="flex h-9 flex-col justify-center rounded-md border border-border bg-muted/40 px-2.5">
+      <p className="truncate font-mono text-xs font-semibold tabular-nums text-foreground">{code}</p>
+      <p className="truncate text-[10px] text-muted-foreground">{label}</p>
     </div>
   );
 }
-

@@ -47,7 +47,7 @@ export function SearchableSelect({
         type="button"
         disabled={disabled}
         className={cn(
-          "flex h-11 w-full cursor-pointer items-center justify-between rounded-xl border border-input bg-background px-3 text-sm shadow-xs transition-colors",
+          "flex h-9 w-full cursor-pointer items-center justify-between rounded-md border border-input bg-background px-3 text-sm shadow-xs transition-colors",
           selectedLabel ? "text-foreground" : "text-muted-foreground",
           invalid && "border-destructive/70",
           "disabled:cursor-not-allowed disabled:opacity-50",

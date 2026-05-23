@@ -30,13 +30,9 @@ export function DriverFormDocumentsGrid({
   const docTypes: DriverDocumentType[] = ["license", "civil_id", "work_permit", "passport"];
 
   return (
-    <section
-      id="driver-section-documents"
-      data-driver-section-id="documents"
-      className="space-y-3 rounded-xl border border-border bg-card/70 p-5"
-    >
+    <section className="space-y-2.5 rounded-lg border border-border bg-card p-4">
       <SectionLabel>{sectionLabel}</SectionLabel>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         {docTypes.map((docType) =>
           isEdit ? (
             <DriverDocumentUpload
@@ -67,4 +63,3 @@ export function DriverFormDocumentsGrid({
     </section>
   );
 }
-

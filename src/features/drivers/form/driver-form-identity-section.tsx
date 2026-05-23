@@ -1,11 +1,11 @@
 "use client";
 
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 import { DriverAvatarUpload } from "../driver-avatar-upload";
 import { CIVIL_ID_DIGIT_COUNT, restrictDigits } from "../driver-phone";
 import { DriverPhoneField } from "./driver-phone-field";
-import { FieldBlock, FieldError, MetadataBadge, SectionLabel } from "./driver-form-primitives";
+import { FieldBlock, FieldError, FieldLabel, MetadataBadge, SectionLabel } from "./driver-form-primitives";
 
 export function DriverFormIdentitySection({
   fullName,
@@ -23,7 +23,6 @@ export function DriverFormIdentitySection({
   placeholders,
   uploadLabel,
   removeLabel,
-  avatarHint,
   avatarPreview,
   onAvatarSelect,
   onAvatarRemove,
@@ -55,7 +54,6 @@ export function DriverFormIdentitySection({
   };
   uploadLabel: string;
   removeLabel: string;
-  avatarHint: string;
   avatarPreview: string | null;
   onAvatarSelect: (file: File | null) => void;
   onAvatarRemove: () => void;
@@ -67,33 +65,38 @@ export function DriverFormIdentitySection({
   };
 }) {
   return (
-    <section
-      id="driver-section-identity"
-      data-driver-section-id="identity"
-      className="space-y-3 rounded-2xl border border-border bg-card/80 p-6 shadow-sm"
-    >
+    <section className="space-y-2.5 rounded-lg border border-border bg-card p-4">
       <SectionLabel>{labels.section}</SectionLabel>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-[72px_1.4fr_1fr_1fr_auto] md:items-end">
+      <div
+        className={cn(
+          "grid items-end gap-2.5",
+          showEmployeeId
+            ? "grid-cols-[48px_minmax(0,1.15fr)_minmax(0,0.95fr)_minmax(0,0.95fr)_minmax(0,0.75fr)_minmax(0,0.75fr)]"
+            : "grid-cols-[48px_minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.85fr)]",
+        )}
+      >
         <DriverAvatarUpload
           variant="badge"
           fullName={fullName}
           previewUrl={avatarPreview}
           uploadLabel={uploadLabel}
           removeLabel={removeLabel}
-          hint={avatarHint}
+          hint=""
           onFileSelect={onAvatarSelect}
           onRemove={onAvatarRemove}
           disabled={disabled}
         />
 
         <FieldBlock>
-          <Label htmlFor="driver-full-name">{labels.fullName} *</Label>
+          <FieldLabel htmlFor="driver-full-name" required>
+            {labels.fullName}
+          </FieldLabel>
           <Input
             id="driver-full-name"
             value={fullName}
             disabled={disabled}
             onChange={(event) => onFullNameChange(event.target.value)}
-            className="h-11 rounded-xl"
+            className="h-9 rounded-md text-sm"
             placeholder={placeholders.fullName}
             aria-invalid={Boolean(errors.fullName)}
           />
@@ -101,7 +104,9 @@ export function DriverFormIdentitySection({
         </FieldBlock>
 
         <FieldBlock>
-          <Label htmlFor="driver-phone">{labels.phone} *</Label>
+          <FieldLabel htmlFor="driver-phone" required>
+            {labels.phone}
+          </FieldLabel>
           <DriverPhoneField
             id="driver-phone"
             value={phone}
@@ -113,7 +118,9 @@ export function DriverFormIdentitySection({
         </FieldBlock>
 
         <FieldBlock>
-          <Label htmlFor="driver-civil-id">{labels.civilId} *</Label>
+          <FieldLabel htmlFor="driver-civil-id" required>
+            {labels.civilId}
+          </FieldLabel>
           <Input
             id="driver-civil-id"
             type="text"
@@ -124,34 +131,31 @@ export function DriverFormIdentitySection({
             onChange={(event) =>
               onCivilIdChange(restrictDigits(event.target.value, CIVIL_ID_DIGIT_COUNT))
             }
-            className="h-11 rounded-xl font-mono tabular-nums"
+            className="h-9 rounded-md font-mono text-sm tabular-nums"
             placeholder={placeholders.civilId}
             aria-invalid={Boolean(errors.civilId)}
           />
           <FieldError message={errors.civilId} />
         </FieldBlock>
 
-        <FieldBlock>
-          <Label>{labels.driverCode}</Label>
-          <MetadataBadge code={driverCode} label={driverCodeHint} />
-        </FieldBlock>
-      </div>
-
-      {showEmployeeId ? (
-        <div className="max-w-xs">
+        {showEmployeeId ? (
           <FieldBlock>
-            <Label htmlFor="driver-employee-id">{labels.employeeId}</Label>
+            <FieldLabel htmlFor="driver-employee-id">{labels.employeeId}</FieldLabel>
             <Input
               id="driver-employee-id"
               value={employeeId}
               disabled={disabled}
               onChange={(event) => onEmployeeIdChange(event.target.value)}
-              className="h-11 rounded-xl font-mono tabular-nums"
+              className="h-9 rounded-md font-mono text-sm tabular-nums"
             />
           </FieldBlock>
-        </div>
-      ) : null}
+        ) : null}
+
+        <FieldBlock>
+          <FieldLabel>{labels.driverCode}</FieldLabel>
+          <MetadataBadge code={driverCode} label={driverCodeHint} />
+        </FieldBlock>
+      </div>
     </section>
   );
 }
-

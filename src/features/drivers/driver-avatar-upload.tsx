@@ -42,8 +42,8 @@ export function DriverAvatarUpload({
 
   if (isBadge) {
     return (
-      <div className="relative h-[72px] w-[72px] shrink-0">
-        <Avatar className="h-[72px] w-[72px] border border-border/70 bg-muted/30">
+      <div className="relative h-12 w-12 shrink-0">
+        <Avatar className="h-12 w-12 border border-border bg-muted/30">
           {previewUrl ? <AvatarImage src={previewUrl} alt="" /> : null}
           <AvatarFallback className="font-semibold text-sm">
             {fullName.trim() ? initialsFromName(fullName) : <User className="h-4 w-4" />}

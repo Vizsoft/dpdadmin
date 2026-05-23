@@ -4,7 +4,6 @@ import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function DriverFormFooter({
-  completionPercent,
   savedAtLabel,
   saveLabel,
   cancelLabel,
@@ -13,7 +12,6 @@ export function DriverFormFooter({
   onCancel,
   onSave,
 }: {
-  completionPercent: number;
   savedAtLabel?: string;
   saveLabel: string;
   cancelLabel: string;
@@ -23,16 +21,15 @@ export function DriverFormFooter({
   onSave: () => void;
 }) {
   return (
-    <div className="shrink-0 border-t border-border bg-background/95 px-8 py-4 backdrop-blur-sm">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="text-sm text-muted-foreground">
-          {savedAtLabel ?? `Driver profile ${completionPercent}% complete`}
-        </div>
+    <div className="shrink-0 border-t border-border bg-background px-6 py-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-h-4 text-xs text-muted-foreground">{savedAtLabel ?? null}</div>
         <div className="flex items-center gap-2">
           <Button
             type="button"
             variant="outline"
-            className="h-10 cursor-pointer rounded-lg"
+            size="sm"
+            className="h-9 cursor-pointer rounded-md"
             disabled={pending}
             onClick={onCancel}
           >
@@ -40,7 +37,8 @@ export function DriverFormFooter({
           </Button>
           <Button
             type="button"
-            className="h-10 cursor-pointer rounded-lg px-5"
+            size="sm"
+            className="h-9 cursor-pointer rounded-md px-4"
             disabled={disabled || pending}
             onClick={onSave}
           >
@@ -51,4 +49,3 @@ export function DriverFormFooter({
     </div>
   );
 }
-
