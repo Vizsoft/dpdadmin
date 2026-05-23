@@ -7,36 +7,26 @@ import { Button } from "@/components/ui/button";
 export function DriverFormFooter({
   title,
   subtitle,
-  closeLabel,
   savedAtLabel,
   saveLabel,
   cancelLabel,
   disabled,
   pending,
-  onClose,
   onCancel,
   onSave,
 }: {
   title: string;
   subtitle: string;
-  closeLabel: string;
   savedAtLabel?: string;
   saveLabel: string;
   cancelLabel: string;
   disabled?: boolean;
   pending?: boolean;
-  onClose: () => void;
   onCancel: () => void;
   onSave: () => void;
 }) {
   return (
-    <AppModalFooter
-      title={title}
-      subtitle={subtitle}
-      closeLabel={closeLabel}
-      onClose={onClose}
-      meta={savedAtLabel}
-    >
+    <AppModalFooter title={title} subtitle={subtitle} meta={savedAtLabel}>
       <Button
         type="button"
         variant="outline"

@@ -381,8 +381,9 @@ export function DriverFormSheet({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="flex max-h-[92vh] w-[min(1200px,96vw)] max-w-[min(1200px,96vw)] flex-col gap-0 overflow-hidden rounded-xl p-0"
-        showCloseButton={false}
+        className="flex max-h-[92vh] w-[min(1200px,96vw)] max-w-[min(1200px,96vw)] flex-col gap-0 overflow-visible rounded-xl p-0"
+        showCloseButton
+        closeOutside
       >
         <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-4 pb-3">
           {isLoadingEdit ? (
@@ -538,7 +539,6 @@ export function DriverFormSheet({
         <DriverFormFooter
           title={titleLabel}
           subtitle={subtitleLabel}
-          closeLabel={tNew("close")}
           savedAtLabel={
             savedAt && !isEdit
               ? tNew("footer.draftSaved", { time: savedAt.toLocaleTimeString() })
@@ -548,10 +548,6 @@ export function DriverFormSheet({
           cancelLabel={tNew("cancel")}
           disabled={optionsLoading || needsR2ForSubmit || isLoadingEdit}
           pending={isPending}
-          onClose={() => {
-            if (!isEdit) clearDraft();
-            onOpenChange(false);
-          }}
           onCancel={() => {
             if (!isEdit) clearDraft();
             onOpenChange(false);

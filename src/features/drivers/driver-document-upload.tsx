@@ -38,6 +38,62 @@ function basenameFromKey(key: string): string {
   return parts[parts.length - 1] ?? key;
 }
 
+function DocumentViewButton({
+  href,
+  label,
+  className,
+}: {
+  href: string;
+  label: string;
+  className?: string;
+}) {
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      className={cn(
+        "h-6 cursor-pointer gap-1 rounded-md px-2 text-[11px] font-medium text-primary hover:bg-primary/10 hover:text-primary",
+        className,
+      )}
+      nativeButton={false}
+      render={<a href={href} target="_blank" rel="noopener noreferrer" />}
+    >
+      <ExternalLink className="h-3 w-3 shrink-0" />
+      {label}
+    </Button>
+  );
+}
+
+function DocumentRemoveButton({
+  label,
+  disabled,
+  onClick,
+  className,
+}: {
+  label: string;
+  disabled?: boolean;
+  onClick: () => void;
+  className?: string;
+}) {
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      className={cn(
+        "h-6 cursor-pointer gap-1 rounded-md px-2 text-[11px] font-medium text-destructive hover:bg-destructive/10 hover:text-destructive",
+        className,
+      )}
+      disabled={disabled}
+      onClick={onClick}
+    >
+      <Trash2 className="h-3 w-3 shrink-0" />
+      {label}
+    </Button>
+  );
+}
+
 type UploadResponse = {
   ok?: boolean;
   error?: string;
@@ -326,18 +382,13 @@ function InlineDocumentUploadCard({
       </button>
 
       {file ? (
-        <div className="mt-2 flex items-center justify-between gap-2 rounded-md border border-primary/20 bg-primary/5 px-2 py-1.5">
-          <p className="min-w-0 truncate text-xs text-foreground">{file.name}</p>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-6 cursor-pointer rounded-md px-2 text-xs"
+        <div className="mt-1.5 flex items-center justify-between gap-1 rounded border border-emerald-200/80 bg-emerald-50/50 px-1.5 py-1">
+          <p className="min-w-0 truncate text-[10px] font-medium text-foreground">{file.name}</p>
+          <DocumentRemoveButton
+            label={t("removeDocument")}
             disabled={disabled || isSubmitting}
             onClick={() => onChange(null)}
-          >
-            {t("removeDocument")}
-          </Button>
+          />
         </div>
       ) : null}
 
@@ -722,26 +773,13 @@ function RemoteDocumentUploadCompact({
         </span>
         {remote ? (
           <>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-7 cursor-pointer rounded-md px-2 text-xs"
-              nativeButton={false}
-              render={<a href={remote.signedUrl} target="_blank" rel="noopener noreferrer" />}
-            >
-              {t("viewDocument")}
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-7 cursor-pointer rounded-md px-2 text-xs"
+            <DocumentViewButton href={remote.signedUrl} label={t("viewDocument")} className="h-7" />
+            <DocumentRemoveButton
+              label={tErr("removeDocument")}
               disabled={disabled || busy}
               onClick={() => void removeRemote()}
-            >
-              {tErr("removeDocument")}
-            </Button>
+              className="h-7"
+            />
           </>
         ) : null}
         <Button
@@ -902,29 +940,17 @@ function RemoteDocumentUploadCard({
       </button>
 
       {remote ? (
-        <div className="mt-2 space-y-1 rounded-md border border-primary/20 bg-primary/5 px-2 py-1.5">
-          <p className="truncate text-xs text-foreground">{basenameFromKey(remote.objectKey)}</p>
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-6 cursor-pointer rounded-md px-2 text-xs"
-              nativeButton={false}
-              render={<a href={remote.signedUrl} target="_blank" rel="noopener noreferrer" />}
-            >
-              {t("viewDocument")}
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-6 cursor-pointer rounded-md px-2 text-xs"
+        <div className="mt-1.5 space-y-1 rounded border border-emerald-200/80 bg-emerald-50/50 px-1.5 py-1">
+          <p className="truncate text-[10px] font-medium text-foreground">
+            {basenameFromKey(remote.objectKey)}
+          </p>
+          <div className="flex items-center gap-1">
+            <DocumentViewButton href={remote.signedUrl} label={t("viewDocument")} />
+            <DocumentRemoveButton
+              label={tErr("removeDocument")}
               disabled={disabled || busy}
               onClick={() => void removeRemote()}
-            >
-              {tErr("removeDocument")}
-            </Button>
+            />
           </div>
         </div>
       ) : null}

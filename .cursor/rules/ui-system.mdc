@@ -76,36 +76,51 @@ List row: show subtle **"View details"** link under the name.
 
 ## 7. Footer-first modals (mandatory)
 
-**Do not waste a top header band** for title/subtitle/close. Reclaim ~56px for content.
+**Do not waste a top header band** for title/subtitle. Reclaim vertical space for content.
 
 - **No top header** in modals. Content starts immediately (`pt-4`).
-- **`showCloseButton={false}`** on `DialogContent`.
-- Use **`AppModalFooter`** (`@/components/app/app-modal-footer`):
-  - **Left stack**: Close button (icon + label) → **title** → **subtitle** (one line).
+- **Close button: top-right, outside the modal frame** — use `DialogContent` with `showCloseButton` + `closeOutside` (floating circular X at `-end-3 -top-3`). **Never put Close in the footer.**
+- **`AppModalFooter`** (`@/components/app/app-modal-footer`):
+  - **Left**: **title** + **subtitle** (one line) + optional meta.
   - **Right**: Cancel + primary action.
 - Title/subtitle use `DialogTitle` / `DialogDescription` for a11y.
-
-Apply this pattern to **all new modals** and when refactoring existing ones.
+- Large modals: `overflow-visible` on `DialogContent` when `closeOutside`; scroll only the inner body.
 
 ---
 
-## 8. No chrome inside modals
+## 8. Action differentiation (mandatory)
+
+Adjacent actions must never look identical. Users must instantly see **neutral vs destructive vs primary**.
+
+| Action type | Style | Icon |
+|-------------|-------|------|
+| **View / open / link** | `text-primary hover:bg-primary/10` | `ExternalLink` |
+| **Remove / delete / archive** | `text-destructive hover:bg-destructive/10` | `Trash2` |
+| **Primary submit** | solid default button | — |
+| **Cancel** | `variant="outline"` | — |
+
+Never pair two plain `variant="ghost"` text buttons with the same size/color side by side.
+
+---
+
+## 9. No chrome inside modals
 
 - No progress steppers, completion %, scroll-spy.
 - Footer meta (e.g. draft saved) only when meaningful.
 
 ---
 
-## 9. Reference images
+## 10. Reference images
 
 Match density, column count, and architecture from user-provided screenshots. Ask before diverging.
 
 ---
 
-## 10. Pre-ship checklist
+## 11. Pre-ship checklist
 
 - [ ] One viewport on 14" laptop — no inner scroll
-- [ ] Footer-first modal (`AppModalFooter`, no top header)
+- [ ] Footer-first modal: title in footer left, **Close top-right outside** (`closeOutside`)
+- [ ] View vs Remove (or similar pairs) visually distinct with icons
 - [ ] `h-9` inputs, `p-4` cards, semantic color on selected states
 - [ ] Section icon chips + tinted avatar + primary Driver ID badge
 - [ ] Row click → detail page; edit → modal only
