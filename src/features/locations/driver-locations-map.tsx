@@ -81,8 +81,18 @@ export function DriverLocationsMap({
       for (const m of markerRefs.current) m.setMap(null);
       markerRefs.current = [];
 
+      const MarkerCtor = (
+        google.maps as unknown as {
+          Marker: new (opts: {
+            position: { lat: number; lng: number };
+            map: typeof map;
+            title?: string;
+          }) => import("@/lib/google-maps/load").GoogleMarkerInstance;
+        }
+      ).Marker;
+
       for (const pin of markers) {
-        const marker = new google.maps.Marker({
+        const marker = new MarkerCtor({
           position: { lat: pin.lat, lng: pin.lng },
           map: mapRef.current,
           title: pin.title,
