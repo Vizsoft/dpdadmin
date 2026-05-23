@@ -508,7 +508,7 @@ export async function resolveImportPreview(
   type RestaurantLookup = {
     id: string;
     name: string;
-    partner_id: string;
+    partner_id: string | null;
     external_merchant_id: string | null;
     partners: { name: string } | { name: string }[] | null;
   };

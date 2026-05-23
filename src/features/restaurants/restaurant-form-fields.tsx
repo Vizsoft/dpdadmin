@@ -26,6 +26,7 @@ type FieldLabels = {
   statusHint: string;
   selectPartner: string;
   selectZone: string;
+  selectNone: string;
   namePlaceholder: string;
   mapLinkPlaceholder: string;
   statusDraft: string;
@@ -101,15 +102,21 @@ export function RestaurantFormFields({
       <div className="space-y-1.5">
         <Label>{labels.partner}</Label>
         <Select
-          items={partnerSelectItems}
+          items={[
+            { value: "", label: labels.selectNone },
+            ...partnerSelectItems,
+          ]}
           value={partnerId || null}
           onValueChange={(v) => onPartnerIdChange(v ?? "")}
-          disabled={partnersLoading || partners.length === 0}
+          disabled={partnersLoading}
         >
           <SelectTrigger className="h-9 w-full cursor-pointer rounded-lg bg-background">
             <SelectValue placeholder={labels.selectPartner} />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="" label={labels.selectNone}>
+              {labels.selectNone}
+            </SelectItem>
             {partners.map((p) => (
               <SelectItem key={p.id} value={p.id} label={p.name}>
                 {p.name}
@@ -122,15 +129,21 @@ export function RestaurantFormFields({
       <div className="space-y-1.5">
         <Label>{labels.zone}</Label>
         <Select
-          items={zoneSelectItems}
+          items={[
+            { value: "", label: labels.selectNone },
+            ...zoneSelectItems,
+          ]}
           value={zoneId || null}
           onValueChange={(v) => onZoneIdChange(v ?? "")}
-          disabled={zonesLoading || zones.length === 0}
+          disabled={zonesLoading}
         >
           <SelectTrigger className="h-9 w-full cursor-pointer rounded-lg bg-background">
             <SelectValue placeholder={labels.selectZone} />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="" label={labels.selectNone}>
+              {labels.selectNone}
+            </SelectItem>
             {zones.map((z) => (
               <SelectItem
                 key={z.id}

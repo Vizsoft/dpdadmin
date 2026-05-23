@@ -98,23 +98,37 @@ function parseRestaurantIds(formData: FormData): string[] {
   ];
 }
 
-async function validateRestaurantsForPartner(
+async function validateRestaurantsPublished(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  partnerId: string,
   restaurantIds: string[],
 ): Promise<{ error?: string }> {
   if (restaurantIds.length === 0) return {};
   const { data, error } = await supabase
     .from("restaurants")
     .select("id")
-    .eq("partner_id", partnerId)
     .eq("status", "published")
+    .eq("is_active", true)
     .in("id", restaurantIds);
   if (error) return { error: "save_failed" };
   if ((data ?? []).length !== restaurantIds.length) {
     return { error: "invalid_restaurants" };
   }
   return {};
+}
+
+async function hasPublishedActiveRestaurants(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  restaurantIds: string[],
+): Promise<boolean> {
+  if (restaurantIds.length === 0) return false;
+  const { count, error } = await supabase
+    .from("restaurants")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "published")
+    .eq("is_active", true)
+    .in("id", restaurantIds);
+  if (error) return false;
+  return (count ?? 0) > 0;
 }
 
 async function syncIntakeRestaurants(
@@ -247,7 +261,7 @@ export async function createDriverIntake(
   const vehicleId = String(formData.get("vehicleId") ?? "").trim();
   const assetsEnabled = formData.get("assetsEnabled") === "true";
 
-  if (!fullName || !phoneRaw || !civilId || !partnerId || !zoneId) {
+  if (!fullName || !phoneRaw || !civilId) {
     return { error: "missing_fields" };
   }
 
@@ -262,9 +276,8 @@ export async function createDriverIntake(
   const restaurantIds = parseRestaurantIds(formData);
   const supabase = await createClient();
 
-  const restaurantCheck = await validateRestaurantsForPartner(
+  const restaurantCheck = await validateRestaurantsPublished(
     supabase,
-    partnerId,
     restaurantIds,
   );
   if (restaurantCheck.error) return { error: restaurantCheck.error };
@@ -315,8 +328,8 @@ export async function createDriverIntake(
       full_name: fullName,
       civil_id: civilIdNormalized,
       driver_code: allocatedCode,
-      partner_id: partnerId,
-      zone_id: zoneId,
+      partner_id: partnerId || null,
+      zone_id: zoneId || null,
       vehicle_id: vehicleId || null,
       assets_issued: assetsIssued,
       status: "awaiting_app_link",
@@ -626,7 +639,7 @@ export async function updateDriverIntake(
   const assetsEnabled = formData.get("assetsEnabled") === "true";
   const workflowStatus = String(formData.get("workflowStatus") ?? "").trim() as DriverWorkflowStatus;
 
-  if (!intakeId || !fullName || !phoneRaw || !civilId || !partnerId || !zoneId) {
+  if (!intakeId || !fullName || !phoneRaw || !civilId) {
     return { error: "missing_fields" };
   }
 
@@ -653,12 +666,34 @@ export async function updateDriverIntake(
   if (!existing) return { error: "save_failed" };
 
   const restaurantIds = parseRestaurantIds(formData);
-  const restaurantCheck = await validateRestaurantsForPartner(
+  const restaurantCheck = await validateRestaurantsPublished(
     supabase,
-    partnerId,
     restaurantIds,
   );
   if (restaurantCheck.error) return { error: restaurantCheck.error };
+
+  if (existing.linked_profile_id) {
+    const { data: linkedDriver } = await supabase
+      .from("drivers")
+      .select("status")
+      .eq("id", existing.linked_profile_id)
+      .maybeSingle();
+
+    if (linkedDriver?.status === "active") {
+      if (restaurantIds.length === 0) {
+        return { error: "missing_active_restaurant" };
+      }
+      const { data: publishedRows } = await supabase
+        .from("restaurants")
+        .select("id")
+        .eq("status", "published")
+        .eq("is_active", true)
+        .in("id", restaurantIds);
+      if ((publishedRows ?? []).length === 0) {
+        return { error: "missing_active_restaurant" };
+      }
+    }
+  }
 
   const assetsIssued = buildAssetsMap(assetsEnabled, formData);
 
@@ -668,8 +703,8 @@ export async function updateDriverIntake(
       full_name: fullName,
       phone,
       civil_id: civilIdNormalized,
-      partner_id: partnerId,
-      zone_id: zoneId,
+      partner_id: partnerId || null,
+      zone_id: zoneId || null,
       vehicle_id: vehicleId || null,
       assets_issued: assetsIssued,
       workflow_status: workflowStatus,
@@ -694,8 +729,8 @@ export async function updateDriverIntake(
     const { error: driverUpdateError } = await supabase
       .from("drivers")
       .update({
-        partner_id: partnerId,
-        zone_id: zoneId,
+        partner_id: partnerId || null,
+        zone_id: zoneId || null,
         vehicle_id: vehicleId || null,
         civil_id: civilIdNormalized,
         employee_id: employeeId,
@@ -801,6 +836,10 @@ export async function fetchDriverDetail(
 
     const restaurant_ids = await fetchIntakeRestaurantIds(supabase, intake.id);
     const restaurant_names = await loadRestaurantNames(supabase, restaurant_ids);
+    const has_published_restaurant = await hasPublishedActiveRestaurants(
+      supabase,
+      restaurant_ids,
+    );
     const documents = await listExistingDriverDocuments(
       intake.id,
       intake.linked_profile_id,
@@ -822,8 +861,8 @@ export async function fetchDriverDetail(
       ),
       zone_label: relZone(intake.zones),
       vehicle_label,
-      partner_id: intake.partner_id,
-      zone_id: intake.zone_id,
+      partner_id: intake.partner_id ?? null,
+      zone_id: intake.zone_id ?? null,
       vehicle_id: intake.vehicle_id,
       workflow_status: intake.workflow_status as DriverWorkflowStatus,
       linked: intake.linked,
@@ -833,6 +872,7 @@ export async function fetchDriverDetail(
       assets_issued: parseAssetsIssued(intake.assets_issued),
       restaurant_ids,
       restaurant_names,
+      has_published_restaurant,
       app_passcode:
         linkedDriver && linkedDriver.status === "active"
           ? linkedDriver.app_passcode
@@ -901,6 +941,10 @@ export async function fetchDriverDetail(
     ? await fetchIntakeRestaurantIds(supabase, intakeForDriver.id)
     : await fetchDriverRestaurantIds(supabase, id);
   const restaurant_names = await loadRestaurantNames(supabase, restaurant_ids);
+  const has_published_restaurant = await hasPublishedActiveRestaurants(
+    supabase,
+    restaurant_ids,
+  );
   const documents = intakeForDriver?.id
     ? await listExistingDriverDocuments(intakeForDriver.id, id)
     : {};
@@ -933,6 +977,7 @@ export async function fetchDriverDetail(
     assets_issued: parseAssetsIssued(intakeForDriver?.assets_issued),
     restaurant_ids,
     restaurant_names,
+    has_published_restaurant,
     app_passcode:
       driverRow.status === ("active" as DriverAccountStatus)
         ? (driverRow.app_passcode ?? null)
@@ -950,6 +995,46 @@ export async function fetchDriverDetail(
 export type RegeneratePasscodeResult =
   | { success: true; passcode: string }
   | { error: string };
+
+export async function updateDriverAccountStatus(
+  driverId: string,
+  status: DriverAccountStatus,
+): Promise<{ success: true } | { error: string }> {
+  const auth = await requireDriversManager();
+  if (auth.error) return { error: auth.error };
+
+  if (!driverId || !["active", "suspended", "pending"].includes(status)) {
+    return { error: "missing_fields" };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("set_driver_account_status", {
+    p_driver_id: driverId,
+    p_status: status,
+  });
+
+  if (error) return { error: "save_failed" };
+
+  const payload = (data ?? {}) as { ok?: boolean; error?: string };
+  if (!payload.ok) {
+    if (payload.error === "driver_missing_active_restaurant") {
+      return { error: "missing_active_restaurant" };
+    }
+    if (payload.error === "driver_not_found") return { error: "driver_not_found" };
+    if (payload.error === "not_authorized") return { error: "not_authorized" };
+    return { error: "save_failed" };
+  }
+
+  void logAdminMutation({
+    action: "update",
+    entityType: "driver",
+    entityId: driverId,
+    routeName: "updateDriverAccountStatus",
+    after: { status },
+  });
+
+  return { success: true };
+}
 
 export async function regenerateDriverPasscode(
   driverId: string,

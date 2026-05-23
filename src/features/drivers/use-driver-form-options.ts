@@ -33,7 +33,8 @@ export type DriverFormOptions = {
 
 export async function fetchDriverFormOptions(): Promise<DriverFormOptions> {
   const supabase = createClient();
-  const [partners, zones, vehicles, { data: restaurants, error }] = await Promise.all([
+  const [partners, zones, vehicles, { data: restaurants, error }, { data: partnerRows }] =
+    await Promise.all([
     fetchPartners(),
     fetchZones(),
     fetchAvailableVehicles(),
@@ -41,9 +42,12 @@ export async function fetchDriverFormOptions(): Promise<DriverFormOptions> {
       .from("restaurants")
       .select("id, name, partner_id, status")
       .order("name"),
+    supabase.from("partners").select("id, name"),
   ]);
 
   if (error) throw error;
+
+  const partnerNameById = new Map((partnerRows ?? []).map((p) => [p.id, p.name]));
 
   return {
     partners: partners.map((p) => ({
@@ -61,6 +65,7 @@ export async function fetchDriverFormOptions(): Promise<DriverFormOptions> {
       id: r.id,
       name: r.name,
       partner_id: r.partner_id,
+      partner_name: r.partner_id ? partnerNameById.get(r.partner_id) ?? null : null,
       status: r.status,
     })),
   };

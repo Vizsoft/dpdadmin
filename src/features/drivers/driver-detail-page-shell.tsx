@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/table";
 import { useHasMounted } from "@/hooks/use-has-mounted";
 import { cn } from "@/lib/utils";
+import { DriverAccountStatusEditor } from "./driver-account-status-editor";
 import { DriverDocumentsTab } from "./driver-documents-tab";
 import { DriverEditSheet } from "./driver-edit-sheet";
 import { LinkedBadge, WorkflowStatusPill } from "./driver-workflow-ui";
@@ -474,6 +475,23 @@ function DriverDetailContent({ id }: { id: string }) {
         </div>
 
         <aside className="space-y-4">
+          {driver.linked_profile_id && !isArchived && canManage ? (
+            <Card className="rounded-xl border-border shadow-sm">
+              <CardHeader className="border-b border-border py-4">
+                <CardTitle className="text-sm font-semibold">
+                  {t("accountStatus.title")}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="py-4">
+                <DriverAccountStatusEditor
+                  driverId={driver.linked_profile_id}
+                  status={driver.account_status}
+                  hasPublishedRestaurant={driver.has_published_restaurant}
+                  canManage={canManage}
+                />
+              </CardContent>
+            </Card>
+          ) : null}
           {driver.linked_profile_id && !isArchived ? (
             <PasscodeCard
               driverId={driver.linked_profile_id}

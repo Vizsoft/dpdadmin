@@ -4,9 +4,14 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/auth/get-session";
 import { hasPermissionInSet } from "@/lib/auth/permissions";
 import {
+  applyRestaurantLogoFromForm,
+  deleteRestaurantLogoFiles,
+} from "@/features/restaurants/restaurant-logo-storage";
+import {
   parseRestaurantFormData,
   validateRestaurantCoordinates,
 } from "@/features/restaurants/parse-restaurant-form";
+import { resolveRestaurantLogoUrls } from "@/lib/storage/restaurant-logo-url";
 import { isDpdErrorKey, type DpdErrorKey } from "./dpd-errors";
 import {
   getDriverEarningsDetail,
@@ -37,6 +42,7 @@ export type DpdMutationResult = {
   error?: DpdErrorKey | string;
   success?: boolean;
   id?: string;
+  logoWarning?: string;
 };
 
 async function requireEarningsView() {
@@ -231,7 +237,7 @@ export async function fetchDpdScopeOptions(): Promise<DpdScopeOptions> {
       id: r.id,
       name: r.name,
       partner_id: r.partner_id,
-      partner_name: partnerMap.get(r.partner_id) ?? "—",
+      partner_name: r.partner_id ? (partnerMap.get(r.partner_id) ?? "—") : "—",
     })),
   };
 }
@@ -244,7 +250,7 @@ export async function fetchRestaurantsForAdmin(): Promise<RestaurantRow[]> {
     supabase
       .from("restaurants")
       .select(
-        "id, partner_id, zone_id, name, external_merchant_id, map_link, latitude, longitude, status, is_active, created_at",
+        "id, partner_id, zone_id, name, logo_url, external_merchant_id, map_link, latitude, longitude, status, is_active, created_at",
       )
       .order("name"),
     supabase.from("partners").select("id, name"),
@@ -258,14 +264,15 @@ export async function fetchRestaurantsForAdmin(): Promise<RestaurantRow[]> {
     (zones ?? []).map((z) => [z.id, `${z.name} (${z.code})`]),
   );
 
-  return (data ?? []).map((row) => {
+  const rows = (data ?? []).map((row) => {
     return {
       id: row.id,
       partner_id: row.partner_id,
-      partner_name: partnerMap.get(row.partner_id) ?? "—",
+      partner_name: row.partner_id ? (partnerMap.get(row.partner_id) ?? "—") : "—",
       zone_id: row.zone_id,
       zone_name: row.zone_id ? (zoneMap.get(row.zone_id) ?? "—") : "—",
       name: row.name,
+      logo_url: row.logo_url,
       external_merchant_id: row.external_merchant_id,
       map_link: row.map_link,
       latitude: row.latitude != null ? Number(row.latitude) : null,
@@ -275,6 +282,8 @@ export async function fetchRestaurantsForAdmin(): Promise<RestaurantRow[]> {
       created_at: row.created_at,
     };
   });
+
+  return resolveRestaurantLogoUrls(rows);
 }
 
 async function loadScopeLabelMaps(supabase: Awaited<ReturnType<typeof createClient>>) {
@@ -469,15 +478,15 @@ export async function saveRestaurant(formData: FormData): Promise<DpdMutationRes
     longitude,
   } = parsed;
 
-  if (!partnerId || !zoneId || !name) return { error: "missing_fields" };
+  if (!name) return { error: "missing_fields" };
 
   const coordError = validateRestaurantCoordinates(latitude, longitude);
   if (coordError) return { error: coordError };
 
   const supabase = await createClient();
   const payload = {
-    partner_id: partnerId,
-    zone_id: zoneId,
+    partner_id: partnerId || null,
+    zone_id: zoneId || null,
     name,
     external_merchant_id: externalMerchantId || null,
     map_link: mapLink || null,
@@ -489,7 +498,12 @@ export async function saveRestaurant(formData: FormData): Promise<DpdMutationRes
   };
 
   if (id) {
-    const { error } = await supabase.from("restaurants").update(payload).eq("id", id);
+    const logoResult = await applyRestaurantLogoFromForm(id, formData, session.id);
+    const patch = {
+      ...payload,
+      ...(logoResult.logoUrl !== undefined ? { logo_url: logoResult.logoUrl } : {}),
+    };
+    const { error } = await supabase.from("restaurants").update(patch).eq("id", id);
     if (error) {
       if (error.code === "23505") return { error: "restaurant_exists" };
       return { error: "save_failed" };
@@ -501,7 +515,7 @@ export async function saveRestaurant(formData: FormData): Promise<DpdMutationRes
       routeName: "saveRestaurant",
       after: { name, partner_id: partnerId, zone_id: zoneId, status },
     });
-    return { success: true, id };
+    return { success: true, id, logoWarning: logoResult.logoWarning };
   }
 
   const { data, error } = await supabase
@@ -514,6 +528,18 @@ export async function saveRestaurant(formData: FormData): Promise<DpdMutationRes
     if (error.code === "23505") return { error: "restaurant_exists" };
     return { error: "save_failed" };
   }
+
+  const logoResult = await applyRestaurantLogoFromForm(data.id, formData, session.id);
+  if (logoResult.logoUrl !== undefined) {
+    await supabase
+      .from("restaurants")
+      .update({
+        logo_url: logoResult.logoUrl,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", data.id);
+  }
+
   void logAdminMutation({
     action: "create",
     entityType: "restaurant",
@@ -521,7 +547,7 @@ export async function saveRestaurant(formData: FormData): Promise<DpdMutationRes
     routeName: "saveRestaurant",
     after: { name, partner_id: partnerId, zone_id: zoneId, status },
   });
-  return { success: true, id: data.id };
+  return { success: true, id: data.id, logoWarning: logoResult.logoWarning };
 }
 
 export async function deleteRestaurant(id: string): Promise<DpdMutationResult> {
@@ -530,6 +556,7 @@ export async function deleteRestaurant(id: string): Promise<DpdMutationResult> {
   if (!id) return { error: "missing_fields" };
 
   const supabase = await createClient();
+  await deleteRestaurantLogoFiles(id);
   const { error } = await supabase.from("restaurants").delete().eq("id", id);
   if (error) return { error: "delete_failed" };
   void logAdminMutation({

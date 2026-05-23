@@ -103,9 +103,9 @@ export function DriverEditSheet({
     restrictDigits(driver.civil_id, CIVIL_ID_DIGIT_COUNT),
   );
   const [employeeId, setEmployeeId] = useState(driver.employee_id ?? "");
-  const [partnerId, setPartnerId] = useState(driver.partner_id);
+  const [partnerId, setPartnerId] = useState(driver.partner_id ?? "");
   const [restaurantIds, setRestaurantIds] = useState<string[]>(driver.restaurant_ids);
-  const [zoneId, setZoneId] = useState(driver.zone_id);
+  const [zoneId, setZoneId] = useState(driver.zone_id ?? "");
   const [vehicleId, setVehicleId] = useState(
     driver.vehicle_id ?? NONE_VEHICLE,
   );
@@ -140,9 +140,9 @@ export function DriverEditSheet({
     setFullName(driver.full_name);
     setPhone(phoneStorageToDigits(driver.phone));
     setCivilId(restrictDigits(driver.civil_id, CIVIL_ID_DIGIT_COUNT));
-    setPartnerId(driver.partner_id);
+    setPartnerId(driver.partner_id ?? "");
     setRestaurantIds(driver.restaurant_ids);
-    setZoneId(driver.zone_id);
+    setZoneId(driver.zone_id ?? "");
     setVehicleId(driver.vehicle_id ?? NONE_VEHICLE);
     setWorkflowStatus(driver.workflow_status);
     const issued = hasAnyAssetIssued(driver.assets_issued);
@@ -222,17 +222,6 @@ export function DriverEditSheet({
   const handlePartnerChange = (nextPartnerId: string) => {
     setPartnerId(nextPartnerId);
     clearFieldError("partnerId");
-    if (!nextPartnerId) {
-      setRestaurantIds([]);
-      return;
-    }
-    setRestaurantIds((prev) =>
-      prev.filter((id) =>
-        allRestaurants.some(
-          (r) => r.id === id && r.partner_id === nextPartnerId && r.status === "published",
-        ),
-      ),
-    );
   };
 
   const showFieldError = (field: DriverFormField) =>
@@ -492,7 +481,6 @@ export function DriverEditSheet({
               {tNew("sections.restaurantsDescription")}
             </p>
             <DriverRestaurantPicker
-              partnerId={partnerId}
               restaurants={allRestaurants}
               selectedIds={restaurantIds}
               onChange={setRestaurantIds}

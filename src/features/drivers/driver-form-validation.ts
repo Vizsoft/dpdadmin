@@ -11,6 +11,9 @@ import type { DriverErrorKey } from "./driver-errors";
 
 export const NONE_VEHICLE = "__none__";
 
+export const NONE_PARTNER = "__none_partner__";
+export const NONE_ZONE = "__none_zone__";
+
 export type DriverFormField =
   | "fullName"
   | "phone"
@@ -67,14 +70,6 @@ export function validateDriverForm(
     errors.civilId = "missing_fields";
   } else if (!isValidCivilIdDigits(civilDigits)) {
     errors.civilId = "invalid_civil_id";
-  }
-
-  if (!input.partnerId.trim()) {
-    errors.partnerId = "missing_fields";
-  }
-
-  if (!input.zoneId.trim()) {
-    errors.zoneId = "missing_fields";
   }
 
   for (const docType of DOCUMENT_TYPES) {

@@ -1,6 +1,6 @@
 import type { DriverDocumentType } from "@/features/drivers/types";
 
-const ALLOWED_PREFIXES = ["drivers/", "partners/"] as const;
+const ALLOWED_PREFIXES = ["drivers/", "partners/", "restaurants/"] as const;
 
 export function isAllowedStorageKey(key: string): boolean {
   const normalized = key.trim().replace(/^\/+/, "");
@@ -12,7 +12,17 @@ export function isR2ObjectKey(value: string | null | undefined): boolean {
   if (!value) return false;
   const v = value.trim();
   if (v.startsWith("http://") || v.startsWith("https://")) return false;
-  return v.startsWith("drivers/") || v.startsWith("partners/");
+  return v.startsWith("drivers/") || v.startsWith("partners/") || v.startsWith("restaurants/");
+}
+
+export function buildRestaurantLogoKey(restaurantId: string, ext: string): string {
+  return `restaurants/${restaurantId}/logo.${ext}`;
+}
+
+export function allRestaurantLogoKeys(restaurantId: string): string[] {
+  return ["png", "jpg", "jpeg", "webp", "svg"].map((ext) =>
+    buildRestaurantLogoKey(restaurantId, ext),
+  );
 }
 
 export function extensionFromMime(mime: string): "pdf" | "png" | "webp" | "jpg" {

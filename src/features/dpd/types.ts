@@ -16,11 +16,13 @@ export const INCENTIVE_REWARD_MODES: IncentiveRewardMode[] = ["fixed", "per_deli
 
 export type RestaurantRow = {
   id: string;
-  partner_id: string;
+  partner_id: string | null;
   partner_name: string;
   zone_id: string | null;
   zone_name: string;
   name: string;
+  logo_url: string | null;
+  logo_display_url: string | null;
   external_merchant_id: string | null;
   map_link: string | null;
   latitude: number | null;
@@ -86,7 +88,7 @@ export type IncentiveRuleRow = {
 export type DpdScopeOptions = {
   zones: { id: string; name: string; code: string }[];
   partners: { id: string; name: string }[];
-  restaurants: { id: string; name: string; partner_id: string; partner_name: string }[];
+  restaurants: { id: string; name: string; partner_id: string | null; partner_name: string }[];
 };
 
 export type DeliveryValidationResult = {

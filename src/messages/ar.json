@@ -356,6 +356,22 @@
         "regenerateFailed": "تعذر إعادة إنشاء الرمز. حاول مرة أخرى.",
         "ariaRevealed": "تم كشف رمز تطبيق السائق",
         "ariaHidden": "رمز تطبيق السائق مخفي"
+      },
+      "accountStatus": {
+        "title": "حالة الحساب",
+        "label": "تسجيل دخول تطبيق السائق",
+        "active": "نشط",
+        "suspended": "موقوف",
+        "pending": "قيد الانتظار",
+        "updated": "تم تحديث حالة الحساب",
+        "restaurantRequired": "عيّن مطعماً واحداً منشوراً على الأقل قبل التفعيل.",
+        "missingRestaurant": "لا يمكن التفعيل — يحتاج السائق مطعماً منشوراً واحداً على الأقل.",
+        "errors": {
+          "missing_active_restaurant": "يجب أن يكون لدى السائق مطعم منشور واحد على الأقل للتفعيل.",
+          "driver_not_found": "لم يُعثر على سجل السائق.",
+          "not_authorized": "ليس لديك صلاحية تغيير حالة الحساب.",
+          "save_failed": "تعذر تحديث حالة الحساب. حاول مرة أخرى."
+        }
       }
     },
     "driverNew": {
@@ -372,7 +388,7 @@
         "basic": "البيانات الأساسية",
         "assignment": "التعيين",
         "restaurants": "المطاعم",
-        "restaurantsDescription": "اختياري — عيّن المتاجر التي يوصّل لها هذا السائق (يجب أن تتطابق مع الشريك المحدد)",
+        "restaurantsDescription": "اختياري — عيّن المتاجر المنشورة التي يوصّل لها هذا السائق. مطلوب مطعم واحد على الأقل قبل تفعيل الحساب.",
         "assets": "الأصول المُسلّمة",
         "documents": "المستندات",
         "documentsDescription": "جميع المرفقات اختيارية — أضف الملفات الآن أو أكملها لاحقًا."
@@ -383,8 +399,8 @@
         "phone": "رقم الجوال",
         "civilId": "الرقم المدني",
         "driverCode": "رقم السائق",
-        "partner": "الشريك",
-        "zone": "المنطقة",
+        "partner": "الشريك (اختياري)",
+        "zone": "المنطقة (اختياري)",
         "vehicle": "تعيين مركبة"
       },
       "placeholders": {
@@ -428,8 +444,9 @@
       "addPartnerLink": "أضف شريكاً",
       "emptyZones": "لا توجد مناطق بعد.",
       "addZoneLink": "أضف منطقة",
-      "restaurantsSelectPartnerFirst": "اختر الشريك أولاً لاختيار المطاعم.",
-      "restaurantsEmptyForPartner": "لا توجد مطاعم نشطة لهذا الشريك.",
+      "restaurantsEmpty": "لا توجد مطاعم منشورة بعد.",
+      "restaurantsUnassignedGroup": "غير معيّن",
+      "restaurantsActivationHint": "يحتاج السائق مطعماً منشوراً واحداً على الأقل قبل تفعيل الحساب.",
       "addRestaurantLink": "أضف مطاعم",
       "errors": {
         "not_authorized": "ليس لديك صلاحية إدارة السائقين",
@@ -446,7 +463,9 @@
         "invalid_file_type": "استخدم PDF أو PNG أو JPG أو WebP",
         "upload_failed": "فشل رفع المستند",
         "r2_not_configured": "تخزين الملفات غير مُعد. أعد Cloudflare R2 من الإعدادات أولاً.",
-        "invalid_restaurants": "واحد أو أكثر من المطاعم لا يتبع الشريك المحدد",
+        "invalid_restaurants": "واحد أو أكثر من المطاعم المحددة غير منشور أو غير نشط",
+        "missing_active_restaurant": "يجب أن يكون لدى السائق النشط مطعم منشور واحد على الأقل",
+        "driver_not_found": "لم يُعثر على سجل السائق",
         "save_failed": "تعذر حفظ السائق. حاول مرة أخرى."
       }
     },
@@ -495,9 +514,10 @@
       "createRestaurant": "إنشاء مطعم",
       "clearPin": "إزالة التثبيت",
       "fields": {
-        "partner": "الشريك",
-        "zone": "المنطقة",
+        "partner": "الشريك (اختياري)",
+        "zone": "المنطقة (اختياري)",
         "name": "اسم المطعم",
+        "logo": "الشعار",
         "externalMerchantId": "معرّف التاجر الخارجي",
         "mapLink": "رابط الخريطة",
         "location": "الموقع",
@@ -506,8 +526,9 @@
         "status": "الحالة"
       },
       "placeholders": {
-        "selectPartner": "اختر الشريك",
-        "selectZone": "اختر المنطقة",
+        "selectPartner": "اختر الشريك (اختياري)",
+        "selectZone": "اختر المنطقة (اختياري)",
+        "selectNone": "لا شيء",
         "name": "مثال: طلبات — السالمية",
         "mapLink": "https://maps.google.com/?q=...",
         "searchPlace": "ابحث عن مكان…"
@@ -521,17 +542,24 @@
         "googleMapsAuthFailed": "Google Maps رفض هذا الموقع (المرجع غير مسموح لهذا المفتاح).",
         "googleMapsReferrerFix": "في Google Cloud → Credentials → مفتاح Maps → قيود المواقع، أضف https://dpdadmin.vercel.app/* و http://localhost:3000/*. فعّل Maps JavaScript API و Places API. تأكد أن Vercel يستخدم نفس المفتاح.",
         "googleMapsLoadFailed": "تعذر تحميل Google Maps. تحقق من حاصر الإعلانات وقيود المفتاح وأعد النشر بعد تغيير المتغيرات.",
-        "status": "يظهر المطاعم المنشورة فقط عند إضافة سائق."
+        "status": "يظهر المطاعم المنشورة فقط عند إضافة سائق.",
+        "logo": "PNG أو JPG أو WebP أو SVG · بحد أقصى 2 ميجابايت. يظهر في قائمة المطاعم وتطبيق السائق."
       },
+      "noLogo": "بدون شعار",
+      "uploadLogo": "رفع الشعار",
+      "removeLogo": "إزالة الشعار",
       "errors": {
         "not_authorized": "ليس لديك صلاحية إدارة المطاعم",
-        "missing_fields": "الشريك والمنطقة والاسم مطلوبة",
+        "missing_fields": "اسم المطعم مطلوب",
         "noPartners": "أضف شريكاً قبل إنشاء المطاعم.",
         "noZones": "أضف منطقة قبل إنشاء المطاعم.",
         "save_failed": "تعذر حفظ المطعم",
         "delete_failed": "تعذر حذف المطعم",
         "restaurant_exists": "يوجد مطعم بهذا الاسم لنفس الشريك",
-        "invalid_coordinates": "يجب تعيين خط العرض وخط الطول معاً ضمن النطاق الصحيح."
+        "invalid_coordinates": "يجب تعيين خط العرض وخط الطول معاً ضمن النطاق الصحيح.",
+        "file_too_large": "يجب أن يكون الشعار 2 ميجابايت أو أقل",
+        "invalid_type": "استخدم PNG أو JPG أو WebP أو SVG للشعار",
+        "upload_failed": "تعذر رفع الشعار"
       }
     },
     "deliveries": {

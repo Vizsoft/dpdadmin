@@ -216,17 +216,6 @@ function AddDriverForm() {
   const handlePartnerChange = (nextPartnerId: string) => {
     setPartnerId(nextPartnerId);
     clearFieldError("partnerId");
-    if (!nextPartnerId) {
-      setRestaurantIds([]);
-      return;
-    }
-    setRestaurantIds((prev) =>
-      prev.filter((id) =>
-        allRestaurants.some(
-          (r) => r.id === id && r.partner_id === nextPartnerId && r.status === "published",
-        ),
-      ),
-    );
   };
 
   const showFieldError = (field: DriverFormField) =>
@@ -457,7 +446,6 @@ function AddDriverForm() {
           description={t("sections.restaurantsDescription")}
         >
           <DriverRestaurantPicker
-            partnerId={partnerId}
             restaurants={allRestaurants}
             selectedIds={restaurantIds}
             onChange={setRestaurantIds}

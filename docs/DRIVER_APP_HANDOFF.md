@@ -40,6 +40,7 @@ The admin panel auto-issues a **6-digit numeric passcode** (`drivers.app_passcod
 - `app_passcode ~ '^[0-9]{6}$'` (check constraint)
 - `UNIQUE` partial index across non-null values (no two drivers share a code)
 - `BEFORE INSERT OR UPDATE OF status` trigger mints a code the first time `status` becomes `active`
+- **`drivers.status = 'active'` is blocked** unless the driver has ≥1 **published + active** restaurant in `driver_restaurants` (helper `driver_has_active_restaurant`, trigger on `drivers` + auto-downgrade when restaurants are removed). Admins set status via RPC `set_driver_account_status(p_driver_id, p_status)` on `/drivers/[id]`.
 
 ### 2b. First-time link (OTP — kept as a one-shot bootstrap)
 
@@ -154,10 +155,12 @@ When admin sets `status = verified`, Postgres runs `recalculate_driver_earnings(
 ### `restaurants` (admin-managed)
 | Column | Type | Notes |
 |--------|------|-------|
-| partner_id | uuid | FK → partners |
-| name | text | Display name |
+| partner_id | uuid | Optional FK → partners |
+| zone_id | uuid | Optional FK → zones |
+| name | text | Required display name |
 | external_merchant_id | text | Optional ID from partner app |
-| is_active | boolean | |
+| status | enum | draft, published, archived — only **published** rows are selectable for drivers |
+| is_active | boolean | Must be true for driver activation gate |
 
 Configured in admin **Settings → DPD → Restaurants**.
 

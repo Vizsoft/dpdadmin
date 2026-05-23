@@ -421,7 +421,23 @@ function RestaurantsPageContent() {
                       }}
                     >
                       <TableCell>
-                        <p className="truncate font-medium text-foreground">{row.name}</p>
+                        <div className="flex items-center gap-2.5">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted/40">
+                            {row.logo_display_url ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={row.logo_display_url}
+                                alt=""
+                                className="h-full w-full object-contain p-0.5"
+                              />
+                            ) : (
+                              <span className="text-[9px] font-medium text-muted-foreground">
+                                {row.name.slice(0, 2).toUpperCase()}
+                              </span>
+                            )}
+                          </div>
+                          <p className="truncate font-medium text-foreground">{row.name}</p>
+                        </div>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {row.partner_name}

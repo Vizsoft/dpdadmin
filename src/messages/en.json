@@ -356,6 +356,22 @@
         "regenerateFailed": "Could not regenerate the passcode. Please try again.",
         "ariaRevealed": "Driver app passcode revealed",
         "ariaHidden": "Driver app passcode hidden"
+      },
+      "accountStatus": {
+        "title": "Account status",
+        "label": "Driver app login",
+        "active": "Active",
+        "suspended": "Suspended",
+        "pending": "Pending",
+        "updated": "Account status updated",
+        "restaurantRequired": "Assign at least one published restaurant before activating.",
+        "missingRestaurant": "Cannot activate — driver needs at least one published restaurant.",
+        "errors": {
+          "missing_active_restaurant": "Driver must have at least one published restaurant to go active.",
+          "driver_not_found": "Driver record not found.",
+          "not_authorized": "You do not have permission to change account status.",
+          "save_failed": "Could not update account status. Please try again."
+        }
       }
     },
     "driverNew": {
@@ -372,7 +388,7 @@
         "basic": "Basic Details",
         "assignment": "Assignment",
         "restaurants": "Restaurants",
-        "restaurantsDescription": "Optional — assign merchants this driver delivers for (must match the selected partner)",
+        "restaurantsDescription": "Optional — assign published merchants this driver delivers for. At least one is required before the account can be set to active.",
         "assets": "Assets Issued",
         "documents": "Documents",
         "documentsDescription": "All uploads are optional — add files now or complete them later."
@@ -383,8 +399,8 @@
         "phone": "Mobile number",
         "civilId": "Civil ID",
         "driverCode": "Driver ID",
-        "partner": "Partner",
-        "zone": "Zone",
+        "partner": "Partner (optional)",
+        "zone": "Zone (optional)",
         "vehicle": "Assign Vehicle"
       },
       "placeholders": {
@@ -428,8 +444,9 @@
       "addPartnerLink": "Add a partner",
       "emptyZones": "No zones yet.",
       "addZoneLink": "Add a zone",
-      "restaurantsSelectPartnerFirst": "Select a partner first to choose restaurants.",
-      "restaurantsEmptyForPartner": "No published restaurants for this partner.",
+      "restaurantsEmpty": "No published restaurants yet.",
+      "restaurantsUnassignedGroup": "Unassigned",
+      "restaurantsActivationHint": "Drivers need at least one published restaurant before their account can be set to active.",
       "addRestaurantLink": "Add restaurants",
       "errors": {
         "not_authorized": "You do not have permission to manage drivers",
@@ -446,7 +463,9 @@
         "invalid_file_type": "Use PDF, PNG, JPG, or WebP",
         "upload_failed": "Document upload failed",
         "r2_not_configured": "File storage is not configured. Set up Cloudflare R2 in Settings first.",
-        "invalid_restaurants": "One or more restaurants do not belong to the selected partner",
+        "invalid_restaurants": "One or more selected restaurants are not published or active",
+        "missing_active_restaurant": "Active drivers must have at least one published restaurant",
+        "driver_not_found": "Driver record not found",
         "save_failed": "Could not save the driver. Please try again."
       }
     },
@@ -495,9 +514,10 @@
       "createRestaurant": "Create restaurant",
       "clearPin": "Clear pin",
       "fields": {
-        "partner": "Partner",
-        "zone": "Zone",
+        "partner": "Partner (optional)",
+        "zone": "Zone (optional)",
         "name": "Restaurant name",
+        "logo": "Logo",
         "externalMerchantId": "External merchant ID",
         "mapLink": "Map link",
         "location": "Location",
@@ -506,8 +526,9 @@
         "status": "Status"
       },
       "placeholders": {
-        "selectPartner": "Select partner",
-        "selectZone": "Select zone",
+        "selectPartner": "Select partner (optional)",
+        "selectZone": "Select zone (optional)",
+        "selectNone": "None",
         "name": "e.g. Talabat — Salmiya",
         "mapLink": "https://maps.google.com/?q=...",
         "searchPlace": "Search place name…"
@@ -521,17 +542,24 @@
         "googleMapsAuthFailed": "Google Maps blocked this site (referrer not allowed for this API key).",
         "googleMapsReferrerFix": "In Google Cloud → Credentials → your Maps key → Website restrictions, use https://dpdadmin.vercel.app/* and http://localhost:3000/* (not only the root URL). Enable Maps JavaScript API and Places API. Ensure Vercel uses the same key.",
         "googleMapsLoadFailed": "Google Maps failed to load. Check ad blockers, API key restrictions, and redeploy after env changes.",
-        "status": "Only published restaurants are selectable when adding a driver."
+        "status": "Only published restaurants are selectable when adding a driver.",
+        "logo": "PNG, JPG, WebP, or SVG · max 2 MB. Shown in the restaurants list and driver app."
       },
+      "noLogo": "No logo",
+      "uploadLogo": "Upload logo",
+      "removeLogo": "Remove logo",
       "errors": {
         "not_authorized": "You do not have permission to manage restaurants",
-        "missing_fields": "Partner, zone, and name are required",
+        "missing_fields": "Restaurant name is required",
         "noPartners": "Add a partner before creating restaurants.",
         "noZones": "Add a zone before creating restaurants.",
         "save_failed": "Could not save the restaurant",
         "delete_failed": "Could not delete the restaurant",
         "restaurant_exists": "A restaurant with this name already exists for this partner",
-        "invalid_coordinates": "Latitude and longitude must both be set and within valid ranges."
+        "invalid_coordinates": "Latitude and longitude must both be set and within valid ranges.",
+        "file_too_large": "Logo must be 2 MB or smaller",
+        "invalid_type": "Use PNG, JPG, WebP, or SVG for the logo",
+        "upload_failed": "Logo upload failed"
       }
     },
     "deliveries": {

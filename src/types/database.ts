@@ -511,7 +511,7 @@ export type Database = {
           import_batch_id: string | null
           matched_count: number
           notes: string | null
-          partner_id: string
+          partner_id: string | null
           reconciled_at: string | null
           reported_count: number
           restaurant_id: string
@@ -530,7 +530,7 @@ export type Database = {
           import_batch_id?: string | null
           matched_count?: number
           notes?: string | null
-          partner_id: string
+          partner_id: string | null
           reconciled_at?: string | null
           reported_count: number
           restaurant_id: string
@@ -1007,14 +1007,14 @@ export type Database = {
           linked: boolean
           linked_profile_id: string | null
           otp_code: string | null
-          partner_id: string
+          partner_id?: string | null
           phone: string
           restaurant_id: string | null
           status: Database["public"]["Enums"]["driver_intake_status"]
           updated_at: string
           vehicle_id: string | null
           workflow_status: Database["public"]["Enums"]["driver_workflow_status"]
-          zone_id: string
+          zone_id: string | null
         }
         Insert: {
           archived_at?: string | null
@@ -1027,14 +1027,14 @@ export type Database = {
           linked?: boolean
           linked_profile_id?: string | null
           otp_code?: string | null
-          partner_id: string
+          partner_id?: string | null
           phone: string
           restaurant_id?: string | null
           status?: Database["public"]["Enums"]["driver_intake_status"]
           updated_at?: string
           vehicle_id?: string | null
           workflow_status?: Database["public"]["Enums"]["driver_workflow_status"]
-          zone_id: string
+          zone_id?: string | null
         }
         Update: {
           archived_at?: string | null
@@ -1047,14 +1047,14 @@ export type Database = {
           linked?: boolean
           linked_profile_id?: string | null
           otp_code?: string | null
-          partner_id?: string
+          partner_id?: string | null
           phone?: string
           restaurant_id?: string | null
           status?: Database["public"]["Enums"]["driver_intake_status"]
           updated_at?: string
           vehicle_id?: string | null
           workflow_status?: Database["public"]["Enums"]["driver_workflow_status"]
-          zone_id?: string
+          zone_id?: string | null
         }
         Relationships: [
           {
@@ -1934,7 +1934,8 @@ export type Database = {
           longitude: number | null
           map_link: string | null
           name: string
-          partner_id: string
+          logo_url: string | null
+          partner_id: string | null
           restaurant_code: string
           status: Database["public"]["Enums"]["restaurant_status"]
           updated_at: string
@@ -1950,7 +1951,8 @@ export type Database = {
           longitude?: number | null
           map_link?: string | null
           name: string
-          partner_id: string
+          logo_url?: string | null
+          partner_id?: string | null
           restaurant_code?: string
           status?: Database["public"]["Enums"]["restaurant_status"]
           updated_at?: string
@@ -1966,7 +1968,8 @@ export type Database = {
           longitude?: number | null
           map_link?: string | null
           name?: string
-          partner_id?: string
+          logo_url?: string | null
+          partner_id?: string | null
           restaurant_code?: string
           status?: Database["public"]["Enums"]["restaurant_status"]
           updated_at?: string
@@ -2457,6 +2460,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      driver_has_active_restaurant: {
+        Args: { p_driver_id: string }
+        Returns: boolean
+      }
       generate_driver_app_passcode: { Args: never; Returns: string }
       is_admin_panel_user: { Args: never; Returns: boolean }
       is_current_driver: { Args: { driver_uuid: string }; Returns: boolean }
@@ -2518,6 +2525,10 @@ export type Database = {
       }
       regenerate_driver_app_passcode: {
         Args: { p_driver_id: string }
+        Returns: Json
+      }
+      set_driver_account_status: {
+        Args: { p_driver_id: string; p_status: string }
         Returns: Json
       }
       register_or_sync_rider_profile: {

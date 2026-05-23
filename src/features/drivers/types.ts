@@ -33,8 +33,8 @@ export type DriverIntakeRow = {
   full_name: string;
   civil_id: string;
   driver_code: string;
-  partner_id: string;
-  zone_id: string;
+  partner_id: string | null;
+  zone_id: string | null;
   vehicle_id: string | null;
   assets_issued: Record<string, boolean>;
   status: DriverIntakeStatus;
@@ -66,7 +66,8 @@ export type ZoneOption = {
 export type RestaurantOption = {
   id: string;
   name: string;
-  partner_id: string;
+  partner_id: string | null;
+  partner_name?: string | null;
   status: "draft" | "published" | "archived";
 };
 
@@ -119,8 +120,8 @@ export type DriverDetailModel = {
   partner_name: string;
   zone_label: string;
   vehicle_label: string | null;
-  partner_id: string;
-  zone_id: string;
+  partner_id: string | null;
+  zone_id: string | null;
   vehicle_id: string | null;
   workflow_status: DriverWorkflowStatus;
   linked: boolean;
@@ -130,6 +131,7 @@ export type DriverDetailModel = {
   assets_issued: Record<string, boolean>;
   restaurant_ids: string[];
   restaurant_names: string[];
+  has_published_restaurant: boolean;
   app_passcode: string | null;
   account_status: DriverAccountStatus;
   archived_at: string | null;

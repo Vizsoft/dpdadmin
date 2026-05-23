@@ -1,14 +1,15 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2, Trash2 } from "lucide-react";
+import { Loader2, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/auth-context";
 import { canManageRestaurants } from "@/lib/auth/permissions";
 import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -61,6 +62,7 @@ function RestaurantFormBody({
   const canManage = canManageRestaurants(new Set(permissions), isSuperAdmin);
   const queryClient = useQueryClient();
   const [isPending, startTransition] = useTransition();
+  const fileRef = useRef<HTMLInputElement>(null);
   const { data: partners = [], isLoading: partnersLoading } =
     useRestaurantPartnerOptions();
   const { data: zones = [], isLoading: zonesLoading } = useRestaurantZoneOptions();
@@ -80,6 +82,27 @@ function RestaurantFormBody({
   const [status, setStatus] = useState<RestaurantStatus>(
     restaurant?.status ?? "draft",
   );
+  const [logoPreview, setLogoPreview] = useState<string | null>(
+    restaurant?.logo_display_url ?? null,
+  );
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [removeLogo, setRemoveLogo] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      if (logoPreview?.startsWith("blob:")) {
+        URL.revokeObjectURL(logoPreview);
+      }
+    };
+  }, [logoPreview]);
+
+  const handleLogoChange = (file: File | null) => {
+    if (!file) return;
+    setLogoFile(file);
+    setRemoveLogo(false);
+    if (logoPreview?.startsWith("blob:")) URL.revokeObjectURL(logoPreview);
+    setLogoPreview(URL.createObjectURL(file));
+  };
 
   const fieldLabels = {
     partner: t("fields.partner"),
@@ -97,6 +120,7 @@ function RestaurantFormBody({
     statusHint: t("hints.status"),
     selectPartner: t("placeholders.selectPartner"),
     selectZone: t("placeholders.selectZone"),
+    selectNone: t("placeholders.selectNone"),
     namePlaceholder: t("placeholders.name"),
     mapLinkPlaceholder: t("placeholders.mapLink"),
     statusDraft: t("statusDraft"),
@@ -120,7 +144,7 @@ function RestaurantFormBody({
   };
 
   const handleSave = () => {
-    if (!partnerId.trim() || !zoneId.trim() || !name.trim()) {
+    if (!name.trim()) {
       toast.error(t("errors.missing_fields"));
       return;
     }
@@ -141,11 +165,16 @@ function RestaurantFormBody({
         formData.append("latitude", "");
         formData.append("longitude", "");
       }
+      if (logoFile) formData.append("logo", logoFile);
+      if (removeLogo) formData.append("removeLogo", "true");
 
       const result = await saveRestaurant(formData);
       if (result.error) {
         toast.error(errorToast(t, result.error));
         return;
+      }
+      if (result.logoWarning && isRestaurantErrorKey(result.logoWarning)) {
+        toast.warning(t(`errors.${result.logoWarning}`));
       }
       toast.success(isEdit ? t("restaurantUpdated") : t("restaurantCreated"));
       await invalidate();
@@ -172,6 +201,59 @@ function RestaurantFormBody({
         </DialogHeader>
 
         <div className="flex-1 space-y-4 overflow-y-auto px-6 py-4">
+          <div className="space-y-2">
+            <Label>{t("fields.logo")}</Label>
+            <div className="flex items-start gap-4">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted/40">
+                {logoPreview && !removeLogo ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={logoPreview}
+                    alt=""
+                    className="h-full w-full object-contain p-1"
+                  />
+                ) : (
+                  <span className="text-[10px] text-muted-foreground">{t("noLogo")}</span>
+                )}
+              </div>
+              <div className="flex flex-col gap-2">
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                  className="hidden"
+                  onChange={(e) => handleLogoChange(e.target.files?.[0] ?? null)}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="cursor-pointer rounded-lg"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={!canManage}
+                >
+                  <Upload className="me-2 h-3.5 w-3.5" />
+                  {t("uploadLogo")}
+                </Button>
+                {logoPreview && !removeLogo && canManage ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="cursor-pointer text-destructive hover:text-destructive"
+                    onClick={() => {
+                      setRemoveLogo(true);
+                      setLogoFile(null);
+                      setLogoPreview(null);
+                    }}
+                  >
+                    {t("removeLogo")}
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+            <p className="text-[11px] text-muted-foreground">{t("hints.logo")}</p>
+          </div>
           <RestaurantFormFields
             labels={fieldLabels}
             partnerId={partnerId}
@@ -233,7 +315,7 @@ function RestaurantFormBody({
                 type="button"
                 className="cursor-pointer rounded-lg"
                 onClick={handleSave}
-                disabled={isPending || !partnerId || !zoneId || !name.trim()}
+                disabled={isPending || !name.trim()}
               >
                 {isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
