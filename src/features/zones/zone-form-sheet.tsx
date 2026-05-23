@@ -8,12 +8,10 @@ import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  Dialog,
-  DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,7 +22,6 @@ import {
   type ZoneGeometryType,
   type ZoneGeoFeature,
 } from "@/lib/geo/zone-geometry";
-import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import { ZoneColorPicker } from "./zone-color-picker";
 import {
   isPaletteColor,
@@ -36,7 +33,7 @@ import { ZonePlaceSearch } from "./zone-place-search";
 import type { ZoneMapAdapter, ZoneMapViewport } from "./zone-map-adapter";
 import { DEFAULT_GEOFENCE_SETTINGS } from "./geofence-defaults";
 import { ZoneGeofenceFields } from "./zone-geofence-fields";
-import { createZone, deleteZone, updateZone } from "./zones-actions";
+import { createZone, updateZone } from "./zones-actions";
 import { isZoneErrorKey } from "./zone-errors";
 import type { ZoneGeofenceSettings, ZoneRow } from "./types";
 import { formatZoneArea, zoneAreaSqKm } from "@/lib/geo/zone-area";
@@ -51,28 +48,23 @@ function zoneErrorToast(
   return t("errors.save_failed");
 }
 
-type ZoneFormSheetProps = {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  zone?: ZoneRow | null;
-  existingZones?: ZoneRow[];
-  onSaved: () => void;
-  onDeleted: () => void;
-};
-
-function ZoneFormBody({
-  zone,
-  existingZones,
-  onClose,
-  onSaved,
-  onRequestDelete,
-}: {
+export type ZoneFormBodyProps = {
   zone: ZoneRow | null;
   existingZones: ZoneRow[];
   onClose: () => void;
   onSaved: () => void;
   onRequestDelete: () => void;
-}) {
+  asPage?: boolean;
+};
+
+export function ZoneFormBody({
+  zone,
+  existingZones,
+  onClose,
+  onSaved,
+  onRequestDelete,
+  asPage = false,
+}: ZoneFormBodyProps) {
   const t = useTranslations("pages.zones");
   const { can } = useAuth();
   const canManage = can("zones.manage");
@@ -294,12 +286,21 @@ function ZoneFormBody({
       </div>
 
       <div className="order-2 flex min-h-0 w-full shrink-0 flex-col lg:order-1 lg:w-[420px] lg:min-w-[380px]">
-        <DialogHeader className="border-b border-border px-6 py-4 pr-14">
-          <DialogTitle className="text-lg">{isEdit ? t("editZoneTitle") : t("addZoneTitle")}</DialogTitle>
-          <DialogDescription className="sr-only">
-            {isEdit ? t("editZoneTitle") : t("addZoneTitle")}
-          </DialogDescription>
-        </DialogHeader>
+        {asPage ? (
+          <div className="border-b border-border px-6 py-4">
+            <p className="text-xs text-muted-foreground">
+              {t("geofence.pageTitle")} &gt; {isEdit ? t("editZoneTitle") : t("addZoneTitle")}
+            </p>
+            <p className="text-lg font-semibold">{isEdit ? t("editZoneTitle") : t("addZoneTitle")}</p>
+          </div>
+        ) : (
+          <DialogHeader className="border-b border-border px-6 py-4 pr-14">
+            <DialogTitle className="text-lg">{isEdit ? t("editZoneTitle") : t("addZoneTitle")}</DialogTitle>
+            <DialogDescription className="sr-only">
+              {isEdit ? t("editZoneTitle") : t("addZoneTitle")}
+            </DialogDescription>
+          </DialogHeader>
+        )}
 
         <div className="flex-1 space-y-4 overflow-y-auto px-6 py-4">
           <div className="rounded-lg border border-border/70 bg-muted/20 px-3 py-2">
@@ -524,68 +525,5 @@ function ZoneFormBody({
         </div>
       </div>
     </div>
-  );
-}
-
-export function ZoneFormSheet({
-  open,
-  onOpenChange,
-  zone,
-  existingZones = [],
-  onSaved,
-  onDeleted,
-}: ZoneFormSheetProps) {
-  const t = useTranslations("pages.zones");
-  const [deleteOpen, setDeleteOpen] = useState(false);
-
-  const runDelete = async () => {
-    if (!zone) return;
-    const force = zone.driver_count > 0;
-    const result = await deleteZone(zone.id, force);
-    if (result.error) {
-      toast.error(zoneErrorToast(t, result.error));
-      throw new Error(result.error);
-    }
-    toast.success(t("deleted"));
-    onOpenChange(false);
-    onDeleted();
-  };
-
-  return (
-    <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent
-          className="flex h-[90vh] max-h-[90vh] w-[95vw] max-w-5xl flex-col gap-0 p-0"
-          showCloseButton
-        >
-          {open ? (
-            <ZoneFormBody
-              key={zone?.id ?? "new"}
-              zone={zone ?? null}
-              existingZones={existingZones}
-              onClose={() => onOpenChange(false)}
-              onSaved={onSaved}
-              onRequestDelete={() => setDeleteOpen(true)}
-            />
-          ) : null}
-        </DialogContent>
-      </Dialog>
-
-      {zone ? (
-        <ConfirmDeleteDialog
-          open={deleteOpen}
-          onOpenChange={setDeleteOpen}
-          itemTitle={t("deleteZone")}
-          itemName={zone.name}
-          confirmText={zone.code}
-          warning={
-            zone.driver_count > 0
-              ? t("deleteConfirmWithDrivers", { count: zone.driver_count })
-              : undefined
-          }
-          onConfirm={runDelete}
-        />
-      ) : null}
-    </>
   );
 }

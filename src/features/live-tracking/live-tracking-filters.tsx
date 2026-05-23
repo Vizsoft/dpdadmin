@@ -8,7 +8,7 @@ export type LiveTrackingFilterState = {
   partnerId: string;
   trackingStatus: TrackingStatus | "all";
   onDutyOnly: boolean;
-  statusChip: "all" | "online" | "on_duty" | "idle" | "alert" | "offline";
+  statusChips: Array<"online" | "on_duty" | "idle" | "break" | "offline">;
   batteryLevel: "all" | "low" | "medium" | "high";
   gpsSignal: "all" | GpsQuality;
 };
@@ -19,7 +19,7 @@ export const DEFAULT_LIVE_TRACKING_FILTERS: LiveTrackingFilterState = {
   partnerId: "all",
   trackingStatus: "all",
   onDutyOnly: false,
-  statusChip: "all",
+  statusChips: ["online", "on_duty", "idle", "break", "offline"],
   batteryLevel: "all",
   gpsSignal: "all",
 };
@@ -55,24 +55,14 @@ export function matchesLiveTrackingFilters(
     if (bucket !== filters.gpsSignal) return false;
   }
 
-  switch (filters.statusChip) {
-    case "online":
-      if (!loc.isOnDuty) return false;
-      break;
-    case "on_duty":
-      if (!loc.isOnDuty) return false;
-      break;
-    case "idle":
-      if (loc.trackingStatus !== "idle") return false;
-      break;
-    case "alert":
-      if (loc.pinStatus !== "alert") return false;
-      break;
-    case "offline":
-      if (loc.isOnDuty) return false;
-      break;
-    default:
-      break;
+  if (filters.statusChips.length > 0) {
+    const matchesChip =
+      (filters.statusChips.includes("online") && loc.isOnDuty) ||
+      (filters.statusChips.includes("on_duty") && loc.isOnDuty) ||
+      (filters.statusChips.includes("idle") && loc.trackingStatus === "idle") ||
+      (filters.statusChips.includes("break") && loc.trackingStatus === "idle") ||
+      (filters.statusChips.includes("offline") && !loc.isOnDuty);
+    if (!matchesChip) return false;
   }
 
   const q = filters.search.trim().toLowerCase();

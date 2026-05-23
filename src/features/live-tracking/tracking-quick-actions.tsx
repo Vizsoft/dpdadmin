@@ -42,16 +42,20 @@ export function TrackingQuickActions() {
   ] as const;
 
   return (
-    <TrackingGlassCard className="p-3">
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+    <TrackingGlassCard className="border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
+      <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
         {t("quickActions")}
       </h3>
-      <div className="mt-2 grid grid-cols-2 gap-2">
+      <div className="mt-2 grid grid-cols-4 gap-2">
         {actions.map((action) => {
           const content = (
             <>
-              <action.icon className="h-4 w-4 shrink-0" />
-              <span className="text-left text-[11px] leading-tight">{action.label}</span>
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 text-blue-600 dark:bg-blue-500/20 dark:text-blue-200">
+                <action.icon className="h-4 w-4 shrink-0" />
+              </span>
+              <span className="text-center text-[11px] leading-tight text-slate-700 dark:text-slate-200">
+                {action.label}
+              </span>
             </>
           );
           if (action.enabled && action.href) {
@@ -60,7 +64,7 @@ export function TrackingQuickActions() {
                 key={action.id}
                 variant="outline"
                 size="sm"
-                className="h-auto min-h-14 flex-col items-start gap-1 border-border/80 bg-background/70 px-2.5 py-2 transition-all hover:-translate-y-0.5 hover:bg-background hover:shadow-sm"
+                className="h-auto min-h-20 cursor-pointer flex-col items-center gap-1 rounded-lg border-slate-200 bg-slate-50 px-2 py-2 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800/60 dark:hover:bg-slate-800"
                 render={<Link href={action.href} />}
               >
                 {content}
@@ -72,7 +76,7 @@ export function TrackingQuickActions() {
               key={action.id}
               variant="outline"
               size="sm"
-              className="h-auto min-h-14 flex-col items-start gap-1 border-border/80 bg-background/70 px-2.5 py-2"
+              className="h-auto min-h-20 flex-col items-center gap-1 rounded-lg border-slate-200 bg-slate-50 px-2 py-2 dark:border-slate-700 dark:bg-slate-800/60"
               disabled
               title={"hint" in action ? action.hint : undefined}
             >

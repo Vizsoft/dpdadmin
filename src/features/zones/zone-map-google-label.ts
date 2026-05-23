@@ -7,6 +7,7 @@ import type {
   GoogleMapsApi,
   GoogleOverlayViewInstance,
 } from "@/lib/google-maps/load";
+import { formatZoneArea, zoneAreaSqKm } from "@/lib/geo/zone-area";
 import { normalizeZoneColor } from "./zone-colors";
 import type { ZoneRow } from "./types";
 
@@ -58,6 +59,7 @@ export function createZoneLabelOverlay(
   const color = normalizeZoneColor(zone.color);
   const zoneId = zone.id;
   const zoneName = zone.name;
+  const zoneArea = formatZoneArea(zoneAreaSqKm(zone.zone_type, zone.geometry));
   const onSelect = opts.onSelect;
   const latLng = { lat: position.lat, lng: position.lng };
 
@@ -68,7 +70,7 @@ export function createZoneLabelOverlay(
       const div = document.createElement("div");
       div.className = "zone-map-label";
       div.style.setProperty("--zone-color", color);
-      div.textContent = zoneName;
+      div.innerHTML = `<span class="zone-map-label__name">${zoneName}</span><span class="zone-map-label__area">${zoneArea}</span>`;
       div.title = zoneName;
       div.addEventListener("click", (e) => {
         e.stopPropagation();

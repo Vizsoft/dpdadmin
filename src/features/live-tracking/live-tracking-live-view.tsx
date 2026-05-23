@@ -1,15 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import { DriverLocationsMap } from "@/features/locations/driver-locations-map";
 import { useDriverLocationsRealtime } from "@/features/locations/use-driver-locations-realtime";
 import { fetchDriversForAdmin } from "@/features/drivers/drivers-actions";
 import { fetchZones } from "@/features/zones/use-zones";
-import { fetchPartners } from "@/features/partners/use-partners";
 import { queryKeys } from "@/lib/query/query-keys";
-import { LiveDriverList } from "./live-driver-list";
 import {
   DEFAULT_LIVE_TRACKING_FILTERS,
   matchesLiveTrackingFilters,
@@ -21,7 +18,6 @@ import { TrackingInsightsPanel } from "./tracking-insights-panel";
 import { TrackingQuickActions } from "./tracking-quick-actions";
 import {
   TrackingCommandLayout,
-  TrackingGlassCard,
   TrackingMapFrame,
 } from "./tracking-shell";
 import {
@@ -37,8 +33,7 @@ import {
 } from "@/features/locations/geofence-map-overlays";
 
 export function LiveTrackingLiveView({ fullscreen }: { fullscreen?: boolean }) {
-  const t = useTranslations("pages.liveTracking");
-  const { locations, isLoading } = useDriverLocationsRealtime();
+  const { locations } = useDriverLocationsRealtime();
   const [filters, setFilters] = useState<LiveTrackingFilterState>(DEFAULT_LIVE_TRACKING_FILTERS);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mapLayer, setMapLayer] = useState<MapLayerToggle>("live");
@@ -52,11 +47,6 @@ export function LiveTrackingLiveView({ fullscreen }: { fullscreen?: boolean }) {
   const { data: zones = [] } = useQuery({
     queryKey: queryKeys.zones.list(),
     queryFn: fetchZones,
-  });
-
-  const { data: partners = [] } = useQuery({
-    queryKey: queryKeys.partners.list(),
-    queryFn: fetchPartners,
   });
 
   const profileMeta = useMemo(() => {
@@ -124,16 +114,6 @@ export function LiveTrackingLiveView({ fullscreen }: { fullscreen?: boolean }) {
       }));
   }, [zones, geofencesEnabled]);
 
-  const zoneOptions = useMemo(
-    () => zones.map((z) => ({ id: z.id, name: z.name })),
-    [zones],
-  );
-
-  const partnerOptions = useMemo(
-    () => partners.map((p) => ({ id: p.id, name: p.name })),
-    [partners],
-  );
-
   const mapHeightClass = fullscreen
     ? "min-h-0 flex-1 h-full"
     : "min-h-[560px] flex-1";
@@ -142,35 +122,13 @@ export function LiveTrackingLiveView({ fullscreen }: { fullscreen?: boolean }) {
     <TrackingCommandLayout
       fullscreen={fullscreen}
       left={
-        <>
-          <FleetOverviewPanel
-            totalDrivers={driversMeta.length}
-            trackedCount={locations.length}
-            alertsCount={alertsCount}
-            filters={filters}
-            onChange={setFilters}
-            zoneOptions={zoneOptions}
-            partnerOptions={partnerOptions}
-          />
-          <TrackingGlassCard className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            <p className="border-b border-border px-3 py-2 text-xs text-muted-foreground">
-              {t("trackedCount", { count: filtered.length })}
-            </p>
-            <div className="min-h-0 flex-1 overflow-hidden">
-              {isLoading && locations.length === 0 ? (
-                <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-                  {t("noLiveData")}
-                </p>
-              ) : (
-                <LiveDriverList
-                  drivers={filtered}
-                  selectedId={selectedId}
-                  onSelect={setSelectedId}
-                />
-              )}
-            </div>
-          </TrackingGlassCard>
-        </>
+        <FleetOverviewPanel
+          totalDrivers={driversMeta.length}
+          trackedCount={locations.length}
+          alertsCount={alertsCount}
+          filters={filters}
+          onChange={setFilters}
+        />
       }
       center={
         <>

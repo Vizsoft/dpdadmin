@@ -2,6 +2,8 @@
 
 import { useMemo } from "react";
 import { useTranslations } from "next-intl";
+import { Activity, MapPinned, ShieldAlert, ShieldCheck } from "lucide-react";
+import { MetricTile } from "@/components/ui/metric-tile";
 import type { GeofenceKind, ZoneRow } from "./types";
 
 export function ZoneGeofencesSummary({ zones }: { zones: ZoneRow[] }) {
@@ -14,27 +16,43 @@ export function ZoneGeofencesSummary({ zones }: { zones: ZoneRow[] }) {
     return { total: zones.length, active, inclusion, exclusion };
   }, [zones]);
 
-  const cards: Array<{ label: string; value: number; accent?: string }> = [
-    { label: t("geofence.summaryTotal"), value: stats.total },
-    { label: t("geofence.summaryActive"), value: stats.active, accent: "text-emerald-600" },
-    { label: t("geofence.summaryInclusion"), value: stats.inclusion },
-    { label: t("geofence.summaryExclusion"), value: stats.exclusion, accent: "text-rose-600" },
+  const cards = [
+    {
+      label: t("geofence.summaryTotal"),
+      value: stats.total,
+      tone: "blue" as const,
+      icon: MapPinned,
+    },
+    {
+      label: t("geofence.summaryActive"),
+      value: stats.active,
+      tone: "emerald" as const,
+      icon: Activity,
+    },
+    {
+      label: t("geofence.summaryInclusion"),
+      value: stats.inclusion,
+      tone: "emerald" as const,
+      icon: ShieldCheck,
+    },
+    {
+      label: t("geofence.summaryExclusion"),
+      value: stats.exclusion,
+      tone: "rose" as const,
+      icon: ShieldAlert,
+    },
   ];
 
   return (
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
       {cards.map((card) => (
-        <div
+        <MetricTile
           key={card.label}
-          className="rounded-lg border border-border bg-card px-3 py-2.5 shadow-sm"
-        >
-          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-            {card.label}
-          </p>
-          <p className={`mt-0.5 text-xl font-semibold tabular-nums ${card.accent ?? ""}`}>
-            {card.value}
-          </p>
-        </div>
+          label={card.label}
+          value={card.value}
+          tone={card.tone}
+          icon={card.icon}
+        />
       ))}
     </div>
   );

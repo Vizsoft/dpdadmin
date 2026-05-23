@@ -1,11 +1,10 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, Filter, Loader2, Plus, Search } from "lucide-react";
 import { AppPage } from "@/components/app/app-page";
-import { AppPageHeader } from "@/components/app/app-page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -17,10 +16,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/auth-context";
 import { useHasMounted } from "@/hooks/use-has-mounted";
-import { queryKeys } from "@/lib/query/query-keys";
 import { cn } from "@/lib/utils";
 import { useZonesList } from "./use-zones";
-import { ZoneFormSheet } from "./zone-form-sheet";
 import { ZoneGeofencesSummary, zoneMatchesKindFilter } from "./zone-geofences-summary";
 import { ZoneListPanel } from "./zone-list-panel";
 import { ZoneMapPanel } from "./zone-map-panel";
@@ -46,16 +43,13 @@ function ZonesPageSkeleton() {
 
 function ZonesPageContent() {
   const t = useTranslations("pages.zones");
+  const router = useRouter();
   const { can } = useAuth();
   const canManage = can("zones.manage");
-  const queryClient = useQueryClient();
 
-  const { data: zones = [], isLoading, refetch } = useZonesList();
+  const { data: zones = [], isLoading } = useZonesList();
   const [kindFilter, setKindFilter] = useState<"all" | GeofenceKind>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [editingZone, setEditingZone] = useState<ZoneRow | null>(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [search, setSearch] = useState("");
 
   const effectiveSelectedId = useMemo(() => {
@@ -63,27 +57,12 @@ function ZonesPageContent() {
     return zones.some((z) => z.id === selectedId) ? selectedId : null;
   }, [zones, selectedId]);
 
-  const invalidateZones = useCallback(() => {
-    void queryClient.invalidateQueries({ queryKey: queryKeys.zones.all() });
-  }, [queryClient]);
-
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    try {
-      await refetch();
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
-
   const handleAdd = () => {
-    setEditingZone(null);
-    setSheetOpen(true);
+    router.push("/zones/new");
   };
 
   const handleEdit = (zone: ZoneRow) => {
-    setEditingZone(zone);
-    setSheetOpen(true);
+    router.push(`/zones/${zone.id}/edit`);
   };
 
   const filteredZones = useMemo(
@@ -108,27 +87,31 @@ function ZonesPageContent() {
 
   return (
     <AppPage className="flex h-full min-h-[560px] flex-col gap-4">
-      <AppPageHeader
-        title={t("geofence.pageTitle")}
-        description={t("geofence.pageSubtitle")}
-      />
+      <div>
+        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
+          {t("geofence.pageTitle")}
+        </h1>
+        <p className="text-sm text-slate-500 dark:text-slate-300">
+          {t("geofence.pageSubtitle")}
+        </p>
+      </div>
 
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5 shadow-sm">
-        <div className="relative min-w-[240px] flex-1">
-          <Search className="pointer-events-none absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+        <div className="relative min-w-[240px] flex-1 md:max-w-sm">
+          <Search className="pointer-events-none absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
           <Input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder={t("placeholders.searchZones")}
-            className="h-9 rounded-lg ps-8"
+            className="h-9 rounded-lg border-slate-200 bg-slate-50 ps-8 dark:border-slate-700 dark:bg-slate-800"
           />
         </div>
-        <Button type="button" variant="outline" size="sm" className="h-9 cursor-pointer rounded-lg">
+        <Button type="button" variant="outline" size="sm" className="h-9 cursor-pointer rounded-lg border-slate-200 dark:border-slate-700">
           <Filter className="me-1.5 h-3.5 w-3.5" />
           {t("geofence.filters")}
         </Button>
         <DropdownMenu>
-          <DropdownMenuTrigger className="inline-flex h-9 cursor-pointer items-center rounded-lg border border-input bg-background px-3 text-sm font-medium shadow-xs transition-[color,box-shadow] hover:bg-accent hover:text-accent-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50">
+          <DropdownMenuTrigger className="inline-flex h-9 cursor-pointer items-center rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium shadow-xs transition-[color,box-shadow] hover:bg-slate-100 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800">
             {t("geofence.bulkActions")}
             <ChevronDown className="ms-1.5 h-3.5 w-3.5" />
           </DropdownMenuTrigger>
@@ -140,7 +123,7 @@ function ZonesPageContent() {
           </DropdownMenuContent>
         </DropdownMenu>
         {canManage ? (
-          <Button type="button" size="sm" className="h-9 cursor-pointer rounded-lg" onClick={handleAdd}>
+          <Button type="button" size="sm" className="h-9 cursor-pointer rounded-lg bg-blue-600 text-white hover:bg-blue-700" onClick={handleAdd}>
             <Plus className="me-1.5 h-3.5 w-3.5" />
             {t("geofence.createButton")}
           </Button>
@@ -174,28 +157,13 @@ function ZonesPageContent() {
           isLoading={isLoading}
           onSelect={setSelectedId}
           onEdit={handleEdit}
-          onRefresh={handleRefresh}
-          isRefreshing={isRefreshing}
         />
         <ZoneMapPanel
           zones={filteredZones}
           selectedId={effectiveSelectedId}
-          sheetOpen={sheetOpen}
           onZoneSelect={setSelectedId}
         />
       </div>
-
-      <ZoneFormSheet
-        open={sheetOpen}
-        onOpenChange={setSheetOpen}
-        zone={editingZone}
-        existingZones={zones}
-        onSaved={invalidateZones}
-        onDeleted={() => {
-          if (editingZone && selectedId === editingZone.id) setSelectedId(null);
-          invalidateZones();
-        }}
-      />
     </AppPage>
   );
 }
