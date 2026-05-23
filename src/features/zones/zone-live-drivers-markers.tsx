@@ -24,11 +24,21 @@ export function useGoogleLiveDriverMarkers(
     void loadGoogleMaps().then((google) => {
       if (cancelled || !google?.maps?.Marker || !map) return;
 
+      const MarkerCtor = (
+        google.maps as unknown as {
+          Marker: new (opts: {
+            position: { lat: number; lng: number };
+            map: GoogleMapInstance;
+            title?: string;
+          }) => GoogleMarkerInstance;
+        }
+      ).Marker;
+
       for (const m of markersRef.current) m.setMap(null);
       markersRef.current = [];
 
       for (const loc of locations) {
-        const marker = new google.maps.Marker({
+        const marker = new MarkerCtor({
           position: { lat: loc.latitude, lng: loc.longitude },
           map,
           title: `${loc.driverName} · ${loc.trackingStatus}`,
