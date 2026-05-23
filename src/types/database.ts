@@ -14,6 +14,66 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_activity_logs: {
+        Row: {
+          action: Database["public"]["Enums"]["admin_activity_action"]
+          admin_role_slug: string | null
+          admin_user_id: string | null
+          after_state: Json | null
+          before_state: Json | null
+          changed_fields: string[]
+          context: Json
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          error_message: string | null
+          id: string
+          ip_address: string | null
+          page_path: string | null
+          route_name: string | null
+          success: boolean
+          user_agent: string | null
+        }
+        Insert: {
+          action: Database["public"]["Enums"]["admin_activity_action"]
+          admin_role_slug?: string | null
+          admin_user_id?: string | null
+          after_state?: Json | null
+          before_state?: Json | null
+          changed_fields?: string[]
+          context?: Json
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          error_message?: string | null
+          id?: string
+          ip_address?: string | null
+          page_path?: string | null
+          route_name?: string | null
+          success?: boolean
+          user_agent?: string | null
+        }
+        Update: {
+          action?: Database["public"]["Enums"]["admin_activity_action"]
+          admin_role_slug?: string | null
+          admin_user_id?: string | null
+          after_state?: Json | null
+          before_state?: Json | null
+          changed_fields?: string[]
+          context?: Json
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          error_message?: string | null
+          id?: string
+          ip_address?: string | null
+          page_path?: string | null
+          route_name?: string | null
+          success?: boolean
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       admin_allowlist: {
         Row: {
           created_at: string
@@ -358,6 +418,7 @@ export type Database = {
       }
       attendance_logs: {
         Row: {
+          admin_note: string | null
           check_in_at: string | null
           check_out_at: string | null
           created_at: string
@@ -369,6 +430,7 @@ export type Database = {
           zone_compliance: Database["public"]["Enums"]["zone_compliance"] | null
         }
         Insert: {
+          admin_note?: string | null
           check_in_at?: string | null
           check_out_at?: string | null
           created_at?: string
@@ -382,6 +444,7 @@ export type Database = {
             | null
         }
         Update: {
+          admin_note?: string | null
           check_in_at?: string | null
           check_out_at?: string | null
           created_at?: string
@@ -498,95 +561,6 @@ export type Database = {
             columns: ["zone_id"]
             isOneToOne: false
             referencedRelation: "zones"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      delivery_verifications: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          driver_id: string
-          id: string
-          import_batch_id: string | null
-          matched_count: number
-          notes: string | null
-          partner_id: string | null
-          reconciled_at: string | null
-          reported_count: number
-          restaurant_id: string
-          service_date: string
-          shortfall_count: number
-          source: Database["public"]["Enums"]["verification_source"]
-          status: Database["public"]["Enums"]["verification_status"]
-          under_review_count: number
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          driver_id: string
-          id?: string
-          import_batch_id?: string | null
-          matched_count?: number
-          notes?: string | null
-          partner_id: string | null
-          reconciled_at?: string | null
-          reported_count: number
-          restaurant_id: string
-          service_date: string
-          shortfall_count?: number
-          source?: Database["public"]["Enums"]["verification_source"]
-          status?: Database["public"]["Enums"]["verification_status"]
-          under_review_count?: number
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          driver_id?: string
-          id?: string
-          import_batch_id?: string | null
-          matched_count?: number
-          notes?: string | null
-          partner_id?: string
-          reconciled_at?: string | null
-          reported_count?: number
-          restaurant_id?: string
-          service_date?: string
-          shortfall_count?: number
-          source?: Database["public"]["Enums"]["verification_source"]
-          status?: Database["public"]["Enums"]["verification_status"]
-          under_review_count?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "delivery_verifications_driver_id_fkey"
-            columns: ["driver_id"]
-            isOneToOne: false
-            referencedRelation: "drivers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "delivery_verifications_import_batch_id_fkey"
-            columns: ["import_batch_id"]
-            isOneToOne: false
-            referencedRelation: "verification_import_batches"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "delivery_verifications_partner_id_fkey"
-            columns: ["partner_id"]
-            isOneToOne: false
-            referencedRelation: "partners"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "delivery_verifications_restaurant_id_fkey"
-            columns: ["restaurant_id"]
-            isOneToOne: false
-            referencedRelation: "restaurants"
             referencedColumns: ["id"]
           },
         ]
@@ -723,6 +697,102 @@ export type Database = {
           },
         ]
       }
+      delivery_verifications: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          driver_id: string
+          id: string
+          import_batch_id: string | null
+          matched_count: number
+          notes: string | null
+          partner_id: string
+          reconciled_at: string | null
+          reported_count: number
+          restaurant_id: string
+          service_date: string
+          shortfall_count: number
+          source: Database["public"]["Enums"]["verification_source"]
+          status: Database["public"]["Enums"]["verification_status"]
+          under_review_count: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          driver_id: string
+          id?: string
+          import_batch_id?: string | null
+          matched_count?: number
+          notes?: string | null
+          partner_id: string
+          reconciled_at?: string | null
+          reported_count: number
+          restaurant_id: string
+          service_date: string
+          shortfall_count?: number
+          source?: Database["public"]["Enums"]["verification_source"]
+          status?: Database["public"]["Enums"]["verification_status"]
+          under_review_count?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          driver_id?: string
+          id?: string
+          import_batch_id?: string | null
+          matched_count?: number
+          notes?: string | null
+          partner_id?: string
+          reconciled_at?: string | null
+          reported_count?: number
+          restaurant_id?: string
+          service_date?: string
+          shortfall_count?: number
+          source?: Database["public"]["Enums"]["verification_source"]
+          status?: Database["public"]["Enums"]["verification_status"]
+          under_review_count?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_verifications_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_verifications_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_verifications_import_batch_id_fkey"
+            columns: ["import_batch_id"]
+            isOneToOne: false
+            referencedRelation: "verification_import_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_verifications_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_verifications_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       driver_assets: {
         Row: {
           asset: Database["public"]["Enums"]["asset_type"]
@@ -849,119 +919,6 @@ export type Database = {
           },
         ]
       }
-      admin_activity_logs: {
-        Row: {
-          action: Database["public"]["Enums"]["admin_activity_action"]
-          admin_role_slug: string | null
-          admin_user_id: string | null
-          after_state: Json | null
-          before_state: Json | null
-          changed_fields: string[]
-          context: Json
-          created_at: string
-          entity_id: string | null
-          entity_type: string | null
-          error_message: string | null
-          id: string
-          ip_address: string | null
-          page_path: string | null
-          route_name: string | null
-          success: boolean
-          user_agent: string | null
-        }
-        Insert: {
-          action: Database["public"]["Enums"]["admin_activity_action"]
-          admin_role_slug?: string | null
-          admin_user_id?: string | null
-          after_state?: Json | null
-          before_state?: Json | null
-          changed_fields?: string[]
-          context?: Json
-          created_at?: string
-          entity_id?: string | null
-          entity_type?: string | null
-          error_message?: string | null
-          id?: string
-          ip_address?: string | null
-          page_path?: string | null
-          route_name?: string | null
-          success?: boolean
-          user_agent?: string | null
-        }
-        Update: {
-          action?: Database["public"]["Enums"]["admin_activity_action"]
-          admin_role_slug?: string | null
-          admin_user_id?: string | null
-          after_state?: Json | null
-          before_state?: Json | null
-          changed_fields?: string[]
-          context?: Json
-          created_at?: string
-          entity_id?: string | null
-          entity_type?: string | null
-          error_message?: string | null
-          id?: string
-          ip_address?: string | null
-          page_path?: string | null
-          route_name?: string | null
-          success?: boolean
-          user_agent?: string | null
-        }
-        Relationships: []
-      }
-      driver_wallet_entries: {
-        Row: {
-          amount_kwd: number
-          approved_at: string
-          approved_by: string | null
-          created_at: string
-          driver_id: string
-          earn_date: string
-          entry_type: Database["public"]["Enums"]["wallet_entry_type"]
-          id: string
-          meta: Json
-          source_ref: string
-          status: Database["public"]["Enums"]["wallet_entry_status"]
-          updated_at: string
-        }
-        Insert: {
-          amount_kwd?: number
-          approved_at?: string
-          approved_by?: string | null
-          created_at?: string
-          driver_id: string
-          earn_date: string
-          entry_type?: Database["public"]["Enums"]["wallet_entry_type"]
-          id?: string
-          meta?: Json
-          source_ref: string
-          status?: Database["public"]["Enums"]["wallet_entry_status"]
-          updated_at?: string
-        }
-        Update: {
-          amount_kwd?: number
-          approved_at?: string
-          approved_by?: string | null
-          created_at?: string
-          driver_id?: string
-          earn_date?: string
-          entry_type?: Database["public"]["Enums"]["wallet_entry_type"]
-          id?: string
-          meta?: Json
-          source_ref?: string
-          status?: Database["public"]["Enums"]["wallet_entry_status"]
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "driver_wallet_entries_driver_id_fkey"
-            columns: ["driver_id"]
-            isOneToOne: false
-            referencedRelation: "drivers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       driver_intake_restaurants: {
         Row: {
           created_at: string
@@ -1007,7 +964,7 @@ export type Database = {
           linked: boolean
           linked_profile_id: string | null
           otp_code: string | null
-          partner_id?: string | null
+          partner_id: string | null
           phone: string
           restaurant_id: string | null
           status: Database["public"]["Enums"]["driver_intake_status"]
@@ -1158,6 +1115,59 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "driver_sessions_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      driver_wallet_entries: {
+        Row: {
+          amount_kwd: number
+          approved_at: string
+          approved_by: string | null
+          created_at: string
+          driver_id: string
+          earn_date: string
+          entry_type: Database["public"]["Enums"]["wallet_entry_type"]
+          id: string
+          meta: Json
+          source_ref: string
+          status: Database["public"]["Enums"]["wallet_entry_status"]
+          updated_at: string
+        }
+        Insert: {
+          amount_kwd?: number
+          approved_at?: string
+          approved_by?: string | null
+          created_at?: string
+          driver_id: string
+          earn_date: string
+          entry_type?: Database["public"]["Enums"]["wallet_entry_type"]
+          id?: string
+          meta?: Json
+          source_ref: string
+          status?: Database["public"]["Enums"]["wallet_entry_status"]
+          updated_at?: string
+        }
+        Update: {
+          amount_kwd?: number
+          approved_at?: string
+          approved_by?: string | null
+          created_at?: string
+          driver_id?: string
+          earn_date?: string
+          entry_type?: Database["public"]["Enums"]["wallet_entry_type"]
+          id?: string
+          meta?: Json
+          source_ref?: string
+          status?: Database["public"]["Enums"]["wallet_entry_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_wallet_entries_driver_id_fkey"
             columns: ["driver_id"]
             isOneToOne: false
             referencedRelation: "drivers"
@@ -1931,10 +1941,10 @@ export type Database = {
           id: string
           is_active: boolean
           latitude: number | null
+          logo_url: string | null
           longitude: number | null
           map_link: string | null
           name: string
-          logo_url: string | null
           partner_id: string | null
           restaurant_code: string
           status: Database["public"]["Enums"]["restaurant_status"]
@@ -1948,10 +1958,10 @@ export type Database = {
           id?: string
           is_active?: boolean
           latitude?: number | null
+          logo_url?: string | null
           longitude?: number | null
           map_link?: string | null
           name: string
-          logo_url?: string | null
           partner_id?: string | null
           restaurant_code?: string
           status?: Database["public"]["Enums"]["restaurant_status"]
@@ -1965,10 +1975,10 @@ export type Database = {
           id?: string
           is_active?: boolean
           latitude?: number | null
+          logo_url?: string | null
           longitude?: number | null
           map_link?: string | null
           name?: string
-          logo_url?: string | null
           partner_id?: string | null
           restaurant_code?: string
           status?: Database["public"]["Enums"]["restaurant_status"]
@@ -2298,7 +2308,22 @@ export type Database = {
           uploaded_at?: string
           uploaded_by?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "verification_import_batches_reverted_by_fkey"
+            columns: ["reverted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "verification_import_batches_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       wrong_actions: {
         Row: {
@@ -2393,6 +2418,35 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _point_within_zone_proximity: {
+        Args: {
+          p_buffer_meters: number
+          p_geometry: Json
+          p_lat: number
+          p_lng: number
+          p_zone_type: Database["public"]["Enums"]["zone_geometry_type"]
+        }
+        Returns: boolean
+      }
+      _zone_geography_from_feature: {
+        Args: {
+          p_geometry: Json
+          p_zone_type: Database["public"]["Enums"]["zone_geometry_type"]
+        }
+        Returns: unknown
+      }
+      admin_correct_attendance: {
+        Args: {
+          p_check_in_at?: string
+          p_check_out_at?: string
+          p_driver_id?: string
+          p_log_date?: string
+          p_log_id?: string
+          p_note?: string
+          p_status?: Database["public"]["Enums"]["attendance_status"]
+        }
+        Returns: Json
+      }
       allocate_driver_code: { Args: never; Returns: string }
       archive_driver_intake: { Args: { p_intake_id: string }; Returns: Json }
       claim_super_admin: { Args: { p_user_id: string }; Returns: boolean }
@@ -2451,6 +2505,11 @@ export type Database = {
         }
       }
       driver_get_delivery_proximity_context: { Args: never; Returns: Json }
+      driver_get_home_dashboard: { Args: never; Returns: Json }
+      driver_has_active_restaurant: {
+        Args: { p_driver_id: string }
+        Returns: boolean
+      }
       driver_is_within_delivery_range: {
         Args: {
           p_driver_id: string
@@ -2460,11 +2519,19 @@ export type Database = {
         }
         Returns: boolean
       }
-      driver_has_active_restaurant: {
-        Args: { p_driver_id: string }
-        Returns: boolean
+      driver_set_duty_state: {
+        Args: { p_is_on_duty: boolean; p_is_online: boolean }
+        Returns: Json
       }
       generate_driver_app_passcode: { Args: never; Returns: string }
+      get_driver_earnings_detail: {
+        Args: { p_driver_id: string; p_earn_date: string }
+        Returns: Json
+      }
+      incentive_rule_matches_driver: {
+        Args: { p_driver_id: string; p_rule_id: string }
+        Returns: boolean
+      }
       is_admin_panel_user: { Args: never; Returns: boolean }
       is_current_driver: { Args: { driver_uuid: string }; Returns: boolean }
       is_rider: { Args: never; Returns: boolean }
@@ -2472,6 +2539,10 @@ export type Database = {
       is_super_admin_user: { Args: never; Returns: boolean }
       kuwait_month_start: { Args: { p_date: string }; Returns: string }
       kuwait_week_start: { Args: { p_date: string }; Returns: string }
+      list_driver_earnings_daily: {
+        Args: { p_driver_id?: string; p_end_date: string; p_start_date: string }
+        Returns: Json
+      }
       mark_driver_intake_linked: {
         Args: { p_phone: string; p_profile_id: string }
         Returns: boolean
@@ -2479,61 +2550,53 @@ export type Database = {
       next_restaurant_code: { Args: never; Returns: string }
       normalize_external_order_id: { Args: { p_raw: string }; Returns: string }
       preview_driver_earnings: { Args: { p_earn_date: string }; Returns: Json }
-      get_driver_earnings_detail: {
-        Args: { p_driver_id: string; p_earn_date: string }
-        Returns: Json
-      }
-      list_driver_earnings_daily: {
-        Args: {
-          p_start_date: string
-          p_end_date: string
-          p_driver_id?: string
-        }
-        Returns: Json
-      }
-      recalculate_driver_earnings: {
-        Args: {
-          p_driver_id: string
-          p_earn_date: string
-          p_approved_by?: string
-        }
-        Returns: undefined
-      }
-      recalculate_earnings_for_range: {
-        Args: {
-          p_start_date: string
-          p_end_date: string
-          p_driver_id?: string
-        }
+      recalculate_driver_earnings:
+        | {
+            Args: { p_driver_id: string; p_earn_date: string }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_approved_by?: string
+              p_driver_id: string
+              p_earn_date: string
+            }
+            Returns: undefined
+          }
+      recalculate_earnings_for_date: {
+        Args: { p_earn_date: string }
         Returns: number
       }
-      sync_driver_wallet_earning_credit: {
-        Args: {
-          p_driver_id: string
-          p_earn_date: string
-          p_approved_by?: string
-        }
-        Returns: undefined
+      recalculate_earnings_for_range: {
+        Args: { p_driver_id?: string; p_end_date: string; p_start_date: string }
+        Returns: number
       }
       reconcile_delivery_verification: {
         Args: { p_verification_id: string }
         Returns: undefined
       }
-      recalculate_earnings_for_date: {
-        Args: { p_earn_date: string }
-        Returns: number
-      }
       regenerate_driver_app_passcode: {
         Args: { p_driver_id: string }
-        Returns: Json
-      }
-      set_driver_account_status: {
-        Args: { p_driver_id: string; p_status: string }
         Returns: Json
       }
       register_or_sync_rider_profile: {
         Args: { p_full_name: string }
         Returns: Json
+      }
+      set_driver_account_status: {
+        Args: {
+          p_driver_id: string
+          p_status: Database["public"]["Enums"]["driver_status"]
+        }
+        Returns: Json
+      }
+      sync_driver_wallet_earning_credit: {
+        Args: {
+          p_approved_by?: string
+          p_driver_id: string
+          p_earn_date: string
+        }
+        Returns: undefined
       }
     }
     Enums: {
@@ -2590,6 +2653,8 @@ export type Database = {
       severity_level: "low" | "medium" | "high"
       support_ticket_status: "open" | "resolved"
       thread_status: "active" | "resolved"
+      vehicle_document_type: "rc" | "permit" | "insurance"
+      vehicle_status: "active" | "suspended" | "maintenance"
       verification_import_batch_status: "previewed" | "applied" | "reverted"
       verification_source: "manual" | "import"
       verification_status:
@@ -2599,8 +2664,8 @@ export type Database = {
         | "deficit"
         | "conflict"
         | "reverted"
-      vehicle_document_type: "rc" | "permit" | "insurance"
-      vehicle_status: "active" | "suspended" | "maintenance"
+      wallet_entry_status: "approved" | "pending" | "voided"
+      wallet_entry_type: "earning_credit" | "manual_adjustment" | "payout_debit"
       wrong_action_source: "system" | "admin"
       wrong_action_type:
         | "delay"
@@ -2609,8 +2674,6 @@ export type Database = {
         | "uniform"
         | "other"
       zone_compliance: "inside" | "outside"
-      wallet_entry_status: "approved" | "pending" | "voided"
-      wallet_entry_type: "earning_credit" | "manual_adjustment" | "payout_debit"
       zone_geometry_type: "polygon" | "circle"
     }
     CompositeTypes: {
@@ -2739,6 +2802,16 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      admin_activity_action: [
+        "create",
+        "update",
+        "delete",
+        "view",
+        "read",
+        "auth",
+        "export",
+        "recalculate",
+      ],
       admin_approval_status: ["pending", "approved", "rejected"],
       app_role: ["rider", "staff"],
       appointment_status: ["scheduled", "completed", "cancelled"],
@@ -2789,6 +2862,12 @@ export const Constants = {
         "deficit",
         "conflict",
         "reverted",
+      ],
+      wallet_entry_status: ["approved", "pending", "voided"],
+      wallet_entry_type: [
+        "earning_credit",
+        "manual_adjustment",
+        "payout_debit",
       ],
       wrong_action_source: ["system", "admin"],
       wrong_action_type: [

@@ -41,6 +41,7 @@ export const PERMISSION_CATALOG: readonly PermissionCatalogEntry[] = [
   { slug: "zones.view", label: "View zones", category: "zones" },
   { slug: "zones.manage", label: "Manage zones", category: "zones" },
   { slug: "attendance.view", label: "View attendance", category: "attendance" },
+  { slug: "attendance.manage", label: "Manage attendance", category: "attendance" },
   { slug: "requests.view", label: "View requests", category: "requests" },
   { slug: "requests.manage", label: "Manage requests", category: "requests" },
   {

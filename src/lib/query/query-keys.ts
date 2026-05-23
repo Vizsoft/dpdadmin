@@ -51,6 +51,11 @@ export const queryKeys = {
     all: () => ["requests"] as const,
     list: (filters: Record<string, unknown> = {}) => ["requests", "list", filters] as const,
   },
+  attendance: {
+    all: () => ["attendance"] as const,
+    list: (filters: Record<string, unknown> = {}) => ["attendance", "list", filters] as const,
+    kpis: (date: string) => ["attendance", "kpis", date] as const,
+  },
   admin: {
     roles: () => ["admin", "roles"] as const,
     pendingProfiles: () => ["admin", "profiles", "pending"] as const,

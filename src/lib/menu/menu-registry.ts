@@ -162,8 +162,8 @@ export const MENU_REGISTRY: MenuRegistryItem[] = [
     defaultLabel: "Attendance",
     defaultIcon: "ClipboardCheck",
     href: "/attendance",
-    defaultGroup: "WIP",
-    defaultOrder: 5,
+    defaultGroup: "Operations",
+    defaultOrder: 4,
     permission: "attendance.view",
   },
   {

@@ -79,7 +79,7 @@ Admin panel **does not** create auth users; it only inserts `driver_intakes` via
 | 1 | Login (driver code + 6-digit passcode) | Drivers | `drivers` R via `driver_app_lookup_by_passcode` |
 | 1a | First-time link (8-digit mobile + OTP) | — | `auth.users` (one-shot bootstrap only) |
 | 2 | OTP verification (first link only) | — | `auth` session |
-| 3 | Home (online toggle, weekly KPIs, bumper bonus) | Dashboard, Earnings | `driver_sessions`, `driver_earnings_daily`, `offers`, `deliveries` |
+| 3 | Home (online toggle, weekly KPIs, bumper bonus) | Dashboard, **Attendance** | `driver_sessions`, `attendance_logs` **W**, `driver_earnings_daily`, `offers`, `deliveries` |
 | 4 | Deliveries list (calendar, + Add Delivery) | Live Deliveries | `deliveries` **W**, `partners` R |
 | 5 | Add delivery (order ID + proof photo) | Live Deliveries (verify tab) | `deliveries` **W** → `status=pending` |
 | 6 | Fuel expense form | Requests (Fuel tab) | `requests` **W** type=fuel |
@@ -235,9 +235,30 @@ Admin RPCs (staff): `get_driver_earnings_detail`, `list_driver_earnings_daily`, 
 
 ### `driver_sessions`
 - `is_online`, `went_online_at`, `went_offline_at`
+- Updated by RPC `driver_set_duty_state(p_is_on_duty, p_is_online)` when the Home duty toggle changes.
 
 ### `attendance_logs`
-- Auto on check-in/out; `zone_compliance`: inside | outside
+- One row per `(driver_id, log_date)` where `log_date` uses **Asia/Kuwait** calendar date.
+- **Check-in / check-out:** the Home **duty toggle ON** upserts today's row (`check_in_at`, `status = present` unless `on_leave`); **toggle OFF** sets `check_out_at`.
+- Written by `driver_set_duty_state` (same RPC as sessions) — no separate attendance button in v1.
+- `zone_compliance`: `inside` | `outside` (geofence reporting — future writer).
+- `admin_note`: set when staff corrects a record via admin panel RPC `admin_correct_attendance`.
+- Driver **SELECT** own rows (`driver_id = auth.uid()`). Admin module: `/attendance` (Live / Logs / Exceptions tabs).
+
+**Driver read (today's log):**
+```sql
+select id, log_date, check_in_at, check_out_at, status, zone_compliance
+  from public.attendance_logs
+ where driver_id = auth.uid()
+   and log_date = (now() at time zone 'Asia/Kuwait')::date;
+```
+
+**Duty toggle (check-in/out):**
+```sql
+select public.driver_set_duty_state(p_is_on_duty := true, p_is_online := true);  -- check in
+select public.driver_set_duty_state(p_is_on_duty := false, p_is_online := false); -- check out
+```
+Returns full home dashboard payload (`driver_get_home_dashboard()` shape).
 
 ---
 

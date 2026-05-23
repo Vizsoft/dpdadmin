@@ -37,7 +37,7 @@ Order allocation is **external** (partner apps). We own: monitoring, compliance,
 | 2 | `/drivers`, `/drivers/[id]`, `/drivers/new` | `drivers.view` / `drivers.manage` | Profile |
 | 3 | `/deliveries`, `/zones` | `deliveries.view`, `zones.view` | Deliveries + zone geofence (map CRUD at `/zones`) |
 | 4 | `/vehicles`, `/vehicles/[id]` | `vehicles.view` | Vehicle |
-| 5 | `/attendance` | `attendance.view` | Auto check-in / geofence |
+| 5 | `/attendance` | `attendance.view` / `attendance.manage` | Auto check-in / geofence |
 | 6 | `/requests` | `requests.view` / `requests.manage` | Loan, Leave, Fuel, Complaint |
 | 7 | `/wrong-actions` | `wrong_actions.view` | Wrong action details |
 | 8 | `/earnings`, `/earnings-calculation` | `earnings.view` / `earnings.manage` | Earnings + bumper bonus |
@@ -226,6 +226,7 @@ Change-log format:
 
 ## Change log
 
+- `[admin+app] 2026-06-19` — Attendance module `/attendance`: duty toggle writes `attendance_logs` via extended `driver_set_duty_state`; admin Live/Logs/Exceptions tabs; `admin_correct_attendance` RPC + `attendance.manage` permission; realtime on `attendance_logs`. Migration `20260619100000_attendance_module.sql`.
 - `[admin+app] 2026-06-15` — Flexible restaurants + driver activation gate: `restaurants.partner_id` / `driver_intakes.partner_id` + `zone_id` optional; unique name indexes (partner-scoped vs standalone); `driver_has_active_restaurant`, triggers blocking `drivers.status='active'` without published restaurants, RPC `set_driver_account_status`; admin account status control on `/drivers/[id]`; restaurant picker shows all published merchants. Migration `20260615100000_flexible_restaurants_driver_activation.sql`.
 - `[admin+app] 2026-05-23` — Earnings transparency: RPCs `recalculate_earnings_for_range`, `get_driver_earnings_detail`, `list_driver_earnings_daily`; data-backed `/earnings` + drilldown sheet; range recalc on `/earnings-calculation`. Wallet ledger `driver_wallet_entries` auto-syncs approved `earning_credit` on recalc. Admin activity logs `admin_activity_logs` + `/settings/logs` (`audit.view`/`audit.export`); instrumentation across server actions. Migrations `20260613110000_driver_delivery_proximity_gate.sql`, `20260614100000_earnings_wallet_audit.sql`.
 - `[admin+app] 2026-06-05` — Driver app settings page `/settings/app`: title, logo, splash, `driver_app_maintenance_mode` + message (independent of admin `maintenance_mode`). Storage `branding/driver-app/*`. Migration `20260605100000_driver_app_settings.sql`.

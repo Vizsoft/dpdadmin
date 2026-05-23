@@ -369,6 +369,7 @@ export async function createVerification(input: {
     .maybeSingle();
 
   if (!restaurant) return { error: "restaurant_not_found" };
+  if (!restaurant.partner_id) return { error: "restaurant_not_found" };
 
   const { data, error } = await supabase
     .from("delivery_verifications")
@@ -632,7 +633,7 @@ export async function applyImportBatch(payload: {
       .eq("id", row.restaurant_id!)
       .single();
 
-    if (!restaurant) continue;
+    if (!restaurant?.partner_id) continue;
 
     const record = {
       driver_id: row.driver_id!,
