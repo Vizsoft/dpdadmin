@@ -24,6 +24,7 @@ import {
   Wallet,
   Cloud,
   ScrollText,
+  Radar,
   type LucideIcon,
 } from "lucide-react";
 import type { Permission } from "@/lib/auth/permissions";
@@ -66,6 +67,7 @@ export const ICON_MAP: Record<string, LucideIcon> = {
   UserCheck,
   Cloud,
   ScrollText,
+  Radar,
 };
 
 export const ICON_NAMES = Object.keys(ICON_MAP);
@@ -113,12 +115,21 @@ export const MENU_REGISTRY: MenuRegistryItem[] = [
     permission: "drivers.view",
   },
   {
+    id: "live-tracking",
+    defaultLabel: "Live tracking",
+    defaultIcon: "Radar",
+    href: "/live-tracking",
+    defaultGroup: "Operations",
+    defaultOrder: 1,
+    permission: "drivers.view",
+  },
+  {
     id: "partners",
     defaultLabel: "Partners",
     defaultIcon: "Handshake",
     href: "/partners",
     defaultGroup: "Operations",
-    defaultOrder: 1,
+    defaultOrder: 2,
     permission: "partners.view",
   },
   {
@@ -127,7 +138,7 @@ export const MENU_REGISTRY: MenuRegistryItem[] = [
     defaultIcon: "UtensilsCrossed",
     href: "/restaurants",
     defaultGroup: "Operations",
-    defaultOrder: 2,
+    defaultOrder: 3,
     permission: "restaurants.view",
   },
   {
@@ -343,6 +354,7 @@ export const MENU_REGISTRY: MenuRegistryItem[] = [
 export const APP_NAV_KEY_BY_ID: Record<string, string> = {
   dashboard: "dashboard",
   drivers: "drivers",
+  "live-tracking": "liveTracking",
   partners: "partners",
   restaurants: "restaurants",
   deliveries: "deliveries",

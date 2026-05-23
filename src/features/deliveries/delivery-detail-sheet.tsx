@@ -456,29 +456,34 @@ export function DeliveryDetailSheet({
             ) : null}
           </div>
 
-          {/* Right: proof + map */}
+          {/* Right: proof dominant, audit + map below */}
           <div
             className={cn(
               "order-1 flex min-h-[45vh] min-w-0 flex-1 flex-col border-b border-border lg:order-2 lg:min-h-0 lg:border-b-0 lg:border-l",
             )}
           >
-            <DeliveryProofPanel delivery={delivery} />
-            <div className="shrink-0 p-4">
-              <DeliveryGpsAuditPanel
-                deliveryId={delivery.id}
-                deliveredLat={delivery.delivered_lat}
-                deliveredLng={delivery.delivered_lng}
-              />
-              {hasCoords ? (
-                <DeliveryLocationMap
-                  lat={delivery.delivered_lat!}
-                  lng={delivery.delivered_lng!}
+            <div className="flex min-h-0 flex-1 flex-col">
+              <div className="flex min-h-[55%] flex-1 flex-col">
+                <DeliveryProofPanel delivery={delivery} />
+              </div>
+              <div className="grid shrink-0 gap-3 border-t border-border p-4 md:grid-cols-2">
+                <DeliveryGpsAuditPanel
+                  deliveryId={delivery.id}
+                  deliveredLat={delivery.delivered_lat}
+                  deliveredLng={delivery.delivered_lng}
                 />
-              ) : (
-                <div className="rounded-lg border border-dashed border-border bg-muted/20 px-4 py-6 text-center text-sm text-muted-foreground">
-                  {t("locationUnavailable")}
-                </div>
-              )}
+                {hasCoords ? (
+                  <DeliveryLocationMap
+                    lat={delivery.delivered_lat!}
+                    lng={delivery.delivered_lng!}
+                    mapHeightClass="h-44 md:h-56"
+                  />
+                ) : (
+                  <div className="flex h-44 items-center justify-center rounded-lg border border-dashed border-border bg-muted/20 px-4 text-center text-sm text-muted-foreground md:h-56">
+                    {t("locationUnavailable")}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

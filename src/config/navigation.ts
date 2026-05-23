@@ -13,7 +13,8 @@ export type NavIcon =
   | "Wallet"
   | "Bell"
   | "LifeBuoy"
-  | "Settings";
+  | "Settings"
+  | "Radar";
 
 export type NavItem = {
   href: string;
@@ -34,6 +35,12 @@ export const NAV_ITEMS: NavItem[] = [
     href: "/drivers",
     labelKey: "nav.drivers",
     icon: "Users",
+    permission: "drivers.view",
+  },
+  {
+    href: "/live-tracking",
+    labelKey: "nav.liveTracking",
+    icon: "Radar",
     permission: "drivers.view",
   },
   {

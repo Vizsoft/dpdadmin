@@ -338,14 +338,35 @@ Scheme: `musallam://` (configure in app)
 
 ## 8. Geofencing
 
+`zones` stays the canonical geometry table. Geofence behavior now lives in companion tables:
+
+- `zone_geofence_settings` (1:1 by `zone_id`) with:
+  - `geofence_kind`: `inclusion | exclusion`
+  - `status`: `active | inactive | draft`
+  - alert toggles: `alert_on_entry`, `alert_on_exit`, `alert_on_dwell`, `dwell_time_seconds`
+  - assignment + notifications: `assign_to_all_drivers`, `driver_group_label`, `notify_in_app`, `notify_email`, `notify_sms`
+- `geofence_events` audit trail (future crossing detection writer): `event_type`, `occurred_at`, location/accuracy, metadata
+
+RLS summary:
+
+- Staff (`is_admin_panel_user()`) can manage/read settings and read events.
+- Event writes are currently staff/service driven (mobile client should not assume direct inserts yet).
+
+Realtime:
+
+- `zone_geofence_settings` and `geofence_events` are published on `supabase_realtime`.
+
+Current app behavior:
+
 1. Admin defines zones in `/zones` with `zone_type` + `geometry` (GeoJSON Feature):
    - **polygon:** `{ type: "Feature", geometry: { type: "Polygon", coordinates: [[[lng,lat],...]] } }`
    - **circle:** `{ type: "Feature", geometry: { type: "Point", coordinates: [lng,lat] }, properties: { radiusMeters: 1500 } }`
-2. Driver assigned `drivers.zone_id`
-3. While online, app posts `current_lat/lng` to `drivers` every N seconds
-4. Client checks point-in-zone (polygon: `booleanPointInPolygon`; circle: distance ≤ `radiusMeters`); if outside → show countdown banner (Home screen)
-5. Server writes `attendance_logs.zone_compliance = outside` for reporting
-6. Admin **Outside Zone** tab lists drivers in violation
+2. Geofence UI defaults for legacy zones are `inclusion + active + entry/exit alerts enabled`, so older rows render safely even before settings are explicitly saved.
+3. Driver assigned `drivers.zone_id`
+4. While online, app posts `current_lat/lng` to `drivers` every N seconds
+5. Client checks point-in-zone (polygon: `booleanPointInPolygon`; circle: distance ≤ `radiusMeters`); if outside → show countdown banner (Home screen)
+6. Server writes `attendance_logs.zone_compliance = outside` for reporting
+7. Admin **Outside Zone** tab lists drivers in violation
 
 Shared validation logic (admin): `src/lib/geo/zone-geometry.ts` — mirror in mobile app.
 
@@ -486,7 +507,9 @@ Never ship `SUPABASE_SERVICE_ROLE_KEY` in the mobile app.
 
 ---
 
-*Last synced: 2026-06-07 — [admin+app] R2 env-only credentials; storage stats dashboard; driver upload API (`/api/driver-uploads/*`) + `storage_uploads` audit table.*
+*Last synced: 2026-06-23 — [admin+app] Geofence schema upgrade (`zone_geofence_settings`, `geofence_events`), default settings fallback for legacy zones, realtime publication for geofence tables, and create/edit geofence rule controls.*
+
+*Prior: 2026-06-07 — [admin+app] R2 env-only credentials; storage stats dashboard; driver upload API (`/api/driver-uploads/*`) + `storage_uploads` audit table.*
 
 *Prior: 2026-06-05 — [admin+app] Driver app settings: `driver_app_title`, logo/splash URLs, `driver_app_maintenance_mode` + message. Admin page `/settings/app`. Migration `20260605100000_driver_app_settings.sql`.*
 

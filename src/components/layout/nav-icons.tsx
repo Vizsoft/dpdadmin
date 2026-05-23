@@ -8,6 +8,7 @@ import {
   LifeBuoy,
   MapPin,
   Package,
+  Radar,
   Settings,
   Truck,
   Users,
@@ -19,6 +20,7 @@ import type { NavIcon } from "@/config/navigation";
 export const NAV_ICON_MAP: Record<NavIcon, LucideIcon> = {
   LayoutDashboard,
   Users,
+  Radar,
   Truck,
   Package,
   MapPin,

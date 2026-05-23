@@ -1,11 +1,20 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { Loader2 } from "lucide-react";
 import { loadGoogleMaps } from "@/lib/google-maps/load";
 import { GoogleMapsStatusBanner } from "@/features/restaurants/google-maps-status-banner";
+import {
+  circleFromZoneFeature,
+  polygonFromFeature,
+} from "@/features/zones/zone-map-google-utils";
+import {
+  geofenceFillOpacity,
+  type GeofenceMapOverlay,
+} from "@/features/locations/geofence-map-overlays";
 import { cn } from "@/lib/utils";
+import { driverPinIcon } from "./driver-pin-icon";
 import type { DriverLocationMapMarker, DriverLocationMapPath } from "./types";
 
 export function DriverLocationsMap({
@@ -14,17 +23,30 @@ export function DriverLocationsMap({
   className,
   mapHeightClass = "h-[220px]",
   fitToMarkers = true,
+  focusMarkerId,
+  onMarkerSelect,
+  geofenceOverlays,
+  frameless = false,
+  children,
 }: {
   markers: DriverLocationMapMarker[];
   path?: DriverLocationMapPath;
   className?: string;
   mapHeightClass?: string;
   fitToMarkers?: boolean;
+  focusMarkerId?: string | null;
+  onMarkerSelect?: (markerId: string) => void;
+  geofenceOverlays?: GeofenceMapOverlay[];
+  frameless?: boolean;
+  children?: ReactNode;
 }) {
   const t = useTranslations("pages.locations");
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<import("@/lib/google-maps/load").GoogleMapInstance | null>(null);
   const markerRefs = useRef<import("@/lib/google-maps/load").GoogleMarkerInstance[]>([]);
+  const geofenceRefs = useRef<
+    Array<{ setMap: (map: import("@/lib/google-maps/load").GoogleMapInstance | null) => void }>
+  >([]);
   const polylineRef = useRef<{ setMap: (map: unknown) => void } | null>(null);
   const [mapState, setMapState] = useState<"loading" | "ready" | "unavailable">("loading");
 
@@ -65,6 +87,8 @@ export function DriverLocationsMap({
       cancelled = true;
       for (const m of markerRefs.current) m.setMap(null);
       markerRefs.current = [];
+      for (const g of geofenceRefs.current) g.setMap(null);
+      geofenceRefs.current = [];
       polylineRef.current?.setMap(null);
       polylineRef.current = null;
       mapRef.current = null;
@@ -81,22 +105,22 @@ export function DriverLocationsMap({
       for (const m of markerRefs.current) m.setMap(null);
       markerRefs.current = [];
 
-      const MarkerCtor = (
-        google.maps as unknown as {
-          Marker: new (opts: {
-            position: { lat: number; lng: number };
-            map: typeof map;
-            title?: string;
-          }) => import("@/lib/google-maps/load").GoogleMarkerInstance;
-        }
-      ).Marker;
+      const MarkerCtor = google.maps.Marker;
 
       for (const pin of markers) {
         const marker = new MarkerCtor({
           position: { lat: pin.lat, lng: pin.lng },
           map: mapRef.current,
           title: pin.title,
+          icon: driverPinIcon({
+            pinStatus: pin.pinStatus,
+            trackingStatus: pin.trackingStatus,
+            heading: pin.heading,
+          }),
         });
+        if (onMarkerSelect) {
+          marker.addListener("click", () => onMarkerSelect(pin.id));
+        }
         markerRefs.current.push(marker);
       }
 
@@ -129,6 +153,24 @@ export function DriverLocationsMap({
         }
       }
 
+      for (const g of geofenceRefs.current) g.setMap(null);
+      geofenceRefs.current = [];
+
+      for (const zone of geofenceOverlays ?? []) {
+        const fillOpacity = geofenceFillOpacity(zone.status);
+        const shape =
+          zone.zone_type === "circle"
+            ? circleFromZoneFeature(google, mapRef.current, zone.geometry, zone.color, {
+                fillOpacity,
+                clickable: false,
+              })
+            : polygonFromFeature(google, mapRef.current, zone.geometry, zone.color, {
+                fillOpacity,
+                clickable: false,
+              });
+        if (shape) geofenceRefs.current.push(shape);
+      }
+
       if (fitToMarkers && (markers.length > 0 || (path && path.length > 0))) {
         const bounds = new google.maps.LatLngBounds();
         for (const pin of markers) bounds.extend({ lat: pin.lat, lng: pin.lng });
@@ -136,23 +178,39 @@ export function DriverLocationsMap({
         mapRef.current.fitBounds(bounds, 48);
       }
     });
-  }, [markers, path, mapState, fitToMarkers]);
+  }, [markers, path, mapState, fitToMarkers, geofenceOverlays, onMarkerSelect]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || mapState !== "ready" || !focusMarkerId) return;
+    const pin = markers.find((m) => m.id === focusMarkerId);
+    if (!pin) return;
+    map.panTo({ lat: pin.lat, lng: pin.lng });
+    map.setZoom(16);
+  }, [focusMarkerId, markers, mapState]);
 
   return (
-    <div className={cn("relative overflow-hidden rounded-lg border border-border", className)}>
+    <div
+      className={cn(
+        "relative overflow-hidden",
+        !frameless && "rounded-lg border border-border",
+        className,
+      )}
+    >
       <div className={cn("relative w-full bg-muted", mapHeightClass)}>
         {mapState === "loading" ? (
-          <div className="absolute inset-0 flex items-center justify-center">
+          <div className="absolute inset-0 z-[1] flex items-center justify-center">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
         ) : null}
         {mapState === "unavailable" ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-4">
+          <div className="absolute inset-0 z-[1] flex flex-col items-center justify-center gap-2 p-4">
             <GoogleMapsStatusBanner className="max-w-sm text-center" />
             <p className="text-center text-xs text-muted-foreground">{t("mapUnavailable")}</p>
           </div>
         ) : null}
         <div ref={containerRef} className="h-full w-full" aria-hidden={mapState !== "ready"} />
+        {children}
       </div>
     </div>
   );

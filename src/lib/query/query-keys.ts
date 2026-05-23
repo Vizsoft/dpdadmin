@@ -11,6 +11,11 @@ export const queryKeys = {
     list: (filters: Record<string, unknown> = {}) => ["drivers", "list", filters] as const,
     detail: (id: string) => ["drivers", "detail", id] as const,
   },
+  liveTracking: {
+    all: () => ["live-tracking"] as const,
+    history: (driverId: string, date: string) =>
+      ["live-tracking", "history", driverId, date] as const,
+  },
   partners: {
     all: () => ["partners"] as const,
     list: () => ["partners", "list"] as const,

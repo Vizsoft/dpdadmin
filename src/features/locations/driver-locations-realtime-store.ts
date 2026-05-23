@@ -40,11 +40,11 @@ let nameCache = new Map<
 >();
 
 function profileName(
-  profiles: LiveRow["drivers"] extends infer D
-    ? D extends { profiles?: infer P }
-      ? P
-      : never
-    : never,
+  profiles:
+    | { full_name: string | null }
+    | { full_name: string | null }[]
+    | null
+    | undefined,
 ): string | null {
   if (!profiles) return null;
   const row = Array.isArray(profiles) ? profiles[0] : profiles;
@@ -90,6 +90,7 @@ function rowToLocation(row: LiveRow): DriverLiveLocation {
     speedMps: row.speed_mps != null ? Number(row.speed_mps) : null,
     accuracyMeters: row.accuracy_meters != null ? Number(row.accuracy_meters) : null,
     batteryPct: row.battery_pct,
+    heading: row.heading_deg != null ? Number(row.heading_deg) : null,
     trackingStatus: parseTrackingStatus(row.tracking_status),
     zoneStatus: parseZoneStatus(row.zone_status),
     lastSeenAt: row.last_seen_at,
@@ -215,6 +216,7 @@ export function seedDriverLocationNames(
       driverCode: e.driverCode,
       employeeId: e.employeeId ?? null,
       isOnDuty: e.isOnDuty ?? false,
+      restaurantName: null,
     });
   }
 }

@@ -43,6 +43,7 @@ function mapLiveRow(row: {
   speed_mps: number | null;
   accuracy_meters: number | null;
   battery_pct: number | null;
+  heading_deg: number | null;
   tracking_status: string;
   zone_status: string | null;
   last_seen_at: string;
@@ -73,6 +74,7 @@ function mapLiveRow(row: {
     speedMps: row.speed_mps != null ? Number(row.speed_mps) : null,
     accuracyMeters: row.accuracy_meters != null ? Number(row.accuracy_meters) : null,
     batteryPct: row.battery_pct,
+    heading: row.heading_deg != null ? Number(row.heading_deg) : null,
     trackingStatus: parseTrackingStatus(row.tracking_status),
     zoneStatus: parseZoneStatus(row.zone_status),
     lastSeenAt: row.last_seen_at,
@@ -94,6 +96,7 @@ export async function fetchLiveDriverLocations(): Promise<DriverLiveLocation[]> 
       speed_mps,
       accuracy_meters,
       battery_pct,
+      heading_deg,
       tracking_status,
       zone_status,
       last_seen_at,
@@ -115,7 +118,7 @@ export async function fetchLiveDriverLocations(): Promise<DriverLiveLocation[]> 
     throw new Error(error.message);
   }
 
-  await logAdminRead("driver_locations", "locations.fetchLive");
+  void logAdminRead("driver_locations", "locations.fetchLive");
 
   return (data ?? []).map((row) => mapLiveRow(row as Parameters<typeof mapLiveRow>[0]));
 }

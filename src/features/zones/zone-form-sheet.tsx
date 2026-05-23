@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
-import { Loader2, Trash2 } from "lucide-react";
+import { Layers, List, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -32,10 +33,13 @@ import {
 } from "./zone-colors";
 import { ZoneMap } from "./zone-map";
 import { ZonePlaceSearch } from "./zone-place-search";
-import type { ZoneMapAdapter } from "./zone-map-adapter";
+import type { ZoneMapAdapter, ZoneMapViewport } from "./zone-map-adapter";
+import { DEFAULT_GEOFENCE_SETTINGS } from "./geofence-defaults";
+import { ZoneGeofenceFields } from "./zone-geofence-fields";
 import { createZone, deleteZone, updateZone } from "./zones-actions";
 import { isZoneErrorKey } from "./zone-errors";
-import type { ZoneRow } from "./types";
+import type { ZoneGeofenceSettings, ZoneRow } from "./types";
+import { formatZoneArea, zoneAreaSqKm } from "@/lib/geo/zone-area";
 
 function zoneErrorToast(
   t: ReturnType<typeof useTranslations<"pages.zones">>,
@@ -61,14 +65,12 @@ function ZoneFormBody({
   existingZones,
   onClose,
   onSaved,
-  onDeleted,
   onRequestDelete,
 }: {
   zone: ZoneRow | null;
   existingZones: ZoneRow[];
   onClose: () => void;
   onSaved: () => void;
-  onDeleted: () => void;
   onRequestDelete: () => void;
 }) {
   const t = useTranslations("pages.zones");
@@ -99,6 +101,24 @@ function ZoneFormBody({
       setColor(pickAutoZoneColor(existingZones.map((z) => z.color)));
     }
   }, [zone, existingZones]);
+  const [geofence, setGeofence] = useState<ZoneGeofenceSettings>(() =>
+    zone
+      ? {
+          geofence_kind: zone.geofence_kind,
+          status: zone.status,
+          description: zone.description,
+          alert_on_entry: zone.alert_on_entry,
+          alert_on_exit: zone.alert_on_exit,
+          alert_on_dwell: zone.alert_on_dwell,
+          dwell_time_seconds: zone.dwell_time_seconds,
+          assign_to_all_drivers: zone.assign_to_all_drivers,
+          driver_group_label: zone.driver_group_label,
+          notify_in_app: zone.notify_in_app,
+          notify_email: zone.notify_email,
+          notify_sms: zone.notify_sms,
+        }
+      : { ...DEFAULT_GEOFENCE_SETTINGS },
+  );
   const [geometry, setGeometry] = useState<ZoneGeoFeature | null>(zone?.geometry ?? null);
   const [radiusInput, setRadiusInput] = useState(
     zone?.zone_type === "circle" && zone.geometry?.properties?.radiusMeters
@@ -113,7 +133,7 @@ function ZoneFormBody({
   }, []);
 
   const handlePlaceSelect = useCallback(
-    (place: { lat: number; lng: number; viewport?: import("./zone-map-adapter").ZoneMapViewport }) => {
+    (place: { lat: number; lng: number; viewport?: ZoneMapViewport }) => {
       const adapter = mapAdapterRef.current;
       if (!adapter) return;
       if (place.viewport) {
@@ -150,6 +170,7 @@ function ZoneFormBody({
         color,
         zone_type: zoneType,
         geometry,
+        geofence,
       };
 
       const result = isEdit && zone
@@ -167,15 +188,96 @@ function ZoneFormBody({
     });
   };
 
+  const recentZones = [...existingZones]
+    .sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    )
+    .slice(0, 5);
+
+  const summary = {
+    total: existingZones.length + (isEdit ? 0 : 1),
+    inclusion:
+      existingZones.filter((item) => item.geofence_kind === "inclusion").length +
+      (isEdit
+        ? 0
+        : geofence.geofence_kind === "inclusion"
+          ? 1
+          : 0),
+    exclusion:
+      existingZones.filter((item) => item.geofence_kind === "exclusion").length +
+      (isEdit
+        ? 0
+        : geofence.geofence_kind === "exclusion"
+          ? 1
+          : 0),
+    activeAlerts:
+      existingZones.filter(
+        (item) =>
+          item.status === "active" &&
+          (item.alert_on_entry || item.alert_on_exit || item.alert_on_dwell),
+      ).length +
+      (isEdit
+        ? 0
+        : geofence.status === "active" &&
+            (geofence.alert_on_entry ||
+              geofence.alert_on_exit ||
+              geofence.alert_on_dwell)
+          ? 1
+          : 0),
+  };
+
+  const draftArea = geometry ? formatZoneArea(zoneAreaSqKm(zoneType, geometry)) : "—";
+
   return (
-    <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
       {/* Map on top for mobile, right column on desktop */}
       <div className="zones-draw-map-wrapper zones-draw-map-wrapper--modal relative order-1 min-h-[40vh] flex-1 border-b border-border lg:order-2 lg:min-h-0 lg:border-b-0 lg:border-l">
+        <div className="pointer-events-none absolute inset-x-0 top-3 z-20 flex justify-center px-3">
+          <span className="pointer-events-auto rounded-full border border-border/70 bg-background/95 px-3 py-1 text-xs shadow-sm backdrop-blur">
+            {t("geofence.drawHint")}
+          </span>
+        </div>
         <div className="pointer-events-none absolute inset-x-0 top-3 z-10 flex justify-center px-3">
           <ZonePlaceSearch
             onSelect={handlePlaceSelect}
-            className="pointer-events-auto w-full max-w-sm"
+            className="pointer-events-auto mt-11 w-full max-w-sm"
           />
+        </div>
+        <div className="pointer-events-none absolute end-3 top-3 z-20">
+          <div className="pointer-events-auto inline-flex items-center gap-1 rounded-full border border-border/70 bg-background/95 p-1 text-xs shadow-sm backdrop-blur">
+            <button type="button" className="cursor-pointer rounded-full px-2 py-1 text-primary">
+              {t("layers.roadmap")}
+            </button>
+            <button type="button" className="cursor-pointer rounded-full px-2 py-1 text-muted-foreground hover:bg-muted/60">
+              {t("layers.satellite")}
+            </button>
+            <button type="button" className="cursor-pointer rounded-full px-2 py-1 text-muted-foreground hover:bg-muted/60">
+              {t("layers.hybrid")}
+            </button>
+          </div>
+        </div>
+        <div className="pointer-events-none absolute bottom-3 start-3 z-20">
+          <div className="pointer-events-auto rounded-xl border border-border/70 bg-background/95 px-3 py-2 shadow-sm backdrop-blur">
+            <p className="text-xs font-semibold text-foreground">
+              {name.trim() || t("geofence.unnamed")}
+            </p>
+            <p className="text-[11px] text-muted-foreground">
+              {t("geofence.colArea")}: {draftArea}
+            </p>
+          </div>
+        </div>
+        <div className="pointer-events-none absolute end-3 bottom-3 z-20">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="pointer-events-auto h-8 cursor-pointer rounded-lg"
+            onClick={onClose}
+          >
+            <List className="me-1 h-3.5 w-3.5" />
+            {t("geofence.listButton")}
+          </Button>
         </div>
         <ZoneMap
           zones={existingZones}
@@ -200,6 +302,11 @@ function ZoneFormBody({
         </DialogHeader>
 
         <div className="flex-1 space-y-4 overflow-y-auto px-6 py-4">
+          <div className="rounded-lg border border-border/70 bg-muted/20 px-3 py-2">
+            <p className="text-xs font-semibold text-foreground">{t("geofence.detailsTitle")}</p>
+            <p className="text-[11px] text-muted-foreground">{t("geofence.detailsHint")}</p>
+          </div>
+
           <div className="space-y-1.5">
             <Label htmlFor="zone-name">{t("fieldName")}</Label>
             <Input
@@ -287,6 +394,8 @@ function ZoneFormBody({
             {geometry ? t("geometryReady") : t("geometryPending")}
           </div>
 
+          <ZoneGeofenceFields value={geofence} onChange={setGeofence} />
+
           <div className="rounded-lg border border-border bg-muted/30 px-3 py-2.5">
             <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               {t("tipsTitle")}
@@ -355,6 +464,65 @@ function ZoneFormBody({
         </DialogFooter>
 
       </div>
+      </div>
+
+      <div className="grid gap-3 border-t border-border bg-muted/20 px-4 py-3 lg:grid-cols-2">
+        <div className="rounded-xl border border-border bg-card px-3 py-3 shadow-sm">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            {t("geofence.summaryDockTitle")}
+          </p>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="rounded-lg bg-muted/40 px-2 py-1.5">
+              <p className="text-muted-foreground">{t("geofence.summaryTotal")}</p>
+              <p className="text-base font-semibold">{summary.total}</p>
+            </div>
+            <div className="rounded-lg bg-muted/40 px-2 py-1.5">
+              <p className="text-muted-foreground">{t("geofence.summaryInclusion")}</p>
+              <p className="text-base font-semibold">{summary.inclusion}</p>
+            </div>
+            <div className="rounded-lg bg-muted/40 px-2 py-1.5">
+              <p className="text-muted-foreground">{t("geofence.summaryExclusion")}</p>
+              <p className="text-base font-semibold">{summary.exclusion}</p>
+            </div>
+            <div className="rounded-lg bg-muted/40 px-2 py-1.5">
+              <p className="text-muted-foreground">{t("geofence.summaryAlerts")}</p>
+              <p className="text-base font-semibold">{summary.activeAlerts}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-border bg-card px-3 py-3 shadow-sm">
+          <p className="mb-2 flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <Layers className="h-3.5 w-3.5" />
+            {t("geofence.recentTitle")}
+          </p>
+          <div className="space-y-1.5">
+            {recentZones.length === 0 ? (
+              <p className="text-xs text-muted-foreground">{t("emptyTitle")}</p>
+            ) : (
+              recentZones.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between rounded-lg border border-border/70 px-2 py-1.5"
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate text-xs font-medium text-foreground">
+                      {item.name}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">#{item.code}</span>
+                  </span>
+                  <Badge
+                    variant={item.geofence_kind === "exclusion" ? "destructive" : "secondary"}
+                    className="text-[10px]"
+                  >
+                    {t(`geofence.kind.${item.geofence_kind}`)}
+                  </Badge>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -397,7 +565,6 @@ export function ZoneFormSheet({
               existingZones={existingZones}
               onClose={() => onOpenChange(false)}
               onSaved={onSaved}
-              onDeleted={onDeleted}
               onRequestDelete={() => setDeleteOpen(true)}
             />
           ) : null}

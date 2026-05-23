@@ -1381,6 +1381,60 @@ export type Database = {
           },
         ]
       }
+      geofence_events: {
+        Row: {
+          accuracy_meters: number | null
+          driver_id: string | null
+          event_type: string
+          id: string
+          latitude: number | null
+          longitude: number | null
+          metadata: Json
+          occurred_at: string
+          source: string
+          zone_id: string | null
+        }
+        Insert: {
+          accuracy_meters?: number | null
+          driver_id?: string | null
+          event_type: string
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          metadata?: Json
+          occurred_at?: string
+          source?: string
+          zone_id?: string | null
+        }
+        Update: {
+          accuracy_meters?: number | null
+          driver_id?: string | null
+          event_type?: string
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          metadata?: Json
+          occurred_at?: string
+          source?: string
+          zone_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "geofence_events_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "geofence_events_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "zones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hygiene_submissions: {
         Row: {
           created_at: string
@@ -2476,6 +2530,68 @@ export type Database = {
           },
         ]
       }
+      zone_geofence_settings: {
+        Row: {
+          alert_on_dwell: boolean
+          alert_on_entry: boolean
+          alert_on_exit: boolean
+          assign_to_all_drivers: boolean
+          created_at: string
+          description: string | null
+          driver_group_label: string | null
+          dwell_time_seconds: number
+          geofence_kind: string
+          notify_email: boolean
+          notify_in_app: boolean
+          notify_sms: boolean
+          status: string
+          updated_at: string
+          zone_id: string
+        }
+        Insert: {
+          alert_on_dwell?: boolean
+          alert_on_entry?: boolean
+          alert_on_exit?: boolean
+          assign_to_all_drivers?: boolean
+          created_at?: string
+          description?: string | null
+          driver_group_label?: string | null
+          dwell_time_seconds?: number
+          geofence_kind?: string
+          notify_email?: boolean
+          notify_in_app?: boolean
+          notify_sms?: boolean
+          status?: string
+          updated_at?: string
+          zone_id: string
+        }
+        Update: {
+          alert_on_dwell?: boolean
+          alert_on_entry?: boolean
+          alert_on_exit?: boolean
+          assign_to_all_drivers?: boolean
+          created_at?: string
+          description?: string | null
+          driver_group_label?: string | null
+          dwell_time_seconds?: number
+          geofence_kind?: string
+          notify_email?: boolean
+          notify_in_app?: boolean
+          notify_sms?: boolean
+          status?: string
+          updated_at?: string
+          zone_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zone_geofence_settings_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: true
+            referencedRelation: "zones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       zones: {
         Row: {
           code: string
@@ -2589,7 +2705,7 @@ export type Database = {
         Args: {
           p_delivered_lat?: number
           p_delivered_lng?: number
-          p_external_order_id: string
+          p_external_order_id?: string
           p_order_proof_url?: string
         }
         Returns: {

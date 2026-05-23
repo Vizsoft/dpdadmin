@@ -11,8 +11,45 @@ import {
   type ZoneGeometryType,
 } from "@/lib/geo/zone-geometry";
 import type { Json } from "@/types/database";
+import { DEFAULT_GEOFENCE_SETTINGS } from "./geofence-defaults";
 import { mapZoneDbError } from "./zone-errors";
 import { normalizeZoneColor } from "./zone-colors";
+import type { ZoneGeofenceSettings } from "./types";
+
+export type ZoneGeofenceInput = ZoneGeofenceSettings;
+
+function geofenceSettingsPayload(settings: ZoneGeofenceInput) {
+  return {
+    geofence_kind: settings.geofence_kind,
+    status: settings.status,
+    description: settings.description?.trim() || null,
+    alert_on_entry: settings.alert_on_entry,
+    alert_on_exit: settings.alert_on_exit,
+    alert_on_dwell: settings.alert_on_dwell,
+    dwell_time_seconds: settings.dwell_time_seconds,
+    assign_to_all_drivers: settings.assign_to_all_drivers,
+    driver_group_label: settings.driver_group_label?.trim() || null,
+    notify_in_app: settings.notify_in_app,
+    notify_email: settings.notify_email,
+    notify_sms: settings.notify_sms,
+    updated_at: new Date().toISOString(),
+  };
+}
+
+async function upsertZoneGeofenceSettings(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  zoneId: string,
+  settings: ZoneGeofenceInput,
+) {
+  const { error } = await supabase.from("zone_geofence_settings").upsert(
+    {
+      zone_id: zoneId,
+      ...geofenceSettingsPayload(settings),
+    },
+    { onConflict: "zone_id" },
+  );
+  if (error) throw error;
+}
 
 async function requireZonesManager() {
   const session = await getSessionUser();
@@ -33,6 +70,7 @@ export async function createZone(input: {
   color: string;
   zone_type: ZoneGeometryType;
   geometry: ZoneGeoFeature;
+  geofence?: Partial<ZoneGeofenceInput>;
 }): Promise<ZoneMutationResult> {
   const auth = await requireZonesManager();
   if ("error" in auth) return auth;
@@ -61,12 +99,30 @@ export async function createZone(input: {
     return { error: mapZoneDbError(error) };
   }
 
+  const geofence: ZoneGeofenceInput = {
+    ...DEFAULT_GEOFENCE_SETTINGS,
+    ...(input.geofence ?? {}),
+  };
+
+  try {
+    await upsertZoneGeofenceSettings(supabase, data.id, geofence);
+  } catch (settingsError) {
+    await supabase.from("zones").delete().eq("id", data.id);
+    return { error: mapZoneDbError(settingsError as { message: string }) };
+  }
+
   void logAdminMutation({
     action: "create",
     entityType: "zone",
     entityId: data.id,
     routeName: "createZone",
-    after: { name, code },
+    after: {
+      name,
+      code,
+      geofence_kind: geofence.geofence_kind,
+      alert_on_entry: geofence.alert_on_entry,
+      alert_on_exit: geofence.alert_on_exit,
+    },
   });
 
   return { success: true, id: data.id };
@@ -79,6 +135,7 @@ export async function updateZone(input: {
   color: string;
   zone_type: ZoneGeometryType;
   geometry: ZoneGeoFeature;
+  geofence?: Partial<ZoneGeofenceInput>;
 }): Promise<ZoneMutationResult> {
   const auth = await requireZonesManager();
   if ("error" in auth) return auth;
@@ -107,12 +164,28 @@ export async function updateZone(input: {
     return { error: mapZoneDbError(error) };
   }
 
+  const geofence: ZoneGeofenceInput = {
+    ...DEFAULT_GEOFENCE_SETTINGS,
+    ...(input.geofence ?? {}),
+  };
+
+  try {
+    await upsertZoneGeofenceSettings(supabase, input.id, geofence);
+  } catch (settingsError) {
+    return { error: mapZoneDbError(settingsError as { message: string }) };
+  }
+
   void logAdminMutation({
     action: "update",
     entityType: "zone",
     entityId: input.id,
     routeName: "updateZone",
-    after: { name, code },
+    after: {
+      name,
+      code,
+      geofence_kind: geofence.geofence_kind,
+      status: geofence.status,
+    },
   });
 
   return { success: true, id: input.id };

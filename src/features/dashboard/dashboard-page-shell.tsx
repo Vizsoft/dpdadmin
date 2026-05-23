@@ -16,7 +16,6 @@ import { EarningsWatchWidget } from "./widgets/earnings-watch-widget";
 import { CompliancePanelWidget } from "./widgets/compliance-panel-widget";
 import { AttendanceMonitorWidget } from "./widgets/attendance-monitor-widget";
 import { PartnerHealthWidget } from "./widgets/partner-health-widget";
-import { ActivityTimelineWidget } from "./widgets/activity-timeline-widget";
 
 export function DashboardPageShell({
   initialSnapshot,
@@ -51,7 +50,7 @@ export function DashboardPageShell({
         }
       />
 
-      <div className="space-y-4">
+      <div className="space-y-6">
         <DashboardKpiBar kpis={snapshot.kpis} />
 
         <div className="grid gap-4 lg:grid-cols-2">
@@ -87,8 +86,6 @@ export function DashboardPageShell({
             <PartnerHealthWidget cards={snapshot.partnerHealth} locale={locale} />
           ) : null}
         </div>
-
-        <ActivityTimelineWidget items={snapshot.activityTimeline} />
       </div>
     </AppPage>
   );

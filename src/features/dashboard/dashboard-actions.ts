@@ -12,7 +12,6 @@ import type { DeliveryListRow } from "@/features/deliveries/types";
 import type { DriverListRow } from "@/features/drivers/types";
 import { listDriverEarningsDaily } from "@/features/dpd/incentive-calculator";
 import type {
-  ActivityTimelineItem,
   AttendanceMonitorRow,
   DashboardKpis,
   DashboardPermissions,
@@ -91,7 +90,6 @@ function emptyKpis(): DashboardKpis {
     restaurantAssigned: 0,
     suspendedArchived: 0,
     deliveriesToday: 0,
-    estimatedPayoutToday: 0,
   };
 }
 
@@ -351,36 +349,6 @@ function buildPartnerHealth(
     .slice(0, 8);
 }
 
-function buildActivityTimeline(
-  deliveries: DeliveryListRow[],
-  adminLogs: Array<{ id: string; created_at: string; action: string; entity_type: string | null; route_name: string | null }>,
-): ActivityTimelineItem[] {
-  const items: ActivityTimelineItem[] = [];
-
-  for (const log of adminLogs.slice(0, 15)) {
-    items.push({
-      id: `admin-${log.id}`,
-      at: log.created_at,
-      messageKey: "adminAction",
-      detail: `${log.action}${log.entity_type ? ` · ${log.entity_type}` : ""}${log.route_name ? ` · ${log.route_name}` : ""}`,
-      source: "admin",
-    });
-  }
-
-  const sorted = [...deliveries].sort((a, b) => b.delivered_at.localeCompare(a.delivered_at));
-  for (const d of sorted.slice(0, 10)) {
-    items.push({
-      id: `delivery-${d.id}`,
-      at: d.delivered_at,
-      messageKey: d.status === "verified" ? "deliveryVerified" : "deliverySubmitted",
-      detail: `${d.driver_name} · ${d.external_order_id ?? d.short_id}`,
-      source: "system",
-    });
-  }
-
-  return items.sort((a, b) => b.at.localeCompare(a.at)).slice(0, 25);
-}
-
 export async function fetchDashboardSnapshot(): Promise<DashboardSnapshot> {
   const session = await requireDashboardView();
   void logAdminRead("dashboard", "fetchDashboardSnapshot");
@@ -505,7 +473,6 @@ export async function fetchDashboardSnapshot(): Promise<DashboardSnapshot> {
     }
   }
 
-  let estimatedPayoutToday = 0;
   let earningsRows: EarningsWatchRow[] = [];
   const historyByDriver = new Map<string, number[]>();
 
@@ -513,7 +480,6 @@ export async function fetchDashboardSnapshot(): Promise<DashboardSnapshot> {
     const earningsResult = await listDriverEarningsDaily(weekStart, today);
     if (!("error" in earningsResult)) {
       const todayEarnings = earningsResult.rows.filter((r) => r.earn_date === today);
-      estimatedPayoutToday = todayEarnings.reduce((sum, r) => sum + (r.net_kwd ?? 0), 0);
       for (const row of earningsResult.rows) {
         if (row.earn_date === today) continue;
         const list = historyByDriver.get(row.driver_id) ?? [];
@@ -571,7 +537,6 @@ export async function fetchDashboardSnapshot(): Promise<DashboardSnapshot> {
     restaurantAssigned,
     suspendedArchived,
     deliveriesToday: todayDeliveries.length,
-    estimatedPayoutToday: Math.round(estimatedPayoutToday * 1000) / 1000,
   };
 
   const { metrics: deliveryMetrics, feed: deliveryFeed } = buildDeliveryMetrics(
@@ -620,25 +585,6 @@ export async function fetchDashboardSnapshot(): Promise<DashboardSnapshot> {
       )
     : [];
 
-  let adminLogs: Array<{
-    id: string;
-    created_at: string;
-    action: string;
-    entity_type: string | null;
-    route_name: string | null;
-  }> = [];
-
-  if (perms.audit) {
-    const { data } = await supabase
-      .from("admin_activity_logs")
-      .select("id, created_at, action, entity_type, route_name")
-      .order("created_at", { ascending: false })
-      .limit(20);
-    adminLogs = data ?? [];
-  }
-
-  const activityTimeline = buildActivityTimeline(todayDeliveries, adminLogs);
-
   const { data: zones } = await supabase.from("zones").select("id, name, color").limit(20);
   const presenceZones: PresenceMapZone[] = (zones ?? []).map((z) => ({
     id: z.id,
@@ -669,7 +615,6 @@ export async function fetchDashboardSnapshot(): Promise<DashboardSnapshot> {
     earningsWatch: earningsRows,
     attendanceMonitor,
     partnerHealth,
-    activityTimeline,
     presenceZones,
     presenceRestaurants,
   };

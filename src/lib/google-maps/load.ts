@@ -121,6 +121,18 @@ export type GoogleMapsApi = {
       position: GoogleMapLatLng;
       map: GoogleMapInstance | null;
       draggable?: boolean;
+      title?: string;
+      icon?: {
+        path: number | string;
+        scale?: number;
+        fillColor?: string;
+        fillOpacity?: number;
+        strokeColor?: string;
+        strokeOpacity?: number;
+        strokeWeight?: number;
+        rotation?: number;
+      };
+      zIndex?: number;
     }) => GoogleMarkerInstance;
     Polygon: new (opts: {
       paths: GoogleMapLatLng[] | GoogleMVCArray<GoogleMapLatLng>;

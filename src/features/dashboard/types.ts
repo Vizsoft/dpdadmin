@@ -17,7 +17,6 @@ export type DashboardKpis = {
   restaurantAssigned: number;
   suspendedArchived: number;
   deliveriesToday: number;
-  estimatedPayoutToday: number;
 };
 
 export type WorkforceStatus =
@@ -114,24 +113,6 @@ export type PartnerHealthCard = {
   }[];
 };
 
-export type ActivityTimelineItem = {
-  id: string;
-  at: string;
-  messageKey: ActivityMessageKey;
-  detail: string;
-  source: "admin" | "system";
-};
-
-export type ActivityMessageKey =
-  | "driverOnboarded"
-  | "verificationCompleted"
-  | "incentiveRecalculated"
-  | "documentExpired"
-  | "driverSuspended"
-  | "deliverySubmitted"
-  | "deliveryVerified"
-  | "adminAction";
-
 export type PresenceMapPin = {
   id: string;
   driverName: string;
@@ -206,7 +187,6 @@ export type DashboardSnapshot = {
   earningsWatch: EarningsWatchRow[];
   attendanceMonitor: AttendanceMonitorRow[];
   partnerHealth: PartnerHealthCard[];
-  activityTimeline: ActivityTimelineItem[];
   presenceZones: PresenceMapZone[];
   presenceRestaurants: PresenceMapRestaurant[];
 };

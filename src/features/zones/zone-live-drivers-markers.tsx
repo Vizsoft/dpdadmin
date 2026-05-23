@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { loadGoogleMaps } from "@/lib/google-maps/load";
 import type { GoogleMapInstance, GoogleMarkerInstance } from "@/lib/google-maps/load";
+import { driverPinIcon } from "@/features/locations/driver-pin-icon";
 import { useDriverLocationsRealtime } from "@/features/locations/use-driver-locations-realtime";
 
 export function useGoogleLiveDriverMarkers(
@@ -24,15 +25,7 @@ export function useGoogleLiveDriverMarkers(
     void loadGoogleMaps().then((google) => {
       if (cancelled || !google?.maps?.Marker || !map) return;
 
-      const MarkerCtor = (
-        google.maps as unknown as {
-          Marker: new (opts: {
-            position: { lat: number; lng: number };
-            map: GoogleMapInstance;
-            title?: string;
-          }) => GoogleMarkerInstance;
-        }
-      ).Marker;
+      const MarkerCtor = google.maps.Marker;
 
       for (const m of markersRef.current) m.setMap(null);
       markersRef.current = [];
@@ -42,6 +35,11 @@ export function useGoogleLiveDriverMarkers(
           position: { lat: loc.latitude, lng: loc.longitude },
           map,
           title: `${loc.driverName} · ${loc.trackingStatus}`,
+          icon: driverPinIcon({
+            pinStatus: loc.pinStatus,
+            trackingStatus: loc.trackingStatus,
+            heading: loc.heading,
+          }),
         });
         markersRef.current.push(marker);
       }

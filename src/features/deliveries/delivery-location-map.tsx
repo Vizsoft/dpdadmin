@@ -11,10 +11,12 @@ export function DeliveryLocationMap({
   lat,
   lng,
   className,
+  mapHeightClass = "h-[200px]",
 }: {
   lat: number;
   lng: number;
   className?: string;
+  mapHeightClass?: string;
 }) {
   const t = useTranslations("pages.deliveries");
   const containerRef = useRef<HTMLDivElement>(null);
@@ -80,7 +82,7 @@ export function DeliveryLocationMap({
           {t("coordinates", { lat: lat.toFixed(5), lng: lng.toFixed(5) })}
         </p>
       </div>
-      <div className="relative h-[200px] w-full bg-muted">
+      <div className={cn("relative w-full bg-muted", mapHeightClass)}>
         {mapState === "loading" ? (
           <div className="absolute inset-0 flex items-center justify-center">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />

@@ -5,17 +5,78 @@ import { createClient } from "@/lib/supabase/client";
 import { queryKeys } from "@/lib/query/query-keys";
 import type { ZoneGeoFeature } from "@/lib/geo/zone-geometry";
 import { normalizeZoneColor } from "./zone-colors";
+import { normalizeZoneRow } from "./geofence-defaults";
 import type { ZoneDriverRow, ZoneRow } from "./types";
+
+const ZONES_WITH_GEOFENCE_SELECT = `
+  id,
+  name,
+  code,
+  color,
+  zone_type,
+  geometry,
+  created_at,
+  zone_geofence_settings (
+    geofence_kind,
+    status,
+    description,
+    alert_on_entry,
+    alert_on_exit,
+    alert_on_dwell,
+    dwell_time_seconds,
+    assign_to_all_drivers,
+    driver_group_label,
+    notify_in_app,
+    notify_email,
+    notify_sms
+  )
+`;
 
 export async function fetchZones(): Promise<ZoneRow[]> {
   const supabase = createClient();
 
-  const { data: zones, error } = await supabase
+  const primary = await supabase
     .from("zones")
-    .select("id, name, code, color, zone_type, geometry, created_at")
+    .select(ZONES_WITH_GEOFENCE_SELECT)
     .order("name");
 
-  if (error) throw new Error(error.message);
+  let zones: Array<{
+    id: string;
+    name: string;
+    code: string;
+    color: string;
+    zone_type: "polygon" | "circle";
+    geometry: unknown;
+    created_at: string;
+    zone_geofence_settings?: unknown;
+  }> = (primary.data ?? []) as Array<{
+    id: string;
+    name: string;
+    code: string;
+    color: string;
+    zone_type: "polygon" | "circle";
+    geometry: unknown;
+    created_at: string;
+    zone_geofence_settings?: unknown;
+  }>;
+
+  if (primary.error) {
+    const fallback = await supabase
+      .from("zones")
+      .select("id, name, code, color, zone_type, geometry, created_at")
+      .order("name");
+    if (fallback.error) throw new Error(fallback.error.message);
+    zones = (fallback.data ?? []) as Array<{
+      id: string;
+      name: string;
+      code: string;
+      color: string;
+      zone_type: "polygon" | "circle";
+      geometry: unknown;
+      created_at: string;
+      zone_geofence_settings?: unknown;
+    }>;
+  }
 
   const { data: drivers, error: driversError } = await supabase
     .from("drivers")
@@ -29,16 +90,19 @@ export async function fetchZones(): Promise<ZoneRow[]> {
     countByZone.set(row.zone_id, (countByZone.get(row.zone_id) ?? 0) + 1);
   }
 
-  return (zones ?? []).map((z) => ({
-    id: z.id,
-    name: z.name,
-    code: z.code,
-    color: normalizeZoneColor(z.color),
-    zone_type: z.zone_type,
-    geometry: z.geometry as ZoneGeoFeature | null,
-    created_at: z.created_at,
-    driver_count: countByZone.get(z.id) ?? 0,
-  }));
+  return (zones ?? []).map((z) =>
+    normalizeZoneRow(
+      {
+        ...z,
+        color: normalizeZoneColor(z.color),
+        geometry: z.geometry as ZoneGeoFeature | null,
+        zone_geofence_settings: z.zone_geofence_settings as
+          | Parameters<typeof normalizeZoneRow>[0]["zone_geofence_settings"]
+          | undefined,
+      },
+      countByZone.get(z.id) ?? 0,
+    ),
+  );
 }
 
 export async function fetchZoneDrivers(zoneId: string): Promise<ZoneDriverRow[]> {
