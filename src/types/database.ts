@@ -1051,6 +1051,113 @@ export type Database = {
           },
         ]
       }
+      driver_location_events: {
+        Row: {
+          accuracy_meters: number | null
+          battery_pct: number | null
+          delivery_id: string | null
+          driver_id: string
+          id: string
+          latitude: number
+          longitude: number
+          recorded_at: string
+          speed_mps: number | null
+          tracking_status: string
+          zone_status: string | null
+        }
+        Insert: {
+          accuracy_meters?: number | null
+          battery_pct?: number | null
+          delivery_id?: string | null
+          driver_id: string
+          id?: string
+          latitude: number
+          longitude: number
+          recorded_at?: string
+          speed_mps?: number | null
+          tracking_status: string
+          zone_status?: string | null
+        }
+        Update: {
+          accuracy_meters?: number | null
+          battery_pct?: number | null
+          delivery_id?: string | null
+          driver_id?: string
+          id?: string
+          latitude?: number
+          longitude?: number
+          recorded_at?: string
+          speed_mps?: number | null
+          tracking_status?: string
+          zone_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_location_events_delivery_id_fkey"
+            columns: ["delivery_id"]
+            isOneToOne: false
+            referencedRelation: "deliveries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "driver_location_events_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      driver_locations: {
+        Row: {
+          accuracy_meters: number | null
+          battery_pct: number | null
+          driver_id: string
+          heading_deg: number | null
+          last_seen_at: string
+          latitude: number
+          longitude: number
+          speed_mps: number | null
+          tracking_status: string
+          updated_at: string
+          zone_status: string | null
+        }
+        Insert: {
+          accuracy_meters?: number | null
+          battery_pct?: number | null
+          driver_id: string
+          heading_deg?: number | null
+          last_seen_at?: string
+          latitude: number
+          longitude: number
+          speed_mps?: number | null
+          tracking_status: string
+          updated_at?: string
+          zone_status?: string | null
+        }
+        Update: {
+          accuracy_meters?: number | null
+          battery_pct?: number | null
+          driver_id?: string
+          heading_deg?: number | null
+          last_seen_at?: string
+          latitude?: number
+          longitude?: number
+          speed_mps?: number | null
+          tracking_status?: string
+          updated_at?: string
+          zone_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_locations_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: true
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       driver_restaurants: {
         Row: {
           created_at: string
@@ -2418,6 +2525,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _haversine_meters: {
+        Args: { p_lat1: number; p_lat2: number; p_lng1: number; p_lng2: number }
+        Returns: number
+      }
       _point_within_zone_proximity: {
         Args: {
           p_buffer_meters: number
@@ -2518,6 +2629,19 @@ export type Database = {
           p_proximity_meters?: number
         }
         Returns: boolean
+      }
+      driver_report_location: {
+        Args: {
+          p_accuracy_meters?: number
+          p_battery_pct?: number
+          p_delivery_id?: string
+          p_force_history?: boolean
+          p_latitude: number
+          p_longitude: number
+          p_speed_mps?: number
+          p_tracking_status?: string
+        }
+        Returns: Json
       }
       driver_set_duty_state: {
         Args: { p_is_on_duty: boolean; p_is_online: boolean }

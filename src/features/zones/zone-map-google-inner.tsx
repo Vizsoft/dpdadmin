@@ -30,6 +30,7 @@ import type { ZoneMapDrawMode } from "./zone-map-inner";
 import type { ZoneRow } from "./types";
 import type { ZoneMapAdapter } from "./zone-map-adapter";
 import { ZoneMapLayersControl } from "./zone-map-layers-control";
+import { useGoogleLiveDriverMarkers } from "./zone-live-drivers-markers";
 import { createZoneLabelOverlay } from "./zone-map-google-label";
 import {
   DEFAULT_ZONE_MAP_PREFS,
@@ -123,6 +124,11 @@ export function ZoneMapGoogleInner({
   const draftColorRef = useRef(normalizeZoneColor(draftColor));
   const [mapState, setMapState] = useState<"loading" | "ready" | "unavailable">(
     "loading",
+  );
+
+  useGoogleLiveDriverMarkers(
+    mapRef.current,
+    mapState === "ready" && mapPrefs.showLiveDrivers,
   );
 
   onDraftChangeRef.current = onDraftGeometryChange;

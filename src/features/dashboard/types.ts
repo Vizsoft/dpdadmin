@@ -1,0 +1,212 @@
+export type DashboardPermissions = {
+  drivers: boolean;
+  deliveries: boolean;
+  earnings: boolean;
+  attendance: boolean;
+  verifications: boolean;
+  audit: boolean;
+};
+
+export type DashboardKpis = {
+  totalDrivers: number;
+  onlineNow: number;
+  onShift: number;
+  trackedNow: number;
+  checkedInToday: number;
+  notReportedYet: number;
+  restaurantAssigned: number;
+  suspendedArchived: number;
+  deliveriesToday: number;
+  estimatedPayoutToday: number;
+};
+
+export type WorkforceStatus =
+  | "online"
+  | "working"
+  | "silent"
+  | "missing"
+  | "suspended"
+  | "awaiting_verification";
+
+export type WorkforceQueueRow = {
+  driverId: string;
+  linkedProfileId: string | null;
+  driverName: string;
+  driverCode: string;
+  partnerName: string;
+  restaurantName: string;
+  zoneName: string;
+  status: WorkforceStatus;
+  shiftLabel: string;
+  deliveriesToday: number;
+  lastActivityAt: string | null;
+  lastGpsAt?: string | null;
+  zoneStatus?: string | null;
+  trackingStatus?: string | null;
+  alerts: string[];
+};
+
+export type DeliveryMonitorMetrics = {
+  submittedToday: number;
+  pending: number;
+  verified: number;
+  rejected: number;
+  underReview: number;
+  spikeDetected: boolean;
+  avgLast7Days: number;
+};
+
+export type DeliveryFeedItem = {
+  id: string;
+  at: string;
+  driverName: string;
+  messageKey: DeliveryFeedMessageKey;
+  detail: string;
+  severity: "info" | "warning" | "danger" | "success";
+};
+
+export type DeliveryFeedMessageKey =
+  | "submitted"
+  | "verified"
+  | "rejected"
+  | "underReview"
+  | "verificationPending"
+  | "payoutRecalculated";
+
+export type EarningsAnomaly =
+  | "high_payout"
+  | "zero_earnings"
+  | "delivery_mismatch";
+
+export type EarningsWatchRow = {
+  driverId: string;
+  driverName: string;
+  driverCode: string;
+  deliveries: number;
+  ruleLabel: string;
+  incentiveKwd: number;
+  estimatedKwd: number;
+  anomalies: EarningsAnomaly[];
+};
+
+export type AttendanceMonitorRow = {
+  partnerName: string;
+  scheduled: number;
+  checkedIn: number;
+  late: number;
+  absent: number;
+  overtime: number;
+};
+
+export type PartnerHealthCard = {
+  partnerId: string;
+  partnerName: string;
+  assignedRiders: number;
+  activeToday: number;
+  missingAttendance: number;
+  pendingVerification: number;
+  restaurants: {
+    restaurantId: string;
+    restaurantName: string;
+    riderCount: number;
+    understaffed: boolean;
+    inactiveCount: number;
+  }[];
+};
+
+export type ActivityTimelineItem = {
+  id: string;
+  at: string;
+  messageKey: ActivityMessageKey;
+  detail: string;
+  source: "admin" | "system";
+};
+
+export type ActivityMessageKey =
+  | "driverOnboarded"
+  | "verificationCompleted"
+  | "incentiveRecalculated"
+  | "documentExpired"
+  | "driverSuspended"
+  | "deliverySubmitted"
+  | "deliveryVerified"
+  | "adminAction";
+
+export type PresenceMapPin = {
+  id: string;
+  driverName: string;
+  lat: number;
+  lng: number;
+  status: "active" | "idle" | "alert";
+  lastSeenAt: string;
+  restaurantName: string;
+  outOfZone: boolean;
+  gpsInactive: boolean;
+};
+
+export type PresenceMapZone = {
+  id: string;
+  name: string;
+  color: string;
+};
+
+export type PresenceMapRestaurant = {
+  id: string;
+  name: string;
+  lat: number | null;
+  lng: number | null;
+};
+
+export type AlertCenterItem = {
+  id: string;
+  severity: "info" | "warning" | "danger";
+  messageKey: AlertMessageKey;
+  detail: string;
+  at: string;
+  isLive: boolean;
+};
+
+export type AlertMessageKey =
+  | "noSubmissionToday"
+  | "inactiveHours"
+  | "outsideZone"
+  | "deliveryAnomaly"
+  | "missingAttendance"
+  | "verificationBacklog"
+  | "incentiveFailure"
+  | "gpsStale";
+
+export type ComplianceItem = {
+  id: string;
+  driverName: string;
+  driverCode: string;
+  issueKey: ComplianceIssueKey;
+  detail: string;
+  severity: "warning" | "danger";
+};
+
+export type ComplianceIssueKey =
+  | "docExpiring"
+  | "missingDocs"
+  | "licenseExpiry"
+  | "passcodeDisabled"
+  | "appOutdated"
+  | "noGps"
+  | "appInactive"
+  | "lowBattery";
+
+export type DashboardSnapshot = {
+  fetchedAt: string;
+  today: string;
+  permissions: DashboardPermissions;
+  kpis: DashboardKpis;
+  workforceQueue: WorkforceQueueRow[];
+  deliveryMetrics: DeliveryMonitorMetrics;
+  deliveryFeed: DeliveryFeedItem[];
+  earningsWatch: EarningsWatchRow[];
+  attendanceMonitor: AttendanceMonitorRow[];
+  partnerHealth: PartnerHealthCard[];
+  activityTimeline: ActivityTimelineItem[];
+  presenceZones: PresenceMapZone[];
+  presenceRestaurants: PresenceMapRestaurant[];
+};

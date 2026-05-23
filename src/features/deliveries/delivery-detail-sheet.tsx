@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/select";
 import { StatusPill } from "@/components/dashboard/status-pill";
 import { cn } from "@/lib/utils";
+import { DeliveryGpsAuditPanel } from "./delivery-gps-audit-panel";
 import { DeliveryLocationMap } from "./delivery-location-map";
 import { useDeleteDelivery, useUpdateDeliveryStatus } from "./use-deliveries";
 import type { DeliveryListRow, DeliveryStatus } from "./types";
@@ -463,6 +464,11 @@ export function DeliveryDetailSheet({
           >
             <DeliveryProofPanel delivery={delivery} />
             <div className="shrink-0 p-4">
+              <DeliveryGpsAuditPanel
+                deliveryId={delivery.id}
+                deliveredLat={delivery.delivered_lat}
+                deliveredLng={delivery.delivered_lng}
+              />
               {hasCoords ? (
                 <DeliveryLocationMap
                   lat={delivery.delivered_lat!}

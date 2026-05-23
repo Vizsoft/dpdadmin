@@ -10,6 +10,7 @@ export type ZoneMapLayerPrefs = {
   bicycling: boolean;
   hideLabels: boolean;
   showLabels: boolean;
+  showLiveDrivers: boolean;
 };
 
 export const DEFAULT_ZONE_MAP_PREFS: ZoneMapLayerPrefs = {
@@ -19,6 +20,7 @@ export const DEFAULT_ZONE_MAP_PREFS: ZoneMapLayerPrefs = {
   bicycling: false,
   hideLabels: false,
   showLabels: true,
+  showLiveDrivers: true,
 };
 
 export function loadZoneMapPrefs(): ZoneMapLayerPrefs {

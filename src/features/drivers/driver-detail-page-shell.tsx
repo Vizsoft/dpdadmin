@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import {
   Archive,
   ArrowLeft,
@@ -34,6 +35,7 @@ import { useHasMounted } from "@/hooks/use-has-mounted";
 import { cn } from "@/lib/utils";
 import { DriverAccountStatusEditor } from "./driver-account-status-editor";
 import { DriverDocumentsTab } from "./driver-documents-tab";
+import { DriverLocationTab } from "./driver-location-tab";
 import { DriverEditSheet } from "./driver-edit-sheet";
 import { LinkedBadge, WorkflowStatusPill } from "./driver-workflow-ui";
 import { formatPhoneDisplay } from "./driver-phone";
@@ -47,6 +49,7 @@ import { formatDriverCodeDisplay } from "./driver-list-ui";
 
 type DetailTabId =
   | "attendance"
+  | "location"
   | "documents"
   | "assets"
   | "earnings"
@@ -185,11 +188,18 @@ function DriverDetailContent({ id }: { id: string }) {
   const { can } = useAuth();
   const canManage = can("drivers.manage");
   const { data: driver, isLoading, isError } = useDriverDetail(id);
+  const searchParams = useSearchParams();
   const archiveDriver = useArchiveDriverIntake();
   const [activeTab, setActiveTab] = useState<DetailTabId>("assets");
   const [editOpen, setEditOpen] = useState(false);
 
   const isArchived = Boolean(driver?.archived_at);
+
+  useEffect(() => {
+    if (searchParams.get("tab") === "location" && driver?.linked_profile_id) {
+      setActiveTab("location");
+    }
+  }, [searchParams, driver?.linked_profile_id]);
 
   const workflowLabel = (status: DriverWorkflowStatus) => {
     switch (status) {
@@ -206,6 +216,9 @@ function DriverDetailContent({ id }: { id: string }) {
 
   const tabs: TabItem[] = [
     { id: "attendance", label: t("tabAttendance") },
+    ...(driver?.linked_profile_id
+      ? [{ id: "location" as const, label: t("tabLocation") }]
+      : []),
     { id: "documents", label: t("tabDocuments") },
     { id: "assets", label: t("tabAssets") },
     { id: "earnings", label: t("tabEarnings") },
@@ -275,6 +288,15 @@ function DriverDetailContent({ id }: { id: string }) {
   ];
 
   const renderTabPanel = () => {
+    if (activeTab === "location" && driver.linked_profile_id) {
+      return (
+        <DriverLocationTab
+          profileDriverId={driver.linked_profile_id}
+          driverName={driver.full_name}
+        />
+      );
+    }
+
     if (activeTab === "documents") {
       return (
         <DriverDocumentsTab

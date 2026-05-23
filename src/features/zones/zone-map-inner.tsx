@@ -39,6 +39,7 @@ import {
 } from "./constants";
 import { normalizeZoneColor, zonePathStyle } from "./zone-colors";
 import type { ZoneRow } from "./types";
+import { ZoneLiveDriversLeaflet } from "./zone-live-drivers-leaflet";
 import type { ZoneMapAdapter } from "./zone-map-adapter";
 
 function FitBounds({ zones, selectedId }: { zones: ZoneRow[]; selectedId: string | null }) {
@@ -621,6 +622,7 @@ export function ZoneMapInner({
           onMapAdapterReady={onMapAdapterReady}
         />
       )}
+      {!drawMode && <ZoneLiveDriversLeaflet />}
       {!drawMode && <FitBounds zones={zones} selectedId={selectedId} />}
     </MapContainer>
   );

@@ -58,6 +58,7 @@ import {
   PartnerCell,
   PasscodeCell,
 } from "./driver-list-ui";
+import { DriverLocationsLivePanel } from "./driver-locations-live-panel";
 import {
   DRIVER_ACCOUNT_STATUSES,
   type DriverAccountStatus,
@@ -203,6 +204,14 @@ function DriversPageContent() {
     });
   }, [drivers, tabFilter]);
 
+  const intakeIdByProfileId = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const d of drivers) {
+      if (d.linked_profile_id) map.set(d.linked_profile_id, d.id);
+    }
+    return map;
+  }, [drivers]);
+
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
     return tabFiltered.filter((d) => {
@@ -333,6 +342,8 @@ function DriversPageContent() {
       </div>
 
       <KpiGrid items={kpis} />
+
+      <DriverLocationsLivePanel intakeIdByProfileId={intakeIdByProfileId} />
 
       <AppListCard
         toolbar={

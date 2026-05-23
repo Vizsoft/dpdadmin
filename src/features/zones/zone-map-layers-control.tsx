@@ -115,6 +115,16 @@ export function ZoneMapLayersControl({
             {t("overlays")}
           </p>
           <div className="space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <Label htmlFor="layer-live-drivers" className="text-sm font-normal">
+                {t("liveDrivers")}
+              </Label>
+              <Switch
+                id="layer-live-drivers"
+                checked={prefs.showLiveDrivers}
+                onCheckedChange={(checked) => update({ showLiveDrivers: checked })}
+              />
+            </div>
             {(
               [
                 { key: "traffic" as const, label: t("traffic") },
