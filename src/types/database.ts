@@ -955,6 +955,7 @@ export type Database = {
       driver_intakes: {
         Row: {
           archived_at: string | null
+          avatar_url: string | null
           assets_issued: Json
           civil_id: string
           created_at: string
@@ -975,6 +976,7 @@ export type Database = {
         }
         Insert: {
           archived_at?: string | null
+          avatar_url?: string | null
           assets_issued?: Json
           civil_id: string
           created_at?: string
@@ -995,6 +997,7 @@ export type Database = {
         }
         Update: {
           archived_at?: string | null
+          avatar_url?: string | null
           assets_issued?: Json
           civil_id?: string
           created_at?: string

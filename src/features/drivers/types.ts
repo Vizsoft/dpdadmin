@@ -33,6 +33,7 @@ export type DriverIntakeRow = {
   full_name: string;
   civil_id: string;
   driver_code: string;
+  avatar_url: string | null;
   partner_id: string | null;
   zone_id: string | null;
   vehicle_id: string | null;

@@ -7,6 +7,7 @@ import { hasPermissionInSet } from "@/lib/auth/permissions";
 import { normalizeCivilId, normalizeKuwaitPhone } from "./driver-phone";
 import { mapDriverDbError, normalizeEmployeeId } from "./driver-errors";
 import {
+  allIntakeAvatarKeys,
   allIntakeDocumentKeys,
   buildIntakeDocumentKey,
   extensionFromMime,
@@ -14,7 +15,12 @@ import {
 import { isR2Configured } from "@/lib/storage/r2-config";
 import { deleteObjects, putObject } from "@/lib/storage/r2-client";
 import { listExistingDriverDocuments } from "@/lib/storage/driver-documents";
+import { resolveDriverAvatarUrl } from "@/lib/storage/driver-avatar-url";
 import { resolvePartnerLogoUrl } from "@/lib/storage/partner-logo-url";
+import {
+  uploadDriverAvatarFile,
+  uploadIntakeAvatarFile,
+} from "./driver-avatar-storage";
 import {
   DOCUMENT_TYPES,
   type DriverAccountStatus,
@@ -292,7 +298,10 @@ export async function createDriverIntake(
     }
   }
 
-  if (docsToUpload.length > 0 && !(await isR2Configured())) {
+  const avatarFile = formData.get("avatar");
+  const hasAvatarUpload = avatarFile instanceof File && avatarFile.size > 0;
+
+  if ((docsToUpload.length > 0 || hasAvatarUpload) && !(await isR2Configured())) {
     return { error: "r2_not_configured" };
   }
 
@@ -313,6 +322,20 @@ export async function createDriverIntake(
     }
   }
 
+  let intakeAvatarKey: string | null = null;
+  if (hasAvatarUpload && avatarFile instanceof File) {
+    const upload = await uploadIntakeAvatarFile(intakeId, avatarFile, auth.session.id);
+    if (upload.error) {
+      try {
+        await deleteObjects([...allIntakeDocumentKeys(intakeId), ...allIntakeAvatarKeys(intakeId)]);
+      } catch {
+        /* best-effort */
+      }
+      return { error: upload.error };
+    }
+    intakeAvatarKey = upload.path ?? null;
+  }
+
   const { data: allocatedCode, error: allocateError } = await supabase.rpc(
     "allocate_driver_code",
   );
@@ -331,6 +354,7 @@ export async function createDriverIntake(
       partner_id: partnerId || null,
       zone_id: zoneId || null,
       vehicle_id: vehicleId || null,
+      avatar_url: intakeAvatarKey,
       assets_issued: assetsIssued,
       status: "awaiting_app_link",
       workflow_status: "draft",
@@ -341,7 +365,7 @@ export async function createDriverIntake(
 
   if (error) {
     try {
-      await deleteObjects(allIntakeDocumentKeys(intakeId));
+      await deleteObjects([...allIntakeDocumentKeys(intakeId), ...allIntakeAvatarKeys(intakeId)]);
     } catch {
       /* best-effort rollback */
     }
@@ -639,6 +663,9 @@ export async function updateDriverIntake(
   const employeeId = normalizeEmployeeId(employeeIdRaw);
   const assetsEnabled = formData.get("assetsEnabled") === "true";
   const workflowStatus = String(formData.get("workflowStatus") ?? "").trim() as DriverWorkflowStatus;
+  const avatarFile = formData.get("avatar");
+  const hasAvatarUpload = avatarFile instanceof File && avatarFile.size > 0;
+  const removeAvatar = formData.get("removeAvatar") === "true";
 
   if (!intakeId || !fullName || !phoneRaw || !civilId) {
     return { error: "missing_fields" };
@@ -655,11 +682,12 @@ export async function updateDriverIntake(
   if (!civilIdNormalized) return { error: "invalid_civil_id" };
 
   if (await phoneExists(phone, intakeId)) return { error: "phone_exists" };
+  if (hasAvatarUpload && !(await isR2Configured())) return { error: "r2_not_configured" };
 
   const supabase = await createClient();
   const { data: existing } = await supabase
     .from("driver_intakes")
-    .select("id, linked_profile_id, driver_code")
+    .select("id, linked_profile_id, driver_code, avatar_url")
     .eq("id", intakeId)
     .is("archived_at", null)
     .maybeSingle();
@@ -697,6 +725,20 @@ export async function updateDriverIntake(
   }
 
   const assetsIssued = buildAssetsMap(assetsEnabled, formData);
+  let intakeAvatarPath = existing.avatar_url ?? null;
+
+  if (removeAvatar) {
+    intakeAvatarPath = null;
+    try {
+      await deleteObjects(allIntakeAvatarKeys(intakeId));
+    } catch {
+      /* best-effort */
+    }
+  } else if (hasAvatarUpload && avatarFile instanceof File) {
+    const upload = await uploadIntakeAvatarFile(intakeId, avatarFile, auth.session.id);
+    if (upload.error) return { error: upload.error };
+    intakeAvatarPath = upload.path ?? null;
+  }
 
   const { error } = await supabase
     .from("driver_intakes")
@@ -707,6 +749,7 @@ export async function updateDriverIntake(
       partner_id: partnerId || null,
       zone_id: zoneId || null,
       vehicle_id: vehicleId || null,
+      avatar_url: intakeAvatarPath,
       assets_issued: assetsIssued,
       workflow_status: workflowStatus,
       updated_at: new Date().toISOString(),
@@ -718,11 +761,25 @@ export async function updateDriverIntake(
   await syncIntakeRestaurants(supabase, intakeId, restaurantIds);
 
   if (existing.linked_profile_id) {
+    let profileAvatarPath: string | null | undefined;
+    if (removeAvatar) {
+      profileAvatarPath = null;
+    } else if (hasAvatarUpload && avatarFile instanceof File) {
+      const upload = await uploadDriverAvatarFile(
+        existing.linked_profile_id,
+        avatarFile,
+        auth.session.id,
+      );
+      if (upload.error) return { error: upload.error };
+      profileAvatarPath = upload.path ?? null;
+    }
+
     await supabase
       .from("profiles")
       .update({
         full_name: fullName,
         phone,
+        ...(profileAvatarPath !== undefined ? { avatar_url: profileAvatarPath } : {}),
         updated_at: new Date().toISOString(),
       })
       .eq("id", existing.linked_profile_id);
@@ -779,6 +836,7 @@ export async function fetchDriverDetail(
       partner_id,
       zone_id,
       vehicle_id,
+      avatar_url,
       assets_issued,
       created_at,
       archived_at,
@@ -856,7 +914,7 @@ export async function fetchDriverDetail(
       email: profile?.email ?? null,
       civil_id: intake.civil_id,
       employee_id: linkedDriver?.employee_id ?? null,
-      avatar_url: profile?.avatar_url ?? null,
+      avatar_url: await resolveDriverAvatarUrl(profile?.avatar_url ?? intake.avatar_url),
       partner_name: relName(
         intake.partners as { name: string } | { name: string }[] | null,
       ),
@@ -933,7 +991,7 @@ export async function fetchDriverDetail(
   const { data: intakeForDriver } = await supabase
     .from("driver_intakes")
     .select(
-      "id, assets_issued, workflow_status, linked, partner_id, zone_id, vehicle_id, archived_at",
+      "id, assets_issued, workflow_status, linked, partner_id, zone_id, vehicle_id, archived_at, avatar_url",
     )
     .eq("linked_profile_id", id)
     .maybeSingle();
@@ -960,7 +1018,7 @@ export async function fetchDriverDetail(
     email: prof?.email ?? null,
     civil_id: driverRow.civil_id ?? "—",
     employee_id: driverRow.employee_id ?? null,
-    avatar_url: prof?.avatar_url ?? null,
+    avatar_url: await resolveDriverAvatarUrl(prof?.avatar_url ?? intakeForDriver?.avatar_url ?? null),
     partner_name: relName(driverRow.partners as { name: string } | { name: string }[] | null),
     zone_label: relZone(driverRow.zones),
     vehicle_label: vehicleRow

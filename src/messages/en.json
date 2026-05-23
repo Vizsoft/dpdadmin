@@ -724,6 +724,7 @@
       },
       "assetsDisabled": "No assets will be recorded for this driver.",
       "fields": {
+        "profilePhoto": "Profile Photo",
         "fullName": "Full Name",
         "phone": "Mobile number",
         "civilId": "Civil ID",
@@ -756,6 +757,9 @@
         "passport": "Passport"
       },
       "uploadDocument": "Choose file",
+      "uploadPhoto": "Upload photo",
+      "removePhoto": "Remove photo",
+      "profilePhotoHint": "Optional photo. If not provided, a default avatar is shown.",
       "uploadFormats": "PDF, PNG, JPG, or WebP · max 16 MB",
       "documentSelected": "File selected",
       "documentPendingHint": "Optional — stored securely when you create the driver",

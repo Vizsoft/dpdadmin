@@ -48,6 +48,14 @@ export function buildDriverDocumentKey(
   return `drivers/${driverId}/${docType}.${ext}`;
 }
 
+export function buildIntakeAvatarKey(intakeId: string, ext: string): string {
+  return `drivers/intakes/${intakeId}/avatar.${ext}`;
+}
+
+export function buildDriverAvatarKey(driverId: string, ext: string): string {
+  return `drivers/${driverId}/avatar.${ext}`;
+}
+
 export function buildPartnerLogoKey(partnerId: string, ext: string): string {
   return `partners/${partnerId}/logo.${ext}`;
 }
@@ -69,5 +77,17 @@ export function allIntakeDocumentKeys(intakeId: string): string[] {
 export function allPartnerLogoKeys(partnerId: string): string[] {
   return ["png", "jpg", "jpeg", "webp", "svg"].map((ext) =>
     buildPartnerLogoKey(partnerId, ext),
+  );
+}
+
+export function allIntakeAvatarKeys(intakeId: string): string[] {
+  return ["png", "jpg", "jpeg", "webp", "svg"].map((ext) =>
+    buildIntakeAvatarKey(intakeId, ext),
+  );
+}
+
+export function allDriverAvatarKeys(driverId: string): string[] {
+  return ["png", "jpg", "jpeg", "webp", "svg"].map((ext) =>
+    buildDriverAvatarKey(driverId, ext),
   );
 }

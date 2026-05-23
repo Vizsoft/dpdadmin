@@ -723,6 +723,7 @@
       },
       "assetsDisabled": "لن يُسجَّل أي أصول لهذا السائق.",
       "fields": {
+        "profilePhoto": "الصورة الشخصية",
         "fullName": "الاسم الكامل",
         "phone": "رقم الجوال",
         "civilId": "الرقم المدني",
@@ -755,6 +756,9 @@
         "passport": "جواز السفر"
       },
       "uploadDocument": "اختر ملفاً",
+      "uploadPhoto": "رفع صورة",
+      "removePhoto": "إزالة الصورة",
+      "profilePhotoHint": "الصورة اختيارية. إذا لم تتم إضافتها سيظهر أفاتار افتراضي.",
       "uploadFormats": "PDF أو PNG أو JPG أو WebP · بحد أقصى 16 ميجابايت",
       "documentSelected": "تم اختيار الملف",
       "documentPendingHint": "اختياري — يُرفع بأمان عند إنشاء السائق",

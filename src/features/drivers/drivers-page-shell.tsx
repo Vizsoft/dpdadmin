@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
+import { useSearchParams } from "next/navigation";
 import {
   Download,
   Eye,
@@ -37,7 +38,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { selectOptionsFrom } from "@/lib/select-items";
-import { Link } from "@/i18n/navigation";
 import {
   Table,
   TableBody,
@@ -59,6 +59,7 @@ import {
   PasscodeCell,
 } from "./driver-list-ui";
 import { DriverLocationsLivePanel } from "./driver-locations-live-panel";
+import { DriverFormSheet } from "./driver-form-sheet";
 import {
   DRIVER_ACCOUNT_STATUSES,
   type DriverAccountStatus,
@@ -129,6 +130,7 @@ function DriversPageSkeleton() {
 function DriversPageContent() {
   const t = useTranslations("pages.drivers");
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [tabFilter, setTabFilter] = useState<DriversTabFilter>("all");
   const listArchived = tabFilter === "archived";
   const { data: drivers = [], isLoading, refetch } = useDriversList(listArchived);
@@ -139,6 +141,14 @@ function DriversPageContent() {
   const [statusFilter, setStatusFilter] = useState<"all" | DriverAccountStatus>("all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get("add") === "1") {
+      setAddOpen(true);
+      router.replace("/drivers");
+    }
+  }, [searchParams, router]);
 
   const zoneSelectItems = useMemo(
     () => [
@@ -333,8 +343,7 @@ function DriversPageContent() {
               type="button"
               size="sm"
               className="h-9 cursor-pointer rounded-lg"
-              nativeButton={false}
-              render={<Link href="/drivers/new" />}
+              onClick={() => setAddOpen(true)}
             >
               <Plus className="me-2 h-3.5 w-3.5" />
               {t("addDriver")}
@@ -465,8 +474,7 @@ function DriversPageContent() {
               type="button"
               size="sm"
               className="mt-4 cursor-pointer rounded-lg"
-              nativeButton={false}
-              render={<Link href="/drivers/new" />}
+              onClick={() => setAddOpen(true)}
             >
               <Plus className="me-2 h-3.5 w-3.5" />
               {t("addDriver")}
@@ -610,6 +618,7 @@ function DriversPageContent() {
           </CardContent>
         )}
       </AppListCard>
+      <DriverFormSheet mode="create" open={addOpen} onOpenChange={setAddOpen} />
     </AppPage>
   );
 }
