@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Maximize2, Minimize2, Radio } from "lucide-react";
+import { Minimize2, Radio } from "lucide-react";
 import { AppPage } from "@/components/app/app-page";
 import { AppPageHeader } from "@/components/app/app-page-header";
 import { Badge } from "@/components/ui/badge";
@@ -83,18 +83,6 @@ export function LiveTrackingPageShell() {
       <AppPageHeader
         title={t("title")}
         description={t("subtitle")}
-        actions={
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="cursor-pointer"
-            onClick={() => setIsCommandFullscreen(true)}
-          >
-            <Maximize2 className="me-1.5 h-4 w-4" />
-            {t("fullscreen")}
-          </Button>
-        }
       />
 
       <div className={cn("flex flex-col")}>{tabs}</div>

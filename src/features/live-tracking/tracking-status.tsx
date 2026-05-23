@@ -112,3 +112,12 @@ export const LEGEND_STATUSES: FleetStatusKey[] = [
   "alert",
   "cluster",
 ];
+
+export const LEGEND_FILTERABLE_STATUSES: FleetStatusKey[] = [
+  "available",
+  "delivering",
+  "idle",
+  "break",
+  "offline",
+  "alert",
+];

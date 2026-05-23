@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { MarkerClusterer } from "@googlemaps/markerclusterer";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { Loader2 } from "lucide-react";
 import { loadGoogleMaps } from "@/lib/google-maps/load";
@@ -14,8 +15,14 @@ import {
   type GeofenceMapOverlay,
 } from "@/features/locations/geofence-map-overlays";
 import { cn } from "@/lib/utils";
-import { driverPinIcon } from "./driver-pin-icon";
+import { createFleetMarkerIcon } from "./fleet-marker-icon";
 import type { DriverLocationMapMarker, DriverLocationMapPath } from "./types";
+import { createDriverPulseOverlay } from "./driver-marker-pulse-overlay";
+import {
+  buildHeatmapPoints,
+  isHeatmapLayerEnabled,
+  isTrafficLayerEnabled,
+} from "@/features/live-tracking/tracking-map-layer-controller";
 
 export function DriverLocationsMap({
   markers,
@@ -27,6 +34,14 @@ export function DriverLocationsMap({
   onMarkerSelect,
   geofenceOverlays,
   frameless = false,
+  mapStyles,
+  mapTypeId = "roadmap",
+  defaultZoom = 11,
+  initialFitPadding = 72,
+  mapLayer = "live",
+  onMapReady,
+  onMapActionsReady,
+  onClusterCountChange,
   children,
 }: {
   markers: DriverLocationMapMarker[];
@@ -38,6 +53,18 @@ export function DriverLocationsMap({
   onMarkerSelect?: (markerId: string) => void;
   geofenceOverlays?: GeofenceMapOverlay[];
   frameless?: boolean;
+  mapStyles?: import("@/lib/google-maps/load").GoogleMapStyleRule[];
+  mapTypeId?: "roadmap" | "satellite" | "hybrid";
+  defaultZoom?: number;
+  initialFitPadding?: number;
+  mapLayer?: "live" | "traffic" | "heatmap";
+  onMapReady?: (map: import("@/lib/google-maps/load").GoogleMapInstance) => void;
+  onMapActionsReady?: (actions: {
+    recenter: () => void;
+    zoomIn: () => void;
+    zoomOut: () => void;
+  }) => void;
+  onClusterCountChange?: (count: number) => void;
   children?: ReactNode;
 }) {
   const t = useTranslations("pages.locations");
@@ -48,7 +75,15 @@ export function DriverLocationsMap({
     Array<{ setMap: (map: import("@/lib/google-maps/load").GoogleMapInstance | null) => void }>
   >([]);
   const polylineRef = useRef<{ setMap: (map: unknown) => void } | null>(null);
+  const trafficRef = useRef<import("@/lib/google-maps/load").GoogleOverlayLayer | null>(null);
+  const heatmapRef = useRef<import("@/lib/google-maps/load").GoogleHeatmapLayerInstance | null>(
+    null,
+  );
+  const clustererRef = useRef<MarkerClusterer | null>(null);
+  const pulseRefs = useRef<Array<{ setMap: (map: import("@/lib/google-maps/load").GoogleMapInstance | null) => void }>>([]);
+  const hasInitialFitRef = useRef(false);
   const [mapState, setMapState] = useState<"loading" | "ready" | "unavailable">("loading");
+  const stableStyles = useMemo(() => mapStyles ?? [], [mapStyles]);
 
   useEffect(() => {
     let cancelled = false;
@@ -71,15 +106,42 @@ export function DriverLocationsMap({
 
       const map = new google.maps.Map(container, {
         center: defaultCenter,
-        zoom: markers.length === 1 && !path?.length ? 15 : 12,
+        zoom: defaultZoom,
         disableDefaultUI: true,
-        zoomControl: true,
+        zoomControl: false,
         mapTypeControl: false,
         streetViewControl: false,
         fullscreenControl: false,
         clickableIcons: false,
+        mapTypeId,
+        styles: stableStyles,
       });
       mapRef.current = map;
+      onMapReady?.(map);
+      onMapActionsReady?.({
+        recenter: () => {
+          const current = mapRef.current;
+          if (!current) return;
+          if (markers.length > 0 || (path?.length ?? 0) > 0) {
+            const bounds = new google.maps.LatLngBounds();
+            for (const pin of markers) bounds.extend({ lat: pin.lat, lng: pin.lng });
+            for (const pt of path ?? []) bounds.extend(pt);
+            current.fitBounds(bounds, initialFitPadding);
+          }
+        },
+        zoomIn: () => {
+          const current = mapRef.current;
+          if (!current) return;
+          const currentZoom = current.getZoom() ?? defaultZoom;
+          current.setZoom(Math.min(currentZoom + 1, 20));
+        },
+        zoomOut: () => {
+          const current = mapRef.current;
+          if (!current) return;
+          const currentZoom = current.getZoom() ?? defaultZoom;
+          current.setZoom(Math.max(currentZoom - 1, 3));
+        },
+      });
       setMapState("ready");
     });
 
@@ -89,6 +151,14 @@ export function DriverLocationsMap({
       markerRefs.current = [];
       for (const g of geofenceRefs.current) g.setMap(null);
       geofenceRefs.current = [];
+      for (const pulse of pulseRefs.current) pulse.setMap(null);
+      pulseRefs.current = [];
+      trafficRef.current?.setMap(null);
+      trafficRef.current = null;
+      heatmapRef.current?.setMap(null);
+      heatmapRef.current = null;
+      clustererRef.current?.clearMarkers();
+      clustererRef.current = null;
       polylineRef.current?.setMap(null);
       polylineRef.current = null;
       mapRef.current = null;
@@ -98,12 +168,24 @@ export function DriverLocationsMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || mapState !== "ready") return;
+    map.setOptions({ styles: stableStyles, mapTypeId });
+  }, [mapTypeId, mapState, stableStyles]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || mapState !== "ready") return;
 
     void loadGoogleMaps().then((google) => {
       if (!google?.maps?.Map || !mapRef.current) return;
 
+      clustererRef.current?.clearMarkers();
+      clustererRef.current = null;
+      onClusterCountChange?.(0);
+
       for (const m of markerRefs.current) m.setMap(null);
       markerRefs.current = [];
+      for (const pulse of pulseRefs.current) pulse.setMap(null);
+      pulseRefs.current = [];
 
       const MarkerCtor = google.maps.Marker;
 
@@ -112,16 +194,27 @@ export function DriverLocationsMap({
           position: { lat: pin.lat, lng: pin.lng },
           map: mapRef.current,
           title: pin.title,
-          icon: driverPinIcon({
+          icon: createFleetMarkerIcon({
             pinStatus: pin.pinStatus,
-            trackingStatus: pin.trackingStatus,
-            heading: pin.heading,
+            selected: Boolean(pin.highlight),
+            vehicle: pin.trackingStatus === "delivery_submit" ? "car" : "bike",
           }),
+          zIndex: pin.highlight ? 999 : undefined,
         });
         if (onMarkerSelect) {
           marker.addListener("click", () => onMarkerSelect(pin.id));
         }
         markerRefs.current.push(marker);
+
+        if (mapLayer !== "heatmap" && pin.trackingStatus === "moving" && pin.pinStatus) {
+          const pulse = createDriverPulseOverlay(
+            google,
+            mapRef.current,
+            { lat: pin.lat, lng: pin.lng },
+            pin.pinStatus,
+          );
+          pulseRefs.current.push(pulse);
+        }
       }
 
       polylineRef.current?.setMap(null);
@@ -171,14 +264,85 @@ export function DriverLocationsMap({
         if (shape) geofenceRefs.current.push(shape);
       }
 
-      if (fitToMarkers && (markers.length > 0 || (path && path.length > 0))) {
+      if (
+        fitToMarkers &&
+        !hasInitialFitRef.current &&
+        (markers.length > 0 || (path && path.length > 0))
+      ) {
         const bounds = new google.maps.LatLngBounds();
         for (const pin of markers) bounds.extend({ lat: pin.lat, lng: pin.lng });
         for (const pt of path ?? []) bounds.extend(pt);
-        mapRef.current.fitBounds(bounds, 48);
+        mapRef.current.fitBounds(bounds, initialFitPadding);
+        hasInitialFitRef.current = true;
+      }
+
+      if (isHeatmapLayerEnabled(mapLayer)) {
+        for (const marker of markerRefs.current) marker.setMap(null);
+        trafficRef.current?.setMap(null);
+        if (!heatmapRef.current && google.maps.visualization?.HeatmapLayer) {
+          heatmapRef.current = new google.maps.visualization.HeatmapLayer({});
+        }
+        const heatmapPoints = buildHeatmapPoints(markers);
+        heatmapRef.current?.setData(heatmapPoints);
+        heatmapRef.current?.setOptions({
+          radius: 34,
+          opacity: 0.7,
+          gradient: [
+            "rgba(16, 185, 129, 0.15)",
+            "rgba(34, 197, 94, 0.35)",
+            "rgba(250, 204, 21, 0.6)",
+            "rgba(249, 115, 22, 0.8)",
+            "rgba(239, 68, 68, 0.95)",
+          ],
+        });
+        heatmapRef.current?.setMap(mapRef.current);
+      } else {
+        heatmapRef.current?.setMap(null);
+        if (isTrafficLayerEnabled(mapLayer)) {
+          if (!trafficRef.current) trafficRef.current = new google.maps.TrafficLayer();
+          trafficRef.current.setMap(mapRef.current);
+        } else {
+          trafficRef.current?.setMap(null);
+        }
+
+        if (markers.length > 0) {
+          clustererRef.current = new MarkerClusterer({
+            map: mapRef.current,
+            markers: markerRefs.current,
+            renderer: {
+              render: ({ count, position }) =>
+                new google.maps.Marker({
+                  position,
+                  map: null,
+                  icon: {
+                    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
+                      `<svg width="42" height="42" viewBox="0 0 42 42" xmlns="http://www.w3.org/2000/svg"><circle cx="21" cy="21" r="20" fill="#2563EB"/><circle cx="21" cy="21" r="15" fill="#1D4ED8"/><text x="21" y="26" text-anchor="middle" fill="white" font-size="12" font-family="Inter,Arial,sans-serif" font-weight="700">${count}</text></svg>`,
+                    )}`,
+                    scaledSize: { width: 42, height: 42 },
+                    anchor: { x: 21, y: 21 },
+                  },
+                  zIndex: 1000,
+                }),
+            },
+          });
+          const clusters =
+            (clustererRef.current as unknown as { clusters?: Array<unknown> }).clusters?.length ??
+            0;
+          onClusterCountChange?.(clusters);
+        }
       }
     });
-  }, [markers, path, mapState, fitToMarkers, geofenceOverlays, onMarkerSelect]);
+  }, [
+    markers,
+    path,
+    mapState,
+    fitToMarkers,
+    geofenceOverlays,
+    onMarkerSelect,
+    initialFitPadding,
+    mapLayer,
+    onClusterCountChange,
+  ]);
 
   useEffect(() => {
     const map = mapRef.current;

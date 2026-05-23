@@ -19,9 +19,11 @@ export type GoogleMapStyleRule = {
 export type GoogleMapInstance = {
   setCenter: (center: GoogleMapLatLng) => void;
   setZoom: (zoom: number) => void;
+  getZoom: () => number | undefined;
   panTo: (center: GoogleMapLatLng) => void;
   setMapTypeId: (id: string) => void;
-  setOptions: (opts: { styles?: GoogleMapStyleRule[] }) => void;
+  setOptions: (opts: { styles?: GoogleMapStyleRule[]; mapTypeId?: string }) => void;
+  addListener: (event: string, handler: () => void) => { remove: () => void };
   fitBounds: (
     bounds: GoogleLatLngBounds,
     padding?: number | { top?: number; right?: number; bottom?: number; left?: number },
@@ -62,6 +64,22 @@ export type GoogleCircleInstance = {
 
 export type GoogleOverlayLayer = {
   setMap: (map: GoogleMapInstance | null) => void;
+};
+
+export type GoogleWeightedLocation = {
+  location: GoogleMapLatLng;
+  weight?: number;
+};
+
+export type GoogleHeatmapLayerInstance = {
+  setMap: (map: GoogleMapInstance | null) => void;
+  setData: (data: GoogleWeightedLocation[] | GoogleMVCArray<GoogleWeightedLocation>) => void;
+  setOptions: (opts: {
+    radius?: number;
+    opacity?: number;
+    gradient?: string[];
+    dissipating?: boolean;
+  }) => void;
 };
 
 export type GoogleMapPoint = { x: number; y: number };
@@ -122,16 +140,22 @@ export type GoogleMapsApi = {
       map: GoogleMapInstance | null;
       draggable?: boolean;
       title?: string;
-      icon?: {
-        path: number | string;
-        scale?: number;
-        fillColor?: string;
-        fillOpacity?: number;
-        strokeColor?: string;
-        strokeOpacity?: number;
-        strokeWeight?: number;
-        rotation?: number;
-      };
+      icon?:
+        | {
+            path: number | string;
+            scale?: number;
+            fillColor?: string;
+            fillOpacity?: number;
+            strokeColor?: string;
+            strokeOpacity?: number;
+            strokeWeight?: number;
+            rotation?: number;
+          }
+        | {
+            url: string;
+            scaledSize?: { width: number; height: number };
+            anchor?: { x: number; y: number };
+          };
       zIndex?: number;
     }) => GoogleMarkerInstance;
     Polygon: new (opts: {
@@ -220,6 +244,16 @@ export type GoogleMapsApi = {
         CIRCLE: string;
       };
     };
+    visualization?: {
+      HeatmapLayer: new (opts: {
+        data?: GoogleWeightedLocation[] | GoogleMVCArray<GoogleWeightedLocation>;
+        map?: GoogleMapInstance | null;
+        radius?: number;
+        opacity?: number;
+        gradient?: string[];
+        dissipating?: boolean;
+      }) => GoogleHeatmapLayerInstance;
+    };
   };
 };
 
@@ -257,7 +291,7 @@ function installAuthFailureHandler() {
   };
 }
 
-/** Lazy-load Google Maps JS API with Places + Drawing libraries. */
+/** Lazy-load Google Maps JS API with Places, Drawing and Visualization libraries. */
 export function loadGoogleMaps(): Promise<GoogleMapsApi | null> {
   if (typeof window === "undefined") {
     return Promise.resolve(null);
@@ -322,7 +356,7 @@ export function loadGoogleMaps(): Promise<GoogleMapsApi | null> {
       script.dataset.googleMaps = "true";
       script.async = true;
       script.defer = true;
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&libraries=places,drawing&callback=${callbackName}&loading=async`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&libraries=places,drawing,visualization&callback=${callbackName}&loading=async`;
       script.onerror = () => {
         lastFailure = "load_error";
         finish(null);

@@ -4,33 +4,45 @@ import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import {
   AlertTriangle,
-  ChevronDown,
   Clock3,
   Package,
   Search,
-  Settings2,
   UserCheck,
   Users,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MetricTile, Pill, type Tone } from "@/components/ui/metric-tile";
 import { cn } from "@/lib/utils";
+import type { DriverLiveLocation } from "@/features/locations/types";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { LiveDriverList } from "./live-driver-list";
 import { TrackingGlassCard } from "./tracking-shell";
 import type { LiveTrackingFilterState } from "./live-tracking-filters";
 
 export function FleetOverviewPanel({
   totalDrivers,
   trackedCount,
+  inProgressCount,
   alertsCount,
+  drivers,
+  selectedDriverId,
+  onSelectDriver,
   filters,
   onChange,
+  zoneOptions,
+  partnerOptions,
 }: {
   totalDrivers: number;
   trackedCount: number;
+  inProgressCount: number;
   alertsCount: number;
+  drivers: DriverLiveLocation[];
+  selectedDriverId: string | null;
+  onSelectDriver: (driverId: string) => void;
   filters: LiveTrackingFilterState;
   onChange: (next: LiveTrackingFilterState) => void;
+  zoneOptions: Array<{ id: string; label: string }>;
+  partnerOptions: Array<{ id: string; label: string }>;
 }) {
   const t = useTranslations("pages.liveTracking");
 
@@ -42,7 +54,7 @@ export function FleetOverviewPanel({
     { id: "online", label: t("chipOnline"), tone: "emerald" },
     { id: "on_duty", label: t("chipOnDuty"), tone: "blue" },
     { id: "idle", label: t("chipIdle"), tone: "amber" },
-    { id: "break", label: t("chipBreak"), tone: "indigo" },
+    { id: "alert", label: t("chipAlert"), tone: "rose" },
     { id: "offline", label: t("chipOffline"), tone: "slate" },
   ];
 
@@ -69,11 +81,9 @@ export function FleetOverviewPanel({
       {
         id: "progress",
         label: t("metricInProgress"),
-        value: trackedCount.toLocaleString(),
+        value: inProgressCount.toLocaleString(),
         tone: "indigo" as const,
         icon: Package,
-        trend: "+12.4%",
-        selected: true,
       },
       {
         id: "delayed",
@@ -81,7 +91,6 @@ export function FleetOverviewPanel({
         value: Math.max(0, Math.round(alertsCount * 1.3)).toLocaleString(),
         tone: "amber" as const,
         icon: Clock3,
-        trend: "+5.3%",
       },
       {
         id: "sos",
@@ -89,35 +98,14 @@ export function FleetOverviewPanel({
         value: alertsCount.toLocaleString(),
         tone: "rose" as const,
         icon: AlertTriangle,
-        trend: "-12.5%",
-        trendDirection: "down" as const,
       },
     ],
-    [alertsCount, t, totalDrivers, trackedCount],
+    [alertsCount, inProgressCount, t, totalDrivers, trackedCount],
   );
-
-  const filterRows = [
-    { label: t("filterVehicleType"), value: t("allStatuses") },
-    { label: t("filterZone"), value: t("allZones") },
-    { label: t("filterBattery"), value: t("filterBatteryAll") },
-    { label: t("filterSpeedAlerts"), value: t("allStatuses") },
-    { label: t("filterGps"), value: t("filterGpsAll") },
-  ];
 
   return (
     <TrackingGlassCard className="flex min-h-0 flex-col overflow-hidden border-slate-200 bg-white dark:border-slate-700/80 dark:bg-slate-900">
-      <div className="border-b border-slate-200 px-3 py-3 dark:border-slate-700/80">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-            {t("fleetOverview")}
-          </h2>
-          <button
-            type="button"
-            className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-md border border-slate-200 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-          >
-            <Settings2 className="h-3.5 w-3.5" />
-          </button>
-        </div>
+      <div className="border-b border-slate-200 px-3 py-2.5 dark:border-slate-700/80">
         <div className="mt-3 grid grid-cols-2 gap-2">
           {stats.map((tile) => (
             <MetricTile
@@ -126,15 +114,12 @@ export function FleetOverviewPanel({
               value={tile.value}
               tone={tile.tone}
               icon={tile.icon}
-              selected={Boolean(tile.selected)}
-              trendPercent={tile.trend}
-              trendDirection={tile.trendDirection}
             />
           ))}
         </div>
       </div>
 
-      <div className="flex-1 space-y-3 overflow-y-auto px-3 py-3">
+      <div className="space-y-3 border-b border-slate-200 px-3 py-3 dark:border-slate-700/80">
         <div className="relative">
           <Search className="pointer-events-none absolute start-2.5 top-2.5 h-4 w-4 text-slate-400" />
           <Input
@@ -156,7 +141,7 @@ export function FleetOverviewPanel({
               onClick={() =>
                 onChange({
                   ...filters,
-                  statusChips: ["online", "on_duty", "idle", "break", "offline"],
+                  statusChips: ["online", "on_duty", "idle", "alert", "offline"],
                   search: "",
                   zoneId: "all",
                   partnerId: "all",
@@ -199,41 +184,118 @@ export function FleetOverviewPanel({
                 </Pill>
               </button>
             ))}
-            <button
-              type="button"
-              className="ms-auto inline-flex cursor-pointer items-center gap-1 text-[11px] font-medium text-slate-500 transition-colors hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
-            >
+            <span className="ms-auto inline-flex items-center text-[11px] font-medium text-slate-500 dark:text-slate-400">
               {t("selectedCount", { count: selectedChipCount })}
-              <ChevronDown className="h-3 w-3" />
-            </button>
+            </span>
           </div>
         </div>
 
-        <div className="space-y-1.5">
-          {filterRows.map((row) => (
-            <button
-              key={row.label}
-              type="button"
-              className="flex w-full cursor-pointer items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-left text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-            >
-              <span>{row.label}</span>
-              <span className="inline-flex items-center gap-1 text-slate-500 dark:text-slate-400">
-                {row.value}
-                <ChevronDown className="h-3 w-3" />
-              </span>
-            </button>
-          ))}
+        <div className="grid grid-cols-1 gap-2">
+          <Select
+            items={zoneOptions.map((opt) => ({ value: opt.id, label: opt.label }))}
+            value={filters.zoneId}
+            onValueChange={(value) => onChange({ ...filters, zoneId: value ?? "all" })}
+          >
+            <SelectTrigger className="h-8 cursor-pointer rounded-lg text-xs">
+              <SelectValue placeholder={t("filterZone")} />
+            </SelectTrigger>
+            <SelectContent>
+              {zoneOptions.map((opt) => (
+                <SelectItem key={opt.id} value={opt.id} label={opt.label}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            items={partnerOptions.map((opt) => ({ value: opt.id, label: opt.label }))}
+            value={filters.partnerId}
+            onValueChange={(value) => onChange({ ...filters, partnerId: value ?? "all" })}
+          >
+            <SelectTrigger className="h-8 cursor-pointer rounded-lg text-xs">
+              <SelectValue placeholder={t("filterPartner")} />
+            </SelectTrigger>
+            <SelectContent>
+              {partnerOptions.map((opt) => (
+                <SelectItem key={opt.id} value={opt.id} label={opt.label}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            items={[
+              { value: "all", label: t("filterBatteryAll") },
+              { value: "low", label: t("filterBatteryLow") },
+              { value: "medium", label: t("filterBatteryMedium") },
+              { value: "high", label: t("filterBatteryHigh") },
+            ]}
+            value={filters.batteryLevel}
+            onValueChange={(value) =>
+              onChange({
+                ...filters,
+                batteryLevel: (value as LiveTrackingFilterState["batteryLevel"]) ?? "all",
+              })
+            }
+          >
+            <SelectTrigger className="h-8 cursor-pointer rounded-lg text-xs">
+              <SelectValue placeholder={t("filterBattery")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" label={t("filterBatteryAll")}>
+                {t("filterBatteryAll")}
+              </SelectItem>
+              <SelectItem value="low" label={t("filterBatteryLow")}>
+                {t("filterBatteryLow")}
+              </SelectItem>
+              <SelectItem value="medium" label={t("filterBatteryMedium")}>
+                {t("filterBatteryMedium")}
+              </SelectItem>
+              <SelectItem value="high" label={t("filterBatteryHigh")}>
+                {t("filterBatteryHigh")}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
+            items={[
+              { value: "all", label: t("filterGpsAll") },
+              { value: "excellent", label: t("gpsExcellent") },
+              { value: "good", label: t("gpsGood") },
+              { value: "weak", label: t("gpsWeak") },
+            ]}
+            value={filters.gpsSignal}
+            onValueChange={(value) =>
+              onChange({ ...filters, gpsSignal: (value as LiveTrackingFilterState["gpsSignal"]) ?? "all" })
+            }
+          >
+            <SelectTrigger className="h-8 cursor-pointer rounded-lg text-xs">
+              <SelectValue placeholder={t("filterGps")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" label={t("filterGpsAll")}>
+                {t("filterGpsAll")}
+              </SelectItem>
+              <SelectItem value="excellent" label={t("gpsExcellent")}>
+                {t("gpsExcellent")}
+              </SelectItem>
+              <SelectItem value="good" label={t("gpsGood")}>
+                {t("gpsGood")}
+              </SelectItem>
+              <SelectItem value="weak" label={t("gpsWeak")}>
+                {t("gpsWeak")}
+              </SelectItem>
+            </SelectContent>
+          </Select>
         </div>
+      </div>
 
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="w-full cursor-pointer rounded-lg border border-slate-200 text-xs text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-        >
-          {t("moreFilters")}
-          <ChevronDown className="ms-1 h-3.5 w-3.5" />
-        </Button>
+      <div className="min-h-0 flex-1 overflow-hidden">
+        <div className="h-full overflow-y-auto">
+          <div className="border-b border-slate-200 px-3 py-2 text-xs text-slate-500 dark:border-slate-700/70 dark:text-slate-400">
+            {t("trackedCount", { count: drivers.length })}
+          </div>
+          <LiveDriverList drivers={drivers} selectedId={selectedDriverId} onSelect={onSelectDriver} />
+        </div>
       </div>
     </TrackingGlassCard>
   );
