@@ -2,7 +2,6 @@
 
 import {
   Activity,
-  Check,
   HardHat,
   Navigation,
   Phone,
@@ -10,7 +9,7 @@ import {
   ShoppingBag,
   Smartphone,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { SegmentOption, ToggleChip } from "@/components/app/toggle-chip";
 import { ASSET_TYPES, type DriverAssetType, type DriverWorkflowStatus } from "../types";
 import { SectionHeading } from "./driver-form-primitives";
 
@@ -23,7 +22,7 @@ const STATUS_OPTIONS: Array<{
   { id: "inactive", key: "inactive", workflow: "draft" },
 ];
 
-const ASSET_ICONS: Record<DriverAssetType, typeof Navigation> = {
+const ASSET_ICON_MAP: Record<DriverAssetType, typeof Navigation> = {
   gps: Navigation,
   sim: Smartphone,
   phone: Phone,
@@ -68,28 +67,16 @@ export function DriverFormOperationsCard({
         <div role="radiogroup" className="grid grid-cols-2 gap-1.5">
           {STATUS_OPTIONS.map((option) => {
             const checked = option.id === activeStatus;
-            const isActive = option.key === "active";
             return (
-              <button
+              <SegmentOption
                 key={option.id}
-                type="button"
-                role="radio"
-                aria-checked={checked}
+                selected={checked}
                 disabled={disabled}
+                variant={option.key === "active" ? "success" : "default"}
                 onClick={() => onWorkflowStatusChange(option.workflow)}
-                className={cn(
-                  "inline-flex h-8 cursor-pointer items-center justify-center gap-1 rounded-md border text-xs font-medium transition-colors",
-                  checked && isActive
-                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                    : checked
-                      ? "border-primary/30 bg-primary/10 text-primary"
-                      : "border-border bg-background text-muted-foreground hover:text-foreground",
-                  "disabled:cursor-not-allowed disabled:opacity-50",
-                )}
               >
-                {checked && isActive ? <Check className="h-3 w-3" /> : null}
                 {option.key === "active" ? labels.active : labels.inactive}
-              </button>
+              </SegmentOption>
             );
           })}
         </div>
@@ -99,26 +86,17 @@ export function DriverFormOperationsCard({
         <p className="text-xs font-medium text-foreground">{labels.assets}</p>
         <div className="flex flex-wrap gap-1.5">
           {ASSET_TYPES.map((asset) => {
-            const selected = Boolean(assets[asset]);
-            const Icon = ASSET_ICONS[asset];
+            const Icon = ASSET_ICON_MAP[asset];
             return (
-              <button
+              <ToggleChip
                 key={asset}
-                type="button"
-                aria-pressed={selected}
+                selected={Boolean(assets[asset])}
                 disabled={disabled}
+                icon={Icon}
                 onClick={() => onToggleAsset(asset)}
-                className={cn(
-                  "inline-flex h-7 cursor-pointer items-center gap-1 rounded-md border px-2 text-[11px] font-medium transition-colors",
-                  selected
-                    ? "border-primary/30 bg-primary/10 text-primary"
-                    : "border-border bg-background text-muted-foreground hover:text-foreground",
-                  "disabled:cursor-not-allowed disabled:opacity-50",
-                )}
               >
-                <Icon className="h-3 w-3 shrink-0" />
                 {assetLabels[asset]}
-              </button>
+              </ToggleChip>
             );
           })}
         </div>

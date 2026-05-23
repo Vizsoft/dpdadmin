@@ -129,7 +129,7 @@ export function DriverRestaurantPicker({
                 key={id}
                 type="button"
                 onClick={() => toggle(id, false)}
-                className="inline-flex max-w-[220px] cursor-pointer items-center gap-1 rounded-md border border-primary/20 bg-primary/10 px-2 py-0.5 text-xs text-primary transition-colors hover:bg-primary/15"
+                className="inline-flex max-w-[220px] cursor-pointer items-center gap-1 rounded-md border border-emerald-500 bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-900 shadow-sm ring-1 ring-emerald-400/50 transition-colors hover:bg-emerald-200/80"
               >
                 <span className="truncate">{label}</span>
                 <X className="h-3 w-3" />

@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Admin UI/UX rulebook (mandatory — read before any UI change)
 
-Read [`docs/DESIGN_SYSTEM.md`](../../docs/DESIGN_SYSTEM.md) once. This file is **always applied** in Cursor. Complete the pre-ship checklist (§10) before marking UI work done.
+Read [`docs/DESIGN_SYSTEM.md`](../../docs/DESIGN_SYSTEM.md) once. This file is **always applied** in Cursor. Complete the pre-ship checklist (§11) before marking UI work done.
 
 Target: **14" laptop (~1366×768)**. Feel like Linear / Stripe / Ramp — dense, alive, single-viewport.
 
@@ -50,12 +50,35 @@ Footer ≈ 72px + 14" usable ≈ 720px ⇒ body must fit in **≈ 648px**. **Inn
 
 ## 5. Color — semantic, for STATE
 
-- **Selected / on**: `border-primary/30 bg-primary/10 text-primary`.
-- **Active status / uploaded doc**: `border-emerald-200 bg-emerald-50 text-emerald-700`.
-- **Required**: red `*` via `text-destructive`.
-- **Avatar**: deterministic tint from name — never flat grey.
-- **Driver ID badge**: `bg-primary/10 text-primary border-primary/20`.
-- Grey-on-grey everywhere = dead UI. Selected must be visually obvious.
+**Squint test:** In any group of toggles/chips, selected items must pop in under 1 second. If selected ≈ unselected, it fails.
+
+### Toggle chips & multi-select pills (assets, tags, filters)
+
+Use **`ToggleChip`** from `@/components/app/toggle-chip`. **Never `primary/10` for selected toggles.**
+
+| State | Classes |
+|-------|---------|
+| **Selected / on** | `border-emerald-500 bg-emerald-100 text-emerald-900 ring-1 ring-emerald-400/50 font-semibold shadow-sm` + **`Check` icon** |
+| **Unselected / off** | `border-border bg-muted/30 text-muted-foreground` + category icon at 60% opacity |
+
+`primary/10` is for **metadata badges and links**, not toggle selection in a group.
+
+### Single-choice segments (Active / Inactive)
+
+- **Active / success option when selected:** same emerald stack as above (`SegmentOption variant="success"`).
+- **Other selected segment:** `border-primary bg-primary/15 text-primary`.
+- **Unselected:** muted outline.
+
+### Other state colors
+
+- **Uploaded document / success file row:** `border-emerald-200 bg-emerald-50 text-emerald-700`.
+- **Required fields:** red `*` via `text-destructive`.
+- **Avatar:** deterministic tint from name — never flat grey.
+- **Driver ID badge:** `bg-primary/10 text-primary border-primary/20`.
+
+Grey-on-grey everywhere = dead UI. **If the user provided a reference with green selected chips, match it exactly.**
+
+When color intent is ambiguous, **ask** — do not default to muted primary.
 
 ---
 
@@ -121,7 +144,7 @@ Match density, column count, and architecture from user-provided screenshots. As
 - [ ] One viewport on 14" laptop — no inner scroll
 - [ ] Footer-first modal: title in footer left, **Close top-right outside** (`closeOutside`)
 - [ ] View vs Remove (or similar pairs) visually distinct with icons
-- [ ] `h-9` inputs, `p-4` cards, semantic color on selected states
+- [ ] **Toggle chips:** selected = emerald green + check; unselected = muted (squint test)
 - [ ] Section icon chips + tinted avatar + primary Driver ID badge
 - [ ] Row click → detail page; edit → modal only
 - [ ] Add via `?add=1` modal on list
