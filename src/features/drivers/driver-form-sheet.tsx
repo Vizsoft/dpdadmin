@@ -5,7 +5,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { AppFormSection } from "@/components/app/app-form-section";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -376,35 +375,90 @@ export function DriverFormSheet({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="flex h-[90vh] max-h-[90vh] w-[90vw] max-w-[90vw] flex-col gap-0 p-0"
+        className="flex max-h-[88vh] w-[min(1100px,92vw)] max-w-[min(1100px,92vw)] flex-col gap-0 overflow-hidden p-0"
         showCloseButton
       >
-        <DialogHeader className="shrink-0 border-b border-border px-6 py-3">
+        <DialogHeader className="shrink-0 border-b border-border px-5 py-2.5">
           <DialogTitle>{titleLabel}</DialogTitle>
         </DialogHeader>
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
-          <div className="w-full shrink-0 border-b border-border p-4 lg:w-[250px] lg:border-b-0 lg:border-e">
-            <DriverAvatarUpload
-              fullName={fullName}
-              previewUrl={avatarPreview}
-              disabled={isPending}
-              uploadLabel={tNew("uploadPhoto")}
-              removeLabel={tNew("removePhoto")}
-              hint={tNew("profilePhotoHint")}
-              onFileSelect={handleAvatarSelect}
-              onRemove={handleAvatarRemove}
-            />
-            <div className="mt-3 rounded-lg border border-border bg-muted/20 p-3 text-xs">
-              <p className="text-muted-foreground">{tNew("fields.driverCode")}</p>
-              <p className="mt-1 font-mono text-sm text-foreground">
-                {isEdit ? activeDriver?.driver_code : tNew("placeholders.driverCodeAuto")}
-              </p>
-            </div>
-          </div>
-          <div className="min-h-0 flex-1 overflow-y-auto p-4">
-            <div className="space-y-3">
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+          <div className="space-y-3">
+            <div className="grid gap-3 lg:grid-cols-[220px_1fr_160px_180px_120px]">
+              <div className="lg:row-span-2">
+                <DriverAvatarUpload
+                  size="sm"
+                  fullName={fullName}
+                  previewUrl={avatarPreview}
+                  disabled={isPending}
+                  uploadLabel={tNew("uploadPhoto")}
+                  removeLabel={tNew("removePhoto")}
+                  hint={tNew("profilePhotoHint")}
+                  onFileSelect={handleAvatarSelect}
+                  onRemove={handleAvatarRemove}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="driver-full-name">{tNew("fields.fullName")}</Label>
+                <Input
+                  id="driver-full-name"
+                  value={fullName}
+                  onChange={(event) => {
+                    setFullName(event.target.value);
+                    clearFieldError("fullName");
+                  }}
+                  className="h-9 rounded-lg"
+                  aria-invalid={Boolean(showFieldError("fullName"))}
+                />
+                <FieldError message={showFieldError("fullName")} />
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="driver-phone">{tNew("fields.phone")}</Label>
+                <Input
+                  id="driver-phone"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={KUWAIT_PHONE_DIGIT_COUNT}
+                  value={phone}
+                  onChange={(event) => {
+                    setPhone(restrictDigits(event.target.value, KUWAIT_PHONE_DIGIT_COUNT));
+                    clearFieldError("phone");
+                  }}
+                  className="h-9 rounded-lg font-mono tabular-nums"
+                  aria-invalid={Boolean(showFieldError("phone"))}
+                />
+                <FieldError message={showFieldError("phone")} />
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="driver-civil-id">{tNew("fields.civilId")}</Label>
+                <Input
+                  id="driver-civil-id"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={CIVIL_ID_DIGIT_COUNT}
+                  value={civilId}
+                  onChange={(event) => {
+                    setCivilId(restrictDigits(event.target.value, CIVIL_ID_DIGIT_COUNT));
+                    clearFieldError("civilId");
+                  }}
+                  className="h-9 rounded-lg font-mono tabular-nums"
+                  aria-invalid={Boolean(showFieldError("civilId"))}
+                />
+                <FieldError message={showFieldError("civilId")} />
+              </div>
+
+              <div className="space-y-1">
+                <Label>{tNew("fields.driverCode")}</Label>
+                <div className="flex h-9 items-center rounded-lg border border-border bg-muted/20 px-2 text-xs font-mono">
+                  {isEdit ? activeDriver?.driver_code : tNew("placeholders.driverCodeAuto")}
+                </div>
+              </div>
+
               {isEdit ? (
-                <AppFormSection title={tList("fieldWorkflowStatus")} className="[&>div]:p-4">
+                <div className="space-y-1 lg:col-start-2">
+                  <Label>{tList("fieldWorkflowStatus")}</Label>
                   <Select
                     items={selectOptionsFrom(
                       DRIVER_WORKFLOW_STATUSES,
@@ -422,7 +476,7 @@ export function DriverFormSheet({
                     }}
                     disabled={isPending}
                   >
-                    <SelectTrigger className="w-full cursor-pointer rounded-lg">
+                    <SelectTrigger className="h-9 w-[160px] cursor-pointer rounded-lg">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -437,258 +491,217 @@ export function DriverFormSheet({
                       ))}
                     </SelectContent>
                   </Select>
-                </AppFormSection>
+                </div>
               ) : null}
 
-              <AppFormSection title={tNew("sections.basic")} className="[&>div]:p-4">
-                <div className="grid gap-3 md:grid-cols-3">
-                  <div className="space-y-1.5 md:col-span-2">
-                    <Label htmlFor="driver-full-name">{tNew("fields.fullName")}</Label>
-                    <Input
-                      id="driver-full-name"
-                      value={fullName}
-                      onChange={(event) => {
-                        setFullName(event.target.value);
-                        clearFieldError("fullName");
-                      }}
-                      className="rounded-lg"
-                      aria-invalid={Boolean(showFieldError("fullName"))}
-                    />
-                    <FieldError message={showFieldError("fullName")} />
-                  </div>
-                  {isEdit && activeDriver?.linked_profile_id ? (
-                    <div className="space-y-1.5">
-                      <Label htmlFor="driver-employee-id">{tList("employeeId")}</Label>
-                      <Input
-                        id="driver-employee-id"
-                        value={employeeId}
-                        onChange={(event) => setEmployeeId(event.target.value)}
-                        className="rounded-lg font-mono tabular-nums"
-                      />
-                    </div>
-                  ) : null}
-                  <div className="space-y-1.5">
-                    <Label htmlFor="driver-phone">{tNew("fields.phone")}</Label>
-                    <Input
-                      id="driver-phone"
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={KUWAIT_PHONE_DIGIT_COUNT}
-                      value={phone}
-                      onChange={(event) => {
-                        setPhone(restrictDigits(event.target.value, KUWAIT_PHONE_DIGIT_COUNT));
-                        clearFieldError("phone");
-                      }}
-                      className="rounded-lg font-mono tabular-nums"
-                      aria-invalid={Boolean(showFieldError("phone"))}
-                    />
-                    <FieldError message={showFieldError("phone")} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="driver-civil-id">{tNew("fields.civilId")}</Label>
-                    <Input
-                      id="driver-civil-id"
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={CIVIL_ID_DIGIT_COUNT}
-                      value={civilId}
-                      onChange={(event) => {
-                        setCivilId(restrictDigits(event.target.value, CIVIL_ID_DIGIT_COUNT));
-                        clearFieldError("civilId");
-                      }}
-                      className="rounded-lg font-mono tabular-nums"
-                      aria-invalid={Boolean(showFieldError("civilId"))}
-                    />
-                    <FieldError message={showFieldError("civilId")} />
-                  </div>
-                </div>
-              </AppFormSection>
-
-              <AppFormSection title={tNew("sections.assignment")} className="[&>div]:p-4">
-                <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-4">
-                  <div className="space-y-1.5">
-                    <Label>{tNew("fields.partner")}</Label>
-                    <Select
-                      items={partnerSelectItems}
-                      value={partnerId || null}
-                      onValueChange={(value) => {
-                        setPartnerId(value ?? "");
-                        clearFieldError("partnerId");
-                      }}
-                      disabled={optionsLoading || partners.length === 0}
-                    >
-                      <SelectTrigger
-                        className="h-9 w-full cursor-pointer rounded-lg"
-                        aria-invalid={Boolean(showFieldError("partnerId"))}
-                      >
-                        <SelectValue placeholder={tNew("placeholders.partner")} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {partners.map((partner) => (
-                          <SelectItem key={partner.id} value={partner.id} label={partner.name}>
-                            {partner.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FieldError message={showFieldError("partnerId")} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>{tNew("fields.zone")}</Label>
-                    <Select
-                      items={zoneSelectItems}
-                      value={zoneId || null}
-                      onValueChange={(value) => {
-                        setZoneId(value ?? "");
-                        clearFieldError("zoneId");
-                      }}
-                      disabled={optionsLoading || zones.length === 0}
-                    >
-                      <SelectTrigger
-                        className="h-9 w-full cursor-pointer rounded-lg"
-                        aria-invalid={Boolean(showFieldError("zoneId"))}
-                      >
-                        <SelectValue placeholder={tNew("placeholders.zone")} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {zones.map((zone) => (
-                          <SelectItem
-                            key={zone.id}
-                            value={zone.id}
-                            label={`${zone.name} (${zone.code})`}
-                          >
-                            {zone.name} ({zone.code})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FieldError message={showFieldError("zoneId")} />
-                  </div>
-                  <div className="space-y-1.5 md:col-span-2">
-                    <Label>{tNew("fields.vehicle")}</Label>
-                    <Select
-                      items={vehicleSelectItems}
-                      value={vehicleId || null}
-                      onValueChange={(value) => setVehicleId(value ?? NONE_VEHICLE)}
-                      disabled={optionsLoading}
-                    >
-                      <SelectTrigger className="h-9 w-full cursor-pointer rounded-lg">
-                        <SelectValue placeholder={tNew("placeholders.vehicle")} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={NONE_VEHICLE} label={tNew("noVehicle")}>
-                          {tNew("noVehicle")}
-                        </SelectItem>
-                        {vehicles.map((vehicle) => {
-                          const label = `${vehicle.bike_id}${
-                            vehicle.reg_number ? ` · ${vehicle.reg_number}` : ""
-                          }`;
-                          return (
-                            <SelectItem key={vehicle.id} value={vehicle.id} label={label}>
-                              {label}
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </AppFormSection>
-
-              <AppFormSection
-                title={tNew("sections.restaurants")}
-                description={tNew("sections.restaurantsDescription")}
-                className="[&>div]:p-4"
-              >
-                <DriverRestaurantPicker
-                  restaurants={allRestaurants}
-                  selectedIds={restaurantIds}
-                  onChange={setRestaurantIds}
-                  disabled={optionsLoading || isPending}
-                />
-              </AppFormSection>
-
-              <AppFormSection
-                title={tNew("sections.assets")}
-                action={
-                  <Switch
-                    checked={assetsEnabled}
-                    onCheckedChange={setAssetsEnabled}
-                    aria-label={tNew("sections.assets")}
+              {isEdit && activeDriver?.linked_profile_id ? (
+                <div className="space-y-1">
+                  <Label htmlFor="driver-employee-id">{tList("employeeId")}</Label>
+                  <Input
+                    id="driver-employee-id"
+                    value={employeeId}
+                    onChange={(event) => setEmployeeId(event.target.value)}
+                    className="h-9 rounded-lg font-mono tabular-nums"
                   />
-                }
-                className="[&>div]:p-4"
-              >
-                {assetsEnabled ? (
-                  <div className="flex flex-wrap gap-4">
-                    {ASSET_TYPES.map((asset) => (
-                      <label key={asset} className="flex cursor-pointer items-center gap-2 text-sm">
-                        <Checkbox
-                          checked={assets[asset]}
-                          onCheckedChange={(checked) =>
-                            setAssets((prev) => ({ ...prev, [asset]: checked === true }))
-                          }
-                        />
-                        {tNew(`assets.${asset}`)}
-                      </label>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">{tNew("assetsDisabled")}</p>
-                )}
-              </AppFormSection>
+                </div>
+              ) : null}
+            </div>
 
-              <AppFormSection
-                title={isEdit ? tDetail("documentsTitle") : tNew("sections.documents")}
-                description={
-                  isEdit ? tDetail("documentsDescription") : tNew("sections.documentsDescription")
-                }
-                className="[&>div]:p-4"
-              >
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {DOCUMENT_TYPES.map((docType) =>
-                    isEdit && activeDriver ? (
-                      <DriverDocumentUpload
-                        key={docType}
-                        mode="remote"
-                        docType={docType}
-                        intakeId={intakeId ?? ""}
-                        driverProfileId={activeDriver.linked_profile_id}
-                        existing={remoteDocuments[docType] ?? null}
-                        disabled={isPending}
-                        onChanged={(next) => {
-                          setRemoteDocuments((prev) => {
-                            const updated = { ...prev };
-                            if (next) updated[docType] = next;
-                            else delete updated[docType];
-                            return updated;
-                          });
-                          void queryClient.invalidateQueries({
-                            queryKey: queryKeys.drivers.detail(activeDriver.id),
-                          });
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className="space-y-3">
+                <div className="border-t border-border pt-2">
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {tNew("sections.assignment")}
+                  </p>
+                  <div className="flex flex-wrap items-end gap-2">
+                    <div className="space-y-1">
+                      <Label>{tNew("fields.partner")}</Label>
+                      <Select
+                        items={partnerSelectItems}
+                        value={partnerId || null}
+                        onValueChange={(value) => {
+                          setPartnerId(value ?? "");
+                          clearFieldError("partnerId");
                         }}
-                      />
-                    ) : (
-                      <DriverDocumentUpload
-                        key={docType}
-                        mode="inline"
-                        docType={docType}
-                        file={documents[docType]}
-                        isSubmitting={isPending}
-                        error={showDocumentError(docType)}
-                        onChange={(file) => {
-                          setDocuments((prev) => ({ ...prev, [docType]: file }));
-                          clearDocumentError(docType);
+                        disabled={optionsLoading || partners.length === 0}
+                      >
+                        <SelectTrigger
+                          className="h-9 w-[220px] cursor-pointer rounded-lg"
+                          aria-invalid={Boolean(showFieldError("partnerId"))}
+                        >
+                          <SelectValue placeholder={tNew("placeholders.partner")} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {partners.map((partner) => (
+                            <SelectItem key={partner.id} value={partner.id} label={partner.name}>
+                              {partner.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FieldError message={showFieldError("partnerId")} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>{tNew("fields.zone")}</Label>
+                      <Select
+                        items={zoneSelectItems}
+                        value={zoneId || null}
+                        onValueChange={(value) => {
+                          setZoneId(value ?? "");
+                          clearFieldError("zoneId");
                         }}
-                      />
-                    ),
+                        disabled={optionsLoading || zones.length === 0}
+                      >
+                        <SelectTrigger
+                          className="h-9 w-[200px] cursor-pointer rounded-lg"
+                          aria-invalid={Boolean(showFieldError("zoneId"))}
+                        >
+                          <SelectValue placeholder={tNew("placeholders.zone")} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {zones.map((zone) => (
+                            <SelectItem
+                              key={zone.id}
+                              value={zone.id}
+                              label={`${zone.name} (${zone.code})`}
+                            >
+                              {zone.name} ({zone.code})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FieldError message={showFieldError("zoneId")} />
+                    </div>
+                    <div className="min-w-[240px] flex-1 space-y-1">
+                      <Label>{tNew("fields.vehicle")}</Label>
+                      <Select
+                        items={vehicleSelectItems}
+                        value={vehicleId || null}
+                        onValueChange={(value) => setVehicleId(value ?? NONE_VEHICLE)}
+                        disabled={optionsLoading}
+                      >
+                        <SelectTrigger className="h-9 w-full cursor-pointer rounded-lg">
+                          <SelectValue placeholder={tNew("placeholders.vehicle")} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={NONE_VEHICLE} label={tNew("noVehicle")}>
+                            {tNew("noVehicle")}
+                          </SelectItem>
+                          {vehicles.map((vehicle) => {
+                            const label = `${vehicle.bike_id}${
+                              vehicle.reg_number ? ` · ${vehicle.reg_number}` : ""
+                            }`;
+                            return (
+                              <SelectItem key={vehicle.id} value={vehicle.id} label={label}>
+                                {label}
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t border-border pt-2">
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {tNew("sections.restaurants")}
+                  </p>
+                  <DriverRestaurantPicker
+                    variant="compact"
+                    restaurants={allRestaurants}
+                    selectedIds={restaurantIds}
+                    onChange={setRestaurantIds}
+                    disabled={optionsLoading || isPending}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="border-t border-border pt-2">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      {tNew("sections.assets")}
+                    </p>
+                    <Switch
+                      checked={assetsEnabled}
+                      onCheckedChange={setAssetsEnabled}
+                      aria-label={tNew("sections.assets")}
+                    />
+                  </div>
+                  {assetsEnabled ? (
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+                      {ASSET_TYPES.map((asset) => (
+                        <label
+                          key={asset}
+                          className="flex cursor-pointer items-center gap-2 rounded-md border border-border px-2 py-1 text-xs"
+                        >
+                          <Checkbox
+                            checked={assets[asset]}
+                            onCheckedChange={(checked) =>
+                              setAssets((prev) => ({ ...prev, [asset]: checked === true }))
+                            }
+                          />
+                          {tNew(`assets.${asset}`)}
+                        </label>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">{tNew("assetsDisabled")}</p>
                   )}
                 </div>
-              </AppFormSection>
+
+                <div className="border-t border-border pt-2">
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {isEdit ? tDetail("documentsTitle") : tNew("sections.documents")}
+                  </p>
+                  <div className="space-y-1.5">
+                    {DOCUMENT_TYPES.map((docType) =>
+                      isEdit && activeDriver ? (
+                        <DriverDocumentUpload
+                          key={docType}
+                          compact
+                          mode="remote"
+                          docType={docType}
+                          intakeId={intakeId ?? ""}
+                          driverProfileId={activeDriver.linked_profile_id}
+                          existing={remoteDocuments[docType] ?? null}
+                          disabled={isPending}
+                          onChanged={(next) => {
+                            setRemoteDocuments((prev) => {
+                              const updated = { ...prev };
+                              if (next) updated[docType] = next;
+                              else delete updated[docType];
+                              return updated;
+                            });
+                            void queryClient.invalidateQueries({
+                              queryKey: queryKeys.drivers.detail(activeDriver.id),
+                            });
+                          }}
+                        />
+                      ) : (
+                        <DriverDocumentUpload
+                          key={docType}
+                          compact
+                          mode="inline"
+                          docType={docType}
+                          file={documents[docType]}
+                          isSubmitting={isPending}
+                          error={showDocumentError(docType)}
+                          onChange={(file) => {
+                            setDocuments((prev) => ({ ...prev, [docType]: file }));
+                            clearDocumentError(docType);
+                          }}
+                        />
+                      ),
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-        <DialogFooter className="shrink-0 border-t border-border px-6 py-3">
+        <DialogFooter className="shrink-0 border-t border-border px-5 py-2.5">
           <Button
             type="button"
             variant="outline"

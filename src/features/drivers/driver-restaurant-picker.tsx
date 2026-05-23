@@ -1,9 +1,14 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { Check, ChevronsUpDown, Search } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Link } from "@/i18n/navigation";
+import { cn } from "@/lib/utils";
 import type { RestaurantOption } from "./types";
 
 export function DriverRestaurantPicker({
@@ -11,13 +16,16 @@ export function DriverRestaurantPicker({
   selectedIds,
   onChange,
   disabled,
+  variant = "inline",
 }: {
   restaurants: RestaurantOption[];
   selectedIds: string[];
   onChange: (ids: string[]) => void;
   disabled?: boolean;
+  variant?: "inline" | "compact";
 }) {
   const t = useTranslations("pages.driverNew");
+  const [query, setQuery] = useState("");
 
   const published = useMemo(
     () => restaurants.filter((r) => r.status === "published"),
@@ -51,6 +59,89 @@ export function DriverRestaurantPicker({
           {t("addRestaurantLink")}
         </Link>
       </p>
+    );
+  }
+
+  if (variant === "compact") {
+    const filtered = published.filter((restaurant) =>
+      restaurant.name.toLowerCase().includes(query.trim().toLowerCase()),
+    );
+    const selectedMap = new Map(published.map((restaurant) => [restaurant.id, restaurant.name]));
+    const selectedPreview = selectedIds
+      .slice(0, 3)
+      .map((id) => selectedMap.get(id))
+      .filter(Boolean) as string[];
+    const remainderCount = Math.max(0, selectedIds.length - selectedPreview.length);
+
+    return (
+      <div className="space-y-2">
+        <Popover>
+          <PopoverTrigger
+            type="button"
+            disabled={disabled}
+            className={cn(
+              "flex h-9 w-full cursor-pointer items-center justify-between rounded-lg border border-input bg-background px-3 text-sm shadow-xs",
+              "disabled:cursor-not-allowed disabled:opacity-50",
+            )}
+          >
+            <span className={cn("truncate text-left", selectedIds.length === 0 && "text-muted-foreground")}>
+              {selectedIds.length === 0
+                ? t("sections.restaurants")
+                : `${t("sections.restaurants")} · ${selectedIds.length}`}
+            </span>
+            <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
+          </PopoverTrigger>
+          <PopoverContent className="w-[var(--anchor-width)] min-w-[300px] p-2" align="start">
+            <div className="mb-2 flex items-center gap-2">
+              <Search className="h-4 w-4 text-muted-foreground" />
+              <Input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search restaurants..."
+                className="h-8 rounded-md"
+              />
+            </div>
+            <div className="max-h-[280px] space-y-1 overflow-y-auto">
+              {filtered.map((restaurant) => {
+                const checked = selectedIds.includes(restaurant.id);
+                return (
+                  <button
+                    key={restaurant.id}
+                    type="button"
+                    onClick={() => toggle(restaurant.id, !checked)}
+                    className={cn(
+                      "flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted/60",
+                      checked && "bg-muted/70",
+                    )}
+                  >
+                    <Checkbox checked={checked} tabIndex={-1} />
+                    <span className="flex-1 truncate text-left">{restaurant.name}</span>
+                    {checked ? <Check className="h-4 w-4 text-primary" /> : null}
+                  </button>
+                );
+              })}
+            </div>
+          </PopoverContent>
+        </Popover>
+
+        {selectedIds.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {selectedPreview.map((label) => (
+              <span
+                key={label}
+                className="inline-flex max-w-[160px] truncate rounded-md border border-border bg-muted/40 px-2 py-0.5 text-xs"
+              >
+                {label}
+              </span>
+            ))}
+            {remainderCount > 0 ? (
+              <span className="text-xs text-muted-foreground">+{remainderCount} more</span>
+            ) : null}
+          </div>
+        ) : null}
+
+        <p className="text-[11px] text-muted-foreground">{t("restaurantsActivationHint")}</p>
+      </div>
     );
   }
 

@@ -4,6 +4,7 @@ import { useRef } from "react";
 import { Camera, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
 
 function initialsFromName(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -21,6 +22,7 @@ export function DriverAvatarUpload({
   hint,
   onFileSelect,
   onRemove,
+  size = "lg",
 }: {
   fullName: string;
   previewUrl: string | null;
@@ -30,15 +32,22 @@ export function DriverAvatarUpload({
   hint: string;
   onFileSelect: (file: File | null) => void;
   onRemove: () => void;
+  size?: "sm" | "lg";
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const compact = size === "sm";
 
   return (
-    <div className="flex flex-col items-center gap-3 rounded-xl border border-border bg-muted/20 p-4">
-      <Avatar className="h-24 w-24" size="lg">
+    <div
+      className={cn(
+        "flex flex-col items-center rounded-xl border border-border bg-muted/20",
+        compact ? "gap-2 p-2.5" : "gap-3 p-4",
+      )}
+    >
+      <Avatar className={cn(compact ? "h-14 w-14" : "h-24 w-24")} size={compact ? "default" : "lg"}>
         {previewUrl ? <AvatarImage src={previewUrl} alt="" /> : null}
-        <AvatarFallback className="text-lg font-semibold">
-          {fullName.trim() ? initialsFromName(fullName) : <User className="h-5 w-5" />}
+        <AvatarFallback className={cn("font-semibold", compact ? "text-xs" : "text-lg")}>
+          {fullName.trim() ? initialsFromName(fullName) : <User className={cn(compact ? "h-4 w-4" : "h-5 w-5")} />}
         </AvatarFallback>
       </Avatar>
       <input
@@ -49,30 +58,36 @@ export function DriverAvatarUpload({
         disabled={disabled}
         onChange={(event) => onFileSelect(event.target.files?.[0] ?? null)}
       />
-      <div className="flex w-full flex-col gap-2">
+      <div className={cn("flex w-full", compact ? "flex-row gap-1.5" : "flex-col gap-2")}>
         <Button
           type="button"
-          variant="outline"
-          className="w-full cursor-pointer rounded-lg"
+          variant={compact ? "ghost" : "outline"}
+          size={compact ? "icon-sm" : "default"}
+          className={cn("cursor-pointer rounded-lg", compact ? "h-7 w-7" : "w-full")}
           disabled={disabled}
           onClick={() => inputRef.current?.click()}
+          aria-label={uploadLabel}
         >
-          <Camera className="me-2 h-4 w-4" />
-          {uploadLabel}
+          <Camera className={cn(compact ? "h-3.5 w-3.5" : "me-2 h-4 w-4")} />
+          {compact ? null : uploadLabel}
         </Button>
         {previewUrl ? (
           <Button
             type="button"
             variant="ghost"
-            className="w-full cursor-pointer rounded-lg"
+            size={compact ? "icon-sm" : "default"}
+            className={cn("cursor-pointer rounded-lg", compact ? "h-7 w-7" : "w-full")}
             disabled={disabled}
             onClick={onRemove}
+            aria-label={removeLabel}
           >
-            {removeLabel}
+            {compact ? "×" : removeLabel}
           </Button>
         ) : null}
       </div>
-      <p className="text-center text-xs text-muted-foreground">{hint}</p>
+      <p className={cn("text-center text-muted-foreground", compact ? "text-[10px]" : "text-xs")}>
+        {hint}
+      </p>
     </div>
   );
 }

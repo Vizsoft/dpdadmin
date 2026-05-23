@@ -52,6 +52,7 @@ type SharedProps = {
   docType: DriverDocumentType;
   disabled?: boolean;
   error?: string;
+  compact?: boolean;
 };
 
 type InlineProps = SharedProps & {
@@ -73,8 +74,10 @@ export type DriverDocumentUploadProps = InlineProps | RemoteProps;
 
 export function DriverDocumentUpload(props: DriverDocumentUploadProps) {
   if (props.mode === "inline") {
+    if (props.compact) return <InlineDocumentUploadCompact {...props} />;
     return <InlineDocumentUpload {...props} />;
   }
+  if (props.compact) return <RemoteDocumentUploadCompact {...props} />;
   return <RemoteDocumentUpload {...props} />;
 }
 
@@ -178,6 +181,90 @@ function InlineDocumentUpload({
         />
       )}
     </DocumentSlotShell>
+  );
+}
+
+function InlineDocumentUploadCompact({
+  docType,
+  file,
+  onChange,
+  error,
+  isSubmitting = false,
+  disabled,
+}: InlineProps) {
+  const t = useTranslations("pages.driverNew");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [localErrorKey, setLocalErrorKey] = useState<string | null>(null);
+
+  const displayError =
+    error ??
+    (localErrorKey && isDriverErrorKey(localErrorKey)
+      ? t(`errors.${localErrorKey}`)
+      : localErrorKey
+        ? localErrorKey
+        : undefined);
+
+  const label = t(`documents.${docType}`);
+
+  return (
+    <div className="space-y-1">
+      <div className="flex min-h-9 items-center gap-2 rounded-md border border-border bg-muted/10 px-2.5 py-1.5">
+        {isImageFile(file as File) ? (
+          <ImageIcon className="h-3.5 w-3.5 text-muted-foreground" />
+        ) : (
+          <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+        )}
+        <span className="w-[120px] shrink-0 truncate text-xs font-medium">{label}</span>
+        <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+          {file ? file.name : t("uploadDocument")}
+        </span>
+        {file ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 cursor-pointer rounded-md px-2 text-xs"
+            disabled={disabled || isSubmitting}
+            onClick={() => onChange(null)}
+          >
+            {t("removeDocument")}
+          </Button>
+        ) : null}
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-7 cursor-pointer rounded-md px-2 text-xs"
+          disabled={disabled || isSubmitting}
+          onClick={() => inputRef.current?.click()}
+        >
+          {file ? t("replaceDocument") : t("uploadDocument")}
+        </Button>
+      </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="application/pdf,image/png,image/jpeg,image/webp"
+        className="hidden"
+        disabled={disabled || isSubmitting}
+        onChange={(event) => {
+          const picked = event.target.files?.[0] ?? null;
+          if (!picked) return;
+          const validationError = validateDocumentFile(picked);
+          if (validationError) {
+            setLocalErrorKey(validationError);
+            return;
+          }
+          setLocalErrorKey(null);
+          onChange(picked);
+        }}
+      />
+      {displayError ? (
+        <p className="text-xs text-destructive" role="alert">
+          {displayError}
+        </p>
+      ) : null}
+    </div>
   );
 }
 
@@ -422,6 +509,169 @@ function RemoteDocumentUpload({
         />
       )}
     </DocumentSlotShell>
+  );
+}
+
+function RemoteDocumentUploadCompact({
+  docType,
+  intakeId,
+  driverProfileId,
+  existing,
+  onChanged,
+  error,
+  disabled,
+}: RemoteProps) {
+  const t = useTranslations("pages.driverDetail");
+  const tErr = useTranslations("pages.driverNew");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [remote, setRemote] = useState<DriverRemoteDocument | null>(existing);
+  const [busy, setBusy] = useState(false);
+  const [localErrorKey, setLocalErrorKey] = useState<string | null>(null);
+
+  useEffect(() => setRemote(existing), [existing]);
+
+  const displayError =
+    error ??
+    (localErrorKey && isDriverErrorKey(localErrorKey)
+      ? tErr(`errors.${localErrorKey}`)
+      : localErrorKey
+        ? localErrorKey
+        : undefined);
+
+  const uploadFile = async (file: File) => {
+    const validationError = validateDocumentFile(file);
+    if (validationError) {
+      setLocalErrorKey(validationError);
+      return;
+    }
+
+    const body = new FormData();
+    body.append("intakeId", intakeId);
+    if (driverProfileId) body.append("driverProfileId", driverProfileId);
+    body.append("docType", docType);
+    body.append("file", file);
+
+    setBusy(true);
+    setLocalErrorKey(null);
+    try {
+      const response = await fetch("/api/admin/driver-documents/upload", {
+        method: "POST",
+        body,
+      });
+      const json = (await response.json()) as UploadResponse;
+      if (!response.ok || !json.ok || !json.objectKey || !json.signedUrl) {
+        setLocalErrorKey(json.error ?? "upload_failed");
+        return;
+      }
+      const next: DriverRemoteDocument = {
+        objectKey: json.objectKey,
+        signedUrl: json.signedUrl,
+        sizeBytes: json.sizeBytes ?? null,
+        contentType: json.contentType ?? file.type,
+        source: json.source ?? "intake",
+      };
+      setRemote(next);
+      onChanged(next);
+    } catch {
+      setLocalErrorKey("upload_failed");
+    } finally {
+      setBusy(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  };
+
+  const removeRemote = async () => {
+    setBusy(true);
+    setLocalErrorKey(null);
+    try {
+      const response = await fetch("/api/admin/driver-documents", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          intakeId,
+          driverProfileId: driverProfileId ?? undefined,
+          docType,
+        }),
+      });
+      const json = (await response.json()) as { ok?: boolean; error?: string };
+      if (!response.ok || !json.ok) {
+        setLocalErrorKey(json.error ?? "save_failed");
+        return;
+      }
+      setRemote(null);
+      onChanged(null);
+    } catch {
+      setLocalErrorKey("save_failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="space-y-1">
+      <div className="flex min-h-9 items-center gap-2 rounded-md border border-border bg-muted/10 px-2.5 py-1.5">
+        {isImageMime(remote?.contentType ?? null) ? (
+          <ImageIcon className="h-3.5 w-3.5 text-muted-foreground" />
+        ) : (
+          <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+        )}
+        <span className="w-[120px] shrink-0 truncate text-xs font-medium">{tErr(`documents.${docType}`)}</span>
+        <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+          {remote ? basenameFromKey(remote.objectKey) : tErr("uploadDocument")}
+        </span>
+        {remote ? (
+          <>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 cursor-pointer rounded-md px-2 text-xs"
+              nativeButton={false}
+              render={<a href={remote.signedUrl} target="_blank" rel="noopener noreferrer" />}
+            >
+              {t("viewDocument")}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 cursor-pointer rounded-md px-2 text-xs"
+              disabled={disabled || busy}
+              onClick={() => void removeRemote()}
+            >
+              {tErr("removeDocument")}
+            </Button>
+          </>
+        ) : null}
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-7 cursor-pointer rounded-md px-2 text-xs"
+          disabled={disabled || busy}
+          onClick={() => inputRef.current?.click()}
+        >
+          {remote ? tErr("replaceDocument") : tErr("uploadDocument")}
+        </Button>
+      </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="application/pdf,image/png,image/jpeg,image/webp"
+        className="hidden"
+        disabled={disabled || busy}
+        onChange={(event) => {
+          const file = event.target.files?.[0] ?? null;
+          if (!file) return;
+          void uploadFile(file);
+        }}
+      />
+      {displayError ? (
+        <p className="text-xs text-destructive" role="alert">
+          {displayError}
+        </p>
+      ) : null}
+    </div>
   );
 }
 
