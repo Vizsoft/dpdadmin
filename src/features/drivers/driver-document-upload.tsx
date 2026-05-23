@@ -29,8 +29,8 @@ function isImageMime(contentType: string | null): boolean {
   return Boolean(contentType?.startsWith("image/"));
 }
 
-function isImageFile(file: File): boolean {
-  return file.type.startsWith("image/");
+function isImageFile(file: File | null | undefined): boolean {
+  return Boolean(file?.type.startsWith("image/"));
 }
 
 function basenameFromKey(key: string): string {
@@ -209,7 +209,7 @@ function InlineDocumentUploadCompact({
   return (
     <div className="space-y-1">
       <div className="flex min-h-9 items-center gap-2 rounded-md border border-border bg-muted/10 px-2.5 py-1.5">
-        {isImageFile(file as File) ? (
+        {isImageFile(file) ? (
           <ImageIcon className="h-3.5 w-3.5 text-muted-foreground" />
         ) : (
           <FileText className="h-3.5 w-3.5 text-muted-foreground" />
