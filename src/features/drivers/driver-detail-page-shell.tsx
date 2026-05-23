@@ -201,6 +201,13 @@ function DriverDetailContent({ id }: { id: string }) {
     }
   }, [searchParams, driver?.linked_profile_id]);
 
+  useEffect(() => {
+    if (searchParams.get("edit") !== "1") return;
+    if (!driver || !canManage || !driver.intake_id || driver.archived_at) return;
+    setEditOpen(true);
+    router.replace(`/drivers/${id}`);
+  }, [searchParams, driver, canManage, id, router]);
+
   const workflowLabel = (status: DriverWorkflowStatus) => {
     switch (status) {
       case "draft":

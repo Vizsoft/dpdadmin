@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import { Camera, User } from "lucide-react";
+import { avatarTintFromName } from "./form/driver-form-primitives";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
@@ -43,9 +44,9 @@ export function DriverAvatarUpload({
   if (isBadge) {
     return (
       <div className="relative h-12 w-12 shrink-0">
-        <Avatar className="h-12 w-12 border border-border bg-muted/30">
+        <Avatar className={cn("h-12 w-12 border border-border", avatarTintFromName(fullName))}>
           {previewUrl ? <AvatarImage src={previewUrl} alt="" /> : null}
-          <AvatarFallback className="font-semibold text-sm">
+          <AvatarFallback className={cn("bg-transparent font-semibold text-sm", avatarTintFromName(fullName))}>
             {fullName.trim() ? initialsFromName(fullName) : <User className="h-4 w-4" />}
           </AvatarFallback>
         </Avatar>

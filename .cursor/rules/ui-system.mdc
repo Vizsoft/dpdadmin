@@ -1,18 +1,112 @@
 ---
-description: Unified admin UI — shadcn visuals, Polaris-inspired structure only
+description: Unified admin UI/UX rulebook — architecture, density, semantic color, footer-first modals
 alwaysApply: true
 ---
 
-# UI system
+# Admin UI/UX rulebook (mandatory — read before any UI change)
 
-Read [`docs/DESIGN_SYSTEM.md`](../../docs/DESIGN_SYSTEM.md) before building or changing UI.
+Read [`docs/DESIGN_SYSTEM.md`](../../docs/DESIGN_SYSTEM.md) once. This file is **always applied** in Cursor. Complete the pre-ship checklist (§10) before marking UI work done.
 
-## Rules
+Target: **14" laptop (~1366×768)**. Feel like Linear / Stripe / Ramp — dense, alive, single-viewport.
 
-1. **Styling:** shadcn semantic tokens + `@/components/ui/*`. Product layout: `@/components/app/*`.
-2. **Polaris:** Use for **information architecture** (page title, primary actions, index table, settings secondary nav). Not for colors or typography.
-3. **Lists:** Use `AppListCard` + `AppDataTable` (or `ModuleIndexPage` for placeholders). Do not invent new toolbar layouts.
-4. **Tables:** Always `TABLE_HEAD_CLASS` on headers — never `text-accent` on `TableHead`.
-5. **Cards:** `rounded-xl border-border shadow-sm` — no heavy `ring-black/5` stacks.
-6. **Settings:** Use `AppSettingsLayout`; preserve `SETTINGS_SUB_ITEMS` permissions and active-route logic.
-7. **Do not use** archived `design-system/dpd-admin/MASTER.md`, `TOKENS.md`, or `design-system/references/` for new work.
+---
+
+## 1. Foundations
+
+- **Styling**: shadcn semantic tokens + `@/components/ui/*`.
+- **Product layout**: `@/components/app/*` (`AppPage`, `AppListCard`, `AppModalFooter`, …).
+- **Polaris**: information architecture only. Never for colors or typography.
+- **Cards**: `rounded-xl border-border shadow-sm`.
+- **Tables**: `TABLE_HEAD_CLASS` on every `TableHead`.
+
+---
+
+## 2. Density — fits one viewport
+
+- Inputs / selects / triggers: **`h-9`**. Never `h-10`/`h-11`.
+- Card padding: **`p-4`**. Modal body: **`px-5 py-4`**, **`space-y-3`**.
+- Dialog width: **`w-[min(1200px,96vw)]`**.
+
+**Vertical budget (footer-first modals — see §7):**
+Footer ≈ 72px + 14" usable ≈ 720px ⇒ body must fit in **≈ 648px**. **Inner scroll in a modal = failure.**
+
+---
+
+## 3. Layout
+
+- Pack identity fields on **one row** (avatar + name + phone + civil id + employee id + driver id).
+- Side-by-side cards: **`lg:items-stretch`** + **`h-full`** — no half-empty card.
+- Documents / assets: **`lg:grid-cols-4`** on desktop.
+- Helper text: **`text-[10px]`** inline; hide when redundant.
+
+---
+
+## 4. Iconography
+
+- Lucide icon on every chip, toggle, and semantic field label.
+- Section headers: **`SectionHeading`** with tinted icon chip (Identity=primary, Assignment=violet, Operations=amber, Documents=emerald).
+
+---
+
+## 5. Color — semantic, for STATE
+
+- **Selected / on**: `border-primary/30 bg-primary/10 text-primary`.
+- **Active status / uploaded doc**: `border-emerald-200 bg-emerald-50 text-emerald-700`.
+- **Required**: red `*` via `text-destructive`.
+- **Avatar**: deterministic tint from name — never flat grey.
+- **Driver ID badge**: `bg-primary/10 text-primary border-primary/20`.
+- Grey-on-grey everywhere = dead UI. Selected must be visually obvious.
+
+---
+
+## 6. Navigation — view page + add/edit modal
+
+| Action | Pattern |
+|--------|---------|
+| **View / detail** (history, GPS, earnings, tabs) | Full page `/resource/[id]`. **List row click → detail page.** |
+| **Add** | Modal on list via `?add=1` |
+| **Edit** | Modal only — from detail page **Edit** button or `?edit=1` on detail URL. **Never from row click.** |
+
+- `/resource/new` → redirect to list `?add=1`.
+- **Do NOT** redirect `/resource/[id]` to the list.
+
+List row: show subtle **"View details"** link under the name.
+
+---
+
+## 7. Footer-first modals (mandatory)
+
+**Do not waste a top header band** for title/subtitle/close. Reclaim ~56px for content.
+
+- **No top header** in modals. Content starts immediately (`pt-4`).
+- **`showCloseButton={false}`** on `DialogContent`.
+- Use **`AppModalFooter`** (`@/components/app/app-modal-footer`):
+  - **Left stack**: Close button (icon + label) → **title** → **subtitle** (one line).
+  - **Right**: Cancel + primary action.
+- Title/subtitle use `DialogTitle` / `DialogDescription` for a11y.
+
+Apply this pattern to **all new modals** and when refactoring existing ones.
+
+---
+
+## 8. No chrome inside modals
+
+- No progress steppers, completion %, scroll-spy.
+- Footer meta (e.g. draft saved) only when meaningful.
+
+---
+
+## 9. Reference images
+
+Match density, column count, and architecture from user-provided screenshots. Ask before diverging.
+
+---
+
+## 10. Pre-ship checklist
+
+- [ ] One viewport on 14" laptop — no inner scroll
+- [ ] Footer-first modal (`AppModalFooter`, no top header)
+- [ ] `h-9` inputs, `p-4` cards, semantic color on selected states
+- [ ] Section icon chips + tinted avatar + primary Driver ID badge
+- [ ] Row click → detail page; edit → modal only
+- [ ] Add via `?add=1` modal on list

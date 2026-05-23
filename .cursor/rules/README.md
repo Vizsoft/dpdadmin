@@ -3,7 +3,7 @@
 | File | Scope |
 |------|--------|
 | [`project-architecture.mdc`](./project-architecture.mdc) | **Always applied** — admin panel architecture, schema, modules, synergy rules |
-| [`ui-system.mdc`](./ui-system.mdc) | **Always applied** — shadcn UI system and page recipes |
+| [`ui-system.mdc`](./ui-system.mdc) | **Always applied (mandatory)** — density, semantic color, footer-first modals, navigation patterns. Complete pre-ship checklist before finishing UI work. |
 
 **Related docs (not auto-injected):**
 - [`docs/DESIGN_SYSTEM.md`](../docs/DESIGN_SYSTEM.md) — design tokens and layouts

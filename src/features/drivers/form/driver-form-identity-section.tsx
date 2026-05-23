@@ -1,11 +1,18 @@
 "use client";
 
+import { User } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { DriverAvatarUpload } from "../driver-avatar-upload";
 import { CIVIL_ID_DIGIT_COUNT, restrictDigits } from "../driver-phone";
 import { DriverPhoneField } from "./driver-phone-field";
-import { FieldBlock, FieldError, FieldLabel, MetadataBadge, SectionLabel } from "./driver-form-primitives";
+import {
+  FieldBlock,
+  FieldError,
+  FieldLabel,
+  MetadataBadge,
+  SectionHeading,
+} from "./driver-form-primitives";
 
 export function DriverFormIdentitySection({
   fullName,
@@ -66,7 +73,9 @@ export function DriverFormIdentitySection({
 }) {
   return (
     <section className="space-y-2.5 rounded-lg border border-border bg-card p-4">
-      <SectionLabel>{labels.section}</SectionLabel>
+      <SectionHeading icon={User} accent="primary">
+        {labels.section}
+      </SectionHeading>
       <div
         className={cn(
           "grid items-end gap-2.5",

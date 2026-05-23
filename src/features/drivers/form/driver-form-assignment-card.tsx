@@ -1,10 +1,10 @@
 "use client";
 
-import { Car, MapPinned, Users } from "lucide-react";
+import { Briefcase, Car, MapPinned, Users } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { DriverRestaurantPicker } from "../driver-restaurant-picker";
 import type { PartnerOption, RestaurantOption, ZoneOption, VehicleOption } from "../types";
-import { FieldBlock, FieldError, SectionLabel } from "./driver-form-primitives";
+import { FieldBlock, FieldError, SectionHeading } from "./driver-form-primitives";
 import { SearchableSelect } from "./searchable-select";
 
 export function DriverFormAssignmentCard({
@@ -55,8 +55,10 @@ export function DriverFormAssignmentCard({
   };
 }) {
   return (
-    <section className="space-y-3 rounded-lg border border-border bg-card p-4">
-      <SectionLabel>{labels.section}</SectionLabel>
+    <section className="flex h-full flex-col space-y-3 rounded-lg border border-border bg-card p-4">
+      <SectionHeading icon={Briefcase} accent="violet">
+        {labels.section}
+      </SectionHeading>
       <div className="grid gap-2.5 sm:grid-cols-2">
         <FieldBlock>
           <Label className="inline-flex items-center gap-1.5">

@@ -298,8 +298,12 @@ function InlineDocumentUploadCard({
   return (
     <div
       className={cn(
-        "rounded-md border bg-muted/10 p-2",
-        displayError ? "border-destructive/60 bg-destructive/5" : "border-border",
+        "rounded-md border p-2",
+        displayError
+          ? "border-destructive/60 bg-destructive/5"
+          : file
+            ? "border-emerald-200 bg-emerald-50/40"
+            : "border-border bg-muted/10",
       )}
     >
       <div className="mb-1.5 flex items-center gap-1.5">
@@ -870,8 +874,12 @@ function RemoteDocumentUploadCard({
   return (
     <div
       className={cn(
-        "rounded-md border bg-muted/10 p-2",
-        displayError ? "border-destructive/60 bg-destructive/5" : "border-border",
+        "rounded-md border p-2",
+        displayError
+          ? "border-destructive/60 bg-destructive/5"
+          : remote
+            ? "border-emerald-200 bg-emerald-50/40"
+            : "border-border bg-muted/10",
       )}
     >
       <div className="mb-1.5 flex items-center gap-1.5">

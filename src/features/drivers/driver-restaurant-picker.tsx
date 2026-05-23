@@ -78,7 +78,7 @@ export function DriverRestaurantPicker({
             type="button"
             disabled={disabled}
             className={cn(
-              "flex h-11 w-full cursor-pointer items-center justify-between rounded-xl border border-input bg-background px-3 text-sm shadow-xs",
+              "flex h-9 w-full cursor-pointer items-center justify-between rounded-md border border-input bg-background px-3 text-sm shadow-xs",
               "disabled:cursor-not-allowed disabled:opacity-50",
             )}
           >
@@ -138,7 +138,9 @@ export function DriverRestaurantPicker({
           </div>
         ) : null}
 
-        <p className="text-[11px] text-muted-foreground">{t("restaurantsActivationHint")}</p>
+        {selectedIds.length === 0 ? (
+          <p className="text-[10px] leading-snug text-muted-foreground">{t("restaurantsActivationHint")}</p>
+        ) : null}
       </div>
     );
   }

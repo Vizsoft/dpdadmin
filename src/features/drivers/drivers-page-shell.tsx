@@ -39,7 +39,7 @@ import {
 import { useHasMounted } from "@/hooks/use-has-mounted";
 import { cn } from "@/lib/utils";
 import { useDriverFormOptions } from "./use-driver-form-options";
-import { useDriversList, useDriverDetail, type DriversTabFilter } from "./use-drivers";
+import { useDriversList, type DriversTabFilter } from "./use-drivers";
 import {
   AccountStatusPill,
   AttendancePill,
@@ -132,19 +132,10 @@ function DriversPageContent() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
-  const [editOpen, setEditOpen] = useState(false);
-  const [editDriverId, setEditDriverId] = useState<string | null>(null);
-  const { data: editDriver } = useDriverDetail(editDriverId ?? "");
 
   useEffect(() => {
     if (searchParams.get("add") === "1") {
       setAddOpen(true);
-      router.replace("/drivers");
-    }
-    const editId = searchParams.get("edit");
-    if (editId) {
-      setEditDriverId(editId);
-      setEditOpen(true);
       router.replace("/drivers");
     }
   }, [searchParams, router]);
@@ -288,11 +279,6 @@ function DriversPageContent() {
     ],
     [t],
   );
-
-  const openEditDriver = (id: string) => {
-    setEditDriverId(id);
-    setEditOpen(true);
-  };
 
   const hasActiveFilters =
     zoneFilter !== "all" || partnerFilter !== "all" || statusFilter !== "all";
@@ -525,11 +511,11 @@ function DriversPageContent() {
                         "cursor-pointer hover:bg-muted/40",
                         selectedIds.has(driver.id) && "bg-muted/20",
                       )}
-                      onClick={() => openEditDriver(driver.id)}
+                      onClick={() => router.push(`/drivers/${driver.id}`)}
                       onKeyDown={(event) => {
                         if (event.key === "Enter" || event.key === " ") {
                           event.preventDefault();
-                          openEditDriver(driver.id);
+                          router.push(`/drivers/${driver.id}`);
                         }
                       }}
                       tabIndex={0}
@@ -550,9 +536,12 @@ function DriversPageContent() {
                         {driver.employee_id ?? "—"}
                       </TableCell>
                       <TableCell>
-                        <span className="truncate font-medium text-foreground">
-                          {driver.full_name}
-                        </span>
+                        <div className="min-w-0">
+                          <span className="truncate font-medium text-foreground">
+                            {driver.full_name}
+                          </span>
+                          <p className="text-[11px] text-primary">{t("viewDriver")}</p>
+                        </div>
                       </TableCell>
                       <TableCell className="hidden text-sm text-muted-foreground md:table-cell">
                         {formatPhoneInternational(driver.phone)}
@@ -594,17 +583,6 @@ function DriversPageContent() {
         )}
       </AppListCard>
       <DriverFormSheet mode="create" open={addOpen} onOpenChange={setAddOpen} />
-      <DriverFormSheet
-        mode="edit"
-        open={editOpen}
-        onOpenChange={(open) => {
-          setEditOpen(open);
-          if (!open) setEditDriverId(null);
-        }}
-        driver={editDriver}
-        intakeId={editDriver?.intake_id ?? editDriver?.id}
-        onSaved={() => void refetch()}
-      />
     </AppPage>
   );
 }

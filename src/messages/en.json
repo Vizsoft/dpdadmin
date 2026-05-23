@@ -720,6 +720,7 @@
       "r2NotConfiguredOptional": "File storage (R2) is not configured. You can still create the driver without documents, or configure R2 to upload files now.",
       "configureStorage": "Configure R2 storage",
       "cancel": "Cancel",
+      "close": "Close",
       "created": "Driver registered. They can link their account via the mobile app.",
       "createdWithCode": "Driver registered with ID {code}. Share this ID and their app passcode when active.",
       "sections": {

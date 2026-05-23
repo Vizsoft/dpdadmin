@@ -35,7 +35,6 @@ import { useDriverFormOptions } from "./use-driver-form-options";
 import { DriverFormAssignmentCard } from "./form/driver-form-assignment-card";
 import { DriverFormDocumentsGrid } from "./form/driver-form-documents-grid";
 import { DriverFormFooter } from "./form/driver-form-footer";
-import { DriverFormHeader } from "./form/driver-form-header";
 import { DriverFormIdentitySection } from "./form/driver-form-identity-section";
 import { DriverFormOperationsCard } from "./form/driver-form-operations-card";
 import { useDriverFormDraft } from "./form/use-driver-form-draft";
@@ -383,11 +382,9 @@ export function DriverFormSheet({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="flex max-h-[92vh] w-[min(1200px,96vw)] max-w-[min(1200px,96vw)] flex-col gap-0 overflow-hidden rounded-xl p-0"
-        showCloseButton
+        showCloseButton={false}
       >
-        <DriverFormHeader title={titleLabel} subtitle={subtitleLabel} />
-
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-4 pb-3">
           {isLoadingEdit ? (
             <div className="flex h-48 items-center justify-center">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -440,7 +437,7 @@ export function DriverFormSheet({
               }}
             />
 
-            <div className="grid gap-3 lg:grid-cols-2">
+            <div className="grid gap-3 lg:grid-cols-2 lg:items-stretch">
               <DriverFormAssignmentCard
                 partnerId={partnerId}
                 onPartnerChange={(value) => {
@@ -539,6 +536,9 @@ export function DriverFormSheet({
           )}
         </div>
         <DriverFormFooter
+          title={titleLabel}
+          subtitle={subtitleLabel}
+          closeLabel={tNew("close")}
           savedAtLabel={
             savedAt && !isEdit
               ? tNew("footer.draftSaved", { time: savedAt.toLocaleTimeString() })
@@ -546,8 +546,12 @@ export function DriverFormSheet({
           }
           saveLabel={saveLabel}
           cancelLabel={tNew("cancel")}
-          disabled={optionsLoading || needsR2ForSubmit}
+          disabled={optionsLoading || needsR2ForSubmit || isLoadingEdit}
           pending={isPending}
+          onClose={() => {
+            if (!isEdit) clearDraft();
+            onOpenChange(false);
+          }}
           onCancel={() => {
             if (!isEdit) clearDraft();
             onOpenChange(false);

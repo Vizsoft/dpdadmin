@@ -1,8 +1,9 @@
 "use client";
 
+import { FileText } from "lucide-react";
 import { DriverDocumentUpload } from "../driver-document-upload";
 import type { DriverDocumentType, DriverRemoteDocument } from "../types";
-import { SectionLabel } from "./driver-form-primitives";
+import { SectionHeading } from "./driver-form-primitives";
 
 export function DriverFormDocumentsGrid({
   isEdit,
@@ -31,7 +32,9 @@ export function DriverFormDocumentsGrid({
 
   return (
     <section className="space-y-2.5 rounded-lg border border-border bg-card p-4">
-      <SectionLabel>{sectionLabel}</SectionLabel>
+      <SectionHeading icon={FileText} accent="emerald">
+        {sectionLabel}
+      </SectionHeading>
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         {docTypes.map((docType) =>
           isEdit ? (
