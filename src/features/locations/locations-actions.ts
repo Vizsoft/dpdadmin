@@ -81,7 +81,7 @@ function mapLiveRow(row: {
 }
 
 export async function fetchLiveDriverLocations(): Promise<DriverLiveLocation[]> {
-  const session = await requireDriversView();
+  await requireDriversView();
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -115,11 +115,7 @@ export async function fetchLiveDriverLocations(): Promise<DriverLiveLocation[]> 
     throw new Error(error.message);
   }
 
-  await logAdminRead({
-    session,
-    entityType: "driver_locations",
-    routeName: "locations.fetchLive",
-  });
+  await logAdminRead("driver_locations", "locations.fetchLive");
 
   return (data ?? []).map((row) => mapLiveRow(row as Parameters<typeof mapLiveRow>[0]));
 }
@@ -129,7 +125,7 @@ export async function fetchDriverLocationHistory(
   fromIso: string,
   toIso: string,
 ): Promise<DriverLocationEvent[]> {
-  const session = await requireDriversView();
+  await requireDriversView();
   const supabase = await createClient();
 
   const { data, error } = await supabase
