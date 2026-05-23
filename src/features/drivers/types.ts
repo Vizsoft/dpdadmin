@@ -98,6 +98,7 @@ export type DriverListRow = {
   zone_name: string;
   workflow_status: DriverWorkflowStatus;
   linked: boolean;
+  linked_profile_id: string | null;
   account_status: DriverAccountStatus;
   is_on_duty: boolean;
   today_deliveries: number;

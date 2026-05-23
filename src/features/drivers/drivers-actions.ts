@@ -557,6 +557,7 @@ export async function fetchDriversForAdmin(options?: {
         zone_name: zoneRow?.name ?? "—",
         workflow_status: row.workflow_status,
         linked: row.linked,
+        linked_profile_id: row.linked_profile_id,
         account_status,
         is_on_duty: linkedDriver?.is_on_duty ?? false,
         today_deliveries: row.linked_profile_id
