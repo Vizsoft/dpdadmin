@@ -266,6 +266,11 @@ export async function createDriverIntake(
   const zoneId = String(formData.get("zoneId") ?? "").trim();
   const vehicleId = String(formData.get("vehicleId") ?? "").trim();
   const assetsEnabled = formData.get("assetsEnabled") === "true";
+  const workflowStatusRaw = String(formData.get("workflowStatus") ?? "").trim();
+  const workflowStatus: DriverWorkflowStatus =
+    workflowStatusRaw === "approved" || workflowStatusRaw === "pending" || workflowStatusRaw === "draft"
+      ? workflowStatusRaw
+      : "draft";
 
   if (!fullName || !phoneRaw || !civilId) {
     return { error: "missing_fields" };
@@ -357,7 +362,7 @@ export async function createDriverIntake(
       avatar_url: intakeAvatarKey,
       assets_issued: assetsIssued,
       status: "awaiting_app_link",
-      workflow_status: "draft",
+      workflow_status: workflowStatus,
       linked: false,
     })
     .select("id, driver_code")

@@ -23,6 +23,7 @@ export function DriverAvatarUpload({
   onFileSelect,
   onRemove,
   size = "lg",
+  variant = "panel",
 }: {
   fullName: string;
   previewUrl: string | null;
@@ -33,9 +34,56 @@ export function DriverAvatarUpload({
   onFileSelect: (file: File | null) => void;
   onRemove: () => void;
   size?: "sm" | "lg";
+  variant?: "panel" | "badge";
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const compact = size === "sm";
+  const isBadge = variant === "badge";
+
+  if (isBadge) {
+    return (
+      <div className="relative h-[72px] w-[72px] shrink-0">
+        <Avatar className="h-[72px] w-[72px] border border-border/70 bg-muted/30">
+          {previewUrl ? <AvatarImage src={previewUrl} alt="" /> : null}
+          <AvatarFallback className="font-semibold text-sm">
+            {fullName.trim() ? initialsFromName(fullName) : <User className="h-4 w-4" />}
+          </AvatarFallback>
+        </Avatar>
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/png,image/jpeg,image/webp,image/svg+xml"
+          className="hidden"
+          disabled={disabled}
+          onChange={(event) => onFileSelect(event.target.files?.[0] ?? null)}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="icon-sm"
+          className="absolute -right-1 -bottom-1 h-7 w-7 cursor-pointer rounded-full bg-background shadow-sm"
+          disabled={disabled}
+          onClick={() => inputRef.current?.click()}
+          aria-label={uploadLabel}
+        >
+          <Camera className="h-3.5 w-3.5" />
+        </Button>
+        {previewUrl ? (
+          <Button
+            type="button"
+            variant="secondary"
+            size="icon-sm"
+            className="absolute -left-1 -bottom-1 h-7 w-7 cursor-pointer rounded-full"
+            disabled={disabled}
+            onClick={onRemove}
+            aria-label={removeLabel}
+          >
+            ×
+          </Button>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <div

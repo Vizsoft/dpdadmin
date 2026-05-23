@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Check, ChevronsUpDown, Search } from "lucide-react";
+import { Check, ChevronsUpDown, Search, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -68,10 +68,8 @@ export function DriverRestaurantPicker({
     );
     const selectedMap = new Map(published.map((restaurant) => [restaurant.id, restaurant.name]));
     const selectedPreview = selectedIds
-      .slice(0, 3)
-      .map((id) => selectedMap.get(id))
-      .filter(Boolean) as string[];
-    const remainderCount = Math.max(0, selectedIds.length - selectedPreview.length);
+      .map((id) => ({ id, label: selectedMap.get(id) }))
+      .filter((item): item is { id: string; label: string } => Boolean(item.label));
 
     return (
       <div className="space-y-2">
@@ -80,7 +78,7 @@ export function DriverRestaurantPicker({
             type="button"
             disabled={disabled}
             className={cn(
-              "flex h-9 w-full cursor-pointer items-center justify-between rounded-lg border border-input bg-background px-3 text-sm shadow-xs",
+              "flex h-11 w-full cursor-pointer items-center justify-between rounded-xl border border-input bg-background px-3 text-sm shadow-xs",
               "disabled:cursor-not-allowed disabled:opacity-50",
             )}
           >
@@ -126,17 +124,17 @@ export function DriverRestaurantPicker({
 
         {selectedIds.length > 0 ? (
           <div className="flex flex-wrap items-center gap-1.5">
-            {selectedPreview.map((label) => (
-              <span
-                key={label}
-                className="inline-flex max-w-[160px] truncate rounded-md border border-border bg-muted/40 px-2 py-0.5 text-xs"
+            {selectedPreview.map(({ id, label }) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => toggle(id, false)}
+                className="inline-flex max-w-[220px] cursor-pointer items-center gap-1 rounded-md border border-primary/20 bg-primary/10 px-2 py-0.5 text-xs text-primary transition-colors hover:bg-primary/15"
               >
-                {label}
-              </span>
+                <span className="truncate">{label}</span>
+                <X className="h-3 w-3" />
+              </button>
             ))}
-            {remainderCount > 0 ? (
-              <span className="text-xs text-muted-foreground">+{remainderCount} more</span>
-            ) : null}
           </div>
         ) : null}
 

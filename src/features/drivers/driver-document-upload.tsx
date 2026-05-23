@@ -53,6 +53,7 @@ type SharedProps = {
   disabled?: boolean;
   error?: string;
   compact?: boolean;
+  variant?: "default" | "card";
 };
 
 type InlineProps = SharedProps & {
@@ -73,6 +74,10 @@ type RemoteProps = SharedProps & {
 export type DriverDocumentUploadProps = InlineProps | RemoteProps;
 
 export function DriverDocumentUpload(props: DriverDocumentUploadProps) {
+  if (props.variant === "card") {
+    if (props.mode === "inline") return <InlineDocumentUploadCard {...props} />;
+    return <RemoteDocumentUploadCard {...props} />;
+  }
   if (props.mode === "inline") {
     if (props.compact) return <InlineDocumentUploadCompact {...props} />;
     return <InlineDocumentUpload {...props} />;
@@ -261,6 +266,101 @@ function InlineDocumentUploadCompact({
       />
       {displayError ? (
         <p className="text-xs text-destructive" role="alert">
+          {displayError}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function InlineDocumentUploadCard({
+  docType,
+  file,
+  onChange,
+  error,
+  isSubmitting = false,
+  disabled,
+}: InlineProps) {
+  const t = useTranslations("pages.driverNew");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [localErrorKey, setLocalErrorKey] = useState<string | null>(null);
+
+  const displayError =
+    error ??
+    (localErrorKey && isDriverErrorKey(localErrorKey)
+      ? t(`errors.${localErrorKey}`)
+      : localErrorKey
+        ? localErrorKey
+        : undefined);
+
+  const label = t(`documents.${docType}`);
+
+  return (
+    <div
+      className={cn(
+        "rounded-xl border bg-muted/10 p-3",
+        displayError ? "border-destructive/60 bg-destructive/5" : "border-border",
+      )}
+    >
+      <div className="mb-2 flex items-start gap-2">
+        {isImageFile(file) ? (
+          <ImageIcon className="mt-0.5 h-4 w-4 text-muted-foreground" />
+        ) : (
+          <FileText className="mt-0.5 h-4 w-4 text-muted-foreground" />
+        )}
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium text-foreground">{label}</p>
+          <p className="text-[11px] text-muted-foreground">PNG, JPG or PDF · max 16MB</p>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        disabled={disabled || isSubmitting}
+        onClick={() => inputRef.current?.click()}
+        className="flex h-10 w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-dashed border-border bg-background text-xs text-muted-foreground transition-colors hover:bg-muted/40 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <Upload className="h-3.5 w-3.5" />
+        {file ? t("replaceDocument") : t("uploadDocument")}
+      </button>
+
+      {file ? (
+        <div className="mt-2 flex items-center justify-between gap-2 rounded-md border border-primary/20 bg-primary/5 px-2 py-1.5">
+          <p className="min-w-0 truncate text-xs text-foreground">{file.name}</p>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-6 cursor-pointer rounded-md px-2 text-xs"
+            disabled={disabled || isSubmitting}
+            onClick={() => onChange(null)}
+          >
+            {t("removeDocument")}
+          </Button>
+        </div>
+      ) : null}
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept="application/pdf,image/png,image/jpeg,image/webp"
+        className="hidden"
+        disabled={disabled || isSubmitting}
+        onChange={(event) => {
+          const picked = event.target.files?.[0] ?? null;
+          if (!picked) return;
+          const validationError = validateDocumentFile(picked);
+          if (validationError) {
+            setLocalErrorKey(validationError);
+            return;
+          }
+          setLocalErrorKey(null);
+          onChange(picked);
+        }}
+      />
+
+      {displayError ? (
+        <p className="mt-1 text-xs text-destructive" role="alert">
           {displayError}
         </p>
       ) : null}
@@ -668,6 +768,180 @@ function RemoteDocumentUploadCompact({
       />
       {displayError ? (
         <p className="text-xs text-destructive" role="alert">
+          {displayError}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function RemoteDocumentUploadCard({
+  docType,
+  intakeId,
+  driverProfileId,
+  existing,
+  onChanged,
+  error,
+  disabled,
+}: RemoteProps) {
+  const t = useTranslations("pages.driverDetail");
+  const tErr = useTranslations("pages.driverNew");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [remote, setRemote] = useState<DriverRemoteDocument | null>(existing);
+  const [busy, setBusy] = useState(false);
+  const [localErrorKey, setLocalErrorKey] = useState<string | null>(null);
+
+  useEffect(() => setRemote(existing), [existing]);
+
+  const displayError =
+    error ??
+    (localErrorKey && isDriverErrorKey(localErrorKey)
+      ? tErr(`errors.${localErrorKey}`)
+      : localErrorKey
+        ? localErrorKey
+        : undefined);
+
+  const uploadFile = async (file: File) => {
+    const validationError = validateDocumentFile(file);
+    if (validationError) {
+      setLocalErrorKey(validationError);
+      return;
+    }
+
+    const body = new FormData();
+    body.append("intakeId", intakeId);
+    if (driverProfileId) body.append("driverProfileId", driverProfileId);
+    body.append("docType", docType);
+    body.append("file", file);
+
+    setBusy(true);
+    setLocalErrorKey(null);
+    try {
+      const response = await fetch("/api/admin/driver-documents/upload", {
+        method: "POST",
+        body,
+      });
+      const json = (await response.json()) as UploadResponse;
+      if (!response.ok || !json.ok || !json.objectKey || !json.signedUrl) {
+        setLocalErrorKey(json.error ?? "upload_failed");
+        return;
+      }
+      const next: DriverRemoteDocument = {
+        objectKey: json.objectKey,
+        signedUrl: json.signedUrl,
+        sizeBytes: json.sizeBytes ?? null,
+        contentType: json.contentType ?? file.type,
+        source: json.source ?? "intake",
+      };
+      setRemote(next);
+      onChanged(next);
+    } catch {
+      setLocalErrorKey("upload_failed");
+    } finally {
+      setBusy(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  };
+
+  const removeRemote = async () => {
+    setBusy(true);
+    setLocalErrorKey(null);
+    try {
+      const response = await fetch("/api/admin/driver-documents", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          intakeId,
+          driverProfileId: driverProfileId ?? undefined,
+          docType,
+        }),
+      });
+      const json = (await response.json()) as { ok?: boolean; error?: string };
+      if (!response.ok || !json.ok) {
+        setLocalErrorKey(json.error ?? "save_failed");
+        return;
+      }
+      setRemote(null);
+      onChanged(null);
+    } catch {
+      setLocalErrorKey("save_failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div
+      className={cn(
+        "rounded-xl border bg-muted/10 p-3",
+        displayError ? "border-destructive/60 bg-destructive/5" : "border-border",
+      )}
+    >
+      <div className="mb-2 flex items-start gap-2">
+        {isImageMime(remote?.contentType ?? null) ? (
+          <ImageIcon className="mt-0.5 h-4 w-4 text-muted-foreground" />
+        ) : (
+          <FileText className="mt-0.5 h-4 w-4 text-muted-foreground" />
+        )}
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium text-foreground">{tErr(`documents.${docType}`)}</p>
+          <p className="text-[11px] text-muted-foreground">PNG, JPG or PDF · max 16MB</p>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        disabled={disabled || busy}
+        onClick={() => inputRef.current?.click()}
+        className="flex h-10 w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-dashed border-border bg-background text-xs text-muted-foreground transition-colors hover:bg-muted/40 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <Upload className="h-3.5 w-3.5" />
+        {remote ? tErr("replaceDocument") : tErr("uploadDocument")}
+      </button>
+
+      {remote ? (
+        <div className="mt-2 space-y-1 rounded-md border border-primary/20 bg-primary/5 px-2 py-1.5">
+          <p className="truncate text-xs text-foreground">{basenameFromKey(remote.objectKey)}</p>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-6 cursor-pointer rounded-md px-2 text-xs"
+              nativeButton={false}
+              render={<a href={remote.signedUrl} target="_blank" rel="noopener noreferrer" />}
+            >
+              {t("viewDocument")}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-6 cursor-pointer rounded-md px-2 text-xs"
+              disabled={disabled || busy}
+              onClick={() => void removeRemote()}
+            >
+              {tErr("removeDocument")}
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept="application/pdf,image/png,image/jpeg,image/webp"
+        className="hidden"
+        disabled={disabled || busy}
+        onChange={(event) => {
+          const file = event.target.files?.[0] ?? null;
+          if (!file) return;
+          void uploadFile(file);
+        }}
+      />
+
+      {displayError ? (
+        <p className="mt-1 text-xs text-destructive" role="alert">
           {displayError}
         </p>
       ) : null}
