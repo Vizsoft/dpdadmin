@@ -136,14 +136,20 @@ Admin panel **does not** create auth users; it only inserts `driver_intakes` via
 | delivered_at | timestamptz | Set on driver submit |
 | delivered_lat, delivered_lng | numeric | GPS at submit time |
 
-When admin sets `status = verified`, Postgres runs `recalculate_driver_earnings(driver_id, earn_date)` and updates `driver_earnings_daily`.
+When admin sets `status = verified`, Postgres runs `recalculate_driver_earnings(driver_id, earn_date)` which updates `driver_earnings_daily` and syncs an approved `earning_credit` in `driver_wallet_entries`.
 
 **Driver RLS:** `SELECT` / `INSERT` where `driver_id = auth.uid()` (migration `20260609100000_driver_deliveries_app.sql`).
 
 **RPCs (authenticated rider):**
 
 - `driver_check_order_id_available(p_external_order_id)` → `boolean`
-- `driver_create_delivery(p_external_order_id, p_order_proof_url?, p_delivered_lat?, p_delivered_lng?)` → `deliveries` row (`status = pending`, copies `partner_id` / `zone_id` from `drivers`)
+- `driver_get_delivery_proximity_context()` → JSON: `proximity_meters`, driver `zone_id`, `zone_type`, `zone_geometry`, assigned `restaurants[]` with lat/lng
+- `driver_create_delivery(p_external_order_id, p_order_proof_url?, p_delivered_lat?, p_delivered_lng?)` → `deliveries` row (`status = pending`, copies `partner_id` / `zone_id` from `drivers`). Raises `delivery_out_of_range` when proximity gate fails.
+
+**Delivery proximity gate** (`app_settings.driver_app_delivery_proximity_meters`, default 500; `0` disables):
+
+- Allow submit when driver GPS is **inside assigned zone** OR **within N meters of zone boundary** OR **within N meters of any assigned restaurant** (PostGIS on server; mirrored client-side for UX).
+- Enforced in `driver_create_delivery` and pre-checked in the driver app Add Delivery screen.
 
 ### `restaurants` (admin-managed)
 | Column | Type | Notes |
@@ -181,8 +187,42 @@ Admin UI: **DPD** (`/dpd`, `earnings.view` / `earnings.manage`). Legacy `/settin
 ### `wrong_actions` (read only)
 - `action_type`, `severity`, `details`, `occurred_at`
 
-### `driver_earnings_daily` (read only)
-- Per-day: deliveries, base_kwd, incentive_kwd, deductions, net_kwd
+When admin sets `status = verified`, Postgres runs `recalculate_driver_earnings(driver_id, earn_date)` which updates `driver_earnings_daily` and syncs an approved **`earning_credit`** row in `driver_wallet_entries` (idempotent via `source_ref`).
+
+### `driver_earnings_daily` (read only — computational aggregate)
+- Per-day: deliveries, base_kwd, incentive_kwd, loan/penalty/reimbursement deductions, net_kwd
+- Used for admin previews and KPIs; may be recalculated when deliveries are verified or corrected.
+
+### `driver_wallet_entries` (read only — approved ledger for driver-visible balance)
+
+| Column | Type | Notes |
+|--------|------|-------|
+| driver_id | uuid | `auth.uid()` for rider |
+| earn_date | date | Kuwait calendar day |
+| entry_type | enum | `earning_credit` (auto on recalc), `manual_adjustment`, `payout_debit` (future) |
+| amount_kwd | numeric | Approved amount for that day/type |
+| status | enum | `approved` \| `pending` \| `voided` — driver app reads **`approved` only** |
+| source_ref | text | Unique idempotency key, e.g. `earning:{driver_id}:{earn_date}` |
+| meta | jsonb | Snapshot of daily breakdown (deliveries, base, incentive, net, etc.) |
+
+**Driver app queries (RLS):**
+
+```typescript
+// Approved daily credits for earnings screen / payout balance
+const { data } = await supabase
+  .from('driver_wallet_entries')
+  .select('earn_date, amount_kwd, entry_type, status, meta')
+  .eq('driver_id', userId)
+  .eq('status', 'approved')
+  .order('earn_date', { ascending: false });
+```
+
+Sum `amount_kwd` where `entry_type = 'earning_credit'` for “approved earnings this week”. Future payout runs will insert `payout_debit` rows against the same ledger.
+
+Admin RPCs (staff): `get_driver_earnings_detail`, `list_driver_earnings_daily`, `recalculate_earnings_for_range`.
+
+### `driver_earnings_daily` (legacy read — still available)
+- Same columns as above; prefer **`driver_wallet_entries`** for driver-facing “approved” balances.
 
 ### `hygiene_tasks` + `hygiene_submissions`
 - Admin creates task → push to driver → driver uploads photo → admin reviews
@@ -295,7 +335,8 @@ select driver_app_title,
        driver_app_splash_url,
        driver_app_maintenance_mode,
        driver_app_maintenance_message,
-       driver_app_login_hint
+       driver_app_login_hint,
+       driver_app_delivery_proximity_meters
   from public.app_settings
  where id = 1;
 ```
@@ -305,6 +346,7 @@ select driver_app_title,
 - **Separate** from `maintenance_mode` on the same row (that flag gates the **admin panel** only).
 - `driver_app_logo_url` / `driver_app_splash_url` are public Supabase Storage URLs under bucket `branding`, paths `driver-app/logo.*` and `driver-app/splash.*`. Uploads append a `?v=` cache-bust query param.
 - `driver_app_title` is the mobile app display name (defaults to `Musallam Delivery`). Admin subtitle/login hint remain on `app_subtitle` / `driver_app_login_hint` (configured under Settings → Branding).
+- `driver_app_delivery_proximity_meters` (default 500): max meters outside zone boundary or from assigned restaurant to allow Add Delivery. `0` disables the gate. Loaded via `driver_get_delivery_proximity_context()` when opening Add Delivery (includes zone geometry + assigned restaurants).
 
 ---
 

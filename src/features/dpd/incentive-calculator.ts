@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import type {
   DeliveryValidationResult,
+  EarningsDailyListResult,
+  EarningsDetailResult,
   EarningsPreviewResult,
 } from "./types";
 
@@ -112,4 +114,50 @@ export async function recalculateDriverEarnings(
 
   if (error) return { error: "recalc_failed" };
   return { success: true };
+}
+
+export async function recalculateEarningsForRange(
+  startDate: string,
+  endDate: string,
+  driverId?: string | null,
+): Promise<{ count: number } | { error: string }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("recalculate_earnings_for_range", {
+    p_start_date: startDate,
+    p_end_date: endDate,
+    p_driver_id: driverId ?? undefined,
+  });
+
+  if (error) return { error: "recalc_failed" };
+  return { count: data ?? 0 };
+}
+
+export async function getDriverEarningsDetail(
+  driverId: string,
+  earnDate: string,
+): Promise<EarningsDetailResult | { error: string }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("get_driver_earnings_detail", {
+    p_driver_id: driverId,
+    p_earn_date: earnDate,
+  });
+
+  if (error) return { error: "detail_failed" };
+  return data as EarningsDetailResult;
+}
+
+export async function listDriverEarningsDaily(
+  startDate: string,
+  endDate: string,
+  driverId?: string | null,
+): Promise<EarningsDailyListResult | { error: string }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("list_driver_earnings_daily", {
+    p_start_date: startDate,
+    p_end_date: endDate,
+    p_driver_id: driverId ?? undefined,
+  });
+
+  if (error) return { error: "list_failed" };
+  return data as EarningsDailyListResult;
 }

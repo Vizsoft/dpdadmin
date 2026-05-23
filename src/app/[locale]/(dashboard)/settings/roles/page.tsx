@@ -1,5 +1,6 @@
 import { setRequestLocale } from "next-intl/server";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
+import { logAdminPageView } from "@/lib/audit/log-admin-activity";
 import { getAllAdminRoles } from "@/lib/auth/get-role-permissions";
 import { syncAdminPermissionsFromCatalog } from "@/lib/auth/sync-admin-permissions";
 import { createClient } from "@/lib/supabase/server";
@@ -14,6 +15,7 @@ export default async function RolesPermissionsPage({
   const { locale } = await params;
   setRequestLocale(locale);
   await requireSuperAdmin(locale);
+  void logAdminPageView("/settings/roles", "RolesPermissionsPage");
 
   await syncAdminPermissionsFromCatalog();
 

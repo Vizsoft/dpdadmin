@@ -96,10 +96,10 @@ export type DeliveryValidationResult = {
 };
 
 export type EarningsPreviewRuleBreakdown = {
-  rule_id: string;
-  rule_name: string;
-  period: string;
-  eligible_count: number;
+  rule_id?: string;
+  rule_name?: string;
+  period?: string;
+  eligible_count?: number;
   target_mode?: string;
   base_minimum?: number;
   target?: number | null;
@@ -107,6 +107,8 @@ export type EarningsPreviewRuleBreakdown = {
   reward_kwd?: number;
   amount_kwd?: number;
   tiers?: { threshold: number; reward_mode: string; met: boolean }[];
+  note?: string;
+  override_rule_id?: string;
 };
 
 export type EarningsPreviewRow = {
@@ -119,6 +121,78 @@ export type EarningsPreviewRow = {
 export type EarningsPreviewResult = {
   earn_date: string;
   drivers: EarningsPreviewRow[];
+};
+
+export type EarningsDailyListRow = {
+  id: string;
+  driver_id: string;
+  driver_code: string;
+  driver_name: string;
+  earn_date: string;
+  deliveries: number;
+  base_kwd: number;
+  incentive_kwd: number;
+  loan_deduction_kwd: number;
+  penalty_kwd: number;
+  reimbursement_kwd: number;
+  net_kwd: number;
+  wallet_amount_kwd: number | null;
+  wallet_status: string | null;
+};
+
+export type EarningsDailyListResult = {
+  start_date: string;
+  end_date: string;
+  rows: EarningsDailyListRow[];
+};
+
+export type EarningsDetailDelivery = {
+  id: string;
+  external_order_id: string | null;
+  status: string;
+  delivered_at: string;
+  partner_id: string | null;
+  partner_name: string | null;
+  restaurant_id: string | null;
+  restaurant_name: string | null;
+  zone_id: string | null;
+  zone_name: string | null;
+  counts_for_earnings: boolean;
+};
+
+export type EarningsDetailRule = EarningsPreviewRuleBreakdown & {
+  priority?: number;
+  note?: string;
+  override_rule_id?: string;
+  final_incentive_kwd?: number;
+};
+
+export type EarningsDetailResult = {
+  driver_id: string;
+  earn_date: string;
+  daily: {
+    driver_id: string;
+    earn_date: string;
+    deliveries: number;
+    base_kwd: number;
+    incentive_kwd: number;
+    loan_deduction_kwd: number;
+    penalty_kwd: number;
+    reimbursement_kwd: number;
+    net_kwd: number;
+    updated_at: string;
+  } | null;
+  wallet: {
+    id: string;
+    amount_kwd: number;
+    status: string;
+    approved_at: string;
+    source_ref: string;
+  } | null;
+  eligible_deliveries_count: number;
+  computed_incentive_kwd: number;
+  deliveries: EarningsDetailDelivery[];
+  rules: EarningsDetailRule[];
 };
 
 /** Client-side payout estimate (matches SQL compute_incentive_amount). */

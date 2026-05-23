@@ -1,5 +1,6 @@
 "use server";
 
+import { logAdminMutation, logAdminRead } from "@/lib/audit/log-admin-activity";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/auth/get-session";
 import { hasPermissionInSet } from "@/lib/auth/permissions";
@@ -336,6 +337,14 @@ export async function createDriverIntake(
 
   await syncIntakeRestaurants(supabase, data.id, restaurantIds);
 
+  void logAdminMutation({
+    action: "create",
+    entityType: "driver_intake",
+    entityId: data.id,
+    routeName: "createDriverIntake",
+    after: { driver_code: data.driver_code, partner_id: partnerId, zone_id: zoneId },
+  });
+
   return { success: true, id: data.id, driver_code: data.driver_code };
 }
 
@@ -402,6 +411,9 @@ export async function fetchDriversForAdmin(options?: {
   archived?: boolean;
 }): Promise<DriverListRow[]> {
   await requireDriversView();
+  void logAdminRead("driver_intakes", "fetchDriversForAdmin", {
+    archived: options?.archived ?? false,
+  });
   const supabase = await createClient();
   const archivedOnly = options?.archived === true;
 
@@ -586,6 +598,13 @@ export async function updateDriverWorkflowStatus(
     .is("archived_at", null);
 
   if (error) return { error: mapDriverDbError(error) };
+  void logAdminMutation({
+    action: "update",
+    entityType: "driver_intake",
+    entityId: intakeId,
+    routeName: "updateDriverWorkflowStatus",
+    after: { workflow_status: workflowStatus },
+  });
   return { success: true };
 }
 
@@ -691,6 +710,14 @@ export async function updateDriverIntake(
     await syncDriverRestaurants(supabase, existing.linked_profile_id, restaurantIds);
   }
 
+  void logAdminMutation({
+    action: "update",
+    entityType: "driver_intake",
+    entityId: intakeId,
+    routeName: "updateDriverIntake",
+    after: { workflow_status: workflowStatus, partner_id: partnerId },
+  });
+
   return { success: true, id: intakeId };
 }
 
@@ -698,6 +725,7 @@ export async function fetchDriverDetail(
   id: string,
 ): Promise<DriverDetailModel | null> {
   await requireDriversView();
+  void logAdminRead("driver_intake", "fetchDriverDetail", { id });
   const supabase = await createClient();
 
   const { data: intake } = await supabase
@@ -951,6 +979,14 @@ export async function regenerateDriverPasscode(
   if (!payload.ok || !payload.passcode) {
     return { error: payload.error ?? "save_failed" };
   }
+
+  void logAdminMutation({
+    action: "update",
+    entityType: "driver",
+    entityId: driverId,
+    routeName: "regenerateDriverAppPasscode",
+    context: { passcode_rotated: true },
+  });
 
   return { success: true, passcode: payload.passcode };
 }

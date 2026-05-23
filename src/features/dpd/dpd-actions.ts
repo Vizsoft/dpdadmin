@@ -9,13 +9,18 @@ import {
 } from "@/features/restaurants/parse-restaurant-form";
 import { isDpdErrorKey, type DpdErrorKey } from "./dpd-errors";
 import {
+  getDriverEarningsDetail,
+  listDriverEarningsDaily,
   previewDriverEarnings,
   recalculateEarningsForDate,
+  recalculateEarningsForRange,
   validateDeliveryForRules,
 } from "./incentive-calculator";
 import type {
   DeliveryRuleRow,
   DpdScopeOptions,
+  EarningsDailyListResult,
+  EarningsDetailResult,
   IncentivePayoutMode,
   IncentiveRewardMode,
   IncentiveRuleRow,
@@ -26,6 +31,7 @@ import type {
   RuleScopeType,
   RuleStatus,
 } from "./types";
+import { logAdminMutation, logAdminRead } from "@/lib/audit/log-admin-activity";
 
 export type DpdMutationResult = {
   error?: DpdErrorKey | string;
@@ -232,6 +238,7 @@ export async function fetchDpdScopeOptions(): Promise<DpdScopeOptions> {
 
 export async function fetchRestaurantsForAdmin(): Promise<RestaurantRow[]> {
   await requireEarningsView();
+  void logAdminRead("restaurants", "fetchRestaurantsForAdmin");
   const supabase = await createClient();
   const [{ data, error }, { data: partners }, { data: zones }] = await Promise.all([
     supabase
@@ -286,6 +293,7 @@ async function loadScopeLabelMaps(supabase: Awaited<ReturnType<typeof createClie
 
 export async function fetchDeliveryRulesForAdmin(): Promise<DeliveryRuleRow[]> {
   await requireEarningsView();
+  void logAdminRead("delivery_rules", "fetchDeliveryRulesForAdmin");
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("delivery_rules")
@@ -377,6 +385,7 @@ function mapIncentiveTierRow(
 
 export async function fetchIncentiveRulesForAdmin(): Promise<IncentiveRuleRow[]> {
   await requireEarningsView();
+  void logAdminRead("incentive_rules", "fetchIncentiveRulesForAdmin");
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("incentive_rules")
@@ -485,6 +494,13 @@ export async function saveRestaurant(formData: FormData): Promise<DpdMutationRes
       if (error.code === "23505") return { error: "restaurant_exists" };
       return { error: "save_failed" };
     }
+    void logAdminMutation({
+      action: "update",
+      entityType: "restaurant",
+      entityId: id,
+      routeName: "saveRestaurant",
+      after: { name, partner_id: partnerId, zone_id: zoneId, status },
+    });
     return { success: true, id };
   }
 
@@ -498,6 +514,13 @@ export async function saveRestaurant(formData: FormData): Promise<DpdMutationRes
     if (error.code === "23505") return { error: "restaurant_exists" };
     return { error: "save_failed" };
   }
+  void logAdminMutation({
+    action: "create",
+    entityType: "restaurant",
+    entityId: data.id,
+    routeName: "saveRestaurant",
+    after: { name, partner_id: partnerId, zone_id: zoneId, status },
+  });
   return { success: true, id: data.id };
 }
 
@@ -509,6 +532,12 @@ export async function deleteRestaurant(id: string): Promise<DpdMutationResult> {
   const supabase = await createClient();
   const { error } = await supabase.from("restaurants").delete().eq("id", id);
   if (error) return { error: "delete_failed" };
+  void logAdminMutation({
+    action: "delete",
+    entityType: "restaurant",
+    entityId: id,
+    routeName: "deleteRestaurant",
+  });
   return { success: true };
 }
 
@@ -569,6 +598,14 @@ export async function saveDeliveryRule(formData: FormData): Promise<DpdMutationR
   );
   if (scopeErr) return { error: "save_failed" };
 
+  void logAdminMutation({
+    action: id ? "update" : "create",
+    entityType: "delivery_rule",
+    entityId: ruleId,
+    routeName: "saveDeliveryRule",
+    after: { name, status, scope_type: scope.scopeType },
+  });
+
   return { success: true, id: ruleId };
 }
 
@@ -580,6 +617,12 @@ export async function deleteDeliveryRule(id: string): Promise<DpdMutationResult>
   const supabase = await createClient();
   const { error } = await supabase.from("delivery_rules").delete().eq("id", id);
   if (error) return { error: "delete_failed" };
+  void logAdminMutation({
+    action: "delete",
+    entityType: "delivery_rule",
+    entityId: id,
+    routeName: "deleteDeliveryRule",
+  });
   return { success: true };
 }
 
@@ -775,6 +818,14 @@ export async function saveIncentiveRule(formData: FormData): Promise<DpdMutation
   );
   if (scopeErr) return { error: "save_failed" };
 
+  void logAdminMutation({
+    action: ruleId ? "update" : "create",
+    entityType: "incentive_rule",
+    entityId: ruleId,
+    routeName: "saveIncentiveRule",
+    after: { name, status, scope_type: scope.scopeType, period },
+  });
+
   return { success: true, id: ruleId };
 }
 
@@ -786,6 +837,12 @@ export async function deleteIncentiveRule(id: string): Promise<DpdMutationResult
   const supabase = await createClient();
   const { error } = await supabase.from("incentive_rules").delete().eq("id", id);
   if (error) return { error: "delete_failed" };
+  void logAdminMutation({
+    action: "delete",
+    entityType: "incentive_rule",
+    entityId: id,
+    routeName: "deleteIncentiveRule",
+  });
   return { success: true };
 }
 
@@ -793,6 +850,7 @@ export async function runPreviewEarnings(earnDate: string) {
   const auth = await requireEarningsView();
   if (auth.error) return { error: auth.error };
   if (!earnDate) return { error: "missing_fields" as const };
+  void logAdminRead("earnings_preview", "runPreviewEarnings", { earnDate });
   return previewDriverEarnings(earnDate);
 }
 
@@ -800,7 +858,64 @@ export async function runRecalculateEarnings(earnDate: string) {
   const auth = await requireEarningsManage();
   if (auth.error) return { error: auth.error };
   if (!earnDate) return { error: "missing_fields" as const };
-  return recalculateEarningsForDate(earnDate);
+  const result = await recalculateEarningsForDate(earnDate);
+  void logAdminMutation({
+    action: "recalculate",
+    entityType: "driver_earnings_daily",
+    routeName: "runRecalculateEarnings",
+    context: { earnDate, count: "count" in result ? result.count : null },
+    success: !("error" in result),
+    errorMessage: "error" in result ? result.error : undefined,
+  });
+  return result;
+}
+
+export async function runRecalculateEarningsRange(
+  startDate: string,
+  endDate: string,
+  driverId?: string | null,
+) {
+  const auth = await requireEarningsManage();
+  if (auth.error) return { error: auth.error };
+  if (!startDate || !endDate) return { error: "missing_fields" as const };
+  const result = await recalculateEarningsForRange(startDate, endDate, driverId);
+  void logAdminMutation({
+    action: "recalculate",
+    entityType: "driver_earnings_daily",
+    entityId: driverId ?? undefined,
+    routeName: "runRecalculateEarningsRange",
+    context: { startDate, endDate, count: "count" in result ? result.count : null },
+    success: !("error" in result),
+    errorMessage: "error" in result ? result.error : undefined,
+  });
+  return result;
+}
+
+export async function runGetEarningsDetail(driverId: string, earnDate: string) {
+  const auth = await requireEarningsView();
+  if (auth.error) return { error: auth.error };
+  if (!driverId || !earnDate) return { error: "missing_fields" as const };
+  void logAdminRead("driver_earnings_detail", "runGetEarningsDetail", {
+    driverId,
+    earnDate,
+  });
+  return getDriverEarningsDetail(driverId, earnDate);
+}
+
+export async function runListDriverEarningsDaily(
+  startDate: string,
+  endDate: string,
+  driverId?: string | null,
+): Promise<EarningsDailyListResult | { error: string }> {
+  const auth = await requireEarningsView();
+  if (auth.error) return { error: auth.error };
+  if (!startDate || !endDate) return { error: "missing_fields" as const };
+  void logAdminRead("driver_earnings_daily", "runListDriverEarningsDaily", {
+    startDate,
+    endDate,
+    driverId: driverId ?? null,
+  });
+  return listDriverEarningsDaily(startDate, endDate, driverId);
 }
 
 export async function runValidateDelivery(deliveryId: string) {

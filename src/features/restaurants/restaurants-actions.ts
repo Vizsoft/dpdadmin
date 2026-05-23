@@ -1,5 +1,6 @@
 "use server";
 
+import { logAdminMutation, logAdminRead } from "@/lib/audit/log-admin-activity";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/auth/get-session";
 import {
@@ -67,6 +68,7 @@ export async function fetchRestaurantZoneOptions(): Promise<RestaurantZoneOption
 
 export async function fetchRestaurantsForAdmin(): Promise<RestaurantRow[]> {
   await requireRestaurantsView();
+  void logAdminRead("restaurants", "fetchRestaurantsForAdmin");
   const supabase = await createClient();
 
   const [{ data: restaurants, error }, { data: partners }, { data: zones }] =
@@ -182,6 +184,13 @@ export async function saveRestaurant(formData: FormData): Promise<RestaurantMuta
       if (error.code === "23505") return { error: "restaurant_exists" };
       return { error: "save_failed" };
     }
+    void logAdminMutation({
+      action: "update",
+      entityType: "restaurant",
+      entityId: id,
+      routeName: "saveRestaurant",
+      after: { name, partner_id: partnerId, zone_id: zoneId, status },
+    });
     return { success: true, id };
   }
 
@@ -201,6 +210,14 @@ export async function saveRestaurant(formData: FormData): Promise<RestaurantMuta
     return { error: "save_failed" };
   }
 
+  void logAdminMutation({
+    action: "create",
+    entityType: "restaurant",
+    entityId: data.id,
+    routeName: "saveRestaurant",
+    after: { name, partner_id: partnerId, zone_id: zoneId, status },
+  });
+
   return { success: true, id: data.id };
 }
 
@@ -212,6 +229,12 @@ export async function deleteRestaurant(id: string): Promise<RestaurantMutationRe
   const supabase = await createClient();
   const { error } = await supabase.from("restaurants").delete().eq("id", id);
   if (error) return { error: "delete_failed" };
+  void logAdminMutation({
+    action: "delete",
+    entityType: "restaurant",
+    entityId: id,
+    routeName: "deleteRestaurant",
+  });
   return { success: true };
 }
 

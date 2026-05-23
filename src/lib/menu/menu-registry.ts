@@ -23,6 +23,7 @@ import {
   Users,
   Wallet,
   Cloud,
+  ScrollText,
   type LucideIcon,
 } from "lucide-react";
 import type { Permission } from "@/lib/auth/permissions";
@@ -64,6 +65,7 @@ export const ICON_MAP: Record<string, LucideIcon> = {
   User,
   UserCheck,
   Cloud,
+  ScrollText,
 };
 
 export const ICON_NAMES = Object.keys(ICON_MAP);
@@ -318,6 +320,15 @@ export const MENU_REGISTRY: MenuRegistryItem[] = [
     superAdminOnly: true,
   },
   {
+    id: "activity-logs",
+    defaultLabel: "Activity Logs",
+    defaultIcon: "ScrollText",
+    href: "/settings/logs",
+    defaultGroup: "Settings",
+    defaultOrder: 9,
+    permission: "audit.view",
+  },
+  {
     id: "zones",
     defaultLabel: "Zones",
     defaultIcon: "MapPin",
@@ -355,5 +366,6 @@ export const APP_NAV_KEY_BY_ID: Record<string, string> = {
   maintenance: "maintenance",
   "menu-editor": "menuEditor",
   languages: "languages",
+  "activity-logs": "activityLogs",
   zones: "zones",
 };

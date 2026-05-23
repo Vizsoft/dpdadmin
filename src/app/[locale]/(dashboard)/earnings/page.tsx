@@ -1,7 +1,7 @@
-import { getTranslations, setRequestLocale } from "next-intl/server";
+import { setRequestLocale } from "next-intl/server";
+import { EarningsPageShell } from "@/features/dpd/earnings-page-shell";
 import { requirePermission } from "@/lib/auth/require-permission";
-import { ModuleListShell } from "@/components/dashboard/module-list-shell";
-import { Button } from "@/components/ui/button";
+import { logAdminPageView } from "@/lib/audit/log-admin-activity";
 
 export default async function EarningsPage({
   params,
@@ -11,32 +11,7 @@ export default async function EarningsPage({
   const { locale } = await params;
   setRequestLocale(locale);
   await requirePermission(locale, "earnings.view");
-  const t = await getTranslations("pages.earnings");
+  void logAdminPageView("/earnings", "EarningsPage");
 
-  return (
-    <ModuleListShell
-      title={t("title")}
-      subtitle={t("subtitle")}
-      actions={
-        <Button className="cursor-pointer rounded-lg" disabled>
-          {t("createOffer")}
-        </Button>
-      }
-      tabs={[
-        { id: "earnings", label: t("tabEarnings") },
-        { id: "offers", label: t("tabOffers") },
-      ]}
-      activeTabId="earnings"
-      kpis={[
-        { label: t("kpiTotalPaid"), value: "—" },
-        { label: t("kpiPending"), value: "—" },
-        { label: t("kpiActiveOffers"), value: "—" },
-        { label: t("kpiDrivers"), value: "—" },
-        { label: t("kpiIncentives"), value: "—" },
-        { label: t("kpiDeductions"), value: "—" },
-      ]}
-      columns={[t("colDriver"), t("colDate"), t("colDeliveries"), t("colNet"), t("colStatus")]}
-      emptyTitle={t("emptyTitle")}
-    />
-  );
+  return <EarningsPageShell />;
 }

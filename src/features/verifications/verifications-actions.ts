@@ -1,5 +1,6 @@
 "use server";
 
+import { logAdminMutation, logAdminRead } from "@/lib/audit/log-admin-activity";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSessionUser } from "@/lib/auth/get-session";
@@ -127,6 +128,9 @@ export async function listVerifications(params: {
   cursor?: VerificationListCursor;
 }): Promise<{ rows: VerificationListRow[]; nextCursor: VerificationListCursor }> {
   await requireVerificationsView();
+  void logAdminRead("delivery_verifications", "listVerifications", {
+    filters: params.filters ?? {},
+  });
   const supabase = await createClient();
   const filters = params.filters ?? {};
   const limit = params.limit ?? PAGE_SIZE;
@@ -386,6 +390,14 @@ export async function createVerification(input: {
     return { error: "save_failed" };
   }
 
+  void logAdminMutation({
+    action: "create",
+    entityType: "delivery_verification",
+    entityId: data.id,
+    routeName: "createVerification",
+    after: { driver_id: driverId, restaurant_id: restaurantId, service_date: serviceDate },
+  });
+
   return { success: true, id: data.id };
 }
 
@@ -412,6 +424,13 @@ export async function updateVerification(input: {
     .eq("id", input.id);
 
   if (error) return { error: "save_failed" };
+  void logAdminMutation({
+    action: "update",
+    entityType: "delivery_verification",
+    entityId: input.id,
+    routeName: "updateVerification",
+    after: { reported_count: input.reportedCount },
+  });
   return { success: true, id: input.id };
 }
 
@@ -427,6 +446,13 @@ export async function reconcileVerification(
   });
 
   if (error) return { error: "reconcile_failed" };
+  void logAdminMutation({
+    action: "update",
+    entityType: "delivery_verification",
+    entityId: id,
+    routeName: "reconcileVerification",
+    context: { reconciled: true },
+  });
   return { success: true, id };
 }
 
@@ -443,6 +469,12 @@ export async function deleteVerification(
     .eq("id", id);
 
   if (error) return { error: "delete_failed" };
+  void logAdminMutation({
+    action: "delete",
+    entityType: "delivery_verification",
+    entityId: id,
+    routeName: "deleteVerification",
+  });
   return { success: true, id };
 }
 

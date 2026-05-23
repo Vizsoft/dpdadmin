@@ -1,5 +1,6 @@
 "use server";
 
+import { logAdminMutation } from "@/lib/audit/log-admin-activity";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/auth/get-session";
 import { hasPermissionInSet } from "@/lib/auth/permissions";
@@ -60,6 +61,14 @@ export async function createZone(input: {
     return { error: mapZoneDbError(error) };
   }
 
+  void logAdminMutation({
+    action: "create",
+    entityType: "zone",
+    entityId: data.id,
+    routeName: "createZone",
+    after: { name, code },
+  });
+
   return { success: true, id: data.id };
 }
 
@@ -98,6 +107,14 @@ export async function updateZone(input: {
     return { error: mapZoneDbError(error) };
   }
 
+  void logAdminMutation({
+    action: "update",
+    entityType: "zone",
+    entityId: input.id,
+    routeName: "updateZone",
+    after: { name, code },
+  });
+
   return { success: true, id: input.id };
 }
 
@@ -126,6 +143,14 @@ export async function deleteZone(id: string, force = false): Promise<ZoneMutatio
 
   const { error } = await supabase.from("zones").delete().eq("id", id);
   if (error) return { error: mapZoneDbError(error) };
+
+  void logAdminMutation({
+    action: "delete",
+    entityType: "zone",
+    entityId: id,
+    routeName: "deleteZone",
+    context: { force },
+  });
 
   return { success: true };
 }

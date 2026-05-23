@@ -1,5 +1,6 @@
 "use server";
 
+import { logAdminMutation, logAdminRead } from "@/lib/audit/log-admin-activity";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSessionUser } from "@/lib/auth/get-session";
@@ -108,6 +109,7 @@ type DeliveryDbRow = {
 
 export async function fetchDeliveriesForAdmin(): Promise<DeliveryListRow[]> {
   await requireDeliveriesView();
+  void logAdminRead("deliveries", "fetchDeliveriesForAdmin");
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -249,6 +251,19 @@ export async function updateDeliveryStatus(
 
   if (error) return { error: "update_failed" };
 
+  void logAdminMutation({
+    action: "update",
+    entityType: "delivery",
+    entityId: deliveryId,
+    routeName: "updateDeliveryStatus",
+    before: { status: existing.status },
+    after: {
+      status,
+      rejection_reason: status === "rejected" ? rejectionReason?.trim() ?? null : null,
+    },
+    context: { driver_id: existing.driver_id, delivered_at: existing.delivered_at },
+  });
+
   const affectsEarnings =
     existing.status === "verified" ||
     status === "verified";
@@ -313,6 +328,18 @@ export async function deleteDelivery(
     .eq("id", deliveryId);
 
   if (deleteError) return { error: "delete_failed" };
+
+  void logAdminMutation({
+    action: "delete",
+    entityType: "delivery",
+    entityId: deliveryId,
+    routeName: "deleteDelivery",
+    before: {
+      status: row.status,
+      driver_id: row.driver_id,
+      delivered_at: row.delivered_at,
+    },
+  });
 
   if (row.status === "verified") {
     await recalcEarningsForDelivery(supabase, row.driver_id, row.delivered_at);

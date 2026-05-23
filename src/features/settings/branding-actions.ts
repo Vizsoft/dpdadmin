@@ -1,6 +1,7 @@
 "use server";
 
 import { refresh, revalidatePath, updateTag } from "next/cache";
+import { logAdminMutation } from "@/lib/audit/log-admin-activity";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/auth/get-session";
 import { hasPermissionInSet } from "@/lib/auth/permissions";
@@ -68,6 +69,13 @@ export async function updateBranding(
   }
 
   revalidateBranding(_locale);
+  void logAdminMutation({
+    action: "update",
+    entityType: "app_settings",
+    entityId: "1",
+    routeName: "updateBranding",
+    after: { app_name: appName, font_family: fontFamily },
+  });
   return { success: true };
 }
 

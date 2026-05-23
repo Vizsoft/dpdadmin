@@ -5,6 +5,7 @@ import { updateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { syncAdminProfile } from "@/lib/auth/sync-profile";
 import { getAppOpsSettings } from "@/lib/auth/app-settings";
+import { logAdminAuthEvent } from "@/lib/audit/log-admin-activity";
 
 export async function signInWithEmail(
   locale: string,
@@ -21,6 +22,13 @@ export async function signInWithEmail(
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
+    void logAdminAuthEvent({
+      action: "auth",
+      routeName: "signInWithEmail",
+      success: false,
+      context: { email },
+      errorMessage: error.message,
+    });
     return { error: "invalid_credentials" };
   }
 
@@ -28,8 +36,23 @@ export async function signInWithEmail(
 
   if (!sync.ok) {
     await supabase.auth.signOut();
+    void logAdminAuthEvent({
+      action: "auth",
+      routeName: "signInWithEmail",
+      success: false,
+      context: { email, reason: sync.reason },
+      adminUserId: data.user.id,
+    });
     return { error: sync.reason === "not_authorized" ? "not_authorized" : "invalid_credentials" };
   }
+
+  void logAdminAuthEvent({
+    action: "auth",
+    routeName: "signInWithEmail",
+    success: true,
+    context: { email, approvalStatus: sync.approvalStatus },
+    adminUserId: data.user.id,
+  });
 
   const ops = await getAppOpsSettings();
 

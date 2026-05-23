@@ -849,6 +849,119 @@ export type Database = {
           },
         ]
       }
+      admin_activity_logs: {
+        Row: {
+          action: Database["public"]["Enums"]["admin_activity_action"]
+          admin_role_slug: string | null
+          admin_user_id: string | null
+          after_state: Json | null
+          before_state: Json | null
+          changed_fields: string[]
+          context: Json
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          error_message: string | null
+          id: string
+          ip_address: string | null
+          page_path: string | null
+          route_name: string | null
+          success: boolean
+          user_agent: string | null
+        }
+        Insert: {
+          action: Database["public"]["Enums"]["admin_activity_action"]
+          admin_role_slug?: string | null
+          admin_user_id?: string | null
+          after_state?: Json | null
+          before_state?: Json | null
+          changed_fields?: string[]
+          context?: Json
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          error_message?: string | null
+          id?: string
+          ip_address?: string | null
+          page_path?: string | null
+          route_name?: string | null
+          success?: boolean
+          user_agent?: string | null
+        }
+        Update: {
+          action?: Database["public"]["Enums"]["admin_activity_action"]
+          admin_role_slug?: string | null
+          admin_user_id?: string | null
+          after_state?: Json | null
+          before_state?: Json | null
+          changed_fields?: string[]
+          context?: Json
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          error_message?: string | null
+          id?: string
+          ip_address?: string | null
+          page_path?: string | null
+          route_name?: string | null
+          success?: boolean
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      driver_wallet_entries: {
+        Row: {
+          amount_kwd: number
+          approved_at: string
+          approved_by: string | null
+          created_at: string
+          driver_id: string
+          earn_date: string
+          entry_type: Database["public"]["Enums"]["wallet_entry_type"]
+          id: string
+          meta: Json
+          source_ref: string
+          status: Database["public"]["Enums"]["wallet_entry_status"]
+          updated_at: string
+        }
+        Insert: {
+          amount_kwd?: number
+          approved_at?: string
+          approved_by?: string | null
+          created_at?: string
+          driver_id: string
+          earn_date: string
+          entry_type?: Database["public"]["Enums"]["wallet_entry_type"]
+          id?: string
+          meta?: Json
+          source_ref: string
+          status?: Database["public"]["Enums"]["wallet_entry_status"]
+          updated_at?: string
+        }
+        Update: {
+          amount_kwd?: number
+          approved_at?: string
+          approved_by?: string | null
+          created_at?: string
+          driver_id?: string
+          earn_date?: string
+          entry_type?: Database["public"]["Enums"]["wallet_entry_type"]
+          id?: string
+          meta?: Json
+          source_ref?: string
+          status?: Database["public"]["Enums"]["wallet_entry_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_wallet_entries_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       driver_intake_restaurants: {
         Row: {
           created_at: string
@@ -2334,6 +2447,16 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      driver_get_delivery_proximity_context: { Args: never; Returns: Json }
+      driver_is_within_delivery_range: {
+        Args: {
+          p_driver_id: string
+          p_lat: number
+          p_lng: number
+          p_proximity_meters?: number
+        }
+        Returns: boolean
+      }
       generate_driver_app_passcode: { Args: never; Returns: string }
       is_admin_panel_user: { Args: never; Returns: boolean }
       is_current_driver: { Args: { driver_uuid: string }; Returns: boolean }
@@ -2349,8 +2472,40 @@ export type Database = {
       next_restaurant_code: { Args: never; Returns: string }
       normalize_external_order_id: { Args: { p_raw: string }; Returns: string }
       preview_driver_earnings: { Args: { p_earn_date: string }; Returns: Json }
-      recalculate_driver_earnings: {
+      get_driver_earnings_detail: {
         Args: { p_driver_id: string; p_earn_date: string }
+        Returns: Json
+      }
+      list_driver_earnings_daily: {
+        Args: {
+          p_start_date: string
+          p_end_date: string
+          p_driver_id?: string
+        }
+        Returns: Json
+      }
+      recalculate_driver_earnings: {
+        Args: {
+          p_driver_id: string
+          p_earn_date: string
+          p_approved_by?: string
+        }
+        Returns: undefined
+      }
+      recalculate_earnings_for_range: {
+        Args: {
+          p_start_date: string
+          p_end_date: string
+          p_driver_id?: string
+        }
+        Returns: number
+      }
+      sync_driver_wallet_earning_credit: {
+        Args: {
+          p_driver_id: string
+          p_earn_date: string
+          p_approved_by?: string
+        }
         Returns: undefined
       }
       reconcile_delivery_verification: {
@@ -2371,6 +2526,15 @@ export type Database = {
       }
     }
     Enums: {
+      admin_activity_action:
+        | "create"
+        | "update"
+        | "delete"
+        | "view"
+        | "read"
+        | "auth"
+        | "export"
+        | "recalculate"
       admin_approval_status: "pending" | "approved" | "rejected"
       app_role: "rider" | "staff"
       appointment_status: "scheduled" | "completed" | "cancelled"
@@ -2434,6 +2598,8 @@ export type Database = {
         | "uniform"
         | "other"
       zone_compliance: "inside" | "outside"
+      wallet_entry_status: "approved" | "pending" | "voided"
+      wallet_entry_type: "earning_credit" | "manual_adjustment" | "payout_debit"
       zone_geometry_type: "polygon" | "circle"
     }
     CompositeTypes: {

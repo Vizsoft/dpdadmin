@@ -1,5 +1,6 @@
 "use server";
 
+import { logAdminMutation, logAdminRead } from "@/lib/audit/log-admin-activity";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/auth/get-session";
 import { hasPermissionInSet } from "@/lib/auth/permissions";
@@ -92,6 +93,7 @@ export async function fetchPartnersForAdmin(): Promise<PartnerRow[]> {
     throw new Error("not_authorized");
   }
 
+  void logAdminRead("partners", "fetchPartnersForAdmin");
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("partners")
@@ -170,6 +172,14 @@ export async function createPartner(formData: FormData): Promise<PartnerMutation
     }
   }
 
+  void logAdminMutation({
+    action: "create",
+    entityType: "partner",
+    entityId: data.id,
+    routeName: "createPartner",
+    after: { name, slug },
+  });
+
   return { success: true, id: data.id, logoUrl, logoWarning };
 }
 
@@ -229,6 +239,14 @@ export async function updatePartner(formData: FormData): Promise<PartnerMutation
 
   if (error) return { error: mapPartnerDbError(error) };
 
+  void logAdminMutation({
+    action: "update",
+    entityType: "partner",
+    entityId: id,
+    routeName: "updatePartner",
+    after: { name, slug },
+  });
+
   return { success: true, id, logoUrl: logoUrl ?? undefined, logoWarning };
 }
 
@@ -254,6 +272,13 @@ export async function deletePartner(id: string): Promise<PartnerMutationResult> 
   } catch {
     /* best-effort */
   }
+
+  void logAdminMutation({
+    action: "delete",
+    entityType: "partner",
+    entityId: id,
+    routeName: "deletePartner",
+  });
 
   return { success: true };
 }

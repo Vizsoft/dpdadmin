@@ -1,6 +1,7 @@
 "use server";
 
 import { refresh, revalidatePath, updateTag } from "next/cache";
+import { logAdminMutation } from "@/lib/audit/log-admin-activity";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/auth/get-session";
 import { hasPermissionInSet } from "@/lib/auth/permissions";
@@ -158,6 +159,13 @@ export async function updateDriverAppDeliveryProximity(
   }
 
   revalidateDriverAppSettings(locale);
+  void logAdminMutation({
+    action: "update",
+    entityType: "app_settings",
+    entityId: "1",
+    routeName: "updateDriverAppDeliveryProximity",
+    after: { driver_app_delivery_proximity_meters: Math.round(meters) },
+  });
   return { success: true };
 }
 

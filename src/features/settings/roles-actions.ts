@@ -1,6 +1,7 @@
 "use server";
 
 import { updateTag } from "next/cache";
+import { logAdminMutation } from "@/lib/audit/log-admin-activity";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/auth/get-session";
 import { CATALOG_SLUG_SET, isValidRoleSlug } from "@/lib/auth/permission-catalog";
@@ -69,6 +70,12 @@ export async function updateRolePermissions(
     return { error: "cannot_edit_super_admin" };
   }
 
+  const { data: beforePerms } = await supabase
+    .from("admin_role_permissions")
+    .select("permission_slug")
+    .eq("role_id", roleId);
+  const beforeSlugs = (beforePerms ?? []).map((p) => p.permission_slug);
+
   await supabase.from("admin_role_permissions").delete().eq("role_id", roleId);
 
   if (filtered.length > 0) {
@@ -85,6 +92,14 @@ export async function updateRolePermissions(
   }
 
   updateTag("admin-roles");
+  void logAdminMutation({
+    action: "update",
+    entityType: "admin_role",
+    entityId: roleId,
+    routeName: "updateRolePermissions",
+    before: { permissions: beforeSlugs },
+    after: { permissions: filtered },
+  });
   return { success: true };
 }
 
@@ -136,6 +151,12 @@ export async function updateMultipleRolePermissions(
   }
 
   updateTag("admin-roles");
+  void logAdminMutation({
+    action: "update",
+    entityType: "admin_roles",
+    routeName: "updateMultipleRolePermissions",
+    context: { role_count: updates.length },
+  });
   return { success: true };
 }
 
@@ -183,6 +204,14 @@ export async function createCustomRole(
 
   const result = await updateRolePermissions(role.id, permissionSlugs);
   if (result.error) return result;
+
+  void logAdminMutation({
+    action: "create",
+    entityType: "admin_role",
+    entityId: role.id,
+    routeName: "createCustomRole",
+    after: { name: trimmedName, slug: normalizedSlug },
+  });
 
   return { success: true, roleId: role.id };
 }
@@ -300,5 +329,12 @@ export async function deleteCustomRole(
   if (error) return { error: "delete_failed" };
 
   updateTag("admin-roles");
+  void logAdminMutation({
+    action: "delete",
+    entityType: "admin_role",
+    entityId: roleId,
+    routeName: "deleteCustomRole",
+    before: { slug: role.slug, name: role.name },
+  });
   return { success: true };
 }
