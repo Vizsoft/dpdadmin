@@ -299,7 +299,12 @@ export function LiveTrackingLiveView({
               </div>
             </div>
           ) : null}
-          <div className="pointer-events-none absolute inset-x-2 bottom-2 z-20 grid gap-2 md:grid-cols-2">
+          <div
+            className={cn(
+              "pointer-events-none absolute left-2 right-2 bottom-16 z-20 grid gap-2 md:grid-cols-2",
+              selectedDriver && "lg:right-[360px]",
+            )}
+          >
             <div className="pointer-events-auto">
               <TrackingInsightsPanel drivers={locations} />
             </div>

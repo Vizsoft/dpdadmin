@@ -12,6 +12,8 @@ import type { DeliveryListRow } from "@/features/deliveries/types";
 import type { DriverListRow } from "@/features/drivers/types";
 import { listDriverEarningsDaily } from "@/features/dpd/incentive-calculator";
 import type {
+  AccessRequestRow,
+  AdminActionItem,
   AttendanceMonitorRow,
   DashboardKpis,
   DashboardPermissions,
@@ -20,8 +22,10 @@ import type {
   DeliveryMonitorMetrics,
   EarningsWatchRow,
   PartnerHealthCard,
+  PayrollReadinessSummary,
   PresenceMapRestaurant,
   PresenceMapZone,
+  SystemStatusSummary,
   WorkforceQueueRow,
   WorkforceStatus,
 } from "./types";
@@ -65,6 +69,7 @@ function buildPermissions(session: NonNullable<Awaited<ReturnType<typeof getSess
       session.isSuperAdmin,
     ),
     audit: hasPermissionInSet(session.permissions, "audit.view", session.isSuperAdmin),
+    superAdmin: session.isSuperAdmin,
   };
 }
 
@@ -81,15 +86,141 @@ async function requireDashboardView() {
 
 function emptyKpis(): DashboardKpis {
   return {
-    totalDrivers: 0,
-    onlineNow: 0,
-    onShift: 0,
-    trackedNow: 0,
-    checkedInToday: 0,
-    notReportedYet: 0,
-    restaurantAssigned: 0,
-    suspendedArchived: 0,
-    deliveriesToday: 0,
+    pendingAccessRequests: 0,
+    verificationBacklog: 0,
+    deliveryReviewPending: 0,
+    payrollBlockers: 0,
+    driverExceptions: 0,
+    absentToday: 0,
+  };
+}
+
+function accessRequestAgeBucket(createdAt: string): AccessRequestRow["ageBucket"] {
+  const hours = hoursSince(createdAt) ?? 0;
+  if (hours < 1) return "fresh";
+  if (hours < 24) return "waiting";
+  return "stale";
+}
+
+function buildAccessRequests(
+  rows: Array<{ id: string; email: string | null; full_name: string | null; created_at: string }>,
+): AccessRequestRow[] {
+  return rows.map((row) => ({
+    id: row.id,
+    email: row.email,
+    fullName: row.full_name,
+    createdAt: row.created_at,
+    ageBucket: accessRequestAgeBucket(row.created_at),
+  }));
+}
+
+function buildAdminActionQueue(input: {
+  accessRequests: AccessRequestRow[];
+  notReportedYet: number;
+  deliveryMetrics: DeliveryMonitorMetrics;
+  earningsRows: EarningsWatchRow[];
+  workforceQueue: WorkforceQueueRow[];
+  locale: string;
+}): AdminActionItem[] {
+  const now = new Date().toISOString();
+  const items: AdminActionItem[] = [];
+
+  for (const req of input.accessRequests.slice(0, 3)) {
+    items.push({
+      id: `access-${req.id}`,
+      severity: req.ageBucket === "stale" ? "danger" : req.ageBucket === "waiting" ? "warning" : "info",
+      category: "access",
+      titleKey: "accessPending",
+      detail: req.email ?? req.fullName ?? "Unknown user",
+      href: `/${input.locale}/settings/access-requests`,
+      at: req.createdAt,
+    });
+  }
+
+  if (input.notReportedYet > 0) {
+    items.push({
+      id: "verification-not-reported",
+      severity: "warning",
+      category: "verification",
+      titleKey: "verificationNotReported",
+      detail: `${input.notReportedYet} drivers`,
+      href: `/${input.locale}/dpd-verification`,
+      at: now,
+    });
+  }
+
+  if (input.deliveryMetrics.underReview > 0) {
+    items.push({
+      id: "delivery-under-review",
+      severity: "warning",
+      category: "delivery",
+      titleKey: "deliveryUnderReview",
+      detail: `${input.deliveryMetrics.underReview} submissions`,
+      href: `/${input.locale}/deliveries`,
+      at: now,
+    });
+  }
+
+  const payrollAnomalies = input.earningsRows.filter((r) => r.anomalies.length > 0);
+  for (const row of payrollAnomalies.slice(0, 3)) {
+    items.push({
+      id: `payroll-${row.driverId}`,
+      severity: "warning",
+      category: "payroll",
+      titleKey: "payrollAnomaly",
+      detail: `${row.driverName} (#${row.driverCode})`,
+      href: `/${input.locale}/earnings`,
+      at: now,
+    });
+  }
+
+  for (const row of input.workforceQueue) {
+    if (row.status === "silent") {
+      items.push({
+        id: `silent-${row.driverId}`,
+        severity: "warning",
+        category: "driver",
+        titleKey: "driverSilent",
+        detail: `${row.driverName} (#${row.driverCode})`,
+        href: `/${input.locale}/drivers/${row.driverId}`,
+        at: row.lastActivityAt ?? now,
+      });
+    } else if (row.status === "missing") {
+      items.push({
+        id: `missing-${row.driverId}`,
+        severity: "warning",
+        category: "driver",
+        titleKey: "driverMissingAttendance",
+        detail: `${row.driverName} (#${row.driverCode})`,
+        href: `/${input.locale}/attendance`,
+        at: now,
+      });
+    } else if (row.status === "suspended") {
+      items.push({
+        id: `suspended-${row.driverId}`,
+        severity: "danger",
+        category: "driver",
+        titleKey: "driverSuspended",
+        detail: `${row.driverName} (#${row.driverCode})`,
+        href: `/${input.locale}/drivers/${row.driverId}`,
+        at: now,
+      });
+    }
+    if (items.length >= 12) break;
+  }
+
+  return items.slice(0, 12);
+}
+
+function buildPayrollReadiness(rows: EarningsWatchRow[]): PayrollReadinessSummary {
+  const blocked = rows.filter((r) => r.anomalies.length > 0);
+  const ready = rows.filter((r) => r.anomalies.length === 0 && r.deliveries > 0);
+  return {
+    readyCount: ready.length,
+    blockedCount: blocked.length,
+    anomalyCount: blocked.length,
+    totalEstimatedKwd: rows.reduce((sum, r) => sum + r.estimatedKwd, 0),
+    rows,
   };
 }
 
@@ -349,7 +480,7 @@ function buildPartnerHealth(
     .slice(0, 8);
 }
 
-export async function fetchDashboardSnapshot(): Promise<DashboardSnapshot> {
+export async function fetchDashboardSnapshot(locale = "en"): Promise<DashboardSnapshot> {
   const session = await requireDashboardView();
   void logAdminRead("dashboard", "fetchDashboardSnapshot");
   const perms = buildPermissions(session);
@@ -505,6 +636,27 @@ export async function fetchDashboardSnapshot(): Promise<DashboardSnapshot> {
     (d) => d.account_status === "suspended" || Boolean(d.archived_at),
   ).length;
 
+  let accessRequests: AccessRequestRow[] = [];
+  if (perms.superAdmin) {
+    const { data: pendingProfiles } = await supabase
+      .from("profiles")
+      .select("id, email, full_name, created_at")
+      .eq("approval_status", "pending")
+      .order("created_at", { ascending: false })
+      .limit(10);
+    accessRequests = buildAccessRequests(pendingProfiles ?? []);
+  }
+
+  let systemStatus: SystemStatusSummary = { maintenanceMode: false };
+  if (perms.superAdmin) {
+    const { data: appSettings } = await supabase
+      .from("app_settings")
+      .select("maintenance_mode")
+      .eq("id", 1)
+      .maybeSingle();
+    systemStatus = { maintenanceMode: appSettings?.maintenance_mode === true };
+  }
+
   let trackedNow = 0;
   const liveByDriver = new Map<
     string,
@@ -527,18 +679,6 @@ export async function fetchDashboardSnapshot(): Promise<DashboardSnapshot> {
     }
   }
 
-  const kpis: DashboardKpis = {
-    totalDrivers: linkedDrivers.length,
-    onlineNow,
-    onShift: linkedDrivers.filter((d) => d.is_on_duty).length,
-    trackedNow,
-    checkedInToday: checkedInDriverIds.size,
-    notReportedYet,
-    restaurantAssigned,
-    suspendedArchived,
-    deliveriesToday: todayDeliveries.length,
-  };
-
   const { metrics: deliveryMetrics, feed: deliveryFeed } = buildDeliveryMetrics(
     todayDeliveries,
     weekDeliveries,
@@ -558,6 +698,34 @@ export async function fetchDashboardSnapshot(): Promise<DashboardSnapshot> {
   const attendanceMonitor = perms.attendance
     ? buildAttendanceMonitor(drivers, attendanceByDriver, intakeToProfile)
     : [];
+
+  const driverExceptions = workforceQueue.filter(
+    (r) => r.status === "silent" || r.status === "missing" || r.status === "suspended",
+  ).length;
+
+  const absentToday = attendanceMonitor.reduce((sum, row) => sum + row.absent, 0);
+
+  const payrollBlockers = earningsRows.filter((r) => r.anomalies.length > 0).length;
+
+  const kpis: DashboardKpis = {
+    pendingAccessRequests: accessRequests.length,
+    verificationBacklog: notReportedYet + deliveryMetrics.underReview,
+    deliveryReviewPending: deliveryMetrics.pending + deliveryMetrics.underReview,
+    payrollBlockers,
+    driverExceptions,
+    absentToday,
+  };
+
+  const payrollReadiness = buildPayrollReadiness(earningsRows);
+
+  const adminActionQueue = buildAdminActionQueue({
+    accessRequests,
+    notReportedYet,
+    deliveryMetrics,
+    earningsRows,
+    workforceQueue,
+    locale,
+  });
 
   const verificationPendingByPartner = new Map<string, number>();
   if (perms.verifications) {
@@ -608,7 +776,11 @@ export async function fetchDashboardSnapshot(): Promise<DashboardSnapshot> {
     fetchedAt: new Date().toISOString(),
     today,
     permissions: perms,
-    kpis: perms.drivers || perms.deliveries ? kpis : emptyKpis(),
+    kpis,
+    accessRequests,
+    adminActionQueue,
+    payrollReadiness,
+    systemStatus,
     workforceQueue,
     deliveryMetrics,
     deliveryFeed,

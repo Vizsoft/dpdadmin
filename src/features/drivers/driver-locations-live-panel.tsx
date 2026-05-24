@@ -13,7 +13,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { TABLE_HEAD_CLASS } from "@/components/app/constants";
-import { formatBatteryPct, formatSpeedMps } from "@/features/locations/location-status";
+import {
+  formatBatteryPct,
+  formatDistanceMeters,
+  formatSpeedMps,
+} from "@/features/locations/location-status";
 import { useDriverLocationsRealtime } from "@/features/locations/use-driver-locations-realtime";
 
 function pinVariant(status: "active" | "idle" | "alert") {
@@ -50,6 +54,7 @@ export function DriverLocationsLivePanel({
                 <TableHead className={TABLE_HEAD_CLASS}>{tLoc("zoneStatusLabel")}</TableHead>
                 <TableHead className={TABLE_HEAD_CLASS}>{tLoc("lastSeenLabel")}</TableHead>
                 <TableHead className={TABLE_HEAD_CLASS}>{tLoc("speedLabel")}</TableHead>
+                <TableHead className={TABLE_HEAD_CLASS}>{tLoc("distanceTodayLabel")}</TableHead>
                 <TableHead className={TABLE_HEAD_CLASS}>{tLoc("batteryLabel")}</TableHead>
                 <TableHead className={TABLE_HEAD_CLASS}>{tLoc("statusLabel")}</TableHead>
               </TableRow>
@@ -80,6 +85,9 @@ export function DriverLocationsLivePanel({
                     {new Date(loc.lastSeenAt).toLocaleTimeString()}
                   </TableCell>
                   <TableCell className="text-sm">{formatSpeedMps(loc.speedMps)}</TableCell>
+                  <TableCell className="text-sm">
+                    {formatDistanceMeters(loc.distanceTodayMeters)}
+                  </TableCell>
                   <TableCell className="text-sm">{formatBatteryPct(loc.batteryPct)}</TableCell>
                   <TableCell>
                     <StatusPill variant={pinVariant(loc.pinStatus)} dot>

@@ -74,6 +74,7 @@ type AttendanceLogRow = {
   log_date: string;
   check_in_at: string | null;
   check_out_at: string | null;
+  distance_meters: number | null;
   status: AttendanceStatus;
   zone_compliance: "inside" | "outside" | null;
   admin_note: string | null;
@@ -102,6 +103,7 @@ function buildListRow(
     log_date: logDate,
     check_in_at: checkIn,
     check_out_at: checkOut,
+    distance_meters: log?.distance_meters ?? null,
     status,
     zone_compliance: log?.zone_compliance ?? null,
     admin_note: log?.admin_note ?? null,
@@ -161,7 +163,7 @@ async function fetchLogsForDateRange(
   const { data, error } = await supabase
     .from("attendance_logs")
     .select(
-      "id, driver_id, log_date, check_in_at, check_out_at, status, zone_compliance, admin_note",
+      "id, driver_id, log_date, check_in_at, check_out_at, distance_meters, status, zone_compliance, admin_note",
     )
     .gte("log_date", fromDate)
     .lte("log_date", toDate)
@@ -314,6 +316,7 @@ export async function exportAttendanceCsv(rows: AttendanceListRow[]): Promise<st
     "check_in",
     "check_out",
     "status",
+    "distance_meters",
     "on_duty",
     "zone_compliance",
     "admin_note",
@@ -332,6 +335,7 @@ export async function exportAttendanceCsv(rows: AttendanceListRow[]): Promise<st
         r.check_in_at ?? "",
         r.check_out_at ?? "",
         r.status,
+        r.distance_meters ?? "",
         r.is_on_duty,
         r.zone_compliance ?? "",
         r.admin_note ?? "",

@@ -91,6 +91,11 @@ function formatDateTime(iso: string | null): string {
   }
 }
 
+function formatDistanceMeters(distanceMeters: number | null): string {
+  if (distanceMeters == null || Number.isNaN(distanceMeters)) return "—";
+  return `${(distanceMeters / 1000).toFixed(2)} km`;
+}
+
 function AttendancePageContent() {
   const t = useTranslations("pages.attendance");
   const locale = useLocale();
@@ -305,6 +310,7 @@ function AttendancePageContent() {
                   <TableHead className={TABLE_HEAD_CLASS}>{t("colCheckIn")}</TableHead>
                   <TableHead className={TABLE_HEAD_CLASS}>{t("colCheckOut")}</TableHead>
                   <TableHead className={TABLE_HEAD_CLASS}>{t("colStatus")}</TableHead>
+                  <TableHead className={TABLE_HEAD_CLASS}>{t("colDistance")}</TableHead>
                   <TableHead className={`${TABLE_HEAD_CLASS} hidden sm:table-cell`}>
                     {t("colOnDuty")}
                   </TableHead>
@@ -335,6 +341,9 @@ function AttendancePageContent() {
                       <StatusPill variant={attendanceStatusVariant(row.status)} dot>
                         {t(`status.${row.status}`)}
                       </StatusPill>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {formatDistanceMeters(row.distance_meters)}
                     </TableCell>
                     <TableCell className="hidden sm:table-cell">
                       <AttendancePill

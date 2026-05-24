@@ -40,11 +40,18 @@ Restart **`npm run dev`** yourself when needed (do not tell the user to restart 
 
 ## Vercel / production
 
-- Do **not** deploy to Vercel unless the user asks for deploy/production.
-- DB push is always remote Supabase — not optional.
+- After completing a change set with **no other queued task**, deploy to Vercel production automatically — do not wait for the user to ask.
+- Run `vercel deploy --prod --yes` from `dpdadmin/`.
+- If the deploy fails, fix the error and redeploy before marking work done.
+
+## Git
+
+- After completing a change set with **no other queued task**, commit and push to git automatically — do not wait for the user to ask.
+- Stage all relevant changed files (never `.env.local`, credentials, or secrets).
+- Write a concise commit message focused on **why**.
+- Push to `origin` on the current branch (`git push`).
 
 ## When to still ask the user
 
 - Missing Supabase login / credentials / link
 - Destructive DB ops they did not request (drop production data)
-- Commit/push to git (unless they explicitly asked)

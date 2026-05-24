@@ -1,7 +1,9 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { CheckCircle2, Clock, Package, ShieldAlert, XCircle } from "lucide-react";
 import { StatusPill } from "@/components/dashboard/status-pill";
+import { MetricTile } from "@/components/ui/metric-tile";
 import type { DeliveryFeedItem, DeliveryMonitorMetrics } from "../types";
 import { DashboardWidget } from "./dashboard-widget";
 
@@ -25,23 +27,43 @@ export function DeliveryMonitorWidget({
 
   return (
     <DashboardWidget title={t("widgetDeliveryMonitor")} href={`/${locale}/deliveries`}>
-      <div className="grid grid-cols-2 gap-2 border-b border-border px-4 py-3 sm:grid-cols-5">
-        {[
-          { label: t("metricSubmitted"), value: metrics.submittedToday },
-          { label: t("metricPending"), value: metrics.pending },
-          { label: t("metricVerified"), value: metrics.verified },
-          { label: t("metricRejected"), value: metrics.rejected },
-          {
-            label: t("metricSpike"),
-            value: metrics.spikeDetected ? t("yes") : t("no"),
-          },
-        ].map((m) => (
-          <div key={m.label} className="rounded-lg bg-muted/30 px-2 py-1.5">
-            <p className="text-[10px] text-muted-foreground">{m.label}</p>
-            <p className="text-sm font-semibold tabular-nums">{m.value}</p>
-          </div>
-        ))}
+      <div className="grid grid-cols-2 gap-2 border-b border-border p-4 sm:grid-cols-4">
+        <MetricTile
+          label={t("metricSubmitted")}
+          value={metrics.submittedToday}
+          icon={Package}
+          tone="blue"
+          className="p-2.5"
+        />
+        <MetricTile
+          label={t("metricPending")}
+          value={metrics.pending}
+          icon={Clock}
+          tone={metrics.pending > 0 ? "amber" : "slate"}
+          className="p-2.5"
+        />
+        <MetricTile
+          label={t("metricVerified")}
+          value={metrics.verified}
+          icon={CheckCircle2}
+          tone="emerald"
+          className="p-2.5"
+        />
+        <MetricTile
+          label={t("metricRejected")}
+          value={metrics.rejected}
+          icon={XCircle}
+          tone={metrics.rejected > 0 ? "rose" : "slate"}
+          className="p-2.5"
+        />
       </div>
+      {metrics.underReview > 0 ? (
+        <div className="flex items-center gap-2 border-b border-border px-4 py-2 text-xs">
+          <ShieldAlert className="size-3.5 text-amber-600" />
+          <span className="font-medium">{metrics.underReview}</span>
+          <span className="text-muted-foreground">{t("metricUnderReview")}</span>
+        </div>
+      ) : null}
       <ul className="divide-y divide-border">
         {feed.length === 0 ? (
           <li className="px-4 py-8 text-center text-sm text-muted-foreground">{t("empty")}</li>

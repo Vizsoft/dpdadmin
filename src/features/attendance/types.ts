@@ -18,6 +18,7 @@ export type AttendanceListRow = {
   log_date: string;
   check_in_at: string | null;
   check_out_at: string | null;
+  distance_meters: number | null;
   status: AttendanceStatus;
   zone_compliance: "inside" | "outside" | null;
   admin_note: string | null;

@@ -88,6 +88,8 @@ function rowToLocation(row: LiveRow): DriverLiveLocation {
     latitude: Number(row.latitude),
     longitude: Number(row.longitude),
     speedMps: row.speed_mps != null ? Number(row.speed_mps) : null,
+    distanceTodayMeters:
+      row.distance_today_meters != null ? Number(row.distance_today_meters) : 0,
     accuracyMeters: row.accuracy_meters != null ? Number(row.accuracy_meters) : null,
     batteryPct: row.battery_pct,
     heading: row.heading_deg != null ? Number(row.heading_deg) : null,

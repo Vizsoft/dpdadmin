@@ -39,6 +39,18 @@ Footer ≈ 72px + 14" usable ≈ 720px ⇒ body must fit in **≈ 648px**. **Inn
 - Documents / assets: **`lg:grid-cols-4`** on desktop.
 - Helper text: **`text-[10px]`** inline; hide when redundant.
 
+### Standard spacing (mandatory — import `@/components/app/layout-spacing`)
+
+| Token | Class | Use |
+|-------|-------|-----|
+| Command page inset | `LAYOUT.commandPageInsetNegate` on route layout | Live tracking, maps — reduces default `main p-6` to effective **12px** |
+| Panel gap | `LAYOUT.panelGap` (`gap-2`) | Sidebar ↔ main stage in split command layouts |
+| Stack gap | `LAYOUT.stackGap` (`gap-2`) | Vertical stacks inside a panel |
+| Panel section | `LAYOUT.panelSection` | Header rows inside `TrackingGlassCard` |
+| Panel block | `LAYOUT.panelBlock` | Filter / form blocks inside cards |
+
+**Never** use arbitrary gaps like `gap-4`, `gap-6`, or `space-y-6` on command-center split layouts. Live and History must share the same **`TrackingGlassCard`** sidebar shell.
+
 ---
 
 ## 4. Iconography
@@ -148,3 +160,14 @@ Match density, column count, and architecture from user-provided screenshots. As
 - [ ] Section icon chips + tinted avatar + primary Driver ID badge
 - [ ] Row click → detail page; edit → modal only
 - [ ] Add via `?add=1` modal on list
+- [ ] Map markers and zones follow §12, including deselect paths
+
+---
+
+## 12. Maps & overlays
+
+- **Marker shape + icon:** use lucide-style vehicle icon inside a colored teardrop marker; status color comes from `pinStatus`.
+- **Unknown vehicle default:** if vehicle type is missing, default to `bike`; never infer vehicle type from tracking status.
+- **Zones:** render zone polygons/circles using the zone palette at `0.22` fill opacity and show a DOM label overlay (zone name + optional driver-count chip).
+- **Driver deselect:** always support all three paths: popup close `X`, map background click, and clicking the same marker again.
+- **Coming soon pills:** use small sentence-case `Coming soon` badges (`bg-amber-100 text-amber-800 border-amber-200`) only for missing backend-backed map/filter features.

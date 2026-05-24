@@ -45,6 +45,13 @@ export function formatBatteryPct(batteryPct: number | null): string {
   return `${batteryPct}%`;
 }
 
+export function formatDistanceMeters(distanceMeters: number | null, locale?: string): string {
+  if (distanceMeters == null || Number.isNaN(distanceMeters)) return "—";
+  return `${(distanceMeters / 1000).toLocaleString(locale ?? "en", {
+    maximumFractionDigits: 2,
+  })} km`;
+}
+
 export function haversineMeters(
   lat1: number,
   lng1: number,

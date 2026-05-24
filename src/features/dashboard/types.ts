@@ -5,18 +5,55 @@ export type DashboardPermissions = {
   attendance: boolean;
   verifications: boolean;
   audit: boolean;
+  superAdmin: boolean;
 };
 
 export type DashboardKpis = {
-  totalDrivers: number;
-  onlineNow: number;
-  onShift: number;
-  trackedNow: number;
-  checkedInToday: number;
-  notReportedYet: number;
-  restaurantAssigned: number;
-  suspendedArchived: number;
-  deliveriesToday: number;
+  pendingAccessRequests: number;
+  verificationBacklog: number;
+  deliveryReviewPending: number;
+  payrollBlockers: number;
+  driverExceptions: number;
+  absentToday: number;
+};
+
+export type AccessRequestRow = {
+  id: string;
+  email: string | null;
+  fullName: string | null;
+  createdAt: string;
+  ageBucket: "fresh" | "waiting" | "stale";
+};
+
+export type AdminActionItem = {
+  id: string;
+  severity: "info" | "warning" | "danger";
+  category: "access" | "verification" | "delivery" | "payroll" | "attendance" | "driver";
+  titleKey: AdminActionTitleKey;
+  detail: string;
+  href: string;
+  at: string;
+};
+
+export type AdminActionTitleKey =
+  | "accessPending"
+  | "verificationNotReported"
+  | "deliveryUnderReview"
+  | "payrollAnomaly"
+  | "driverSilent"
+  | "driverMissingAttendance"
+  | "driverSuspended";
+
+export type PayrollReadinessSummary = {
+  readyCount: number;
+  blockedCount: number;
+  anomalyCount: number;
+  totalEstimatedKwd: number;
+  rows: EarningsWatchRow[];
+};
+
+export type SystemStatusSummary = {
+  maintenanceMode: boolean;
 };
 
 export type WorkforceStatus =
@@ -181,6 +218,10 @@ export type DashboardSnapshot = {
   today: string;
   permissions: DashboardPermissions;
   kpis: DashboardKpis;
+  accessRequests: AccessRequestRow[];
+  adminActionQueue: AdminActionItem[];
+  payrollReadiness: PayrollReadinessSummary;
+  systemStatus: SystemStatusSummary;
   workforceQueue: WorkforceQueueRow[];
   deliveryMetrics: DeliveryMonitorMetrics;
   deliveryFeed: DeliveryFeedItem[];

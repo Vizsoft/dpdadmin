@@ -12,7 +12,7 @@ export default async function DashboardPage({
   setRequestLocale(locale);
   await requirePermission(locale, "dashboard.view");
 
-  const snapshot = await fetchDashboardSnapshot();
+  const snapshot = await fetchDashboardSnapshot(locale);
 
   return <DashboardPageShell initialSnapshot={snapshot} locale={locale} />;
 }

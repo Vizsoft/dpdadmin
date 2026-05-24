@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Minimize2, Radio } from "lucide-react";
 import { AppPage } from "@/components/app/app-page";
+import { LAYOUT } from "@/components/app/layout-spacing";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LiveTrackingLiveView } from "./live-tracking-live-view";
@@ -62,7 +63,7 @@ export function LiveTrackingPageShell() {
             </Button>
           </div>
         </header>
-        <div className="min-h-0 flex-1 overflow-hidden p-3">{content}</div>
+        <div className={`min-h-0 flex-1 overflow-hidden ${LAYOUT.commandPageInset}`}>{content}</div>
       </div>
     );
   }

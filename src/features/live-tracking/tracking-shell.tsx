@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { MetricTile } from "@/components/ui/metric-tile";
+import { LAYOUT } from "@/components/app/layout-spacing";
 import { cn } from "@/lib/utils";
 
 export function TrackingGlassCard({
@@ -38,7 +39,8 @@ export function TrackingCommandLayout({
   return (
     <div
       className={cn(
-        "grid gap-2",
+        "grid",
+        LAYOUT.panelGap,
         fullscreen
           ? "h-full min-h-0 grid-rows-1 xl:grid-cols-[300px_minmax(0,1fr)]"
           : "min-h-[560px] xl:grid-cols-[300px_minmax(0,1fr)]",
@@ -46,10 +48,10 @@ export function TrackingCommandLayout({
         className,
       )}
     >
-      <aside className="flex min-h-0 max-xl:max-h-[420px] flex-col gap-2 overflow-hidden">
+      <aside className={cn("flex min-h-0 max-xl:max-h-[420px] flex-col overflow-hidden", LAYOUT.panelGap)}>
         {left}
       </aside>
-      <section className="flex min-h-0 min-h-[560px] flex-col gap-2 max-xl:min-h-[480px]">
+      <section className={cn("flex min-h-0 min-h-[560px] flex-col max-xl:min-h-[480px]", LAYOUT.panelGap)}>
         {center}
       </section>
     </div>

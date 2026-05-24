@@ -422,6 +422,7 @@ export type Database = {
           check_in_at: string | null
           check_out_at: string | null
           created_at: string
+          distance_meters: number | null
           driver_id: string
           id: string
           log_date: string
@@ -434,6 +435,7 @@ export type Database = {
           check_in_at?: string | null
           check_out_at?: string | null
           created_at?: string
+          distance_meters?: number | null
           driver_id: string
           id?: string
           log_date: string
@@ -448,6 +450,7 @@ export type Database = {
           check_in_at?: string | null
           check_out_at?: string | null
           created_at?: string
+          distance_meters?: number | null
           driver_id?: string
           id?: string
           log_date?: string
@@ -1115,6 +1118,7 @@ export type Database = {
         Row: {
           accuracy_meters: number | null
           battery_pct: number | null
+          distance_today_meters: number
           driver_id: string
           heading_deg: number | null
           last_seen_at: string
@@ -1128,6 +1132,7 @@ export type Database = {
         Insert: {
           accuracy_meters?: number | null
           battery_pct?: number | null
+          distance_today_meters?: number
           driver_id: string
           heading_deg?: number | null
           last_seen_at?: string
@@ -1141,6 +1146,7 @@ export type Database = {
         Update: {
           accuracy_meters?: number | null
           battery_pct?: number | null
+          distance_today_meters?: number
           driver_id?: string
           heading_deg?: number | null
           last_seen_at?: string

@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -20,8 +19,10 @@ import type { DriverLocationEvent } from "@/features/locations/types";
 import { HistoryPlaybackControls } from "./history-playback-controls";
 import { useLiveHistory } from "./use-live-history";
 import { TrackingTabSwitcher, type TrackingViewTab } from "./tracking-tab-switcher";
-import { TrackingCommandLayout, TrackingMapFrame } from "./tracking-shell";
+import { TrackingCommandLayout, TrackingGlassCard, TrackingMapFrame } from "./tracking-shell";
 import { HistorySummaryKpis, computeHistorySummary } from "./history-summary-kpis";
+import { HistoryDatePicker } from "./history-date-picker";
+import { useDriverHistoryActiveDates } from "./use-driver-history-dates";
 import {
   HistoryLoadingSkeleton,
   NoDataForDateEmpty,
@@ -80,6 +81,7 @@ export function LiveTrackingHistoryView({
   onTabChange: (tab: TrackingViewTab) => void;
 }) {
   const t = useTranslations("pages.liveTracking");
+  const locale = useLocale();
   const [driverId, setDriverId] = useState<string>("");
   const [date, setDate] = useState(kuwaitToday());
   const [index, setIndex] = useState(0);
@@ -105,6 +107,14 @@ export function LiveTrackingHistoryView({
   );
 
   const { data: events = [], isLoading } = useLiveHistory(driverId || null, date);
+
+  const yearMonth = date.slice(0, 7);
+  const [calendarMonth, setCalendarMonth] = useState(yearMonth);
+  useEffect(() => {
+    setCalendarMonth(date.slice(0, 7));
+  }, [date]);
+  const { data: activeDateList = [] } = useDriverHistoryActiveDates(driverId || null, calendarMonth);
+  const activeDates = useMemo(() => new Set(activeDateList), [activeDateList]);
 
   const sortedEvents = useMemo(
     () => [...events].sort((a, b) => a.recordedAt.localeCompare(b.recordedAt)),
@@ -155,7 +165,7 @@ export function LiveTrackingHistoryView({
         id: "playback-head",
         lat: currentEvent.latitude,
         lng: currentEvent.longitude,
-        title: formatTime(currentEvent.recordedAt),
+        title: formatTime(currentEvent.recordedAt, locale),
         pinStatus: "active",
         trackingStatus: currentEvent.trackingStatus,
         highlight: true,
@@ -163,7 +173,7 @@ export function LiveTrackingHistoryView({
     }
 
     return list;
-  }, [sortedEvents, currentEvent, t]);
+  }, [sortedEvents, currentEvent, t, locale]);
 
   const deliverySubmitIndices = useMemo(
     () =>
@@ -230,14 +240,16 @@ export function LiveTrackingHistoryView({
   }, [date]);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <TrackingCommandLayout
         left={
-          <div className="space-y-3">
-            <TrackingTabSwitcher value={activeTab} onChange={onTabChange} className="max-w-sm" />
-            <HistorySummaryKpis summary={summary} loading={isLoading} />
+          <TrackingGlassCard className="flex min-h-0 flex-col overflow-hidden border-slate-200 bg-white dark:border-slate-700/80 dark:bg-slate-900">
+            <div className="border-b border-slate-200 px-3 py-2.5 dark:border-slate-700/80">
+              <TrackingTabSwitcher value={activeTab} onChange={onTabChange} className="mb-2" />
+              <HistorySummaryKpis summary={summary} loading={isLoading} />
+            </div>
 
-            <div className="space-y-3 rounded-xl border border-border bg-card p-3 shadow-sm">
+            <div className="space-y-2 border-b border-slate-200 px-3 py-3 dark:border-slate-700/80">
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">{t("historyDriver")}</Label>
                 <Select value={driverId || undefined} onValueChange={(id) => setDriverId(id ?? "")}>
@@ -254,15 +266,14 @@ export function LiveTrackingHistoryView({
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="history-date" className="text-xs text-muted-foreground">
-                  {t("historyDate")}
-                </Label>
-                <Input
-                  id="history-date"
-                  type="date"
+                <Label className="text-xs text-muted-foreground">{t("historyDate")}</Label>
+                <HistoryDatePicker
                   value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="h-9 cursor-pointer rounded-lg"
+                  onChange={setDate}
+                  activeDates={activeDates}
+                  disabled={!driverId}
+                  locale={locale}
+                  onViewMonthChange={setCalendarMonth}
                 />
               </div>
               <div className="flex flex-wrap gap-1.5">
@@ -279,17 +290,19 @@ export function LiveTrackingHistoryView({
             </div>
 
             {driverId && sortedEvents.length > 0 ? (
-              <HistoryRecentStops
-                events={sortedEvents}
-                selectedIndex={index}
-                onSelectIndex={(nextIndex) => {
-                  setPlaying(false);
-                  setIndex(nextIndex);
-                }}
-                formatTime={(iso) => formatTime(iso)}
-              />
+              <div className="flex-1 overflow-auto px-3 py-3">
+                <HistoryRecentStops
+                  events={sortedEvents}
+                  selectedIndex={index}
+                  onSelectIndex={(nextIndex) => {
+                    setPlaying(false);
+                    setIndex(nextIndex);
+                  }}
+                  formatTime={(iso) => formatTime(iso, locale)}
+                />
+              </div>
             ) : null}
-          </div>
+          </TrackingGlassCard>
         }
         center={
           <TrackingMapFrame mapHeightClass="h-[min(58vh,560px)] min-h-[360px]">
@@ -301,7 +314,7 @@ export function LiveTrackingHistoryView({
               </div>
             ) : sortedEvents.length === 0 ? (
               <NoDataForDateEmpty
-                dateLabel={formatDateLabel(date)}
+                dateLabel={formatDateLabel(date, locale)}
                 onPickYesterday={() => setDate(kuwaitDateShift(1))}
                 onPickLast7Days={() => setDate(kuwaitDateShift(7))}
               />
@@ -323,12 +336,12 @@ export function LiveTrackingHistoryView({
                         code={selectedDriverMeta.driver_code}
                         zoneName={selectedDriverMeta.zone_name}
                         isOnDuty={selectedDriverMeta.is_on_duty}
-                        dateLabel={formatDateLabel(date)}
+                        dateLabel={formatDateLabel(date, locale)}
                       />
                     </div>
                   </div>
                 ) : null}
-                <div className="pointer-events-none absolute inset-x-3 bottom-3 z-20">
+                <div className="pointer-events-none absolute right-3 top-3 z-20">
                   <div className="pointer-events-auto">
                     <HistoryPlaybackControls
                       playing={playing}
@@ -351,7 +364,7 @@ export function LiveTrackingHistoryView({
                         setPlaying(false);
                         setIndex(nextIndex);
                       }}
-                      currentLabel={currentEvent ? formatTime(currentEvent.recordedAt) : "—"}
+                      currentLabel={currentEvent ? formatTime(currentEvent.recordedAt, locale) : "—"}
                       durationLabel={durationLabel}
                       deliverySubmitIndices={deliverySubmitIndices}
                     />
@@ -371,7 +384,7 @@ export function LiveTrackingHistoryView({
             setPlaying(false);
             setIndex(nextIndex);
           }}
-          formatTime={(iso) => formatTime(iso)}
+          formatTime={(iso) => formatTime(iso, locale)}
         />
       ) : null}
     </div>

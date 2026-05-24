@@ -41,6 +41,7 @@ function mapLiveRow(row: {
   latitude: number;
   longitude: number;
   speed_mps: number | null;
+  distance_today_meters: number | null;
   accuracy_meters: number | null;
   battery_pct: number | null;
   heading_deg: number | null;
@@ -72,6 +73,8 @@ function mapLiveRow(row: {
     latitude: Number(row.latitude),
     longitude: Number(row.longitude),
     speedMps: row.speed_mps != null ? Number(row.speed_mps) : null,
+    distanceTodayMeters:
+      row.distance_today_meters != null ? Number(row.distance_today_meters) : 0,
     accuracyMeters: row.accuracy_meters != null ? Number(row.accuracy_meters) : null,
     batteryPct: row.battery_pct,
     heading: row.heading_deg != null ? Number(row.heading_deg) : null,
@@ -94,6 +97,7 @@ export async function fetchLiveDriverLocations(): Promise<DriverLiveLocation[]> 
       latitude,
       longitude,
       speed_mps,
+      distance_today_meters,
       accuracy_meters,
       battery_pct,
       heading_deg,
@@ -160,6 +164,52 @@ export async function fetchDriverLocationHistory(
     deliveryId: row.delivery_id,
     recordedAt: row.recorded_at,
   }));
+}
+
+const KUWAIT_TZ = "Asia/Kuwait";
+
+function kuwaitDateFromIso(iso: string): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: KUWAIT_TZ }).format(new Date(iso));
+}
+
+function monthIsoBounds(yearMonth: string): { from: string; to: string } {
+  const [yearStr, monthStr] = yearMonth.split("-");
+  const year = Number(yearStr);
+  const month = Number(monthStr);
+  const lastDay = new Date(year, month, 0).getDate();
+  const monthPadded = String(month).padStart(2, "0");
+  return {
+    from: `${yearStr}-${monthPadded}-01T00:00:00+03:00`,
+    to: `${yearStr}-${monthPadded}-${String(lastDay).padStart(2, "0")}T23:59:59.999+03:00`,
+  };
+}
+
+export async function fetchDriverHistoryActiveDates(
+  driverId: string,
+  yearMonth: string,
+): Promise<string[]> {
+  await requireDriversView();
+  const supabase = await createClient();
+  const { from, to } = monthIsoBounds(yearMonth);
+
+  const { data, error } = await supabase
+    .from("driver_location_events")
+    .select("recorded_at")
+    .eq("driver_id", driverId)
+    .gte("recorded_at", from)
+    .lte("recorded_at", to);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  await logAdminRead("driver_location_events", "locations.fetchHistoryDates", { driverId });
+
+  const dates = new Set<string>();
+  for (const row of data ?? []) {
+    dates.add(kuwaitDateFromIso(row.recorded_at));
+  }
+  return Array.from(dates).sort();
 }
 
 export async function fetchLocationEventByDeliveryId(

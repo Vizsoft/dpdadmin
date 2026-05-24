@@ -29,12 +29,12 @@ export function buildOperationalAlerts(
     });
   }
 
-  if (snapshot.kpis.notReportedYet > 0) {
+  if (snapshot.kpis.verificationBacklog > 0) {
     live.push({
       id: "live-not-reported",
       severity: "info",
       messageKey: "verificationBacklog",
-      detail: `${snapshot.kpis.notReportedYet} drivers not reported`,
+      detail: `${snapshot.kpis.verificationBacklog} verification backlog`,
       at: now,
       isLive: true,
     });
