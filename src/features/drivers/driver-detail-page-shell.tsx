@@ -4,48 +4,66 @@ import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import {
+  AlertTriangle,
   Archive,
   ArrowLeft,
+  Banknote,
+  Bike,
+  CalendarClock,
   Check,
+  ClipboardList,
   Copy,
   Eye,
   EyeOff,
+  FileText,
   Loader2,
+  MapPin,
   Minus,
+  Package,
+  Pencil,
+  Phone,
   RefreshCw,
+  Shield,
+  Wallet,
 } from "lucide-react";
 import { toast } from "sonner";
 import { TabBar, type TabItem } from "@/components/dashboard/tab-bar";
 import { AppPage } from "@/components/app/app-page";
-import { TABLE_HEAD_CLASS } from "@/components/app/constants";
 import { AppEmptyState } from "@/components/app/app-empty-state";
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { MetricTile } from "@/components/ui/metric-tile";
 import { Link, useRouter } from "@/i18n/navigation";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { useHasMounted } from "@/hooks/use-has-mounted";
 import { cn } from "@/lib/utils";
+import { TrackingGlassCard } from "@/features/live-tracking/tracking-shell";
 import { DriverAccountStatusEditor } from "./driver-account-status-editor";
 import { DriverDocumentsTab } from "./driver-documents-tab";
 import { DriverLocationTab } from "./driver-location-tab";
 import { DriverEditSheet } from "./driver-edit-sheet";
+import { avatarTintFromName } from "./form/driver-form-primitives";
 import { LinkedBadge, WorkflowStatusPill } from "./driver-workflow-ui";
 import { formatPhoneDisplay } from "./driver-phone";
 import { ASSET_TYPES, type DriverWorkflowStatus } from "./types";
+import {
+  AccountStatusPill,
+  AttendancePill,
+  formatDriverCodeDisplay,
+} from "./driver-list-ui";
 import {
   useArchiveDriverIntake,
   useDriverDetail,
   useRegenerateDriverPasscode,
 } from "./use-drivers";
-import { formatDriverCodeDisplay } from "./driver-list-ui";
+
+const ASSET_ICONS = {
+  gps: MapPin,
+  sim: Phone,
+  phone: Phone,
+  delivery_bag: Package,
+  helmet: Shield,
+  uniform: ClipboardList,
+} as const;
 
 type DetailTabId =
   | "attendance"
@@ -107,11 +125,11 @@ function PasscodeCard({
   };
 
   return (
-    <Card className="rounded-xl border-border shadow-sm">
-      <CardHeader className="border-b border-border py-4">
-        <CardTitle className="text-sm font-semibold">{t("title")}</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3 py-4">
+    <TrackingGlassCard className="overflow-hidden border-slate-200 bg-white dark:border-slate-700/80 dark:bg-slate-900">
+      <div className="border-b border-border px-4 py-3">
+        <p className="text-sm font-semibold text-foreground">{t("title")}</p>
+      </div>
+      <div className="space-y-3 px-4 py-4">
         {!isActive ? (
           <p className="text-sm text-muted-foreground">{t("inactiveHint")}</p>
         ) : (
@@ -175,8 +193,8 @@ function PasscodeCard({
             ) : null}
           </>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </TrackingGlassCard>
   );
 }
 
@@ -222,17 +240,17 @@ function DriverDetailContent({ id }: { id: string }) {
   };
 
   const tabs: TabItem[] = [
-    { id: "attendance", label: t("tabAttendance") },
+    { id: "attendance", label: t("tabAttendance"), icon: CalendarClock },
     ...(driver?.linked_profile_id
-      ? [{ id: "location" as const, label: t("tabLocation") }]
+      ? [{ id: "location" as const, label: t("tabLocation"), icon: MapPin }]
       : []),
-    { id: "documents", label: t("tabDocuments") },
-    { id: "assets", label: t("tabAssets") },
-    { id: "earnings", label: t("tabEarnings") },
-    { id: "deductions", label: t("tabDeductions") },
-    { id: "loan", label: t("tabLoan") },
-    { id: "complaint", label: t("tabComplaint") },
-    { id: "wrong-actions", label: t("tabWrongActions") },
+    { id: "documents", label: t("tabDocuments"), icon: FileText },
+    { id: "assets", label: t("tabAssets"), icon: Package },
+    { id: "earnings", label: t("tabEarnings"), icon: Wallet },
+    { id: "deductions", label: t("tabDeductions"), icon: Banknote },
+    { id: "loan", label: t("tabLoan"), icon: Banknote },
+    { id: "complaint", label: t("tabComplaint"), icon: AlertTriangle },
+    { id: "wrong-actions", label: t("tabWrongActions"), icon: Shield },
   ];
 
   if (isLoading) return <DetailSkeleton />;
@@ -316,61 +334,76 @@ function DriverDetailContent({ id }: { id: string }) {
 
     if (activeTab === "assets") {
       return (
-        <Card className="rounded-xl border-border shadow-sm">
-          <CardHeader className="border-b border-border py-4">
-            <CardTitle className="text-base font-semibold">{t("assetsTitle")}</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/30 hover:bg-muted/30">
-                  {ASSET_TYPES.map((asset) => (
-                    <TableHead key={asset} className={cn("text-center", TABLE_HEAD_CLASS)}>
-                      {tNew(`assets.${asset}`)}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableRow className="hover:bg-muted/40">
-                  {ASSET_TYPES.map((asset) => {
-                    const issued = Boolean(driver.assets_issued[asset]);
-                    return (
-                      <TableCell key={asset} className="text-center">
-                        {issued ? (
-                          <Check className="mx-auto h-4 w-4 text-success" aria-label={t("issued")} />
-                        ) : (
-                          <Minus
-                            className="mx-auto h-4 w-4 text-muted-foreground"
-                            aria-label={t("notIssued")}
-                          />
-                        )}
-                      </TableCell>
-                    );
-                  })}
-                </TableRow>
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+        <TrackingGlassCard className="border-slate-200 bg-white p-4 dark:border-slate-700/80 dark:bg-slate-900">
+          <p className="mb-3 text-sm font-semibold text-foreground">{t("assetsTitle")}</p>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+            {ASSET_TYPES.map((asset) => {
+              const issued = Boolean(driver.assets_issued[asset]);
+              const Icon = ASSET_ICONS[asset];
+              return (
+                <div
+                  key={asset}
+                  className={cn(
+                    "flex flex-col items-center gap-2 rounded-xl border px-3 py-4 text-center transition-colors",
+                    issued
+                      ? "border-emerald-200 bg-emerald-50/80 dark:border-emerald-900/50 dark:bg-emerald-950/30"
+                      : "border-border bg-muted/20",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "inline-flex h-9 w-9 items-center justify-center rounded-lg",
+                      issued
+                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300"
+                        : "bg-muted text-muted-foreground",
+                    )}
+                  >
+                    <Icon className="h-4 w-4" />
+                  </span>
+                  <p className="text-[11px] font-medium text-foreground">
+                    {tNew(`assets.${asset}`)}
+                  </p>
+                  {issued ? (
+                    <Check className="h-4 w-4 text-emerald-600" aria-label={t("issued")} />
+                  ) : (
+                    <Minus className="h-4 w-4 text-muted-foreground" aria-label={t("notIssued")} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </TrackingGlassCard>
       );
     }
 
     return (
-      <Card className="rounded-xl border-border shadow-sm">
-        <CardContent className="py-12">
+      <TrackingGlassCard className="border-slate-200 bg-white dark:border-slate-700/80 dark:bg-slate-900">
+        <div className="py-12">
           <AppEmptyState
             title={t("emptyTitle")}
             description={t("emptyTabDescription")}
           />
-        </CardContent>
-      </Card>
+        </div>
+      </TrackingGlassCard>
     );
   };
 
+  const accountStatusLabel = (status: typeof driver.account_status) => {
+    switch (status) {
+      case "active":
+        return tList("statusActive");
+      case "suspended":
+        return tList("statusSuspended");
+      case "pending":
+        return tList("statusPendingAccount");
+      default:
+        return status;
+    }
+  };
+
   return (
-    <AppPage>
-      <div className="flex items-center gap-3">
+    <AppPage className="space-y-4">
+      <div className="flex items-center gap-2">
         <Button
           type="button"
           variant="ghost"
@@ -381,12 +414,11 @@ function DriverDetailContent({ id }: { id: string }) {
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <span className="sr-only">{t("backToList")}</span>
+        <span className="text-sm text-muted-foreground">{t("backToList")}</span>
       </div>
 
-      <Card className="rounded-xl border-border shadow-sm">
-        <CardContent className="p-4 sm:p-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <TrackingGlassCard className="overflow-hidden border-slate-200 bg-white dark:border-slate-700/80 dark:bg-slate-900">
+        <div className="flex flex-col gap-4 border-b border-border p-4 sm:flex-row sm:items-start sm:justify-between sm:p-5">
             <div className="flex gap-4">
               <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-muted/30">
                 {driver.avatar_url ? (
@@ -425,20 +457,31 @@ function DriverDetailContent({ id }: { id: string }) {
                 <p className="mt-1 font-mono text-sm text-muted-foreground">
                   {formatDriverCodeDisplay(driver.driver_code)}
                 </p>
-                <p className="mt-0.5 text-sm text-muted-foreground">
-                  {driver.zone_label} · {driver.partner_name}
+                <p className="mt-0.5 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                  <span className="inline-flex items-center gap-1">
+                    <MapPin className="h-3.5 w-3.5" />
+                    {driver.zone_label}
+                  </span>
+                  <span>·</span>
+                  <span>{driver.partner_name}</span>
                 </p>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <AccountStatusPill
+                    status={driver.account_status}
+                    label={accountStatusLabel(driver.account_status)}
+                  />
+                </div>
               </div>
             </div>
             {canManage && driver.intake_id && !isArchived ? (
-              <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:items-end">
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
                 <Button
                   type="button"
-                  variant="outline"
                   size="sm"
                   className="cursor-pointer rounded-lg"
                   onClick={() => setEditOpen(true)}
                 >
+                  <Pencil className="me-2 h-3.5 w-3.5" />
                   {t("editDriver")}
                 </Button>
                 <Button
@@ -475,23 +518,27 @@ function DriverDetailContent({ id }: { id: string }) {
             ) : null}
           </div>
 
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2 p-4 sm:grid-cols-3 lg:grid-cols-6 sm:p-5">
             {metaFields.map((field) => (
-              <div key={field.label} className="min-w-0">
-                <p className="text-xs text-muted-foreground">{field.label}</p>
-                <p className="mt-0.5 text-sm text-foreground">{field.value}</p>
+              <div
+                key={field.label}
+                className="rounded-lg border border-border/70 bg-muted/20 px-3 py-2.5"
+              >
+                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  {field.label}
+                </p>
+                <p className="mt-1 truncate text-sm font-medium text-foreground">{field.value}</p>
               </div>
             ))}
           </div>
-        </CardContent>
-      </Card>
+      </TrackingGlassCard>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
-        <div className="min-w-0 space-y-4">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="min-w-0 space-y-3">
           <TabBar
             items={tabs}
             activeId={activeTab}
-            className="gap-4 sm:gap-6"
+            className="gap-3 overflow-x-auto border-b border-border pb-0 sm:gap-4"
             onSelect={(id) => setActiveTab(id as DetailTabId)}
           />
           <div
@@ -503,23 +550,21 @@ function DriverDetailContent({ id }: { id: string }) {
           </div>
         </div>
 
-        <aside className="space-y-4">
+        <aside className="space-y-3">
           {driver.linked_profile_id && !isArchived && canManage ? (
-            <Card className="rounded-xl border-border shadow-sm">
-              <CardHeader className="border-b border-border py-4">
-                <CardTitle className="text-sm font-semibold">
-                  {t("accountStatus.title")}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="py-4">
+            <TrackingGlassCard className="border-slate-200 bg-white dark:border-slate-700/80 dark:bg-slate-900">
+              <div className="border-b border-border px-4 py-3">
+                <p className="text-sm font-semibold text-foreground">{t("accountStatus.title")}</p>
+              </div>
+              <div className="px-4 py-4">
                 <DriverAccountStatusEditor
                   driverId={driver.linked_profile_id}
                   status={driver.account_status}
                   hasPublishedRestaurant={driver.has_published_restaurant}
                   canManage={canManage}
                 />
-              </CardContent>
-            </Card>
+              </div>
+            </TrackingGlassCard>
           ) : null}
           {driver.linked_profile_id && !isArchived ? (
             <PasscodeCard
@@ -529,39 +574,28 @@ function DriverDetailContent({ id }: { id: string }) {
               canManage={canManage}
             />
           ) : null}
-          <Card className="rounded-xl border-border shadow-sm">
-            <CardHeader className="border-b border-border py-4">
-              <CardTitle className="text-sm font-semibold">{t("quickStats")}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 py-4">
+          <TrackingGlassCard className="border-slate-200 bg-white dark:border-slate-700/80 dark:bg-slate-900">
+            <div className="border-b border-border px-4 py-3">
+              <p className="text-sm font-semibold text-foreground">{t("quickStats")}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-2 p-3">
               {[
-                { label: t("statAttendance"), value: "—" },
-                { label: t("statDeliveriesToday"), value: "—" },
-                { label: t("statDeliveriesWeek"), value: "—" },
-                { label: t("statEarnings"), value: "—" },
+                { label: t("statAttendance"), value: "—", tone: "emerald" as const, icon: CalendarClock },
+                { label: t("statDeliveriesToday"), value: "—", tone: "blue" as const, icon: Package },
+                { label: t("statDeliveriesWeek"), value: "—", tone: "indigo" as const, icon: Bike },
+                { label: t("statEarnings"), value: "—", tone: "amber" as const, icon: Wallet },
               ].map((stat) => (
-                <div
+                <MetricTile
                   key={stat.label}
-                  className="flex items-center justify-between gap-2 text-sm"
-                >
-                  <span className="text-muted-foreground">{stat.label}</span>
-                  <span className="tabular-nums font-medium text-foreground">
-                    {stat.value}
-                  </span>
-                </div>
+                  label={stat.label}
+                  value={stat.value}
+                  tone={stat.tone}
+                  icon={stat.icon}
+                  className="min-h-[88px]"
+                />
               ))}
-            </CardContent>
-          </Card>
-          <Card className="rounded-xl border-border shadow-sm">
-            <CardHeader className="border-b border-border py-4">
-              <CardTitle className="text-sm font-semibold">{t("earningsTrend")}</CardTitle>
-            </CardHeader>
-            <CardContent className="py-8">
-              <p className="text-center text-sm text-muted-foreground">
-                {t("chartPlaceholder")}
-              </p>
-            </CardContent>
-          </Card>
+            </div>
+          </TrackingGlassCard>
         </aside>
       </div>
     </AppPage>
