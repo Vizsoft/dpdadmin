@@ -39,6 +39,7 @@ import { buildTrackingMapStyles } from "./tracking-map-google-styles";
 import {
   DEFAULT_TRACKING_MAP_PREFS,
   loadTrackingMapPrefs,
+  nativeMapTypeForStyle,
   saveTrackingMapPrefs,
   type TrackingMapLayerPrefs,
 } from "./tracking-map-layer-prefs";
@@ -282,8 +283,8 @@ export function LiveTrackingLiveView({
             mapHeightClass="h-full min-h-0"
             frameless
             className="h-full rounded-none border-0"
-            mapStyles={buildTrackingMapStyles(mapPrefs.hideLabels)}
-            mapTypeId={mapPrefs.mapTypeId}
+            mapStyles={buildTrackingMapStyles(mapPrefs.hideLabels, mapPrefs.mapTypeId)}
+            mapTypeId={nativeMapTypeForStyle(mapPrefs.mapTypeId)}
             defaultZoom={11}
             initialFitPadding={86}
             mapLayer={mapLayer}

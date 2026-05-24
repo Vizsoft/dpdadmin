@@ -12,7 +12,12 @@ export function isR2ObjectKey(value: string | null | undefined): boolean {
   if (!value) return false;
   const v = value.trim();
   if (v.startsWith("http://") || v.startsWith("https://")) return false;
-  return v.startsWith("drivers/") || v.startsWith("partners/") || v.startsWith("restaurants/");
+  return (
+    v.startsWith("drivers/") ||
+    v.startsWith("driver-avatars/") ||
+    v.startsWith("partners/") ||
+    v.startsWith("restaurants/")
+  );
 }
 
 export function buildRestaurantLogoKey(restaurantId: string, ext: string): string {
