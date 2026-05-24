@@ -23,20 +23,13 @@ import { StatusPill } from "@/components/dashboard/status-pill";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CardContent } from "@/components/ui/card";
+import { SearchSelect } from "@/components/ui/search-select";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { selectOptionsFrom } from "@/lib/select-items";
 import {
   Table,
   TableBody,
@@ -163,12 +156,12 @@ function DeliveriesPageContent() {
       }
     }
     return [
-      { value: "all", label: t("filterZoneAll") },
-      ...selectOptionsFrom(
-        [...uniqueZones.entries()],
-        ([id]) => id,
-        ([, name]) => name,
-      ),
+      { value: "all", label: t("filterZoneAll"), keywords: [t("filterZoneAll")] },
+      ...[...uniqueZones.entries()].map(([id, name]) => ({
+        value: id,
+        label: name,
+        keywords: [name, id],
+      })),
     ];
   }, [deliveries, t]);
 
@@ -180,12 +173,12 @@ function DeliveriesPageContent() {
       }
     }
     return [
-      { value: "all", label: t("filterPartnerAll") },
-      ...selectOptionsFrom(
-        [...uniquePartners.entries()],
-        ([id]) => id,
-        ([, name]) => name,
-      ),
+      { value: "all", label: t("filterPartnerAll"), keywords: [t("filterPartnerAll")] },
+      ...[...uniquePartners.entries()].map(([id, name]) => ({
+        value: id,
+        label: name,
+        keywords: [name, id],
+      })),
     ];
   }, [deliveries, t]);
 
@@ -312,46 +305,28 @@ function DeliveriesPageContent() {
                 className="border-b-0"
               />
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <Select
+                <SearchSelect
                   items={zoneSelectItems}
                   value={zoneFilter}
-                  onValueChange={(v) => setZoneFilter(v ?? "all")}
-                >
-                  <SelectTrigger className="h-9 w-full min-w-[140px] cursor-pointer rounded-lg sm:w-[160px]">
-                    <SelectValue placeholder={t("filterZone")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {zoneSelectItems.map((item) => (
-                      <SelectItem
-                        key={item.value}
-                        value={item.value}
-                        className="cursor-pointer"
-                      >
-                        {item.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select
+                  onChange={(v) => setZoneFilter(v ?? "all")}
+                  placeholder={t("filterZone")}
+                  searchPlaceholder={t("filterZone")}
+                  defaultLimit={8}
+                  recentsKey="deliveries-zone-filter"
+                  className="w-full min-w-[140px] sm:w-[160px]"
+                  clearable={false}
+                />
+                <SearchSelect
                   items={partnerSelectItems}
                   value={partnerFilter}
-                  onValueChange={(v) => setPartnerFilter(v ?? "all")}
-                >
-                  <SelectTrigger className="h-9 w-full min-w-[140px] cursor-pointer rounded-lg sm:w-[160px]">
-                    <SelectValue placeholder={t("filterPartner")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {partnerSelectItems.map((item) => (
-                      <SelectItem
-                        key={item.value}
-                        value={item.value}
-                        className="cursor-pointer"
-                      >
-                        {item.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  onChange={(v) => setPartnerFilter(v ?? "all")}
+                  placeholder={t("filterPartner")}
+                  searchPlaceholder={t("filterPartner")}
+                  defaultLimit={8}
+                  recentsKey="deliveries-partner-filter"
+                  className="w-full min-w-[140px] sm:w-[160px]"
+                  clearable={false}
+                />
                 <div className="relative min-w-0 flex-1 sm:min-w-[200px]">
                   <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input

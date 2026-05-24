@@ -6,6 +6,8 @@ import { useTranslations } from "next-intl";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
+import { AppPage } from "@/components/app/app-page";
+import { AppPageHeader } from "@/components/app/app-page-header";
 import { queryKeys } from "@/lib/query/query-keys";
 import { isZoneErrorKey } from "./zone-errors";
 import { ZoneFormBody } from "./zone-form-sheet";
@@ -53,15 +55,31 @@ export function ZoneFormPage({ zoneId }: { zoneId?: string }) {
 
   if (zoneId && !zone) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-        {t("emptyTitle")}
-      </div>
+      <AppPage className="space-y-4">
+        <AppPageHeader
+          title={t("editZoneTitle")}
+          breadcrumbs={[
+            { label: t("geofence.pageTitle"), href: "/zones" },
+            { label: t("editZoneTitle") },
+          ]}
+        />
+        <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+          {t("emptyTitle")}
+        </div>
+      </AppPage>
     );
   }
 
   return (
-    <>
-      <div className="h-full min-h-[560px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+    <AppPage className="flex h-full flex-col gap-3">
+      <AppPageHeader
+        title={zone ? t("editZoneTitle") : t("addZoneTitle")}
+        breadcrumbs={[
+          { label: t("geofence.pageTitle"), href: "/zones" },
+          { label: zone ? t("editZoneTitle") : t("addZoneTitle") },
+        ]}
+      />
+      <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
         <ZoneFormBody
           zone={zone}
           existingZones={zones}
@@ -89,6 +107,6 @@ export function ZoneFormPage({ zoneId }: { zoneId?: string }) {
           onConfirm={runDelete}
         />
       ) : null}
-    </>
+    </AppPage>
   );
 }

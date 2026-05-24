@@ -4,18 +4,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchSelect } from "@/components/ui/search-select";
 import { ToggleChip } from "@/components/app/toggle-chip";
 import { DriverLocationsMap } from "@/features/locations/driver-locations-map";
 import { fetchDriversForAdmin } from "@/features/drivers/drivers-actions";
 import { queryKeys } from "@/lib/query/query-keys";
-import { selectOptionsFrom } from "@/lib/select-items";
+import { driverSearchOptions } from "@/lib/search-options";
 import type { DriverLocationEvent } from "@/features/locations/types";
 import { HistoryPlaybackControls } from "./history-playback-controls";
 import { useLiveHistory } from "./use-live-history";
@@ -101,16 +95,16 @@ export function LiveTrackingHistoryView({
       driversMeta
         .filter((d) => d.linked_profile_id)
         .map((d) => ({
-          profileId: d.linked_profile_id as string,
-          label: `${d.full_name} (#${d.driver_code})`,
+          id: d.linked_profile_id as string,
+          name: d.full_name,
+          employee_code: d.driver_code,
+          mobile: d.phone,
+          user_id: d.linked_profile_id,
         })),
     [driversMeta],
   );
 
-  const driverSelectItems = useMemo(
-    () => selectOptionsFrom(linkedDrivers, (d) => d.profileId, (d) => d.label),
-    [linkedDrivers],
-  );
+  const driverSelectItems = useMemo(() => driverSearchOptions(linkedDrivers), [linkedDrivers]);
 
   const { data: events = [], isLoading } = useLiveHistory(driverId || null, date);
 
@@ -258,22 +252,15 @@ export function LiveTrackingHistoryView({
             <div className="space-y-2 border-b border-slate-200 px-3 py-3 dark:border-slate-700/80">
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">{t("historyDriver")}</Label>
-                <Select
+                <SearchSelect
                   items={driverSelectItems}
-                  value={driverId || undefined}
-                  onValueChange={(id) => setDriverId(id ?? "")}
-                >
-                  <SelectTrigger className="h-9 w-full cursor-pointer rounded-lg">
-                    <SelectValue placeholder={t("selectDriver")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {linkedDrivers.map((d) => (
-                      <SelectItem key={d.profileId} value={d.profileId} label={d.label}>
-                        {d.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  value={driverId || null}
+                  onChange={(id) => setDriverId(id ?? "")}
+                  placeholder={t("selectDriver")}
+                  searchPlaceholder={t("searchByDriverHint")}
+                  recentsKey="history-driver-select"
+                  defaultLimit={10}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">{t("historyDate")}</Label>

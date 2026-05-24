@@ -176,7 +176,7 @@ If **anything** renders below the map — insights panels, quick actions, event 
 | Rule | Detail |
 |------|--------|
 | **Use `TrackingMapStage`** | Map children inside the frame; footer widgets as the `footer` prop in normal document flow |
-| **Cap map height** | `LAYOUT.mapAboveFoldHeight` + `LAYOUT.mapAboveFoldMin` (~90dvh minus dashboard chrome, max 560px) |
+| **Cap map height** | `LAYOUT.mapAboveFoldHeight` + `LAYOUT.mapAboveFoldMin` (dynamic viewport fit; no fixed 560px cap) |
 | **No bottom overlays** | Never `absolute bottom-*` widget grids on the map when those widgets can sit in `footer` |
 | **Map fills frame only** | Inner map: `mapHeightClass="h-full min-h-0"` — do not add extra `min-h-[480px]` on the map itself |
 | **Fullscreen exception** | Command fullscreen / map-only fullscreen may use `flex-1 h-full`; footer still below map, not overlaid |
@@ -192,3 +192,15 @@ If **anything** renders below the map — insights panels, quick actions, event 
 - **Zones:** render zone polygons/circles using the zone palette at `0.22` fill opacity and show a DOM label overlay (zone name + optional driver-count chip).
 - **Driver deselect:** always support all three paths: popup close `X`, map background click, and clicking the same marker again.
 - **Coming soon pills:** use small sentence-case `Coming soon` badges (`bg-amber-100 text-amber-800 border-amber-200`) only for missing backend-backed map/filter features.
+
+---
+
+## 13. Selects & Search
+
+- Use `Select` only for small, fixed enums (status, tabs, static modes), typically <=30 options.
+- Use `SearchSelect` for dynamic datasets (drivers, zones, partners, restaurants, users, and any list that can grow large).
+- `SearchSelect` must provide:
+  - contextual keywords (`name`, codes, IDs, mobile/email where relevant),
+  - a `recentsKey` so the last 5-10 picks appear first on open,
+  - contextual search placeholder text.
+- Do not allow raw IDs in dropdown triggers. Triggers must always display a human-readable label.

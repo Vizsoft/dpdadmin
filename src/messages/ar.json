@@ -297,6 +297,7 @@
       "historyRecentStops": "آخر التوقفات",
       "historyNoStops": "لا توجد توقفات",
       "selectDriver": "اختر سائقاً",
+      "searchByDriverHint": "ابحث بالاسم أو الجوال أو رقم الموظف أو معرف المستخدم",
       "noHistory": "لا يوجد سجل موقع لهذا اليوم.",
       "playbackPlay": "تشغيل",
       "playbackPause": "إيقاف",
@@ -1255,7 +1256,14 @@
         "notifySms": "رسائل SMS",
         "assignTitle": "إسناد إلى",
         "assignAllDrivers": "كل السائقين",
-        "driverGroupLabel": "اسم مجموعة السائقين"
+        "driverGroupLabel": "اسم مجموعة السائقين",
+        "driverGroupPlaceholder": "اختر سائقاً أو مجموعة أو اكتب قيمة مخصصة",
+        "searchDriverHint": "ابحث بالاسم أو الجوال أو رقم الموظف أو معرف المستخدم",
+        "mapToolDraw": "رسم",
+        "mapToolEdit": "تعديل",
+        "mapToolMove": "تحريك",
+        "mapToolDelete": "حذف",
+        "mapToolClear": "مسح"
       },
       "addZone": "إضافة منطقة",
       "refresh": "تحديث",

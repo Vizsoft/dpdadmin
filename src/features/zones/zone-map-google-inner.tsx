@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Loader2, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 import {
   getGoogleMapsLoadFailure,
   loadGoogleMaps,
@@ -55,6 +54,13 @@ function tupleToLatLng(center: [number, number]) {
 function createMapAdapter(
   map: GoogleMapInstance,
   google: GoogleMapsApi,
+  controls?: {
+    setDrawMode?: (mode: "polygon" | "circle" | null) => void;
+    setEditing?: (enabled: boolean) => void;
+    setDragging?: (enabled: boolean) => void;
+    deleteSelected?: () => void;
+    clearDraft?: () => void;
+  },
 ): ZoneMapAdapter {
   return {
     panTo(lat, lng, zoom = 14) {
@@ -70,6 +76,11 @@ function createMapAdapter(
     invalidateSize() {
       /* Google Maps auto-resizes */
     },
+    setDrawMode: controls?.setDrawMode,
+    setEditing: controls?.setEditing,
+    setDragging: controls?.setDragging,
+    deleteSelected: controls?.deleteSelected,
+    clearDraft: controls?.clearDraft,
   };
 }
 
@@ -429,6 +440,14 @@ export function ZoneMapGoogleInner({
     );
   }, [clearDraftOverlay]);
 
+  const handleDeleteShape = useCallback(() => {
+    clearDraftOverlay();
+    onDraftChangeRef.current?.(
+      null,
+      drawModeRef.current === "circle" ? "circle" : "polygon",
+    );
+  }, [clearDraftOverlay]);
+
   useEffect(() => {
     let cancelled = false;
     const container = containerRef.current;
@@ -453,7 +472,36 @@ export function ZoneMapGoogleInner({
         clickableIcons: false,
       });
       mapRef.current = map;
-      onMapReady?.(createMapAdapter(map, google));
+      onMapReady?.(
+        createMapAdapter(map, google, {
+          setDrawMode(mode) {
+            if (!drawingManagerRef.current) return;
+            if (!mode) {
+              drawingManagerRef.current.setDrawingMode(null);
+              return;
+            }
+            drawingManagerRef.current.setDrawingMode(
+              mode === "circle"
+                ? google.maps.drawing.OverlayType.CIRCLE
+                : google.maps.drawing.OverlayType.POLYGON,
+            );
+          },
+          setEditing(enabled) {
+            if (!draftOverlayRef.current) return;
+            draftOverlayRef.current.setEditable(enabled);
+          },
+          setDragging(enabled) {
+            if (!draftOverlayRef.current) return;
+            draftOverlayRef.current.setDraggable(enabled);
+          },
+          deleteSelected() {
+            handleDeleteShape();
+          },
+          clearDraft() {
+            handleClearShape();
+          },
+        }),
+      );
       setMapState("ready");
     });
 
@@ -470,7 +518,7 @@ export function ZoneMapGoogleInner({
       googleRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount once
-  }, []);
+  }, [handleClearShape, handleDeleteShape, onMapReady, clearDraftOverlay, clearZoneOverlays, clearZoneLabels]);
 
   useEffect(() => {
     if (mapState !== "ready") return;
@@ -582,19 +630,6 @@ export function ZoneMapGoogleInner({
               className="pointer-events-auto"
             />
           </div>
-          {drawMode && draftGeometry ? (
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              data-zone-map-clear
-              className="absolute bottom-3 end-3 z-10 cursor-pointer rounded-lg shadow-sm"
-              onClick={handleClearShape}
-            >
-              <Trash2 className="me-1.5 h-3.5 w-3.5" />
-              {t("clearShape")}
-            </Button>
-          ) : null}
         </>
       ) : null}
     </div>

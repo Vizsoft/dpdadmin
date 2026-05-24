@@ -176,6 +176,21 @@ function LeafletMapAdapterBridge({
       invalidateSize() {
         map.invalidateSize({ animate: false });
       },
+      setDrawMode() {
+        // Drawing controls are available only when draw mode is enabled.
+      },
+      setEditing() {
+        // Drawing controls are available only when draw mode is enabled.
+      },
+      setDragging() {
+        // Drawing controls are available only when draw mode is enabled.
+      },
+      deleteSelected() {
+        // Drawing controls are available only when draw mode is enabled.
+      },
+      clearDraft() {
+        // Drawing controls are available only when draw mode is enabled.
+      },
     });
   }, [map, onMapAdapterReady]);
 
@@ -266,6 +281,50 @@ function GeomanDrawControl({
       },
       invalidateSize() {
         map.invalidateSize({ animate: false });
+      },
+      setDrawMode(mode) {
+        drawModeRef.current = mode;
+        if (!mode) {
+          try {
+            map.pm?.disableDraw();
+          } catch {
+            /* ignore */
+          }
+          return;
+        }
+        syncDrawingMode();
+      },
+      setEditing(enabled) {
+        try {
+          if (enabled) map.pm?.enableGlobalEditMode();
+          else map.pm?.disableGlobalEditMode();
+        } catch {
+          /* ignore */
+        }
+      },
+      setDragging(enabled) {
+        try {
+          if (enabled) map.pm?.enableGlobalDragMode();
+          else map.pm?.disableGlobalDragMode();
+        } catch {
+          /* ignore */
+        }
+      },
+      deleteSelected() {
+        const layer = activeLayerRef.current;
+        if (!layer) return;
+        try {
+          map.removeLayer(layer);
+        } catch {
+          /* ignore */
+        }
+        clearActiveLayer();
+        syncDrawingMode();
+      },
+      clearDraft() {
+        removeZoneDraftLayers(map);
+        clearActiveLayer();
+        syncDrawingMode();
       },
     });
   }, [map, onMapReady, onMapAdapterReady]);

@@ -21,7 +21,7 @@ import {
 import { Pill, StatusDot } from "@/components/ui/metric-tile";
 import { formatZoneArea, zoneAreaSqKm } from "@/lib/geo/zone-area";
 import { cn } from "@/lib/utils";
-import type { ZoneRow } from "./types";
+import type { GeofenceKind, ZoneRow } from "./types";
 
 function formatCreatedAt(value: string, locale: string) {
   try {
@@ -44,14 +44,20 @@ function formatCreatedAt(value: string, locale: string) {
 
 export function ZoneListPanel({
   zones,
+  chips,
+  kindFilter,
   selectedId,
   isLoading,
+  onKindFilterChange,
   onSelect,
   onEdit,
 }: {
   zones: ZoneRow[];
+  chips: Array<{ id: "all" | GeofenceKind; label: string }>;
+  kindFilter: "all" | GeofenceKind;
   selectedId: string | null;
   isLoading: boolean;
+  onKindFilterChange: (value: "all" | GeofenceKind) => void;
   onSelect: (id: string) => void;
   onEdit: (zone: ZoneRow) => void;
 }) {
@@ -86,7 +92,31 @@ export function ZoneListPanel({
   const endCount = Math.min(safePage * pageSize, zones.length);
 
   return (
-    <aside className="flex h-full min-h-[560px] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+    <aside className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+      <div className="shrink-0 border-b border-slate-200 px-3 py-2.5 dark:border-slate-700">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex flex-wrap gap-1.5">
+            {chips.map((chip) => (
+              <button
+                key={chip.id}
+                type="button"
+                onClick={() => onKindFilterChange(chip.id)}
+                className={cn(
+                  "cursor-pointer rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                  kindFilter === chip.id
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border text-muted-foreground hover:bg-muted/50",
+                )}
+              >
+                {chip.label}
+              </button>
+            ))}
+          </div>
+          <span className="shrink-0 text-xs text-slate-500 dark:text-slate-300">
+            {zones.length}
+          </span>
+        </div>
+      </div>
       <div className="flex-1 overflow-auto">
         <Table>
           <TableHeader className="sticky top-0 z-10 bg-white dark:bg-slate-900">

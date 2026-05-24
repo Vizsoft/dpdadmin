@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { ChevronDown, Filter, Loader2, Plus, Search } from "lucide-react";
 import { AppPage } from "@/components/app/app-page";
+import { LAYOUT } from "@/components/app/layout-spacing";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -87,15 +88,6 @@ function ZonesPageContent() {
 
   return (
     <AppPage className="flex h-full min-h-[560px] flex-col gap-4">
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-          {t("geofence.pageTitle")}
-        </h1>
-        <p className="text-sm text-slate-500 dark:text-slate-300">
-          {t("geofence.pageSubtitle")}
-        </p>
-      </div>
-
       <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
         <div className="relative min-w-[240px] flex-1 md:max-w-sm">
           <Search className="pointer-events-none absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
@@ -132,29 +124,20 @@ function ZonesPageContent() {
 
       <ZoneGeofencesSummary zones={zones} />
 
-      <div className="flex flex-wrap gap-1.5">
-        {kindChips.map((chip) => (
-          <button
-            key={chip.id}
-            type="button"
-            onClick={() => setKindFilter(chip.id)}
-            className={cn(
-              "cursor-pointer rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-              kindFilter === chip.id
-                ? "border-primary bg-primary/10 text-primary"
-                : "border-border text-muted-foreground hover:bg-muted/50",
-            )}
-          >
-            {chip.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="grid min-h-0 flex-1 gap-3 overflow-hidden lg:grid-cols-[minmax(520px,0.95fr)_1.05fr]">
+      <div
+        className={cn(
+          "grid min-h-0 gap-3 overflow-hidden lg:grid-cols-[minmax(520px,0.95fr)_1.05fr]",
+          LAYOUT.mapAboveFoldHeight,
+          LAYOUT.mapAboveFoldMin,
+        )}
+      >
         <ZoneListPanel
           zones={filteredZones}
+          chips={kindChips}
+          kindFilter={kindFilter}
           selectedId={effectiveSelectedId}
           isLoading={isLoading}
+          onKindFilterChange={setKindFilter}
           onSelect={setSelectedId}
           onEdit={handleEdit}
         />

@@ -304,6 +304,7 @@
       "historyRecentStops": "Recent stops",
       "historyNoStops": "No stops detected",
       "selectDriver": "Select driver",
+      "searchByDriverHint": "Search by name, mobile, employee ID, or user ID",
       "noHistory": "No location history for this day.",
       "playbackPlay": "Play",
       "playbackPause": "Pause",
@@ -1255,7 +1256,14 @@
         "notifySms": "SMS",
         "assignTitle": "Assign to",
         "assignAllDrivers": "All drivers",
-        "driverGroupLabel": "Driver group label"
+        "driverGroupLabel": "Driver group label",
+        "driverGroupPlaceholder": "Select driver, group, or leave custom value",
+        "searchDriverHint": "Search by name, mobile, employee id, or user id",
+        "mapToolDraw": "Draw",
+        "mapToolEdit": "Edit",
+        "mapToolMove": "Move",
+        "mapToolDelete": "Delete",
+        "mapToolClear": "Clear"
       },
       "addZone": "Create geofence",
       "refresh": "Refresh",

@@ -11,6 +11,11 @@ export type ZoneMapAdapter = {
   panTo: (lat: number, lng: number, zoom?: number) => void;
   fitViewport: (viewport: ZoneMapViewport) => void;
   invalidateSize?: () => void;
+  setDrawMode?: (mode: "polygon" | "circle" | null) => void;
+  setEditing?: (enabled: boolean) => void;
+  setDragging?: (enabled: boolean) => void;
+  deleteSelected?: () => void;
+  clearDraft?: () => void;
 };
 
 export function viewportFromGooglePlace(viewport: {
