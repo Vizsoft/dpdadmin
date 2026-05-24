@@ -90,6 +90,12 @@ export function IncentiveRuleFormSheet({
   const periodSelectItems = selectOptionsFrom(INCENTIVE_PERIODS, (p) => p, (p) =>
     t(`period.${p}`),
   );
+  const targetModeSelectItems = selectOptionsFrom(INCENTIVE_TARGET_MODES, (m) => m, (m) =>
+    t(`targetTypes.${m}`),
+  );
+  const rewardModeSelectItems = selectOptionsFrom(INCENTIVE_REWARD_MODES, (m) => m, (m) =>
+    t(`rewardTypes.${m}`),
+  );
   const queryClient = useQueryClient();
   const [isPending, startTransition] = useTransition();
   const isEdit = Boolean(rule);
@@ -402,6 +408,7 @@ export function IncentiveRuleFormSheet({
             <div className="space-y-1.5">
               <Label>{t("fields.targetMode")}</Label>
               <Select
+                items={targetModeSelectItems}
                 value={targetMode}
                 onValueChange={(v) => v && setTargetMode(v as IncentiveTargetMode)}
               >
@@ -465,6 +472,7 @@ export function IncentiveRuleFormSheet({
                 <div className="space-y-1.5">
                   <Label>{t("fields.rewardMode")}</Label>
                   <Select
+                    items={rewardModeSelectItems}
                     value={rewardMode}
                     onValueChange={(v) => v && setRewardMode(v as IncentiveRewardMode)}
                   >
@@ -570,6 +578,7 @@ export function IncentiveRuleFormSheet({
                         <div className="space-y-1.5">
                           <Label>{t("fields.rewardMode")}</Label>
                           <Select
+                            items={rewardModeSelectItems}
                             value={tier.reward_mode}
                             onValueChange={(v) =>
                               v &&

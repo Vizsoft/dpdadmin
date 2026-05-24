@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/auth-context";
@@ -23,6 +23,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
+import { selectOptionsFrom } from "@/lib/select-items";
 import { useCorrectAttendance } from "./use-attendance";
 import { ATTENDANCE_STATUSES, type AttendanceListRow, type AttendanceStatus } from "./types";
 
@@ -73,6 +74,12 @@ export function AttendanceCorrectionSheet({
     setStatus(row.status === "absent" && createMode ? "present" : row.status);
     setNote("");
   }, [row, open, createMode]);
+
+  const statusSelectItems = useMemo(
+    () =>
+      selectOptionsFrom(ATTENDANCE_STATUSES, (s) => s, (s) => t(`status.${s}`)),
+    [t],
+  );
 
   if (!row) return null;
 
@@ -159,6 +166,7 @@ export function AttendanceCorrectionSheet({
           <div className="space-y-1.5">
             <Label htmlFor="attendanceStatus">{t("colStatus")}</Label>
             <Select
+              items={statusSelectItems}
               value={status}
               onValueChange={(v) => setStatus(v as AttendanceStatus)}
               disabled={!canManage || isPending}
@@ -168,7 +176,7 @@ export function AttendanceCorrectionSheet({
               </SelectTrigger>
               <SelectContent>
                 {ATTENDANCE_STATUSES.map((s) => (
-                  <SelectItem key={s} value={s}>
+                  <SelectItem key={s} value={s} label={t(`status.${s}`)}>
                     {t(`status.${s}`)}
                   </SelectItem>
                 ))}

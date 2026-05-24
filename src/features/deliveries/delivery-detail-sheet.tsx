@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
   Download,
@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/select";
 import { StatusPill } from "@/components/dashboard/status-pill";
 import { cn } from "@/lib/utils";
+import { selectOptionsFrom } from "@/lib/select-items";
 import { DeliveryGpsAuditPanel } from "./delivery-gps-audit-panel";
 import { DeliveryLocationMap } from "./delivery-location-map";
 import { useDeleteDelivery, useUpdateDeliveryStatus } from "./use-deliveries";
@@ -216,6 +217,14 @@ export function DeliveryDetailSheet({
     setRejectReason(delivery.rejection_reason ?? "");
   }, [delivery, open]);
 
+  const statusSelectItems = useMemo(
+    () =>
+      selectOptionsFrom(STATUS_OPTIONS, (status) => status, (status) =>
+        t(statusMessageKey(status)),
+      ),
+    [t],
+  );
+
   if (!delivery) return null;
 
   const statusLabel = t(
@@ -381,6 +390,7 @@ export function DeliveryDetailSheet({
                       {t("colStatus")}
                     </Label>
                     <Select
+                      items={statusSelectItems}
                       value={statusDraft}
                       onValueChange={(v) => setStatusDraft(v as DeliveryStatus)}
                     >
@@ -392,7 +402,7 @@ export function DeliveryDetailSheet({
                       </SelectTrigger>
                       <SelectContent>
                         {STATUS_OPTIONS.map((status) => (
-                          <SelectItem key={status} value={status}>
+                          <SelectItem key={status} value={status} label={t(statusMessageKey(status))}>
                             {t(statusMessageKey(status))}
                           </SelectItem>
                         ))}

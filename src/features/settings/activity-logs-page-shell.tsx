@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, useTransition } from "react";
+import { useCallback, useMemo, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { Download, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -36,6 +36,7 @@ import {
   type AdminActivityLogRow,
 } from "@/lib/audit/audit-actions";
 import type { AdminActivityAction } from "@/lib/audit/log-admin-activity";
+import { selectOptions } from "@/lib/select-items";
 
 const ACTION_OPTIONS: AdminActivityAction[] = [
   "create",
@@ -58,6 +59,15 @@ export function ActivityLogsPageShell() {
   const [selected, setSelected] = useState<AdminActivityLogRow | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
+
+  const actionFilterItems = useMemo(
+    () =>
+      selectOptions([
+        { value: "all", label: t("allActions") },
+        ...ACTION_OPTIONS.map((a) => ({ value: a, label: a })),
+      ]),
+    [t],
+  );
 
   const loadLogs = useCallback(() => {
     startTransition(async () => {
@@ -144,14 +154,20 @@ export function ActivityLogsPageShell() {
             </div>
             <div className="space-y-1.5">
               <Label>{t("actionFilter")}</Label>
-              <Select value={action} onValueChange={(v) => setAction(v ?? "all")}>
+              <Select
+                items={actionFilterItems}
+                value={action}
+                onValueChange={(v) => setAction(v ?? "all")}
+              >
                 <SelectTrigger className="w-40 cursor-pointer rounded-lg">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">{t("allActions")}</SelectItem>
+                  <SelectItem value="all" label={t("allActions")}>
+                    {t("allActions")}
+                  </SelectItem>
                   {ACTION_OPTIONS.map((a) => (
-                    <SelectItem key={a} value={a}>
+                    <SelectItem key={a} value={a} label={a}>
                       {a}
                     </SelectItem>
                   ))}

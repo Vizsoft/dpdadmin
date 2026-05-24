@@ -47,6 +47,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useAuth } from "@/contexts/auth-context";
+import { selectOptions } from "@/lib/select-items";
 import { exportAttendanceCsv } from "./attendance-actions";
 import { AttendanceCorrectionSheet } from "./attendance-correction-sheet";
 import { useAttendanceList } from "./use-attendance";
@@ -134,6 +135,18 @@ function AttendancePageContent() {
       );
     });
   }, [rows, search, statusFilter]);
+
+  const statusFilterItems = useMemo(
+    () =>
+      selectOptions([
+        { value: "all", label: t("filterStatusAll") },
+        { value: "present", label: t("status.present") },
+        { value: "late", label: t("status.late") },
+        { value: "absent", label: t("status.absent") },
+        { value: "on_leave", label: t("status.on_leave") },
+      ]),
+    [t],
+  );
 
   const kpiItems = useMemo(() => {
     if (tabFilter === "logs" || !kpis) {
@@ -274,6 +287,7 @@ function AttendancePageContent() {
                 </>
               ) : null}
               <Select
+                items={statusFilterItems}
                 value={statusFilter}
                 onValueChange={(value) => setStatusFilter(value ?? "all")}
               >
@@ -281,11 +295,21 @@ function AttendancePageContent() {
                   <SelectValue placeholder={t("filterStatusAll")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">{t("filterStatusAll")}</SelectItem>
-                  <SelectItem value="present">{t("status.present")}</SelectItem>
-                  <SelectItem value="late">{t("status.late")}</SelectItem>
-                  <SelectItem value="absent">{t("status.absent")}</SelectItem>
-                  <SelectItem value="on_leave">{t("status.on_leave")}</SelectItem>
+                  <SelectItem value="all" label={t("filterStatusAll")}>
+                    {t("filterStatusAll")}
+                  </SelectItem>
+                  <SelectItem value="present" label={t("status.present")}>
+                    {t("status.present")}
+                  </SelectItem>
+                  <SelectItem value="late" label={t("status.late")}>
+                    {t("status.late")}
+                  </SelectItem>
+                  <SelectItem value="absent" label={t("status.absent")}>
+                    {t("status.absent")}
+                  </SelectItem>
+                  <SelectItem value="on_leave" label={t("status.on_leave")}>
+                    {t("status.on_leave")}
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>

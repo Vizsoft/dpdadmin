@@ -75,6 +75,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { selectOptionsFrom } from "@/lib/select-items";
 
 const ROLE_COL_CLASS = "w-[5.5rem] shrink-0";
 
@@ -532,6 +533,11 @@ export function RolesPermissionsPanel({
     [roles],
   );
 
+  const roleTemplateItems = useMemo(
+    () => selectOptionsFrom(editableRoles, (r) => r.id, (r) => r.name),
+    [editableRoles],
+  );
+
   const usageMap = useMemo(() => {
     const m = new Map<string, number>();
     for (const u of usageCounts) m.set(u.roleId, u.userCount);
@@ -931,6 +937,7 @@ export function RolesPermissionsPanel({
             <div className="space-y-1.5">
               <Label>{t("startFromRole")}</Label>
               <Select
+                items={roleTemplateItems}
                 value={formTemplateId}
                 onValueChange={(v) => setFormTemplateId(v ?? "")}
               >
