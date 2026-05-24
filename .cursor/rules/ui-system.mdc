@@ -48,6 +48,8 @@ Footer ≈ 72px + 14" usable ≈ 720px ⇒ body must fit in **≈ 648px**. **Inn
 | Stack gap | `LAYOUT.stackGap` (`gap-2`) | Vertical stacks inside a panel |
 | Panel section | `LAYOUT.panelSection` | Header rows inside `TrackingGlassCard` |
 | Panel block | `LAYOUT.panelBlock` | Filter / form blocks inside cards |
+| Map above fold | `LAYOUT.mapAboveFoldHeight` + `LAYOUT.mapAboveFoldMin` | **Any map stage that has widgets below** (insights, actions, tables, playback footer) |
+| Map stage wrapper | `TrackingMapStage` from `@/features/live-tracking/tracking-shell` | Map + optional footer widgets in document flow — **never absolute overlay on map bottom** |
 
 **Never** use arbitrary gaps like `gap-4`, `gap-6`, or `space-y-6` on command-center split layouts. Live and History must share the same **`TrackingGlassCard`** sidebar shell.
 
@@ -160,11 +162,30 @@ Match density, column count, and architecture from user-provided screenshots. As
 - [ ] Section icon chips + tinted avatar + primary Driver ID badge
 - [ ] Row click → detail page; edit → modal only
 - [ ] Add via `?add=1` modal on list
+- [ ] **Map above fold:** if any widgets/tables/actions sit below the map, use `TrackingMapStage` + `LAYOUT.mapAboveFoldHeight` — map must not overlap footer content
 - [ ] Map markers and zones follow §12, including deselect paths
 
 ---
 
 ## 12. Maps & overlays
+
+### Above-the-fold map stages (mandatory when widgets exist below)
+
+If **anything** renders below the map — insights panels, quick actions, event tables, playback footers, KPI strips tied to the map — the map is a **stage**, not a full-page canvas.
+
+| Rule | Detail |
+|------|--------|
+| **Use `TrackingMapStage`** | Map children inside the frame; footer widgets as the `footer` prop in normal document flow |
+| **Cap map height** | `LAYOUT.mapAboveFoldHeight` + `LAYOUT.mapAboveFoldMin` (~90dvh minus dashboard chrome, max 560px) |
+| **No bottom overlays** | Never `absolute bottom-*` widget grids on the map when those widgets can sit in `footer` |
+| **Map fills frame only** | Inner map: `mapHeightClass="h-full min-h-0"` — do not add extra `min-h-[480px]` on the map itself |
+| **Fullscreen exception** | Command fullscreen / map-only fullscreen may use `flex-1 h-full`; footer still below map, not overlaid |
+| **Inline maps exempt** | Small contextual maps in sheets, tabs, or dashboard widgets (`h-44`–`h-64`) — fixed compact height is fine |
+| **Side-by-side exempt** | Zone editor / list+map split views where the map shares a row with a sidebar — not a footer stack |
+
+**Anti-patterns:** `min-h-[560px] flex-1` on a map frame with footer widgets; Fleet insights / Quick actions floating over the map bottom; history map taller than viewport while events table is below.
+
+### Map behavior
 
 - **Marker shape + icon:** use lucide-style vehicle icon inside a colored teardrop marker; status color comes from `pinStatus`.
 - **Unknown vehicle default:** if vehicle type is missing, default to `bike`; never infer vehicle type from tracking status.

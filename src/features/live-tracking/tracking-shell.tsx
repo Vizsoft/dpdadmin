@@ -100,11 +100,12 @@ export function TrackingMapStage({
   frameClassName?: string;
   fullscreen?: boolean;
 }) {
-  const resolvedMapHeight =
-    mapHeightClass ??
-    (fullscreen
-      ? "min-h-0 h-full flex-1"
-      : cn(LAYOUT.mapAboveFoldHeight, LAYOUT.mapAboveFoldMin));
+  const aboveFoldHeight = cn(LAYOUT.mapAboveFoldHeight, LAYOUT.mapAboveFoldMin);
+  const resolvedMapHeight = fullscreen
+    ? (mapHeightClass ?? "min-h-0 h-full flex-1")
+    : footer
+      ? aboveFoldHeight
+      : (mapHeightClass ?? aboveFoldHeight);
 
   return (
     <div

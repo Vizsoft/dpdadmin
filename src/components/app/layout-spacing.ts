@@ -18,7 +18,9 @@ export const LAYOUT = {
   /**
    * Map stage height — stops ~10% above the viewport fold.
    * 90dvh minus dashboard chrome (header + page padding + title band).
+   * REQUIRED whenever widgets/tables/actions render below the map — use via TrackingMapStage.
    */
   mapAboveFoldHeight: "h-[min(calc(90dvh-10.5rem),560px)]",
+  /** Minimum map stage height when using mapAboveFoldHeight */
   mapAboveFoldMin: "min-h-[280px]",
 } as const;
