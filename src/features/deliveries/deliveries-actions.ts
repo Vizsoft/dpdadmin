@@ -64,6 +64,57 @@ async function requireSuperAdmin() {
   return session;
 }
 
+async function resolveDeliveryRestaurantId(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  input: {
+    driver_id: string;
+    partner_id: string | null;
+    restaurant_id: string | null;
+  },
+): Promise<string | null> {
+  if (input.restaurant_id) return input.restaurant_id;
+
+  const { data: assigned } = await supabase
+    .from("driver_restaurants")
+    .select("restaurant_id")
+    .eq("driver_id", input.driver_id)
+    .limit(5);
+
+  const assignedIds = (assigned ?? [])
+    .map((row) => row.restaurant_id)
+    .filter((id): id is string => Boolean(id));
+
+  if (assignedIds.length === 1 && !input.partner_id) {
+    return assignedIds[0];
+  }
+
+  if (assignedIds.length > 0 && input.partner_id) {
+    const { data: matchedAssigned } = await supabase
+      .from("restaurants")
+      .select("id")
+      .in("id", assignedIds)
+      .eq("partner_id", input.partner_id)
+      .limit(2);
+    if ((matchedAssigned ?? []).length === 1) {
+      return matchedAssigned![0]!.id;
+    }
+  }
+
+  if (!input.partner_id) return null;
+
+  const { data: partnerRestaurants } = await supabase
+    .from("restaurants")
+    .select("id")
+    .eq("partner_id", input.partner_id)
+    .order("created_at", { ascending: true })
+    .limit(2);
+  if ((partnerRestaurants ?? []).length === 1) {
+    return partnerRestaurants![0]!.id;
+  }
+
+  return null;
+}
+
 function earnDateFromDeliveredAt(deliveredAt: string): string {
   const d = new Date(deliveredAt);
   return new Intl.DateTimeFormat("en-CA", {
@@ -111,22 +162,12 @@ async function syncVerificationForDelivery(
   // Resolve the restaurant we'll attach the verification to. If the delivery
   // has its own restaurant, use that; otherwise, fall back to a single
   // restaurant on the partner so we still have one to write to.
-  let restaurantId: string | null = delivery.restaurant_id;
-  if (!restaurantId) {
-    const { data: partnerRestaurants } = await supabase
-      .from("restaurants")
-      .select("id")
-      .eq("partner_id", delivery.partner_id)
-      .order("created_at", { ascending: true })
-      .limit(2);
-    // Only auto-attach when the partner has exactly one restaurant — otherwise
-    // we'd be guessing which one the delivery belongs to.
-    if ((partnerRestaurants ?? []).length === 1) {
-      restaurantId = partnerRestaurants![0]!.id;
-    } else {
-      return;
-    }
-  }
+  const restaurantId = await resolveDeliveryRestaurantId(supabase, {
+    driver_id: delivery.driver_id,
+    partner_id: delivery.partner_id,
+    restaurant_id: delivery.restaurant_id,
+  });
+  if (!restaurantId) return;
 
   // Count eligible deliveries for this driver+restaurant_or_partner+date.
   const startIso = `${serviceDate}T00:00:00+03:00`;
@@ -458,6 +499,18 @@ export async function updateDeliveryStatus(
           rejection_reason: null,
         };
 
+  const resolvedRestaurantId =
+    status === "verified"
+      ? await resolveDeliveryRestaurantId(supabase, {
+          driver_id: existing.driver_id,
+          partner_id: (existing as { partner_id: string | null }).partner_id ?? null,
+          restaurant_id: (existing as { restaurant_id: string | null }).restaurant_id ?? null,
+        })
+      : null;
+  if (resolvedRestaurantId && status !== "rejected") {
+    (updatePayload as Record<string, unknown>).restaurant_id = resolvedRestaurantId;
+  }
+
   const { error } = await supabase
     .from("deliveries")
     .update(updatePayload)
@@ -503,7 +556,9 @@ export async function updateDeliveryStatus(
       driver_id: existing.driver_id,
       delivered_at: existing.delivered_at,
       partner_id: (existing as { partner_id: string | null }).partner_id ?? null,
-      restaurant_id: (existing as { restaurant_id: string | null }).restaurant_id ?? null,
+      restaurant_id:
+        resolvedRestaurantId ??
+        ((existing as { restaurant_id: string | null }).restaurant_id ?? null),
     },
     session.id,
   );
