@@ -12,6 +12,7 @@ type LookupResult = {
   user_id?: string;
   driver_code?: string;
   error?: string;
+  reason?: string;
 };
 
 function json(body: Record<string, unknown>, status = 200) {
@@ -68,6 +69,18 @@ Deno.serve(async (req) => {
 
   const lookup = lookupRaw as LookupResult;
   if (!lookup?.ok || !lookup.user_id) {
+    if (lookup?.error === "driver_blocked") {
+      return json(
+        {
+          error: "driver_blocked",
+          reason:
+            typeof (lookup as { reason?: unknown }).reason === "string"
+              ? (lookup as { reason?: string }).reason
+              : null,
+        },
+        403,
+      );
+    }
     const err =
       lookup?.error === "driver_not_active"
         ? "driver_not_active"

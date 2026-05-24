@@ -73,25 +73,27 @@ export function TrackingInsightsPanel({
           {t("aiInsights")}
         </h3>
       </div>
-      <ul className="grid grid-cols-2 gap-2">
+      <ul className="grid grid-cols-3 gap-1.5">
         {insights.map((item) => (
           <li
             key={item.id}
-            className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800/60 dark:hover:bg-slate-800"
+            className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800/60 dark:hover:bg-slate-800"
           >
-            <span className="flex min-w-0 items-center gap-2 text-slate-700 dark:text-slate-200">
-              <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-white dark:bg-slate-900">
+            <span className="flex min-w-0 items-center gap-1.5 text-slate-700 dark:text-slate-200">
+              <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-white dark:bg-slate-900">
                 <item.icon className={cnIcon(item.tone)} />
               </span>
-              <span className="truncate">{item.label}</span>
+              <span className="line-clamp-2 text-[10px] leading-tight">{item.label}</span>
             </span>
-            <span className={cnCount(item.count)}>{item.count} {t("vehicles")}</span>
+            <span className={cnCount(item.count)}>
+              {item.count} {t("vehicles")}
+            </span>
           </li>
         ))}
       </ul>
       <button
         type="button"
-        className="mt-3 inline-flex cursor-not-allowed items-center gap-2 text-xs font-medium text-primary/85"
+        className="mt-2 inline-flex cursor-not-allowed items-center gap-2 text-xs font-medium text-primary/85"
         disabled
       >
         {t("viewAllInsights")}

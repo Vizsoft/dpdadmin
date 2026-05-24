@@ -54,6 +54,7 @@ import {
   sortDrivers,
   type DriversSortKey,
 } from "./drivers-list-utils";
+import { StatusPill } from "@/components/dashboard/status-pill";
 import {
   AccountStatusPill,
   AttendancePill,
@@ -631,10 +632,17 @@ function DriversPageContent() {
                           {driver.today_deliveries}
                         </TableCell>
                         <TableCell>
-                          <AccountStatusPill
-                            status={driver.account_status}
-                            label={accountStatusLabel(driver.account_status)}
-                          />
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <AccountStatusPill
+                              status={driver.account_status}
+                              label={accountStatusLabel(driver.account_status)}
+                            />
+                            {driver.is_blocked ? (
+                              <StatusPill variant="danger" dot={false}>
+                                {t("blockedBadge")}
+                              </StatusPill>
+                            ) : null}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <AttendancePill

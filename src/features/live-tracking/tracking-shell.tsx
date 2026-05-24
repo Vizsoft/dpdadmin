@@ -36,19 +36,28 @@ export function TrackingCommandLayout({
   className?: string;
   fullscreen?: boolean;
 }) {
+  const sharedHeight = cn(LAYOUT.mapAboveFoldHeight, LAYOUT.mapAboveFoldMin);
+
   return (
     <div
       className={cn(
         "grid",
         LAYOUT.panelGap,
         fullscreen
-          ? "h-full min-h-0 grid-rows-1 xl:grid-cols-[300px_minmax(0,1fr)]"
-          : "xl:grid-cols-[300px_minmax(0,1fr)]",
+          ? "h-full min-h-0 grid-rows-1 xl:grid-cols-[minmax(240px,1fr)_minmax(0,4fr)]"
+          : cn("xl:grid-cols-[minmax(240px,1fr)_minmax(0,4fr)]", "xl:items-stretch"),
         "max-xl:grid-cols-1",
         className,
       )}
     >
-      <aside className={cn("flex min-h-0 max-xl:max-h-[420px] flex-col overflow-hidden", LAYOUT.panelGap)}>
+      <aside
+        className={cn(
+          "flex min-h-0 flex-col overflow-hidden",
+          LAYOUT.panelGap,
+          !fullscreen && cn("max-xl:max-h-[420px]", sharedHeight),
+          fullscreen && "h-full min-h-0",
+        )}
+      >
         {left}
       </aside>
       <section
@@ -56,6 +65,7 @@ export function TrackingCommandLayout({
           "flex min-h-0 flex-col",
           LAYOUT.panelGap,
           fullscreen && "h-full min-h-0",
+          !fullscreen && sharedHeight,
         )}
       >
         {center}
@@ -113,12 +123,17 @@ export function TrackingMapStage({
         "flex min-h-0 flex-col",
         LAYOUT.panelGap,
         fullscreen && "h-full min-h-0",
+        !fullscreen && !footer && aboveFoldHeight,
       )}
     >
       <TrackingMapFrame mapHeightClass={resolvedMapHeight} className={frameClassName}>
         {children}
       </TrackingMapFrame>
-      {footer ? <div className="grid shrink-0 gap-2 md:grid-cols-2">{footer}</div> : null}
+      {footer ? (
+        <div className="grid shrink-0 gap-2 md:grid-cols-[minmax(0,1.5fr)_minmax(260px,1fr)]">
+          {footer}
+        </div>
+      ) : null}
     </div>
   );
 }

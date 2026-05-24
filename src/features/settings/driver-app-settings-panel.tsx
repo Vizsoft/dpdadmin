@@ -10,6 +10,7 @@ import {
   updateDriverAppDeliveryProximity,
   updateDriverAppMaintenanceMessage,
   updateDriverAppSettings,
+  uploadDriverAppIcon,
   uploadDriverAppLogo,
   uploadDriverAppSplash,
 } from "@/features/settings/driver-app-settings-actions";
@@ -30,6 +31,7 @@ type DriverAppSettingsPanelProps = {
   driverAppTitle: string;
   driverAppLogoUrl: string | null;
   driverAppSplashUrl: string | null;
+  driverAppIconUrl: string | null;
   driverAppMaintenanceMode: boolean;
   driverAppMaintenanceMessage: string;
   driverAppDeliveryProximityMeters: number;
@@ -112,6 +114,7 @@ export function DriverAppSettingsPanel({
   driverAppTitle,
   driverAppLogoUrl,
   driverAppSplashUrl,
+  driverAppIconUrl,
   driverAppMaintenanceMode,
   driverAppMaintenanceMessage,
   driverAppDeliveryProximityMeters,
@@ -121,9 +124,11 @@ export function DriverAppSettingsPanel({
   const router = useRouter();
   const logoRef = useRef<HTMLInputElement>(null);
   const splashRef = useRef<HTMLInputElement>(null);
+  const iconRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [splashPreview, setSplashPreview] = useState<string | null>(null);
+  const [iconPreview, setIconPreview] = useState<string | null>(null);
   const [maintenanceMode, setMaintenanceMode] = useState(driverAppMaintenanceMode);
   const [proximityMeters, setProximityMeters] = useState(
     String(driverAppDeliveryProximityMeters),
@@ -132,6 +137,7 @@ export function DriverAppSettingsPanel({
 
   const logoDisplay = logoPreview ?? driverAppLogoUrl;
   const splashDisplay = splashPreview ?? driverAppSplashUrl;
+  const iconDisplay = iconPreview ?? driverAppIconUrl;
 
   const errorMessage =
     error === "missing_fields"
@@ -151,7 +157,7 @@ export function DriverAppSettingsPanel({
                   : null;
 
   return (
-    <div className="mx-auto max-w-6xl space-y-4">
+    <div className="space-y-4">
       <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
         {/* Left column — branding & launch assets */}
         <Card>
@@ -192,7 +198,7 @@ export function DriverAppSettingsPanel({
                 />
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <AssetUploadBlock
                   label={t("logo")}
                   hint={t("logoHint")}
@@ -257,6 +263,40 @@ export function DriverAppSettingsPanel({
                       if (result.splashUrl) setSplashPreview(result.splashUrl);
                       if (splashRef.current) splashRef.current.value = "";
                       toast.success(t("splashUploaded"));
+                      router.refresh();
+                    });
+                  }}
+                />
+                <AssetUploadBlock
+                  label={t("appIcon")}
+                  hint={t("appIconHint")}
+                  previewUrl={iconDisplay}
+                  placeholder={t("noImage")}
+                  fileRef={iconRef}
+                  accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+                  uploadLabel={t("uploadAppIcon")}
+                  disabled={isPending}
+                  previewClassName="h-16 w-16 object-cover"
+                  onFileChange={(file) => setIconPreview(URL.createObjectURL(file))}
+                  onUpload={() => {
+                    const file = iconRef.current?.files?.[0];
+                    if (!file) {
+                      setError("missing_file");
+                      return;
+                    }
+                    startTransition(async () => {
+                      setError(null);
+                      const formData = new FormData();
+                      formData.append("icon", file);
+                      const result = await uploadDriverAppIcon(locale, formData);
+                      if (result.error) {
+                        setError(result.error);
+                        toast.error(t("errors.saveFailed"));
+                        return;
+                      }
+                      if (result.iconUrl) setIconPreview(result.iconUrl);
+                      if (iconRef.current) iconRef.current.value = "";
+                      toast.success(t("appIconUploaded"));
                       router.refresh();
                     });
                   }}
@@ -445,12 +485,14 @@ export function DriverAppSettingsPanel({
               }
               setLogoPreview(null);
               setSplashPreview(null);
+              setIconPreview(null);
               setMaintenanceMode(false);
               setProximityMeters(
                 String(DEFAULT_DRIVER_APP_SETTINGS.driver_app_delivery_proximity_meters),
               );
               if (logoRef.current) logoRef.current.value = "";
               if (splashRef.current) splashRef.current.value = "";
+              if (iconRef.current) iconRef.current.value = "";
               toast.success(t("resetDone"));
               router.refresh();
             });

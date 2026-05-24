@@ -38,6 +38,7 @@ import { useHasMounted } from "@/hooks/use-has-mounted";
 import { cn } from "@/lib/utils";
 import { TrackingGlassCard } from "@/features/live-tracking/tracking-shell";
 import { DriverAccountStatusEditor } from "./driver-account-status-editor";
+import { DriverBlockEditor } from "./driver-block-editor";
 import { DriverDocumentsTab } from "./driver-documents-tab";
 import { DriverLocationTab } from "./driver-location-tab";
 import { DriverEditSheet } from "./driver-edit-sheet";
@@ -200,6 +201,7 @@ function PasscodeCard({
 
 function DriverDetailContent({ id }: { id: string }) {
   const t = useTranslations("pages.driverDetail");
+  const tBlock = useTranslations("pages.driverDetail.block");
   const tNew = useTranslations("pages.driverNew");
   const tList = useTranslations("pages.drivers");
   const router = useRouter();
@@ -470,6 +472,11 @@ function DriverDetailContent({ id }: { id: string }) {
                     status={driver.account_status}
                     label={accountStatusLabel(driver.account_status)}
                   />
+                  {driver.is_blocked ? (
+                    <span className="inline-flex items-center rounded-full bg-destructive/15 px-2.5 py-0.5 text-xs font-medium text-destructive">
+                      {tBlock("statusBlocked")}
+                    </span>
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -551,6 +558,22 @@ function DriverDetailContent({ id }: { id: string }) {
         </div>
 
         <aside className="space-y-3">
+          {driver.linked_profile_id && !isArchived && canManage ? (
+            <TrackingGlassCard className="border-slate-200 bg-white dark:border-slate-700/80 dark:bg-slate-900">
+              <div className="border-b border-border px-4 py-3">
+                <p className="text-sm font-semibold text-foreground">{tBlock("title")}</p>
+              </div>
+              <div className="px-4 py-4">
+                <DriverBlockEditor
+                  driverId={driver.linked_profile_id}
+                  isBlocked={driver.is_blocked}
+                  blockedReason={driver.blocked_reason}
+                  blockedAt={driver.blocked_at}
+                  canManage={canManage}
+                />
+              </div>
+            </TrackingGlassCard>
+          ) : null}
           {driver.linked_profile_id && !isArchived && canManage ? (
             <TrackingGlassCard className="border-slate-200 bg-white dark:border-slate-700/80 dark:bg-slate-900">
               <div className="border-b border-border px-4 py-3">

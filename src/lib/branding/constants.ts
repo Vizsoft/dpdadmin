@@ -37,6 +37,11 @@ export const MAX_DELIVERY_PROXIMITY_METERS = 10_000;
 
 export const DRIVER_APP_LOGO_PREFIX = "driver-app/logo";
 export const DRIVER_APP_SPLASH_PREFIX = "driver-app/splash";
+export const DRIVER_APP_ICON_PREFIX = "driver-app/icon";
+
+/** Raster only — native launcher icons cannot use SVG. */
+export const ALLOWED_ICON_EXTENSIONS = ["png", "jpg", "jpeg", "webp"] as const;
+export const MAX_ICON_BYTES = 2 * 1024 * 1024;
 
 export const LOGO_MIME_TYPES: Record<string, LogoType> = {
   "image/png": "image",

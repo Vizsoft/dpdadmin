@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 export const DRIVER_UPLOAD_ENTITY_TYPES = [
   "driver_doc",
   "driver_selfie",
+  "driver_avatar",
   "order_proof",
 ] as const;
 
@@ -18,6 +19,10 @@ const ENTITY_RULES: Record<
   },
   driver_selfie: {
     maxBytes: 5 * 1024 * 1024,
+    allowedMimePrefixes: ["image/"],
+  },
+  driver_avatar: {
+    maxBytes: 2 * 1024 * 1024,
     allowedMimePrefixes: ["image/"],
   },
   order_proof: {
@@ -73,5 +78,8 @@ export function buildDriverObjectKey(params: {
 }): string {
   const date = new Date().toISOString().slice(0, 10);
   const ext = extensionFromFilename(params.originalFilename);
+  if (params.entityType === "driver_avatar") {
+    return `driver-avatars/${params.driverId}/${date}/${randomUUID()}.${ext}`;
+  }
   return `drivers/${params.driverId}/${params.entityType}/${date}/${randomUUID()}.${ext}`;
 }

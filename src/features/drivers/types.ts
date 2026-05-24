@@ -101,6 +101,8 @@ export type DriverListRow = {
   linked: boolean;
   linked_profile_id: string | null;
   account_status: DriverAccountStatus;
+  is_blocked: boolean;
+  blocked_reason: string | null;
   is_on_duty: boolean;
   today_deliveries: number;
   app_passcode: string | null;
@@ -136,6 +138,9 @@ export type DriverDetailModel = {
   has_published_restaurant: boolean;
   app_passcode: string | null;
   account_status: DriverAccountStatus;
+  is_blocked: boolean;
+  blocked_reason: string | null;
+  blocked_at: string | null;
   archived_at: string | null;
   documents: Partial<Record<DriverDocumentType, DriverRemoteDocument>>;
 };

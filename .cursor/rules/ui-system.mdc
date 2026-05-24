@@ -43,7 +43,7 @@ Footer ≈ 72px + 14" usable ≈ 720px ⇒ body must fit in **≈ 648px**. **Inn
 
 | Token | Class | Use |
 |-------|-------|-----|
-| Command page inset | `LAYOUT.commandPageInsetNegate` on route layout | Live tracking, maps — reduces default `main p-6` to effective **12px** |
+| Command page inset | `LAYOUT.commandPageInset` on dashboard `main` | All pages — **12px** (`p-3`) between secondary nav and content |
 | Panel gap | `LAYOUT.panelGap` (`gap-2`) | Sidebar ↔ main stage in split command layouts |
 | Stack gap | `LAYOUT.stackGap` (`gap-2`) | Vertical stacks inside a panel |
 | Panel section | `LAYOUT.panelSection` | Header rows inside `TrackingGlassCard` |

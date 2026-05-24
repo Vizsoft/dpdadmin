@@ -130,7 +130,7 @@ export function LiveTrackingLiveView({
     queryFn: async () => {
       if (!selectedIntakeId) return [];
       try {
-        const rows = await fetchRecentDeliveriesForDriver(selectedIntakeId, 2);
+        const rows = await fetchRecentDeliveriesForDriver(selectedIntakeId, 1);
         return rows.map<LiveRecentDelivery>((row) => ({
           id: row.id,
           driverId: row.driver_id,
@@ -294,8 +294,8 @@ export function LiveTrackingLiveView({
             clusterCount={clusterCount}
           />
           {selectedDriver ? (
-            <div className="pointer-events-none absolute end-2 top-2 z-30 flex max-h-[calc(100%-4rem)] w-[min(340px,calc(100%-16px))] flex-col">
-              <div className="pointer-events-auto min-h-0 flex-1 overflow-hidden shadow-xl">
+            <div className="pointer-events-none absolute end-2 top-2 z-30 w-[min(272px,calc(100%-1rem))]">
+              <div className="pointer-events-auto">
                 <LiveDriverDetailsPanel
                   driver={selectedDriver}
                   meta={selectedMeta}

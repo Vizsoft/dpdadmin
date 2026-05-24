@@ -20,49 +20,81 @@ export function HistoryRecentStops({
   selectedIndex,
   onSelectIndex,
   formatTime,
+  maxItems = 4,
+  variant = "default",
 }: {
   events: DriverLocationEvent[];
   selectedIndex: number;
   onSelectIndex: (index: number) => void;
   formatTime: (iso: string) => string;
+  maxItems?: number;
+  variant?: "default" | "overlay";
 }) {
   const t = useTranslations("pages.liveTracking");
-  const stops = useMemo(() => buildStops(events), [events]);
+  const stops = useMemo(() => buildStops(events, maxItems), [events, maxItems]);
+  const compact = variant === "overlay";
 
   if (stops.length === 0) {
     return (
-      <div className="rounded-xl border border-border bg-card p-3 text-center text-xs text-muted-foreground">
+      <div
+        className={cn(
+          "text-center text-muted-foreground",
+          compact ? "px-1 py-2 text-[11px]" : "rounded-xl border border-border bg-card p-3 text-xs",
+        )}
+      >
         {t("historyNoStops")}
       </div>
     );
   }
 
   return (
-    <div className="space-y-2">
-      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+    <div className={cn(compact ? "space-y-1.5" : "space-y-2")}>
+      <h4
+        className={cn(
+          "font-semibold uppercase tracking-wide text-muted-foreground",
+          compact ? "text-[10px]" : "text-xs",
+        )}
+      >
         {t("historyRecentStops")}
       </h4>
-      <div className="max-h-[min(280px,35vh)] space-y-1.5 overflow-y-auto pe-1">
+      <div
+        className={cn(
+          "space-y-1",
+          !compact && "max-h-[min(280px,35vh)] overflow-y-auto pe-1",
+        )}
+      >
         {stops.map((stop) => (
           <button
             key={stop.id}
             type="button"
             className={cn(
-              "w-full cursor-pointer rounded-lg border px-2.5 py-2 text-left transition-colors",
+              "w-full cursor-pointer rounded-lg border text-left transition-colors",
+              compact ? "px-2 py-1.5" : "px-2.5 py-2",
               selectedIndex === stop.startIndex
-                ? "border-emerald-300 bg-emerald-50/60"
+                ? "border-emerald-300 bg-emerald-50/60 dark:border-emerald-800 dark:bg-emerald-950/40"
                 : "border-border bg-background/80 hover:bg-muted/40",
             )}
             onClick={() => onSelectIndex(stop.startIndex)}
           >
-            <div className="flex items-center justify-between gap-2">
-              <p className="truncate text-xs font-semibold text-foreground">{stop.title}</p>
-              <Pill tone={stop.type === "delivery" ? "blue" : stop.type === "idle" ? "slate" : "emerald"}>
+            <div className="flex items-center justify-between gap-1.5">
+              <p
+                className={cn(
+                  "truncate font-semibold text-foreground",
+                  compact ? "text-[11px]" : "text-xs",
+                )}
+              >
+                {stop.title}
+              </p>
+              <Pill
+                tone={stop.type === "delivery" ? "blue" : stop.type === "idle" ? "slate" : "emerald"}
+                className={compact ? "text-[9px]" : undefined}
+              >
                 {stop.type === "delivery" ? "Delivery" : stop.type === "idle" ? "Idle" : "Moving"}
               </Pill>
             </div>
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              {formatTime(stop.startAt)} - {formatTime(stop.endAt)}
+            <p className={cn("text-muted-foreground", compact ? "text-[10px]" : "mt-1 text-[11px]")}>
+              {formatTime(stop.startAt)}
+              {stop.endAt !== stop.startAt ? ` – ${formatTime(stop.endAt)}` : ""}
             </p>
           </button>
         ))}
@@ -71,7 +103,7 @@ export function HistoryRecentStops({
   );
 }
 
-function buildStops(events: DriverLocationEvent[]): HistoryStop[] {
+function buildStops(events: DriverLocationEvent[], maxItems: number): HistoryStop[] {
   const sorted = [...events].sort((a, b) => a.recordedAt.localeCompare(b.recordedAt));
   const result: HistoryStop[] = [];
 
@@ -145,5 +177,5 @@ function buildStops(events: DriverLocationEvent[]): HistoryStop[] {
 
   return result
     .sort((a, b) => new Date(b.startAt).getTime() - new Date(a.startAt).getTime())
-    .slice(0, 12);
+    .slice(0, maxItems);
 }

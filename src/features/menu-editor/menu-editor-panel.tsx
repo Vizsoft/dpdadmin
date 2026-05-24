@@ -572,7 +572,7 @@ export function MenuEditorPanel({ roles }: { roles: AdminRoleRow[] }) {
   );
 
   return (
-    <div className="max-w-6xl space-y-3">
+    <div className="space-y-3">
       {roles.length > 0 && (
         <Tabs value={role} onValueChange={setRole}>
           <TabsList className="h-8">

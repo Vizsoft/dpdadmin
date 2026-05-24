@@ -94,42 +94,48 @@ export function HistorySummaryKpis({
     value == null ? "—" : formatter(value);
 
   return (
-    <div className="grid grid-cols-2 gap-2">
+    <div className="grid grid-cols-3 gap-1.5">
       <MetricTile
         label={t("historyTotalDistance")}
         value={loading ? "..." : valueOrDash(summary.totalDistanceKm, (n) => `${n.toFixed(1)} km`)}
         icon={Route}
         tone="blue"
+        className="min-h-[72px] p-2.5 [&_p:first-child]:text-[10px] [&_p:last-child]:text-sm"
       />
       <MetricTile
         label={t("historyDuration")}
         value={loading ? "..." : valueOrDash(summary.durationMins, (n) => `${n} min`)}
         icon={Timer}
         tone="indigo"
+        className="min-h-[72px] p-2.5 [&_p:first-child]:text-[10px] [&_p:last-child]:text-sm"
       />
       <MetricTile
         label={t("historyAvgSpeed")}
         value={loading ? "..." : valueOrDash(summary.avgSpeedKmh, (n) => `${n.toFixed(1)} km/h`)}
         icon={Gauge}
         tone="emerald"
+        className="min-h-[72px] p-2.5 [&_p:first-child]:text-[10px] [&_p:last-child]:text-sm"
       />
       <MetricTile
         label={t("historyMaxSpeed")}
         value={loading ? "..." : valueOrDash(summary.maxSpeedKmh, (n) => `${n.toFixed(1)} km/h`)}
         icon={MapPinned}
         tone="amber"
+        className="min-h-[72px] p-2.5 [&_p:first-child]:text-[10px] [&_p:last-child]:text-sm"
       />
       <MetricTile
         label={t("historyStops")}
         value={loading ? "..." : valueOrDash(summary.stops, (n) => `${n}`)}
         icon={PauseCircle}
         tone="slate"
+        className="min-h-[72px] p-2.5 [&_p:first-child]:text-[10px] [&_p:last-child]:text-sm"
       />
       <MetricTile
         label={t("historyDeliveries")}
         value={loading ? "..." : valueOrDash(summary.deliveries, (n) => `${n}`)}
         icon={Truck}
         tone="rose"
+        className="min-h-[72px] p-2.5 [&_p:first-child]:text-[10px] [&_p:last-child]:text-sm"
       />
     </div>
   );

@@ -19,6 +19,7 @@ export default async function DriverAppSettingsPage({
       driverAppTitle={settings.driverAppTitle}
       driverAppLogoUrl={settings.driverAppLogoUrl}
       driverAppSplashUrl={settings.driverAppSplashUrl}
+      driverAppIconUrl={settings.driverAppIconUrl}
       driverAppMaintenanceMode={settings.driverAppMaintenanceMode}
       driverAppMaintenanceMessage={settings.driverAppMaintenanceMessage}
       driverAppDeliveryProximityMeters={settings.driverAppDeliveryProximityMeters}

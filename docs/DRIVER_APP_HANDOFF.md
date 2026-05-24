@@ -30,7 +30,7 @@ The **admin panel** verifies deliveries, approves requests, manages zones/vehicl
 The admin panel auto-issues a **6-digit numeric passcode** (`drivers.app_passcode`) the moment a driver row transitions to `status = 'active'`. Admins share it privately with the driver and the driver enters `driver_code + passcode` on the login screen.
 
 1. App calls RPC `select * from public.driver_app_lookup_by_passcode(p_driver_code, p_passcode)` (granted to `anon`).
-2. RPC returns `{ ok: true, user_id }` only when the driver row is `active`, not archived, and both values match. Errors: `invalid_credentials`, `driver_not_active`, `driver_archived`.
+2. RPC returns `{ ok: true, user_id }` only when the driver row is `active`, not archived, not blocked, and both values match. Errors: `invalid_credentials`, `driver_not_active`, `driver_archived`, `driver_blocked` (includes `message` = admin reason).
 3. With `user_id` in hand, exchange for a real Supabase session — easiest path: call a service-role edge function that issues an OTP / magic-link / signed JWT for that `auth.users.id` (we do **not** ship the service-role key in the app).
 4. Admin can rotate via `select public.regenerate_driver_app_passcode(p_driver_id)` (staff only via RLS helper `is_admin_panel_user()`); rotation invalidates the old code immediately.
 5. The passcode is plaintext in `drivers.app_passcode` so admin staff can read it out to the driver. Treat it as a shared secret — show it only behind the staff "reveal" gesture.
@@ -41,6 +41,7 @@ The admin panel auto-issues a **6-digit numeric passcode** (`drivers.app_passcod
 - `UNIQUE` partial index across non-null values (no two drivers share a code)
 - `BEFORE INSERT OR UPDATE OF status` trigger mints a code the first time `status` becomes `active`
 - **`drivers.status = 'active'` is blocked** unless the driver has ≥1 **published + active** restaurant in `driver_restaurants` (helper `driver_has_active_restaurant`, trigger on `drivers` + auto-downgrade when restaurants are removed). Admins set status via RPC `set_driver_account_status(p_driver_id, p_status)` on `/drivers/[id]`.
+- **Admin app block** (`drivers.is_blocked`, `drivers.blocked_reason`): separate from account status. Admins block/unblock on `/drivers/[id]` via RPC `set_driver_blocked(p_driver_id, p_blocked, p_reason)`. Blocking forces `is_on_duty = false`. On login, `driver_app_lookup_by_passcode` returns `{ ok: false, error: 'driver_blocked', message: '<reason>' }`. For signed-in sessions, subscribe to `drivers` realtime and read `is_blocked` + `blocked_reason`; show a full-screen block view when blocked.
 
 ### 2b. First-time link (OTP — kept as a one-shot bootstrap)
 
@@ -378,6 +379,8 @@ Shared validation logic (admin): `src/lib/geo/zone-geometry.ts` — mirror in mo
 select driver_app_title,
        driver_app_logo_url,
        driver_app_splash_url,
+       driver_app_icon_url,
+       updated_at,
        driver_app_maintenance_mode,
        driver_app_maintenance_message,
        driver_app_login_hint,
@@ -389,7 +392,8 @@ select driver_app_title,
 - **Anon-readable** via policy `app_settings_public_branding_read` (same row as admin branding).
 - When `driver_app_maintenance_mode = true`: render a full-screen maintenance view using `driver_app_maintenance_message`. Block login and in-app actions; allow retry/poll.
 - **Separate** from `maintenance_mode` on the same row (that flag gates the **admin panel** only).
-- `driver_app_logo_url` / `driver_app_splash_url` are public Supabase Storage URLs under bucket `branding`, paths `driver-app/logo.*` and `driver-app/splash.*`. Uploads append a `?v=` cache-bust query param.
+- `driver_app_logo_url` / `driver_app_splash_url` / `driver_app_icon_url` are public Supabase Storage URLs under bucket `branding`, paths `driver-app/logo.*`, `driver-app/splash.*`, and `driver-app/icon.*`. Uploads append a `?v=` cache-bust query param.
+- **App icon refresh:** subscribe to `app_settings` realtime (row `id = 1`) or poll `updated_at` / compare `driver_app_icon_url` on app resume. When the URL changes, download the new image and update the launcher icon (Expo: `expo-dynamic-app-icon` or platform-specific APIs).
 - `driver_app_title` is the mobile app display name (defaults to `Musallam Delivery`). Admin subtitle/login hint remain on `app_subtitle` / `driver_app_login_hint` (configured under Settings → Branding).
 - `driver_app_delivery_proximity_meters` (default 500): max meters outside zone boundary or from assigned restaurant to allow Add Delivery. `0` disables the gate. Loaded via `driver_get_delivery_proximity_context()` when opening Add Delivery (includes zone geometry + assigned restaurants).
 

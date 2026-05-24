@@ -243,13 +243,13 @@ export function LiveTrackingHistoryView({
     <div className="space-y-2">
       <TrackingCommandLayout
         left={
-          <TrackingGlassCard className="shrink-0 overflow-hidden border-slate-200 bg-white dark:border-slate-700/80 dark:bg-slate-900">
-            <div className="border-b border-slate-200 px-3 py-2.5 dark:border-slate-700/80">
+          <TrackingGlassCard className="flex min-h-0 flex-1 flex-col overflow-hidden border-slate-200 bg-white dark:border-slate-700/80 dark:bg-slate-900">
+            <div className="shrink-0 border-b border-slate-200 px-3 py-2.5 dark:border-slate-700/80">
               <TrackingTabSwitcher value={activeTab} onChange={onTabChange} className="mb-2" />
               <HistorySummaryKpis summary={summary} loading={isLoading} />
             </div>
 
-            <div className="space-y-2 border-b border-slate-200 px-3 py-3 dark:border-slate-700/80">
+            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 py-3">
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">{t("historyDriver")}</Label>
                 <SearchSelect
@@ -288,23 +288,7 @@ export function LiveTrackingHistoryView({
           </TrackingGlassCard>
         }
         center={
-          <TrackingMapStage
-            footer={
-              driverId && !isLoading && sortedEvents.length > 0 ? (
-                <TrackingGlassCard className="border-slate-200 bg-white p-3 md:col-span-2 dark:border-slate-700/80 dark:bg-slate-900">
-                  <HistoryRecentStops
-                    events={sortedEvents}
-                    selectedIndex={index}
-                    onSelectIndex={(nextIndex) => {
-                      setPlaying(false);
-                      setIndex(nextIndex);
-                    }}
-                    formatTime={(iso) => formatTime(iso, locale)}
-                  />
-                </TrackingGlassCard>
-              ) : undefined
-            }
-          >
+          <TrackingMapStage>
             {!driverId ? (
               <SelectDriverEmpty />
             ) : isLoading ? (
@@ -340,8 +324,8 @@ export function LiveTrackingHistoryView({
                     </div>
                   </div>
                 ) : null}
-                <div className="pointer-events-none absolute right-3 top-3 z-20">
-                  <div className="pointer-events-auto">
+                <div className="pointer-events-none absolute right-3 top-3 z-20 flex w-[min(288px,calc(100%-1.5rem))] flex-col items-end gap-2">
+                  <div className="pointer-events-auto w-full">
                     <HistoryPlaybackControls
                       playing={playing}
                       onTogglePlay={() => {
@@ -367,6 +351,21 @@ export function LiveTrackingHistoryView({
                       durationLabel={durationLabel}
                       deliverySubmitIndices={deliverySubmitIndices}
                     />
+                  </div>
+                  <div className="pointer-events-auto w-full">
+                    <TrackingGlassCard className="border-border/80 bg-card/95 p-2 shadow-md backdrop-blur-sm">
+                      <HistoryRecentStops
+                        variant="overlay"
+                        maxItems={4}
+                        events={sortedEvents}
+                        selectedIndex={index}
+                        onSelectIndex={(nextIndex) => {
+                          setPlaying(false);
+                          setIndex(nextIndex);
+                        }}
+                        formatTime={(iso) => formatTime(iso, locale)}
+                      />
+                    </TrackingGlassCard>
                   </div>
                 </div>
               </>

@@ -53,13 +53,90 @@ export function LiveDriverDetailsPanel({
   const gpsQuality = gpsQualityFromAccuracy(driver.accuracyMeters);
   const signalBars =
     gpsQuality === "excellent" ? 4 : gpsQuality === "good" ? 3 : gpsQuality === "weak" ? 2 : 1;
+  const latestOrder = recentOrders[0] ?? null;
+
+  if (variant === "stacked") {
+    return (
+      <TrackingGlassCard className="relative w-full overflow-hidden rounded-xl border-slate-200 bg-white/95 shadow-xl backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/95">
+        {onClose ? (
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute end-1.5 top-1.5 z-10 inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+            aria-label="Close driver details"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        ) : null}
+
+        <div className="border-b border-slate-200 px-3 py-2.5 dark:border-slate-700/80">
+          <div className="flex items-center gap-2 pe-6">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-xs font-semibold text-blue-700 dark:bg-blue-500/20 dark:text-blue-200">
+              {driverInitials(driver.driverName)}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5">
+                <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  {driver.driverName}
+                </p>
+                <Pill tone={driver.isOnDuty ? "emerald" : "slate"} variant="solid" className="text-[9px]">
+                  {driver.isOnDuty ? t("onDuty") : t("offDuty")}
+                </Pill>
+              </div>
+              <p className="truncate text-[11px] text-slate-500 dark:text-slate-300">
+                {driver.driverCode} · {meta?.zoneName ?? "—"}
+              </p>
+            </div>
+            {meta?.phone ? (
+              <a href={`tel:${meta.phone}`} className="shrink-0">
+                <IconButton icon={Phone} compact />
+              </a>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-4 gap-1.5 px-3 py-2">
+          <CompactStat label={t("currentSpeed")} value={formatSpeedKmh(driver.speedMps)} />
+          <CompactStat label={t("colBattery")} value={formatBatteryLevel(driver.batteryPct)} />
+          <CompactStat label={t("colAccuracy")} value={formatAccuracyMeters(driver.accuracyMeters)} />
+          <CompactStat label={t("shiftTime")} value={formatDurationSince(driver.updatedAt)} />
+        </div>
+
+        <div className="border-t border-slate-200 px-3 py-2 dark:border-slate-700/80">
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <h4 className="text-[11px] font-semibold text-slate-900 dark:text-slate-100">
+              {t("recentOrders")}
+            </h4>
+            <SignalBars value={signalBars} />
+          </div>
+          {latestOrder ? (
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 dark:border-slate-700 dark:bg-slate-800/60">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[11px] font-semibold text-slate-900 dark:text-slate-100">
+                  #{latestOrder.shortId}
+                </p>
+                <Pill tone={deliveryStatusTone(latestOrder.status)} className="text-[9px]">
+                  {deliveryStatusLabel(latestOrder.status)}
+                </Pill>
+              </div>
+              <p className="mt-0.5 truncate text-[10px] text-slate-500 dark:text-slate-300">
+                {latestOrder.partnerName}
+              </p>
+              <p className="text-[10px] text-slate-500 dark:text-slate-300">
+                {formatDurationSince(latestOrder.deliveredAt)}
+              </p>
+            </div>
+          ) : (
+            <p className="text-[10px] text-slate-500 dark:text-slate-300">{t("noHistory")}</p>
+          )}
+        </div>
+      </TrackingGlassCard>
+    );
+  }
 
   return (
     <TrackingGlassCard
-      className={cn(
-        "relative flex min-h-0 flex-col overflow-hidden border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900",
-        variant === "stacked" && "max-h-full rounded-xl shadow-xl",
-      )}
+      className="relative flex min-h-0 flex-col overflow-hidden border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"
     >
       {onClose ? (
         <button
@@ -200,11 +277,29 @@ export function LiveDriverDetailsPanel({
   );
 }
 
-function IconButton({ icon: Icon }: { icon: typeof Phone }) {
+function IconButton({ icon: Icon, compact }: { icon: typeof Phone; compact?: boolean }) {
   return (
-    <span className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-      <Icon className="h-3.5 w-3.5" />
+    <span
+      className={cn(
+        "inline-flex items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300",
+        compact ? "h-7 w-7" : "h-7 w-7",
+      )}
+    >
+      <Icon className={compact ? "h-3.5 w-3.5" : "h-3.5 w-3.5"} />
     </span>
+  );
+}
+
+function CompactStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-md border border-slate-200 bg-slate-50 px-1.5 py-1 dark:border-slate-700 dark:bg-slate-800/60">
+      <p className="truncate text-[9px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+        {label}
+      </p>
+      <p className="truncate text-[11px] font-semibold tabular-nums text-slate-900 dark:text-slate-100">
+        {value}
+      </p>
+    </div>
   );
 }
 

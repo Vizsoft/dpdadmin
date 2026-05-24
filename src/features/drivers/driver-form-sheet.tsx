@@ -6,7 +6,6 @@ import { useTranslations } from "next-intl";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { isR2Configured } from "@/lib/storage/r2-config";
 import { queryKeys } from "@/lib/query/query-keys";
 import { isDriverErrorKey } from "./driver-errors";
 import {
@@ -18,10 +17,11 @@ import {
   hasValidationErrors,
   NONE_VEHICLE,
   validateDriverForm,
+  validateAvatarFile,
   type DriverFormErrors,
   type DriverFormField,
 } from "./driver-form-validation";
-import { createDriverIntake, updateDriverIntake } from "./drivers-actions";
+import { createDriverIntake, getDriverUploadStorageStatus, updateDriverIntake } from "./drivers-actions";
 import {
   ASSET_TYPES,
   DOCUMENT_TYPES,
@@ -126,8 +126,11 @@ export function DriverFormSheet({
   const [showErrors, setShowErrors] = useState(false);
 
   useEffect(() => {
-    void isR2Configured().then(setR2Ready);
-  }, []);
+    if (!open) return;
+    void getDriverUploadStorageStatus()
+      .then(({ r2Configured }) => setR2Ready(r2Configured))
+      .catch(() => setR2Ready(false));
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -227,6 +230,11 @@ export function DriverFormSheet({
 
   const handleAvatarSelect = (file: File | null) => {
     if (!file) return;
+    const avatarError = validateAvatarFile(file);
+    if (avatarError) {
+      toast.error(driverErrorToast(tNew, avatarError));
+      return;
+    }
     if (avatarPreview?.startsWith("blob:")) URL.revokeObjectURL(avatarPreview);
     setAvatarFile(file);
     setRemoveAvatar(false);

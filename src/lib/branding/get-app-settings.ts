@@ -31,6 +31,7 @@ export type AppSettings = {
   driverAppTitle: string;
   driverAppLogoUrl: string | null;
   driverAppSplashUrl: string | null;
+  driverAppIconUrl: string | null;
   driverAppMaintenanceMode: boolean;
   driverAppMaintenanceMessage: string;
   driverAppDeliveryProximityMeters: number;
@@ -55,6 +56,7 @@ function normalizeRow(
     driver_app_title?: string | null;
     driver_app_logo_url?: string | null;
     driver_app_splash_url?: string | null;
+    driver_app_icon_url?: string | null;
     driver_app_maintenance_mode?: boolean | null;
     driver_app_maintenance_message?: string | null;
     driver_app_delivery_proximity_meters?: number | null;
@@ -75,6 +77,7 @@ function normalizeRow(
       row.driver_app_title?.trim() || DEFAULT_DRIVER_APP_SETTINGS.driver_app_title,
     driverAppLogoUrl: row.driver_app_logo_url ?? null,
     driverAppSplashUrl: row.driver_app_splash_url ?? null,
+    driverAppIconUrl: row.driver_app_icon_url ?? null,
     driverAppMaintenanceMode: row.driver_app_maintenance_mode ?? false,
     driverAppMaintenanceMessage:
       row.driver_app_maintenance_message?.trim() ||
@@ -117,7 +120,7 @@ async function fetchCustomThemes(): Promise<AppThemeRecord[]> {
 const getCustomThemes = cache(fetchCustomThemes);
 
 const APP_SETTINGS_SELECT =
-  "app_name, app_subtitle, driver_app_login_hint, driver_app_title, driver_app_logo_url, driver_app_splash_url, driver_app_maintenance_mode, driver_app_maintenance_message, driver_app_delivery_proximity_meters, font_family, logo_url, logo_type, theme_id";
+  "app_name, app_subtitle, driver_app_login_hint, driver_app_title, driver_app_logo_url, driver_app_splash_url, driver_app_icon_url, driver_app_maintenance_mode, driver_app_maintenance_message, driver_app_delivery_proximity_meters, font_family, logo_url, logo_type, theme_id";
 
 async function loadAppSettingsRow(): Promise<{
   app_name: string;
@@ -126,6 +129,7 @@ async function loadAppSettingsRow(): Promise<{
   driver_app_title?: string | null;
   driver_app_logo_url?: string | null;
   driver_app_splash_url?: string | null;
+  driver_app_icon_url?: string | null;
   driver_app_maintenance_mode?: boolean | null;
   driver_app_maintenance_message?: string | null;
   font_family: string;
@@ -191,6 +195,7 @@ async function fetchAppSettings(): Promise<AppSettings> {
       driverAppTitle: DEFAULT_DRIVER_APP_SETTINGS.driver_app_title,
       driverAppLogoUrl: null,
       driverAppSplashUrl: null,
+      driverAppIconUrl: null,
       driverAppMaintenanceMode: false,
       driverAppMaintenanceMessage:
         DEFAULT_DRIVER_APP_SETTINGS.driver_app_maintenance_message,

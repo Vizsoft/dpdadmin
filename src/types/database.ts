@@ -249,6 +249,7 @@ export type Database = {
           driver_app_maintenance_message: string
           driver_app_maintenance_mode: boolean
           driver_app_splash_url: string | null
+          driver_app_icon_url: string | null
           driver_app_title: string
           font_family: string
           id: number
@@ -270,6 +271,7 @@ export type Database = {
           driver_app_maintenance_message?: string
           driver_app_maintenance_mode?: boolean
           driver_app_splash_url?: string | null
+          driver_app_icon_url?: string | null
           driver_app_title?: string
           font_family?: string
           id?: number
@@ -291,6 +293,7 @@ export type Database = {
           driver_app_maintenance_message?: string
           driver_app_maintenance_mode?: boolean
           driver_app_splash_url?: string | null
+          driver_app_icon_url?: string | null
           driver_app_title?: string
           font_family?: string
           id?: number
@@ -1296,6 +1299,9 @@ export type Database = {
           app_passcode: string | null
           archived_at: string | null
           base_earnings_kwd: number | null
+          blocked_at: string | null
+          blocked_by: string | null
+          blocked_reason: string | null
           civil_id: string | null
           created_at: string
           current_lat: number | null
@@ -1303,6 +1309,7 @@ export type Database = {
           driver_code: string
           employee_id: string | null
           id: string
+          is_blocked: boolean
           is_on_duty: boolean
           joined_at: string | null
           partner_id: string | null
@@ -1316,6 +1323,9 @@ export type Database = {
           app_passcode?: string | null
           archived_at?: string | null
           base_earnings_kwd?: number | null
+          blocked_at?: string | null
+          blocked_by?: string | null
+          blocked_reason?: string | null
           civil_id?: string | null
           created_at?: string
           current_lat?: number | null
@@ -1323,6 +1333,7 @@ export type Database = {
           driver_code: string
           employee_id?: string | null
           id: string
+          is_blocked?: boolean
           is_on_duty?: boolean
           joined_at?: string | null
           partner_id?: string | null
@@ -1336,6 +1347,9 @@ export type Database = {
           app_passcode?: string | null
           archived_at?: string | null
           base_earnings_kwd?: number | null
+          blocked_at?: string | null
+          blocked_by?: string | null
+          blocked_reason?: string | null
           civil_id?: string | null
           created_at?: string
           current_lat?: number | null
@@ -1343,6 +1357,7 @@ export type Database = {
           driver_code?: string
           employee_id?: string | null
           id?: string
+          is_blocked?: boolean
           is_on_duty?: boolean
           joined_at?: string | null
           partner_id?: string | null
@@ -2836,6 +2851,14 @@ export type Database = {
         Args: {
           p_driver_id: string
           p_status: Database["public"]["Enums"]["driver_status"]
+        }
+        Returns: Json
+      }
+      set_driver_blocked: {
+        Args: {
+          p_blocked: boolean
+          p_driver_id: string
+          p_reason?: string
         }
         Returns: Json
       }

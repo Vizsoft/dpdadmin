@@ -9,6 +9,8 @@ import { getMenuConfigServer } from "@/services/menu-config-server";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppSecondaryNav } from "@/components/layout/app-secondary-nav";
+import { LAYOUT } from "@/components/app/layout-spacing";
+import { cn } from "@/lib/utils";
 
 export default async function DashboardLayout({
   children,
@@ -52,7 +54,7 @@ export default async function DashboardLayout({
             <SidebarInset className="flex h-svh min-w-0 flex-1 flex-col overflow-hidden bg-muted/30">
               <div className="flex h-full min-h-0 overflow-hidden bg-sidebar">
                 <AppSecondaryNav />
-                <main className="flex-1 overflow-auto bg-muted/30 p-6">
+                <main className={cn("flex-1 overflow-auto bg-muted/30", LAYOUT.commandPageInset)}>
                   {children}
                 </main>
               </div>

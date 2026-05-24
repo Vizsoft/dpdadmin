@@ -47,14 +47,14 @@ export function TrackingQuickActions() {
       <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
         {t("quickActions")}
       </h3>
-      <div className="mt-2 grid grid-cols-4 gap-2">
+      <div className="mt-2 grid grid-cols-2 gap-1.5">
         {actions.map((action) => {
           const content = (
             <>
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 text-blue-600 dark:bg-blue-500/20 dark:text-blue-200">
-                <action.icon className="h-4 w-4 shrink-0" />
+              <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 text-blue-600 dark:bg-blue-500/20 dark:text-blue-200">
+                <action.icon className="h-3.5 w-3.5 shrink-0" />
               </span>
-              <span className="text-center text-[11px] leading-tight text-slate-700 dark:text-slate-200">
+              <span className="text-center text-[10px] leading-tight text-slate-700 dark:text-slate-200">
                 {action.label}
               </span>
               {!action.enabled ? (
@@ -70,7 +70,7 @@ export function TrackingQuickActions() {
                 key={action.id}
                 variant="outline"
                 size="sm"
-                className="h-auto min-h-20 cursor-pointer flex-col items-center gap-1 rounded-lg border-slate-200 bg-slate-50 px-2 py-2 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800/60 dark:hover:bg-slate-800"
+                className="h-auto min-h-[4.5rem] cursor-pointer flex-col items-center gap-1 rounded-lg border-slate-200 bg-slate-50 px-2 py-2 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800/60 dark:hover:bg-slate-800"
                 render={<Link href={action.href} />}
               >
                 {content}
@@ -82,7 +82,7 @@ export function TrackingQuickActions() {
               key={action.id}
               variant="outline"
               size="sm"
-              className="h-auto min-h-20 flex-col items-center gap-1 rounded-lg border-slate-200 bg-slate-50 px-2 py-2 dark:border-slate-700 dark:bg-slate-800/60"
+              className="h-auto min-h-[4.5rem] flex-col items-center gap-1 rounded-lg border-slate-200 bg-slate-50 px-2 py-2 dark:border-slate-700 dark:bg-slate-800/60"
               disabled
               title={"hint" in action ? action.hint : undefined}
             >

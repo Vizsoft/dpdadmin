@@ -3,9 +3,7 @@
  * Do not invent one-off gap/padding values; pick from here.
  */
 export const LAYOUT = {
-  /** Effective page inset when parent main uses p-6 (24px → 12px) */
-  commandPageInsetNegate: "-m-3",
-  /** Standalone page inset for full-bleed command views */
+  /** Standard dashboard main content inset (12px) */
   commandPageInset: "p-3",
   /** Gap between sidebar panel and main stage (8px) */
   panelGap: "gap-2",

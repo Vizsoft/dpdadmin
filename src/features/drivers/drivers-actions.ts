@@ -70,6 +70,12 @@ async function requireDriversView() {
   return session;
 }
 
+/** Server-side R2 check — must not call isR2Configured() from client components. */
+export async function getDriverUploadStorageStatus(): Promise<{ r2Configured: boolean }> {
+  await requireDriversView();
+  return { r2Configured: await isR2Configured() };
+}
+
 function parseAssetsIssued(raw: unknown): Record<string, boolean> {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
   return raw as Record<string, boolean>;
@@ -501,6 +507,8 @@ export async function fetchDriversForAdmin(options?: {
     {
       status: DriverAccountStatus;
       is_on_duty: boolean;
+      is_blocked: boolean;
+      blocked_reason: string | null;
       app_passcode: string | null;
       employee_id: string | null;
     }
@@ -511,7 +519,7 @@ export async function fetchDriversForAdmin(options?: {
     const [{ data: driverRows }, { data: deliveryRows }] = await Promise.all([
       supabase
         .from("drivers")
-        .select("id, status, is_on_duty, app_passcode, employee_id")
+        .select("id, status, is_on_duty, is_blocked, blocked_reason, app_passcode, employee_id")
         .in("id", linkedIds),
       (() => {
         const { start, end } = kuwaitDayBounds();
@@ -528,6 +536,8 @@ export async function fetchDriversForAdmin(options?: {
       driverByProfileId.set(driver.id, {
         status: driver.status as DriverAccountStatus,
         is_on_duty: driver.is_on_duty,
+        is_blocked: driver.is_blocked ?? false,
+        blocked_reason: driver.blocked_reason ?? null,
         app_passcode: driver.app_passcode ?? null,
         employee_id: driver.employee_id ?? null,
       });
@@ -588,6 +598,8 @@ export async function fetchDriversForAdmin(options?: {
         linked: row.linked,
         linked_profile_id: row.linked_profile_id,
         account_status,
+        is_blocked: linkedDriver?.is_blocked ?? false,
+        blocked_reason: linkedDriver?.blocked_reason ?? null,
         is_on_duty: linkedDriver?.is_on_duty ?? false,
         today_deliveries: row.linked_profile_id
           ? (deliveryCountByDriverId.get(row.linked_profile_id) ?? 0)
@@ -865,6 +877,9 @@ export async function fetchDriverDetail(
       app_passcode: string | null;
       status: DriverAccountStatus;
       employee_id: string | null;
+      is_blocked: boolean;
+      blocked_reason: string | null;
+      blocked_at: string | null;
     } | null = null;
     if (linkedId) {
       const [{ data: prof }, { data: drv }] = await Promise.all([
@@ -875,7 +890,7 @@ export async function fetchDriverDetail(
           .maybeSingle(),
         supabase
           .from("drivers")
-          .select("app_passcode, status, employee_id")
+          .select("app_passcode, status, employee_id, is_blocked, blocked_reason, blocked_at")
           .eq("id", linkedId)
           .maybeSingle(),
       ]);
@@ -885,6 +900,9 @@ export async function fetchDriverDetail(
             app_passcode: drv.app_passcode,
             status: drv.status as DriverAccountStatus,
             employee_id: drv.employee_id ?? null,
+            is_blocked: drv.is_blocked ?? false,
+            blocked_reason: drv.blocked_reason ?? null,
+            blocked_at: drv.blocked_at ?? null,
           }
         : null;
     }
@@ -946,6 +964,9 @@ export async function fetchDriverDetail(
         intake.workflow_status as DriverWorkflowStatus,
         linkedDriver?.status,
       ),
+      is_blocked: linkedDriver?.is_blocked ?? false,
+      blocked_reason: linkedDriver?.blocked_reason ?? null,
+      blocked_at: linkedDriver?.blocked_at ?? null,
       archived_at: intake.archived_at,
       documents,
     };
@@ -967,6 +988,9 @@ export async function fetchDriverDetail(
       zone_id,
       app_passcode,
       employee_id,
+      is_blocked,
+      blocked_reason,
+      blocked_at,
       archived_at,
       partners (name),
       zones (name, code)
@@ -1051,6 +1075,9 @@ export async function fetchDriverDetail(
       (intakeForDriver?.workflow_status as DriverWorkflowStatus) ?? "approved",
       driverRow.status as DriverAccountStatus,
     ),
+    is_blocked: driverRow.is_blocked ?? false,
+    blocked_reason: driverRow.blocked_reason ?? null,
+    blocked_at: driverRow.blocked_at ?? null,
     archived_at: intakeForDriver?.archived_at ?? driverRow.archived_at,
     documents,
   };
@@ -1095,6 +1122,44 @@ export async function updateDriverAccountStatus(
     entityId: driverId,
     routeName: "updateDriverAccountStatus",
     after: { status },
+  });
+
+  return { success: true };
+}
+
+export async function setDriverBlocked(
+  driverId: string,
+  blocked: boolean,
+  reason?: string,
+): Promise<{ success: true } | { error: string }> {
+  const auth = await requireDriversManager();
+  if (auth.error) return { error: auth.error };
+
+  if (!driverId) return { error: "missing_fields" };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("set_driver_blocked", {
+    p_driver_id: driverId,
+    p_blocked: blocked,
+    p_reason: blocked ? reason?.trim() || undefined : undefined,
+  });
+
+  if (error) return { error: "save_failed" };
+
+  const payload = (data ?? {}) as { ok?: boolean; error?: string };
+  if (!payload.ok) {
+    if (payload.error === "missing_block_reason") return { error: "missing_block_reason" };
+    if (payload.error === "driver_not_found") return { error: "driver_not_found" };
+    if (payload.error === "not_authorized") return { error: "not_authorized" };
+    return { error: "save_failed" };
+  }
+
+  void logAdminMutation({
+    action: blocked ? "update" : "update",
+    entityType: "driver",
+    entityId: driverId,
+    routeName: "setDriverBlocked",
+    after: blocked ? { is_blocked: true, blocked_reason: reason?.trim() } : { is_blocked: false },
   });
 
   return { success: true };
