@@ -39,15 +39,23 @@ export function TrackingCommandLayout({
   fullscreen?: boolean;
 }) {
   const sharedHeight = cn(LAYOUT.mapAboveFoldHeight, LAYOUT.mapAboveFoldMin);
+  const hasFooter = Boolean(footer);
 
   return (
-    <div className={cn("flex min-h-0 flex-col", LAYOUT.panelGap, fullscreen && "h-full")}>
+    <div
+      className={cn(
+        "flex min-h-0 flex-col",
+        LAYOUT.panelGap,
+        fullscreen && "h-full",
+        !fullscreen && hasFooter && cn(sharedHeight, "max-xl:h-auto"),
+      )}
+    >
       <div
         className={cn(
-          "grid",
+          "grid min-h-0 flex-1",
           LAYOUT.panelGap,
           fullscreen
-            ? "h-full min-h-0 grid-rows-1 xl:grid-cols-[minmax(240px,1fr)_minmax(0,4fr)]"
+            ? "h-full grid-rows-1 xl:grid-cols-[minmax(240px,1fr)_minmax(0,4fr)]"
             : cn("xl:grid-cols-[minmax(240px,1fr)_minmax(0,4fr)]", "xl:items-stretch"),
           "max-xl:grid-cols-1",
           className,
@@ -57,7 +65,8 @@ export function TrackingCommandLayout({
           className={cn(
             "flex min-h-0 flex-col overflow-hidden",
             LAYOUT.panelGap,
-            !fullscreen && cn("max-xl:max-h-[420px]", sharedHeight),
+            !fullscreen && !hasFooter && cn("max-xl:max-h-[420px]", sharedHeight),
+            !fullscreen && hasFooter && "max-xl:max-h-[420px]",
             fullscreen && "h-full min-h-0",
           )}
         >
@@ -68,7 +77,7 @@ export function TrackingCommandLayout({
             "flex min-h-0 flex-col",
             LAYOUT.panelGap,
             fullscreen && "h-full min-h-0",
-            !fullscreen && sharedHeight,
+            !fullscreen && !hasFooter && sharedHeight,
           )}
         >
           {center}

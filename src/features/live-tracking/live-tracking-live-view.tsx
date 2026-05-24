@@ -215,7 +215,8 @@ export function LiveTrackingLiveView({
       }));
   }, [zones, geofencesEnabled, zoneDriverCounts]);
 
-  const mapHeightClass = fullscreen || mapOnlyFullscreen ? "min-h-0 flex-1 h-full" : undefined;
+  const mapHeightClass =
+    fullscreen || mapOnlyFullscreen ? "min-h-0 flex-1 h-full" : "min-h-0 flex-1";
 
   const zoneFilterOptions = useMemo(
     () => [
@@ -267,6 +268,7 @@ export function LiveTrackingLiveView({
           fullscreen={fullscreen || mapOnlyFullscreen}
           mapHeightClass={mapHeightClass}
           frameClassName={cn(
+            !fullscreen && !mapOnlyFullscreen && "min-h-0 flex-1 shrink",
             mapOnlyFullscreen && "fixed inset-2 z-50 rounded-xl border bg-background shadow-2xl",
           )}
         >
