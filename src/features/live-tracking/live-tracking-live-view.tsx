@@ -240,7 +240,6 @@ export function LiveTrackingLiveView({
       fullscreen={fullscreen}
       left={
         <FleetOverviewPanel
-          className={cn(!fullscreen && !mapOnlyFullscreen && "rounded-b-none border-b-0")}
           totalDrivers={driversMeta.length}
           trackedCount={liveDrivers.length}
           inProgressCount={inProgressCount}
@@ -259,17 +258,18 @@ export function LiveTrackingLiveView({
       footer={
         !fullscreen && !mapOnlyFullscreen ? (
           <div className="grid gap-2 md:grid-cols-[minmax(0,1.6fr)_minmax(220px,1fr)]">
-            <TrackingInsightsPanel drivers={liveDrivers} className="rounded-t-none border-t-0" />
-            <TrackingQuickActions className="rounded-t-none border-t-0" />
+            <TrackingInsightsPanel drivers={liveDrivers} />
+            <TrackingQuickActions />
           </div>
         ) : undefined
       }
       center={
         <TrackingMapStage
           fullscreen={fullscreen || mapOnlyFullscreen}
+          fillParent={!fullscreen && !mapOnlyFullscreen}
           mapHeightClass={mapHeightClass}
           frameClassName={cn(
-            !fullscreen && !mapOnlyFullscreen && "min-h-0 flex-1 shrink rounded-b-none",
+            !fullscreen && !mapOnlyFullscreen && "min-h-0 flex-1 shrink",
             mapOnlyFullscreen && "fixed inset-2 z-50 rounded-xl border bg-background shadow-2xl",
           )}
         >

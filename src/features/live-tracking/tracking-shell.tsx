@@ -46,7 +46,7 @@ export function TrackingCommandLayout({
     <div
       className={cn(
         "flex min-h-0 flex-col",
-        hasFooter ? "gap-0" : LAYOUT.panelGap,
+        LAYOUT.panelGap,
         fullscreen && "h-full",
         !fullscreen && hasFooter && cn(fullViewport, "max-xl:h-auto"),
       )}
@@ -118,15 +118,20 @@ export function TrackingMapStage({
   mapHeightClass,
   frameClassName,
   fullscreen,
+  fillParent,
 }: {
   children: ReactNode;
   footer?: ReactNode;
   mapHeightClass?: string;
   frameClassName?: string;
   fullscreen?: boolean;
+  /** When true, the stage stretches to fill its parent (used when the layout
+   *  already constrains height — e.g. TrackingCommandLayout with a footer). */
+  fillParent?: boolean;
 }) {
   const aboveFoldHeight = cn(LAYOUT.mapAboveFoldHeight, LAYOUT.mapAboveFoldMin);
-  const resolvedMapHeight = fullscreen
+  const useExternalHeight = fullscreen || fillParent;
+  const resolvedMapHeight = useExternalHeight
     ? (mapHeightClass ?? "min-h-0 h-full flex-1")
     : footer
       ? aboveFoldHeight
@@ -138,7 +143,8 @@ export function TrackingMapStage({
         "flex min-h-0 flex-col",
         LAYOUT.panelGap,
         fullscreen && "h-full min-h-0",
-        !fullscreen && !footer && aboveFoldHeight,
+        fillParent && !fullscreen && "min-h-0 flex-1",
+        !useExternalHeight && !footer && aboveFoldHeight,
       )}
     >
       <TrackingMapFrame mapHeightClass={resolvedMapHeight} className={frameClassName}>
