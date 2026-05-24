@@ -20,7 +20,6 @@ import {
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -66,7 +65,6 @@ import {
   ZoneFormMapTypeToggle,
   ZoneFormZoomControls,
 } from "./zone-form-map-controls";
-import { ZoneFormMapLegend } from "./zone-form-map-legend";
 import { ZoneFormGeofenceList } from "./zone-form-geofence-list";
 
 const DESCRIPTION_MAX = 150;
@@ -294,41 +292,6 @@ export function ZoneFormBody({
       onClose();
       onSaved();
     });
-  };
-
-  const recentZones = [...existingZones]
-    .sort(
-      (a, b) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-    )
-    .slice(0, 4);
-
-  const summary = {
-    total: existingZones.length + (isEdit ? 0 : 1),
-    inclusion:
-      existingZones.filter((item) => item.geofence_kind === "inclusion")
-        .length +
-      (isEdit ? 0 : geofence.geofence_kind === "inclusion" ? 1 : 0),
-    exclusion:
-      existingZones.filter((item) => item.geofence_kind === "exclusion")
-        .length +
-      (isEdit ? 0 : geofence.geofence_kind === "exclusion" ? 1 : 0),
-    activeAlerts:
-      existingZones.filter(
-        (item) =>
-          item.status === "active" &&
-          (item.alert_on_entry ||
-            item.alert_on_exit ||
-            item.alert_on_dwell),
-      ).length +
-      (isEdit
-        ? 0
-        : geofence.status === "active" &&
-            (geofence.alert_on_entry ||
-              geofence.alert_on_exit ||
-              geofence.alert_on_dwell)
-          ? 1
-          : 0),
   };
 
   const draftArea = geometry
@@ -574,7 +537,6 @@ export function ZoneFormBody({
                 onToolChange={setActiveTool}
                 labels={{
                   draw: t("geofence.mapToolDraw"),
-                  edit: t("geofence.mapToolEdit"),
                   move: t("geofence.mapToolMove"),
                   delete: t("geofence.mapToolDelete"),
                   clear: t("geofence.mapToolClear"),
@@ -627,15 +589,6 @@ export function ZoneFormBody({
             </div>
           </div>
 
-          <div className="pointer-events-none absolute bottom-3 end-3 z-20">
-            <div className="pointer-events-auto">
-              <ZoneFormMapLegend
-                zones={existingZones}
-                onZoneSelect={handleZoomToZone}
-              />
-            </div>
-          </div>
-
           <div className="pointer-events-none absolute bottom-3 start-3 z-20">
             <div
               className="pointer-events-auto rounded-xl border border-slate-200 bg-white/95 px-3 py-2 shadow-md dark:border-slate-700 dark:bg-slate-900/95"
@@ -664,108 +617,6 @@ export function ZoneFormBody({
           />
         </div>
 
-        <div className="mt-3 grid shrink-0 gap-3 lg:grid-cols-[minmax(0,300px)_minmax(0,1fr)]">
-          <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-            <p className="mb-2 text-xs font-semibold text-slate-900 dark:text-slate-100">
-              {t("geofence.summarySectionTitle")}
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                {
-                  label: t("geofence.summaryRowTotal"),
-                  value: summary.total,
-                  tone: "text-slate-900 dark:text-slate-50",
-                },
-                {
-                  label: t("geofence.summaryRowInclusion"),
-                  value: summary.inclusion,
-                  tone: "text-emerald-600",
-                },
-                {
-                  label: t("geofence.summaryRowExclusion"),
-                  value: summary.exclusion,
-                  tone: "text-rose-600",
-                },
-                {
-                  label: t("geofence.summaryRowAlerts"),
-                  value: summary.activeAlerts,
-                  tone: "text-rose-600",
-                },
-              ].map((card) => (
-                <div
-                  key={card.label}
-                  className="rounded-lg bg-slate-50 px-2.5 py-2 dark:bg-slate-800/40"
-                >
-                  <p className="text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                    {card.label}
-                  </p>
-                  <p
-                    className={cn(
-                      "mt-0.5 text-xl font-semibold tabular-nums",
-                      card.tone,
-                    )}
-                  >
-                    {card.value}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-            <div className="mb-2 flex items-center justify-between">
-              <p className="text-xs font-semibold text-slate-900 dark:text-slate-100">
-                {t("geofence.recentSectionTitle")}
-              </p>
-              <Link
-                href="/zones"
-                className="text-xs font-medium text-primary hover:underline"
-              >
-                {t("geofence.viewAll")}
-              </Link>
-            </div>
-            {recentZones.length === 0 ? (
-              <p className="rounded-lg bg-slate-50 px-3 py-3 text-center text-xs text-slate-500 dark:bg-slate-800/40 dark:text-slate-400">
-                {t("emptyTitle")}
-              </p>
-            ) : (
-              <ul className="space-y-1.5">
-                {recentZones.map((item) => (
-                  <li
-                    key={item.id}
-                    className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 px-2.5 py-1.5 dark:border-slate-700"
-                  >
-                    <span className="flex min-w-0 items-center gap-2">
-                      <span
-                        aria-hidden
-                        className="h-2.5 w-2.5 shrink-0 rounded-full"
-                        style={{ backgroundColor: normalizeZoneColor(item.color) }}
-                      />
-                      <span className="min-w-0">
-                        <span className="block truncate text-xs font-medium text-slate-900 dark:text-slate-100">
-                          {item.name}
-                        </span>
-                        <span className="block truncate text-[10px] text-slate-500 dark:text-slate-400">
-                          #{item.code}
-                        </span>
-                      </span>
-                    </span>
-                    <Badge
-                      variant={
-                        item.geofence_kind === "exclusion"
-                          ? "destructive"
-                          : "secondary"
-                      }
-                      className="text-[10px]"
-                    >
-                      {t(`geofence.kind.${item.geofence_kind}`)}
-                    </Badge>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </div>
       </section>
     </div>
   );

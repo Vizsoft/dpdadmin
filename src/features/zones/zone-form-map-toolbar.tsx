@@ -1,17 +1,17 @@
 "use client";
 
-import { Pencil, Trash2, Move, PenLine, Eraser } from "lucide-react";
+import { Trash2, Move, PenLine, Eraser } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type ZoneMapTool = "draw" | "edit" | "move" | "delete" | "clear";
+type VisibleZoneMapTool = Exclude<ZoneMapTool, "edit">;
 
-const TOOL_ICON = {
+const TOOL_ICON: Record<VisibleZoneMapTool, typeof PenLine> = {
   draw: PenLine,
-  edit: Pencil,
   move: Move,
   delete: Trash2,
   clear: Eraser,
-} as const;
+};
 
 export function ZoneFormMapToolbar({
   activeTool,
@@ -21,7 +21,7 @@ export function ZoneFormMapToolbar({
 }: {
   activeTool: ZoneMapTool;
   onToolChange: (tool: ZoneMapTool) => void;
-  labels: Record<ZoneMapTool, string>;
+  labels: Record<VisibleZoneMapTool, string>;
   className?: string;
 }) {
   return (
@@ -33,7 +33,7 @@ export function ZoneFormMapToolbar({
       role="toolbar"
       aria-label="Map drawing tools"
     >
-      {(Object.keys(TOOL_ICON) as ZoneMapTool[]).map((tool) => {
+      {(Object.keys(TOOL_ICON) as VisibleZoneMapTool[]).map((tool) => {
         const Icon = TOOL_ICON[tool];
         const active = activeTool === tool;
         return (
