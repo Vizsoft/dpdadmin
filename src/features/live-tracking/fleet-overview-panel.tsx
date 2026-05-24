@@ -16,6 +16,7 @@ import { MetricTile } from "@/components/ui/metric-tile";
 import type { DriverLiveLocation } from "@/features/locations/types";
 import { SearchSelect } from "@/components/ui/search-select";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import { LiveDriverList } from "./live-driver-list";
 import { TrackingGlassCard } from "./tracking-shell";
 import type { LiveTrackingFilterState } from "./live-tracking-filters";
@@ -35,6 +36,7 @@ export function FleetOverviewPanel({
   partnerOptions,
   activeTab,
   onTabChange,
+  className,
 }: {
   totalDrivers: number;
   trackedCount: number;
@@ -49,6 +51,7 @@ export function FleetOverviewPanel({
   partnerOptions: Array<{ id: string; label: string }>;
   activeTab: TrackingViewTab;
   onTabChange: (tab: TrackingViewTab) => void;
+  className?: string;
 }) {
   const t = useTranslations("pages.liveTracking");
 
@@ -120,7 +123,12 @@ export function FleetOverviewPanel({
   );
 
   return (
-    <TrackingGlassCard className="flex h-full min-h-0 flex-1 flex-col overflow-hidden border-slate-200 bg-white dark:border-slate-700/80 dark:bg-slate-900">
+    <TrackingGlassCard
+      className={cn(
+        "flex h-full min-h-0 flex-1 flex-col overflow-hidden border-slate-200 bg-white dark:border-slate-700/80 dark:bg-slate-900",
+        className,
+      )}
+    >
       <div className="border-b border-slate-200 px-3 py-2.5 dark:border-slate-700/80">
         <TrackingTabSwitcher value={activeTab} onChange={onTabChange} className="mb-2" />
         <div className="grid grid-cols-2 gap-2">

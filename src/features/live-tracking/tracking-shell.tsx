@@ -46,7 +46,7 @@ export function TrackingCommandLayout({
     <div
       className={cn(
         "flex min-h-0 flex-col",
-        LAYOUT.panelGap,
+        hasFooter ? "gap-0" : LAYOUT.panelGap,
         fullscreen && "h-full",
         !fullscreen && hasFooter && cn(fullViewport, "max-xl:h-auto"),
       )}

@@ -4,14 +4,17 @@ import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { AlertTriangle, BatteryLow, Gauge, Timer } from "lucide-react";
 import type { DriverLiveLocation } from "@/features/locations/types";
+import { cn } from "@/lib/utils";
 import { TrackingGlassCard } from "./tracking-shell";
 
 const OVERSPEED_KMH = 80;
 
 export function TrackingInsightsPanel({
   drivers,
+  className,
 }: {
   drivers: DriverLiveLocation[];
+  className?: string;
 }) {
   const t = useTranslations("pages.liveTracking");
 
@@ -66,7 +69,12 @@ export function TrackingInsightsPanel({
   }, [drivers, t]);
 
   return (
-    <TrackingGlassCard className="border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900">
+    <TrackingGlassCard
+      className={cn(
+        "border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900",
+        className,
+      )}
+    >
       <div className="mb-1.5 flex items-center justify-between">
         <h3 className="text-xs font-semibold text-slate-900 dark:text-slate-100">
           {t("aiInsights")}

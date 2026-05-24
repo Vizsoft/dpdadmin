@@ -5,9 +5,10 @@ import { useTranslations } from "next-intl";
 import { History, Siren } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { TrackingGlassCard } from "./tracking-shell";
 
-export function TrackingQuickActions() {
+export function TrackingQuickActions({ className }: { className?: string }) {
   const t = useTranslations("pages.liveTracking");
 
   const actions = [
@@ -29,7 +30,12 @@ export function TrackingQuickActions() {
   ] as const;
 
   return (
-    <TrackingGlassCard className="border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900">
+    <TrackingGlassCard
+      className={cn(
+        "border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900",
+        className,
+      )}
+    >
       <h3 className="mb-1.5 text-xs font-semibold text-slate-900 dark:text-slate-100">
         {t("quickActions")}
       </h3>
