@@ -15,4 +15,10 @@ export const LAYOUT = {
   panelSection: "px-3 py-2.5",
   /** Inner filter / form block padding */
   panelBlock: "p-3",
+  /**
+   * Map stage height — stops ~10% above the viewport fold.
+   * 90dvh minus dashboard chrome (header + page padding + title band).
+   */
+  mapAboveFoldHeight: "h-[min(calc(90dvh-10.5rem),560px)]",
+  mapAboveFoldMin: "min-h-[280px]",
 } as const;

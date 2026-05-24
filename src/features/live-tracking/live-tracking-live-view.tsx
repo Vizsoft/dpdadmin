@@ -21,7 +21,7 @@ import { TrackingInsightsPanel } from "./tracking-insights-panel";
 import { TrackingQuickActions } from "./tracking-quick-actions";
 import {
   TrackingCommandLayout,
-  TrackingMapFrame,
+  TrackingMapStage,
 } from "./tracking-shell";
 import {
   TrackingMapLegend,
@@ -197,7 +197,7 @@ export function LiveTrackingLiveView({
       }));
   }, [zones, geofencesEnabled, zoneDriverCounts]);
 
-  const mapHeightClass = fullscreen || mapOnlyFullscreen ? "min-h-0 flex-1 h-full" : "min-h-[560px] flex-1";
+  const mapHeightClass = fullscreen || mapOnlyFullscreen ? "min-h-0 flex-1 h-full" : undefined;
 
   const zoneFilterOptions = useMemo(
     () => [
@@ -237,11 +237,18 @@ export function LiveTrackingLiveView({
         />
       }
       center={
-        <TrackingMapFrame
+        <TrackingMapStage
+          fullscreen={fullscreen || mapOnlyFullscreen}
           mapHeightClass={mapHeightClass}
-          className={cn(
+          frameClassName={cn(
             mapOnlyFullscreen && "fixed inset-2 z-50 rounded-xl border bg-background shadow-2xl",
           )}
+          footer={
+            <>
+              <TrackingInsightsPanel drivers={locations} />
+              <TrackingQuickActions />
+            </>
+          }
         >
           <DriverLocationsMap
             markers={mapMarkers}
@@ -249,7 +256,7 @@ export function LiveTrackingLiveView({
             fitToMarkers={filtered.length > 0}
             focusMarkerId={selectedId}
             onMarkerSelect={setSelectedId}
-            mapHeightClass="h-full min-h-[480px]"
+            mapHeightClass="h-full min-h-0"
             frameless
             className="h-full rounded-none border-0"
             mapStyles={buildTrackingMapStyles(mapPrefs.hideLabels)}
@@ -287,7 +294,7 @@ export function LiveTrackingLiveView({
             clusterCount={clusterCount}
           />
           {selectedDriver ? (
-            <div className="pointer-events-none absolute end-2 top-2 z-30 flex max-h-[calc(100%-120px)] w-[min(340px,calc(100%-16px))] flex-col">
+            <div className="pointer-events-none absolute end-2 top-2 z-30 flex max-h-[calc(100%-4rem)] w-[min(340px,calc(100%-16px))] flex-col">
               <div className="pointer-events-auto min-h-0 flex-1 overflow-hidden shadow-xl">
                 <LiveDriverDetailsPanel
                   driver={selectedDriver}
@@ -299,20 +306,7 @@ export function LiveTrackingLiveView({
               </div>
             </div>
           ) : null}
-          <div
-            className={cn(
-              "pointer-events-none absolute left-2 right-2 bottom-16 z-20 grid gap-2 md:grid-cols-2",
-              selectedDriver && "lg:right-[360px]",
-            )}
-          >
-            <div className="pointer-events-auto">
-              <TrackingInsightsPanel drivers={locations} />
-            </div>
-            <div className="pointer-events-auto">
-              <TrackingQuickActions />
-            </div>
-          </div>
-        </TrackingMapFrame>
+        </TrackingMapStage>
       }
     />
   );

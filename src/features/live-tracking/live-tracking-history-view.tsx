@@ -20,7 +20,7 @@ import type { DriverLocationEvent } from "@/features/locations/types";
 import { HistoryPlaybackControls } from "./history-playback-controls";
 import { useLiveHistory } from "./use-live-history";
 import { TrackingTabSwitcher, type TrackingViewTab } from "./tracking-tab-switcher";
-import { TrackingCommandLayout, TrackingGlassCard, TrackingMapFrame } from "./tracking-shell";
+import { TrackingCommandLayout, TrackingGlassCard, TrackingMapStage } from "./tracking-shell";
 import { HistorySummaryKpis, computeHistorySummary } from "./history-summary-kpis";
 import { HistoryDatePicker } from "./history-date-picker";
 import { useDriverHistoryActiveDates } from "./use-driver-history-dates";
@@ -315,7 +315,7 @@ export function LiveTrackingHistoryView({
           </TrackingGlassCard>
         }
         center={
-          <TrackingMapFrame mapHeightClass="h-[min(58vh,560px)] min-h-[360px]">
+          <TrackingMapStage>
             {!driverId ? (
               <SelectDriverEmpty />
             ) : isLoading ? (
@@ -333,7 +333,7 @@ export function LiveTrackingHistoryView({
                 <DriverLocationsMap
                   markers={markers}
                   path={path}
-                  mapHeightClass="h-full min-h-[360px]"
+                  mapHeightClass="h-full min-h-0"
                   fitToMarkers={path.length > 0}
                   className="h-full rounded-none border-0"
                   frameless
@@ -382,7 +382,7 @@ export function LiveTrackingHistoryView({
                 </div>
               </>
             )}
-          </TrackingMapFrame>
+          </TrackingMapStage>
         }
       />
 

@@ -109,7 +109,7 @@ export function TrackingMapToolbar({
         </button>
       </div>
 
-      <div className="pointer-events-none absolute bottom-14 left-3 z-20 flex flex-col gap-2">
+      <div className="pointer-events-none absolute bottom-3 left-3 z-20 flex flex-col gap-2">
         <button
           type="button"
           onClick={onRecenter}

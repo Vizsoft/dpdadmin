@@ -43,7 +43,7 @@ export function TrackingCommandLayout({
         LAYOUT.panelGap,
         fullscreen
           ? "h-full min-h-0 grid-rows-1 xl:grid-cols-[300px_minmax(0,1fr)]"
-          : "min-h-[560px] xl:grid-cols-[300px_minmax(0,1fr)]",
+          : "xl:grid-cols-[300px_minmax(0,1fr)]",
         "max-xl:grid-cols-1",
         className,
       )}
@@ -51,7 +51,13 @@ export function TrackingCommandLayout({
       <aside className={cn("flex min-h-0 max-xl:max-h-[420px] flex-col overflow-hidden", LAYOUT.panelGap)}>
         {left}
       </aside>
-      <section className={cn("flex min-h-0 min-h-[560px] flex-col max-xl:min-h-[480px]", LAYOUT.panelGap)}>
+      <section
+        className={cn(
+          "flex min-h-0 flex-col",
+          LAYOUT.panelGap,
+          fullscreen && "h-full min-h-0",
+        )}
+      >
         {center}
       </section>
     </div>
@@ -70,12 +76,48 @@ export function TrackingMapFrame({
   return (
     <div
       className={cn(
-        "relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl",
+        "relative flex shrink-0 flex-col overflow-hidden rounded-xl",
         "border border-border bg-muted/30 shadow-sm dark:border-slate-700/80 dark:bg-slate-950/40",
         className,
       )}
     >
-      <div className={cn("relative min-h-0 flex-1", mapHeightClass)}>{children}</div>
+      <div className={cn("relative min-h-0", mapHeightClass)}>{children}</div>
+    </div>
+  );
+}
+
+/** Map capped above the fold with optional footer widgets in normal document flow. */
+export function TrackingMapStage({
+  children,
+  footer,
+  mapHeightClass,
+  frameClassName,
+  fullscreen,
+}: {
+  children: ReactNode;
+  footer?: ReactNode;
+  mapHeightClass?: string;
+  frameClassName?: string;
+  fullscreen?: boolean;
+}) {
+  const resolvedMapHeight =
+    mapHeightClass ??
+    (fullscreen
+      ? "min-h-0 h-full flex-1"
+      : cn(LAYOUT.mapAboveFoldHeight, LAYOUT.mapAboveFoldMin));
+
+  return (
+    <div
+      className={cn(
+        "flex min-h-0 flex-col",
+        LAYOUT.panelGap,
+        fullscreen && "h-full min-h-0",
+      )}
+    >
+      <TrackingMapFrame mapHeightClass={resolvedMapHeight} className={frameClassName}>
+        {children}
+      </TrackingMapFrame>
+      {footer ? <div className="grid shrink-0 gap-2 md:grid-cols-2">{footer}</div> : null}
     </div>
   );
 }
