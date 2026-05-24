@@ -40,6 +40,7 @@ export function TrackingCommandLayout({
 }) {
   const sharedHeight = cn(LAYOUT.mapAboveFoldHeight, LAYOUT.mapAboveFoldMin);
   const hasFooter = Boolean(footer);
+  const fullViewport = cn(LAYOUT.commandViewportHeight, LAYOUT.commandViewportMin);
 
   return (
     <div
@@ -47,7 +48,7 @@ export function TrackingCommandLayout({
         "flex min-h-0 flex-col",
         LAYOUT.panelGap,
         fullscreen && "h-full",
-        !fullscreen && hasFooter && cn(sharedHeight, "max-xl:h-auto"),
+        !fullscreen && hasFooter && cn(fullViewport, "max-xl:h-auto"),
       )}
     >
       <div

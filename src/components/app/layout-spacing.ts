@@ -21,4 +21,12 @@ export const LAYOUT = {
   mapAboveFoldHeight: "h-[calc(100dvh-9rem)]",
   /** Minimum map stage height when using mapAboveFoldHeight */
   mapAboveFoldMin: "min-h-[480px]",
+  /**
+   * Full viewport height for command-center pages where the map + sidebar + footer
+   * widgets share the same vertical box. Leaves only the dashboard main padding
+   * (`commandPageInset` = 12px top + 12px bottom) so spacing is symmetric in all
+   * four directions.
+   */
+  commandViewportHeight: "h-[calc(100dvh-1.5rem)]",
+  commandViewportMin: "min-h-[520px]",
 } as const;

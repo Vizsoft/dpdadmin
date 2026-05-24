@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/auth-context";
+import { LAYOUT } from "@/components/app/layout-spacing";
 import { cn } from "@/lib/utils";
 import { useZonesList } from "./use-zones";
 import { ZoneGeofencesSummary, zoneMatchesKindFilter } from "./zone-geofences-summary";
@@ -22,12 +23,12 @@ import { ZoneListPanel } from "./zone-list-panel";
 import { ZoneMapPanel } from "./zone-map-panel";
 import type { GeofenceKind, ZoneRow } from "./types";
 
-/** Map stage uses ~95% of viewport below dashboard chrome */
-const ZONES_VIEWPORT_HEIGHT = "h-[calc(100dvh-4rem)] min-h-[520px]";
+/** Fill the dashboard viewport between the top and bottom main padding so spacing is symmetric. */
+const ZONES_VIEWPORT_HEIGHT = cn(LAYOUT.commandViewportHeight, LAYOUT.commandViewportMin);
 
 function ZonesPageSkeleton() {
   return (
-    <div className={cn("grid gap-3", ZONES_VIEWPORT_HEIGHT, "lg:grid-cols-[minmax(360px,400px)_minmax(0,1fr)]")}>
+    <div className={cn("grid gap-3", ZONES_VIEWPORT_HEIGHT, "lg:grid-cols-[minmax(400px,460px)_minmax(0,1fr)]")}>
       <aside className="flex animate-pulse flex-col gap-3 rounded-xl border border-border bg-card p-3">
         <div className="grid grid-cols-2 gap-2">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -102,7 +103,7 @@ function ZonesPageContent() {
         className={cn(
           "grid min-h-0 gap-3 overflow-hidden",
           ZONES_VIEWPORT_HEIGHT,
-          "lg:grid-cols-[minmax(360px,400px)_minmax(0,1fr)]",
+          "lg:grid-cols-[minmax(400px,460px)_minmax(0,1fr)]",
         )}
       >
         <aside className="flex min-h-0 flex-col gap-3 overflow-hidden">
