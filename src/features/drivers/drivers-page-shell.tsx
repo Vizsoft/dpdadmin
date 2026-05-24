@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { CardContent } from "@/components/ui/card";
+import { SearchSelect } from "@/components/ui/search-select";
 import {
   Select,
   SelectContent,
@@ -27,7 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { selectOptionsFrom } from "@/lib/select-items";
+import { partnerSearchOptions, zoneSearchOptions } from "@/lib/search-options";
 import {
   Table,
   TableBody,
@@ -142,24 +143,16 @@ function DriversPageContent() {
 
   const zoneSelectItems = useMemo(
     () => [
-      { value: "all", label: t("filterZoneAll") },
-      ...selectOptionsFrom(
-        formOptions?.zones ?? [],
-        (z) => z.id,
-        (z) => z.name,
-      ),
+      { value: "all", label: t("filterZoneAll"), keywords: [t("filterZoneAll")] },
+      ...zoneSearchOptions(formOptions?.zones ?? []),
     ],
     [formOptions?.zones, t],
   );
 
   const partnerSelectItems = useMemo(
     () => [
-      { value: "all", label: t("filterPartnerAll") },
-      ...selectOptionsFrom(
-        formOptions?.partners ?? [],
-        (p) => p.id,
-        (p) => p.name,
-      ),
+      { value: "all", label: t("filterPartnerAll"), keywords: [t("filterPartnerAll")] },
+      ...partnerSearchOptions(formOptions?.partners ?? []),
     ],
     [formOptions?.partners, t],
   );
@@ -341,38 +334,28 @@ function DriversPageContent() {
                     </button>
                   ) : null}
                 </div>
-                <Select
+                <SearchSelect
                   items={zoneSelectItems}
                   value={zoneFilter}
-                  onValueChange={(v) => setZoneFilter(v ?? "all")}
-                >
-                  <SelectTrigger className="h-9 w-full cursor-pointer rounded-lg sm:w-[150px]">
-                    <SelectValue placeholder={t("filterZone")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {zoneSelectItems.map((item) => (
-                      <SelectItem key={item.value} value={item.value} className="cursor-pointer">
-                        {item.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select
+                  onChange={(v) => setZoneFilter(v ?? "all")}
+                  placeholder={t("filterZone")}
+                  searchPlaceholder={t("filterZone")}
+                  defaultLimit={8}
+                  recentsKey="drivers-zone-filter"
+                  className="h-9 w-full sm:w-[150px]"
+                  clearable={false}
+                />
+                <SearchSelect
                   items={partnerSelectItems}
                   value={partnerFilter}
-                  onValueChange={(v) => setPartnerFilter(v ?? "all")}
-                >
-                  <SelectTrigger className="h-9 w-full cursor-pointer rounded-lg sm:w-[150px]">
-                    <SelectValue placeholder={t("filterPartner")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {partnerSelectItems.map((item) => (
-                      <SelectItem key={item.value} value={item.value} className="cursor-pointer">
-                        {item.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  onChange={(v) => setPartnerFilter(v ?? "all")}
+                  placeholder={t("filterPartner")}
+                  searchPlaceholder={t("filterPartner")}
+                  defaultLimit={8}
+                  recentsKey="drivers-partner-filter"
+                  className="h-9 w-full sm:w-[150px]"
+                  clearable={false}
+                />
                 <Select
                   items={statusSelectItems}
                   value={statusFilter}

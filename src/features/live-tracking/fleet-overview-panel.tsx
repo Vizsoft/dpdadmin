@@ -15,6 +15,7 @@ import { ToggleChip } from "@/components/app/toggle-chip";
 import { Badge } from "@/components/ui/badge";
 import { MetricTile } from "@/components/ui/metric-tile";
 import type { DriverLiveLocation } from "@/features/locations/types";
+import { SearchSelect } from "@/components/ui/search-select";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LiveDriverList } from "./live-driver-list";
 import { TrackingGlassCard } from "./tracking-shell";
@@ -99,6 +100,26 @@ export function FleetOverviewPanel({
     [alertsCount, inProgressCount, t, totalDrivers, trackedCount],
   );
 
+  const zoneSearchItems = useMemo(
+    () =>
+      zoneOptions.map((opt) => ({
+        value: opt.id,
+        label: opt.label,
+        keywords: [opt.label, opt.id],
+      })),
+    [zoneOptions],
+  );
+
+  const partnerSearchItems = useMemo(
+    () =>
+      partnerOptions.map((opt) => ({
+        value: opt.id,
+        label: opt.label,
+        keywords: [opt.label, opt.id],
+      })),
+    [partnerOptions],
+  );
+
   return (
     <TrackingGlassCard className="flex min-h-0 flex-col overflow-hidden border-slate-200 bg-white dark:border-slate-700/80 dark:bg-slate-900">
       <div className="border-b border-slate-200 px-3 py-2.5 dark:border-slate-700/80">
@@ -179,38 +200,28 @@ export function FleetOverviewPanel({
         </div>
 
         <div className="grid grid-cols-1 gap-2">
-          <Select
-            items={zoneOptions.map((opt) => ({ value: opt.id, label: opt.label }))}
+          <SearchSelect
+            items={zoneSearchItems}
             value={filters.zoneId}
-            onValueChange={(value) => onChange({ ...filters, zoneId: value ?? "all" })}
-          >
-            <SelectTrigger className="h-8 cursor-pointer rounded-lg text-xs">
-              <SelectValue placeholder={t("filterZone")} />
-            </SelectTrigger>
-            <SelectContent>
-              {zoneOptions.map((opt) => (
-                <SelectItem key={opt.id} value={opt.id} label={opt.label}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            items={partnerOptions.map((opt) => ({ value: opt.id, label: opt.label }))}
+            onChange={(value) => onChange({ ...filters, zoneId: value ?? "all" })}
+            placeholder={t("filterZone")}
+            searchPlaceholder={t("filterZone")}
+            defaultLimit={8}
+            recentsKey="live-tracking-zone-filter"
+            className="h-8 text-xs"
+            clearable={false}
+          />
+          <SearchSelect
+            items={partnerSearchItems}
             value={filters.partnerId}
-            onValueChange={(value) => onChange({ ...filters, partnerId: value ?? "all" })}
-          >
-            <SelectTrigger className="h-8 cursor-pointer rounded-lg text-xs">
-              <SelectValue placeholder={t("filterPartner")} />
-            </SelectTrigger>
-            <SelectContent>
-              {partnerOptions.map((opt) => (
-                <SelectItem key={opt.id} value={opt.id} label={opt.label}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            onChange={(value) => onChange({ ...filters, partnerId: value ?? "all" })}
+            placeholder={t("filterPartner")}
+            searchPlaceholder={t("filterPartner")}
+            defaultLimit={8}
+            recentsKey="live-tracking-partner-filter"
+            className="h-8 text-xs"
+            clearable={false}
+          />
           <Select
             disabled
             items={[

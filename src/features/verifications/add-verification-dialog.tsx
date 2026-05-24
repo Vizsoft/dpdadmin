@@ -24,15 +24,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchSelect } from "@/components/ui/search-select";
 import { useRestaurantsList } from "@/features/restaurants/use-restaurants";
-import { selectOptionsFrom } from "@/lib/select-items";
+import { restaurantSearchOptions } from "@/lib/search-options";
 import { Textarea } from "@/components/ui/textarea";
 import type { VerificationDriverOption } from "./types";
 import { useCreateVerification, useVerificationDriverOptions } from "./use-verifications";
@@ -88,8 +82,7 @@ export function AddVerificationDialog({
   }, [publishedRestaurants, selectedDriver, showAllRestaurants]);
 
   const restaurantItems = useMemo(
-    () =>
-      selectOptionsFrom(filteredRestaurants, (r) => r.id, (r) => r.name),
+    () => restaurantSearchOptions(filteredRestaurants),
     [filteredRestaurants],
   );
 
@@ -290,26 +283,19 @@ export function AddVerificationDialog({
             {!showAllRestaurants && selectedDriver?.partner_id ? (
               <p className="text-[11px] text-muted-foreground">{t("filterByPartner")}</p>
             ) : null}
-            <Select
+            <SearchSelect
               items={restaurantItems}
               value={restaurantId || null}
-              onValueChange={(v) => {
+              onChange={(v) => {
                 setRestaurantId(v ?? "");
                 clearFieldError("restaurant");
               }}
-            >
-              <SelectTrigger className="w-full cursor-pointer rounded-lg">
-                <UtensilsCrossed className="me-2 size-3.5 shrink-0 text-muted-foreground" />
-                <SelectValue placeholder={t("selectRestaurant")} />
-              </SelectTrigger>
-              <SelectContent>
-                {filteredRestaurants.map((r) => (
-                  <SelectItem key={r.id} value={r.id} label={r.name}>
-                    {r.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              placeholder={t("selectRestaurant")}
+              searchPlaceholder={t("selectRestaurant")}
+              defaultLimit={10}
+              recentsKey="verification-add-restaurant"
+              className="w-full"
+            />
             {fieldErrors.restaurant ? (
               <p className="text-xs text-destructive">{fieldErrors.restaurant}</p>
             ) : null}

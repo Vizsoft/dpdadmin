@@ -10,7 +10,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { MultiCombobox } from "@/components/multi-combobox";
-import { selectOptions, selectOptionsFrom } from "@/lib/select-items";
+import {
+  partnerSearchOptions,
+  restaurantSearchOptions,
+  zoneSearchOptions,
+} from "@/lib/search-options";
 import type { DpdScopeOptions, RuleScopeType } from "./types";
 
 export function ScopePicker({
@@ -42,27 +46,24 @@ export function ScopePicker({
   const partners = options?.partners ?? [];
   const restaurants = options?.restaurants ?? [];
 
-  const scopeTypeItems = selectOptions([
+  const scopeTypeItems = [
     { value: "zone", label: t("scope.zone") },
     { value: "partner", label: t("scope.partner") },
     { value: "restaurant", label: t("scope.restaurant") },
-  ]);
+  ];
 
-  const zoneItems = selectOptionsFrom(
-    zones,
-    (z) => z.id,
-    (z) => `${z.name} (${z.code})`,
-  ).map((i) => ({ value: i.value, label: String(i.label) }));
-  const partnerItems = selectOptionsFrom(
-    partners,
-    (p) => p.id,
-    (p) => p.name,
-  ).map((i) => ({ value: i.value, label: String(i.label) }));
-  const restaurantItems = selectOptionsFrom(
-    restaurants,
-    (r) => r.id,
-    (r) => `${r.name} · ${r.partner_name}`,
-  ).map((i) => ({ value: i.value, label: String(i.label) }));
+  const zoneItems = zoneSearchOptions(zones).map((item) => ({
+    value: item.value,
+    label: item.hint ? `${item.label} (${item.hint})` : item.label,
+  }));
+  const partnerItems = partnerSearchOptions(partners).map((item) => ({
+    value: item.value,
+    label: item.hint ? `${item.label} (${item.hint})` : item.label,
+  }));
+  const restaurantItems = restaurantSearchOptions(restaurants).map((item) => ({
+    value: item.value,
+    label: item.hint ? `${item.label} · ${item.hint}` : item.label,
+  }));
 
   const selectedSummary = (count: number) =>
     t("multiSelect.selectedSummary", { count });

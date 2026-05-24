@@ -20,6 +20,7 @@ import { StatusPill } from "@/components/dashboard/status-pill";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CardContent } from "@/components/ui/card";
+import { SearchSelect } from "@/components/ui/search-select";
 import {
   Select,
   SelectContent,
@@ -27,7 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { selectOptionsFrom } from "@/lib/select-items";
+import { driverSearchOptions, restaurantSearchOptions } from "@/lib/search-options";
 import { cn } from "@/lib/utils";
 import { useRestaurantsList } from "@/features/restaurants/use-restaurants";
 import { AddVerificationDialog } from "./add-verification-dialog";
@@ -113,19 +114,24 @@ export function VerificationsPageShell() {
 
   const driverFilterItems = useMemo(
     () => [
-      { value: "all", label: t("filterDriverAll") },
-      ...selectOptionsFrom(drivers.slice(0, 100), (d) => d.id, (d) => d.full_name),
+      { value: "all", label: t("filterDriverAll"), keywords: [t("filterDriverAll")] },
+      ...driverSearchOptions(
+        drivers.map((d) => ({
+          id: d.id,
+          full_name: d.full_name,
+          employee_code: d.driver_code,
+          employee_id: d.employee_id,
+        })),
+      ),
     ],
     [drivers, t],
   );
 
   const restaurantFilterItems = useMemo(
     () => [
-      { value: "all", label: t("filterRestaurantAll") },
-      ...selectOptionsFrom(
+      { value: "all", label: t("filterRestaurantAll"), keywords: [t("filterRestaurantAll")] },
+      ...restaurantSearchOptions(
         restaurants.filter((r) => r.status === "published"),
-        (r) => r.id,
-        (r) => r.name,
       ),
     ],
     [restaurants, t],
@@ -264,38 +270,28 @@ export function VerificationsPageShell() {
                 className="h-8 w-36 rounded-lg text-sm"
                 aria-label={t("dateTo")}
               />
-              <Select
+              <SearchSelect
                 items={driverFilterItems}
                 value={driverId || "all"}
-                onValueChange={(v) => setDriverId(v === "all" ? "" : (v ?? ""))}
-              >
-                <SelectTrigger className="h-8 w-44 cursor-pointer rounded-lg text-sm">
-                  <SelectValue placeholder={t("filterDriver")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {driverFilterItems.map((item) => (
-                    <SelectItem key={item.value} value={item.value}>
-                      {item.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select
+                onChange={(v) => setDriverId(v === "all" ? "" : (v ?? ""))}
+                placeholder={t("filterDriver")}
+                searchPlaceholder={t("filterDriver")}
+                defaultLimit={10}
+                recentsKey="verifications-driver-filter"
+                className="h-8 w-44 text-sm"
+                clearable={false}
+              />
+              <SearchSelect
                 items={restaurantFilterItems}
                 value={restaurantId || "all"}
-                onValueChange={(v) => setRestaurantId(v === "all" ? "" : (v ?? ""))}
-              >
-                <SelectTrigger className="h-8 w-44 cursor-pointer rounded-lg text-sm">
-                  <SelectValue placeholder={t("filterRestaurant")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {restaurantFilterItems.map((item) => (
-                    <SelectItem key={item.value} value={item.value}>
-                      {item.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                onChange={(v) => setRestaurantId(v === "all" ? "" : (v ?? ""))}
+                placeholder={t("filterRestaurant")}
+                searchPlaceholder={t("filterRestaurant")}
+                defaultLimit={10}
+                recentsKey="verifications-restaurant-filter"
+                className="h-8 w-44 text-sm"
+                clearable={false}
+              />
             </div>
           </div>
         }

@@ -243,7 +243,7 @@ export function LiveTrackingHistoryView({
     <div className="space-y-2">
       <TrackingCommandLayout
         left={
-          <TrackingGlassCard className="flex min-h-0 flex-col overflow-hidden border-slate-200 bg-white dark:border-slate-700/80 dark:bg-slate-900">
+          <TrackingGlassCard className="shrink-0 overflow-hidden border-slate-200 bg-white dark:border-slate-700/80 dark:bg-slate-900">
             <div className="border-b border-slate-200 px-3 py-2.5 dark:border-slate-700/80">
               <TrackingTabSwitcher value={activeTab} onChange={onTabChange} className="mb-2" />
               <HistorySummaryKpis summary={summary} loading={isLoading} />
@@ -285,24 +285,26 @@ export function LiveTrackingHistoryView({
                 </ToggleChip>
               </div>
             </div>
-
-            {driverId && sortedEvents.length > 0 ? (
-              <div className="flex-1 overflow-auto px-3 py-3">
-                <HistoryRecentStops
-                  events={sortedEvents}
-                  selectedIndex={index}
-                  onSelectIndex={(nextIndex) => {
-                    setPlaying(false);
-                    setIndex(nextIndex);
-                  }}
-                  formatTime={(iso) => formatTime(iso, locale)}
-                />
-              </div>
-            ) : null}
           </TrackingGlassCard>
         }
         center={
-          <TrackingMapStage>
+          <TrackingMapStage
+            footer={
+              driverId && !isLoading && sortedEvents.length > 0 ? (
+                <TrackingGlassCard className="border-slate-200 bg-white p-3 md:col-span-2 dark:border-slate-700/80 dark:bg-slate-900">
+                  <HistoryRecentStops
+                    events={sortedEvents}
+                    selectedIndex={index}
+                    onSelectIndex={(nextIndex) => {
+                      setPlaying(false);
+                      setIndex(nextIndex);
+                    }}
+                    formatTime={(iso) => formatTime(iso, locale)}
+                  />
+                </TrackingGlassCard>
+              ) : undefined
+            }
+          >
             {!driverId ? (
               <SelectDriverEmpty />
             ) : isLoading ? (

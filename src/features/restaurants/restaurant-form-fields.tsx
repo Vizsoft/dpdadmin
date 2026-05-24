@@ -1,7 +1,9 @@
 "use client";
 
+import { useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SearchSelect } from "@/components/ui/search-select";
 import {
   Select,
   SelectContent,
@@ -9,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { selectOptionsFrom } from "@/lib/select-items";
+import { partnerSearchOptions, zoneSearchOptions } from "@/lib/search-options";
 import { RESTAURANT_STATUSES, type RestaurantStatus } from "./restaurant-status";
 import type { RestaurantPartnerOption, RestaurantZoneOption } from "./types";
 
@@ -82,15 +84,19 @@ export function RestaurantFormFields({
   onMapLinkChange: (value: string) => void;
   onStatusChange: (value: RestaurantStatus) => void;
 }) {
-  const partnerSelectItems = selectOptionsFrom(
-    partners,
-    (p) => p.id,
-    (p) => p.name,
+  const partnerSelectItems = useMemo(
+    () => [
+      { value: "", label: labels.selectNone, keywords: [labels.selectNone] },
+      ...partnerSearchOptions(partners),
+    ],
+    [labels.selectNone, partners],
   );
-  const zoneSelectItems = selectOptionsFrom(
-    zones,
-    (z) => z.id,
-    (z) => `${z.name} (${z.code})`,
+  const zoneSelectItems = useMemo(
+    () => [
+      { value: "", label: labels.selectNone, keywords: [labels.selectNone] },
+      ...zoneSearchOptions(zones),
+    ],
+    [labels.selectNone, zones],
   );
   const statusSelectItems = RESTAURANT_STATUSES.map((s) => ({
     value: s,
@@ -101,60 +107,32 @@ export function RestaurantFormFields({
     <div className="space-y-4">
       <div className="space-y-1.5">
         <Label>{labels.partner}</Label>
-        <Select
-          items={[
-            { value: "", label: labels.selectNone },
-            ...partnerSelectItems,
-          ]}
+        <SearchSelect
+          items={partnerSelectItems}
           value={partnerId || null}
-          onValueChange={(v) => onPartnerIdChange(v ?? "")}
+          onChange={(v) => onPartnerIdChange(v ?? "")}
+          placeholder={labels.selectPartner}
+          searchPlaceholder={labels.selectPartner}
+          defaultLimit={8}
+          recentsKey="restaurant-form-partner"
           disabled={partnersLoading}
-        >
-          <SelectTrigger className="h-9 w-full cursor-pointer rounded-lg bg-background">
-            <SelectValue placeholder={labels.selectPartner} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="" label={labels.selectNone}>
-              {labels.selectNone}
-            </SelectItem>
-            {partners.map((p) => (
-              <SelectItem key={p.id} value={p.id} label={p.name}>
-                {p.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          clearable={false}
+        />
       </div>
 
       <div className="space-y-1.5">
         <Label>{labels.zone}</Label>
-        <Select
-          items={[
-            { value: "", label: labels.selectNone },
-            ...zoneSelectItems,
-          ]}
+        <SearchSelect
+          items={zoneSelectItems}
           value={zoneId || null}
-          onValueChange={(v) => onZoneIdChange(v ?? "")}
+          onChange={(v) => onZoneIdChange(v ?? "")}
+          placeholder={labels.selectZone}
+          searchPlaceholder={labels.selectZone}
+          defaultLimit={8}
+          recentsKey="restaurant-form-zone"
           disabled={zonesLoading}
-        >
-          <SelectTrigger className="h-9 w-full cursor-pointer rounded-lg bg-background">
-            <SelectValue placeholder={labels.selectZone} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="" label={labels.selectNone}>
-              {labels.selectNone}
-            </SelectItem>
-            {zones.map((z) => (
-              <SelectItem
-                key={z.id}
-                value={z.id}
-                label={`${z.name} (${z.code})`}
-              >
-                {z.name} ({z.code})
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          clearable={false}
+        />
       </div>
 
       <div className="space-y-1.5">

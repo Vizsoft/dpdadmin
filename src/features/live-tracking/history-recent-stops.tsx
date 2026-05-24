@@ -42,7 +42,7 @@ export function HistoryRecentStops({
       <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         {t("historyRecentStops")}
       </h4>
-      <div className="max-h-[220px] space-y-1.5 overflow-y-auto pe-1">
+      <div className="max-h-[min(280px,35vh)] space-y-1.5 overflow-y-auto pe-1">
         {stops.map((stop) => (
           <button
             key={stop.id}

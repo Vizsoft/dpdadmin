@@ -43,7 +43,7 @@ export function HistoryEventsTable({
   return (
     <TrackingGlassCard className="overflow-hidden border-border bg-card">
       <div className="flex items-center justify-between border-b border-border px-3 py-2">
-        <h3 className="text-sm font-semibold text-foreground">{t("historyRecentStops")}</h3>
+        <h3 className="text-sm font-semibold text-foreground">{t("tabHistory")}</h3>
         <Pill tone="slate">{t("historyEventsCount", { count: events.length })}</Pill>
       </div>
       <div className="max-h-[280px] overflow-auto">
