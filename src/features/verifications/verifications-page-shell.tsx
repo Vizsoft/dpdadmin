@@ -96,8 +96,10 @@ function toCsv(values: Array<Record<string, string | number | null | undefined>>
 }
 
 function downloadCsv(content: string, filename: string) {
-  const blob = new Blob(["\uFEFF" + content], {
-    type: "text/csv;charset=utf-8",
+  // Plain CSV (no UTF-8 BOM) so Excel opens it as a standard comma-separated
+  // file instead of nagging about the "CSV UTF-8" format.
+  const blob = new Blob([content], {
+    type: "text/csv",
   });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");

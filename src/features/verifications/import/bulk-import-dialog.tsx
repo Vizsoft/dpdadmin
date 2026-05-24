@@ -138,10 +138,28 @@ export function BulkImportDialog({
         duplicateStrategy,
       });
       if ("error" in result) {
-        toast.error(t("importFailed"));
+        toast.error(t("importFailed"), {
+          description: result.errorDetail,
+        });
         return;
       }
-      toast.success(t("importSuccess", { applied: result.applied, skipped: result.skipped }));
+      const failureSample = result.failures
+        .slice(0, 3)
+        .map((f) => `Row ${f.rowIndex + 1}: ${f.reason}`)
+        .join("\n");
+      if (result.applied === 0 && result.failures.length > 0) {
+        toast.error(t("importFailed"), {
+          description: failureSample,
+          duration: 12_000,
+        });
+        return;
+      }
+      toast.success(
+        t("importSuccess", { applied: result.applied, skipped: result.skipped }),
+        failureSample
+          ? { description: failureSample, duration: 10_000 }
+          : undefined,
+      );
       reset();
       onOpenChange(false);
     });

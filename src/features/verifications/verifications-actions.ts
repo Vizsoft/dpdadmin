@@ -85,6 +85,11 @@ function formatPgErrorDetail(error: PgLikeError | null | undefined): string | un
   return parts.length > 0 ? parts.join(" — ") : undefined;
 }
 
+function logPgError(scope: string, error: PgLikeError | null | undefined): void {
+  if (!error) return;
+  console.error(`[verifications] ${scope}:`, formatPgErrorDetail(error));
+}
+
 function driverNameFromRow(
   drivers:
     | {
@@ -707,8 +712,9 @@ export async function resolveImportPreview(
     let restaurant_id: string | null = null;
     let restaurant_resolved_name: string | null = null;
 
-    if (!row.service_date) status = "invalid_date";
-    else if (row.reported_count == null || row.reported_count < 0) {
+    if (!row.service_date || !/^\d{4}-\d{2}-\d{2}$/.test(row.service_date)) {
+      status = "invalid_date";
+    } else if (row.reported_count == null || row.reported_count < 0) {
       status = "invalid_count";
     }
 
@@ -770,8 +776,14 @@ export async function applyImportBatch(payload: {
   rows: ImportPreviewRow[];
   duplicateStrategy: "skip" | "replace";
 }): Promise<
-  | { success: true; batchId: string; applied: number; skipped: number }
-  | { error: VerificationActionError }
+  | {
+      success: true;
+      batchId: string;
+      applied: number;
+      skipped: number;
+      failures: Array<{ rowIndex: number; reason: string }>;
+    }
+  | { error: VerificationActionError; errorDetail?: string }
 > {
   const session = await requireVerificationsManage();
   if (!session) return { error: "not_authorized" };
@@ -779,7 +791,7 @@ export async function applyImportBatch(payload: {
   const ready = payload.rows.filter(
     (r) => r.status === "ok" && !r.skip && r.driver_id && r.restaurant_id && r.service_date,
   );
-  const skipped = payload.rows.length - ready.length;
+  const preCheckSkipped = payload.rows.length - ready.length;
 
   const supabase = await createClient();
   const { data: batch, error: batchError } = await supabase
@@ -789,24 +801,43 @@ export async function applyImportBatch(payload: {
       mapping: payload.mapping,
       row_count: payload.rows.length,
       applied_count: 0,
-      skipped_count: skipped,
+      skipped_count: preCheckSkipped,
       status: "applied",
       uploaded_by: session.id,
     })
     .select("id")
     .single();
 
-  if (batchError || !batch) return { error: "save_failed" };
+  if (batchError || !batch) {
+    logPgError("applyImportBatch.batchInsert", batchError);
+    return { error: "save_failed", errorDetail: formatPgErrorDetail(batchError) };
+  }
 
   let applied = 0;
+  const failures: Array<{ rowIndex: number; reason: string }> = [];
   for (const row of ready) {
-    const { data: restaurant } = await supabase
+    const { data: restaurant, error: restaurantError } = await supabase
       .from("restaurants")
       .select("partner_id")
       .eq("id", row.restaurant_id!)
       .single();
 
-    if (!restaurant?.partner_id) continue;
+    if (restaurantError) {
+      logPgError("applyImportBatch.restaurantLookup", restaurantError);
+      failures.push({
+        rowIndex: row.rowIndex,
+        reason: formatPgErrorDetail(restaurantError) ?? "restaurant lookup failed",
+      });
+      continue;
+    }
+
+    if (!restaurant?.partner_id) {
+      failures.push({
+        rowIndex: row.rowIndex,
+        reason: "Restaurant has no partner assigned (cannot insert verification).",
+      });
+      continue;
+    }
 
     const record = {
       driver_id: row.driver_id!,
@@ -823,27 +854,47 @@ export async function applyImportBatch(payload: {
     if (payload.duplicateStrategy === "replace") {
       const { error } = await supabase
         .from("delivery_verifications")
-        .upsert(record, {
-          onConflict: "driver_id,restaurant_id,service_date",
+        .upsert(record, { onConflict: "driver_id,restaurant_id,service_date" });
+      if (!error) {
+        applied += 1;
+      } else {
+        logPgError("applyImportBatch.upsert", error);
+        failures.push({
+          rowIndex: row.rowIndex,
+          reason: formatPgErrorDetail(error) ?? error.message,
         });
-      if (!error) applied += 1;
+      }
     } else {
-      const { error } = await supabase
-        .from("delivery_verifications")
-        .insert(record);
-      if (!error) applied += 1;
-      else if (error.code !== "23505") {
-        /* ignore duplicate */
+      const { error } = await supabase.from("delivery_verifications").insert(record);
+      if (!error) {
+        applied += 1;
+      } else if (error.code === "23505") {
+        failures.push({ rowIndex: row.rowIndex, reason: "Duplicate (skip strategy)" });
+      } else {
+        logPgError("applyImportBatch.insert", error);
+        failures.push({
+          rowIndex: row.rowIndex,
+          reason: formatPgErrorDetail(error) ?? error.message,
+        });
       }
     }
   }
 
   await supabase
     .from("verification_import_batches")
-    .update({ applied_count: applied, skipped_count: skipped + (ready.length - applied) })
+    .update({
+      applied_count: applied,
+      skipped_count: preCheckSkipped + (ready.length - applied),
+    })
     .eq("id", batch.id);
 
-  return { success: true, batchId: batch.id, applied, skipped };
+  return {
+    success: true,
+    batchId: batch.id,
+    applied,
+    skipped: preCheckSkipped + (ready.length - applied),
+    failures,
+  };
 }
 
 export async function listImportBatches(): Promise<VerificationImportBatchRow[]> {

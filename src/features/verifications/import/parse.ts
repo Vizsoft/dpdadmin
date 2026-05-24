@@ -30,6 +30,76 @@ function normalizeDigits(s: string): string {
     .join("");
 }
 
+/**
+ * Normalise common spreadsheet date inputs (dd/mm/yyyy, dd-mm-yyyy, yyyy-mm-dd,
+ * mm/dd/yyyy, dd.mm.yyyy, Excel serial numbers) to an ISO `YYYY-MM-DD` string.
+ * If the input cannot be parsed confidently, returns the original string so the
+ * caller can flag it and show a clear error.
+ */
+export function normalizeDateToIso(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const raw = String(value).trim();
+  if (!raw) return null;
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+
+  const serial = Number(raw);
+  if (Number.isFinite(serial) && /^\d{4,6}(\.\d+)?$/.test(raw)) {
+    const epoch = Date.UTC(1899, 11, 30);
+    const d = new Date(epoch + Math.round(serial) * 86_400_000);
+    if (!Number.isNaN(d.getTime())) {
+      return d.toISOString().slice(0, 10);
+    }
+  }
+
+  const parts = raw.split(/[/\-.]/).map((p) => p.trim()).filter(Boolean);
+  if (parts.length === 3 && parts.every((p) => /^\d{1,4}$/.test(p))) {
+    let day: number;
+    let month: number;
+    let year: number;
+    if (parts[0]!.length === 4) {
+      year = Number(parts[0]);
+      month = Number(parts[1]);
+      day = Number(parts[2]);
+    } else {
+      const a = Number(parts[0]);
+      const b = Number(parts[1]);
+      const c = Number(parts[2]);
+      year = c < 100 ? 2000 + c : c;
+      if (a > 12 && b <= 12) {
+        day = a;
+        month = b;
+      } else if (b > 12 && a <= 12) {
+        month = a;
+        day = b;
+      } else {
+        day = a;
+        month = b;
+      }
+    }
+    if (
+      Number.isFinite(day) &&
+      Number.isFinite(month) &&
+      Number.isFinite(year) &&
+      month >= 1 &&
+      month <= 12 &&
+      day >= 1 &&
+      day <= 31
+    ) {
+      const iso = `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      const d = new Date(`${iso}T00:00:00Z`);
+      if (!Number.isNaN(d.getTime())) return iso;
+    }
+  }
+
+  const fallback = new Date(raw);
+  if (!Number.isNaN(fallback.getTime())) {
+    return fallback.toISOString().slice(0, 10);
+  }
+
+  return raw;
+}
+
 export function headerSignature(headers: string[]): string {
   return headers.map((h) => cleanCell(h).toLowerCase()).sort().join("|");
 }
@@ -159,7 +229,7 @@ export function mapRowsFromSheet(
         restaurant_external_id: get("restaurant_external_id"),
         restaurant_name: get("restaurant_name"),
         partner_name: get("partner_name"),
-        service_date: get("service_date"),
+        service_date: normalizeDateToIso(get("service_date")),
         reported_count: Number.isFinite(reported as number) ? reported : null,
         notes: get("notes"),
       };
