@@ -19,6 +19,13 @@ import type {
 
 const PAGE_SIZE = 40;
 
+type PgLikeError = {
+  code?: string | null;
+  message?: string | null;
+  details?: string | null;
+  hint?: string | null;
+};
+
 async function requireVerificationsView() {
   const session = await getSessionUser();
   if (
@@ -65,6 +72,16 @@ function relName<T extends { name: string }>(
   if (!rel) return "—";
   const row = Array.isArray(rel) ? rel[0] : rel;
   return row?.name ?? "—";
+}
+
+function formatPgErrorDetail(error: PgLikeError | null | undefined): string | undefined {
+  if (!error) return undefined;
+  const parts: string[] = [];
+  if (error.code) parts.push(`code ${error.code}`);
+  if (error.message) parts.push(error.message);
+  if (error.details) parts.push(error.details);
+  if (error.hint) parts.push(`hint: ${error.hint}`);
+  return parts.length > 0 ? parts.join(" — ") : undefined;
 }
 
 function driverNameFromRow(
@@ -424,7 +441,7 @@ export async function fetchDriverAssignedRestaurants(
 
 export type VerificationMutationResult =
   | { success: true; id: string }
-  | { error: VerificationActionError };
+  | { error: VerificationActionError; errorDetail?: string };
 
 export async function createVerification(input: {
   driverId: string;
@@ -453,7 +470,10 @@ export async function createVerification(input: {
 
   if (restaurantError) {
     console.error("[createVerification] restaurant lookup failed", restaurantError);
-    return { error: "save_failed" };
+    return {
+      error: "save_failed",
+      errorDetail: formatPgErrorDetail(restaurantError),
+    };
   }
   if (!restaurant) return { error: "restaurant_not_found" };
   if (!restaurant.partner_id) return { error: "restaurant_not_found" };
@@ -509,7 +529,10 @@ export async function createVerification(input: {
         hint: retry.error.hint,
       });
       if (retry.error.code === "23505") return { error: "duplicate" };
-      return { error: "save_failed" };
+      return {
+        error: "save_failed",
+        errorDetail: formatPgErrorDetail(retry.error),
+      };
     }
     void logAdminMutation({
       action: "create",
@@ -558,7 +581,12 @@ export async function updateVerification(input: {
     })
     .eq("id", input.id);
 
-  if (error) return { error: "save_failed" };
+  if (error) {
+    return {
+      error: "save_failed",
+      errorDetail: formatPgErrorDetail(error),
+    };
+  }
   void logAdminMutation({
     action: "update",
     entityType: "delivery_verification",
@@ -580,7 +608,12 @@ export async function reconcileVerification(
     p_verification_id: id,
   });
 
-  if (error) return { error: "reconcile_failed" };
+  if (error) {
+    return {
+      error: "reconcile_failed",
+      errorDetail: formatPgErrorDetail(error),
+    };
+  }
   void logAdminMutation({
     action: "update",
     entityType: "delivery_verification",
@@ -603,7 +636,12 @@ export async function deleteVerification(
     .delete()
     .eq("id", id);
 
-  if (error) return { error: "delete_failed" };
+  if (error) {
+    return {
+      error: "delete_failed",
+      errorDetail: formatPgErrorDetail(error),
+    };
+  }
   void logAdminMutation({
     action: "delete",
     entityType: "delivery_verification",

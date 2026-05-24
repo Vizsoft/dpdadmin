@@ -98,9 +98,9 @@ export const NAV_ITEMS: NavItem[] = [
     permission: "earnings.view",
   },
   {
-    href: "/earnings-calculation",
-    labelKey: "nav.earningsCalculation",
-    icon: "ClipboardCheck",
+    href: "/payouts",
+    labelKey: "nav.payouts",
+    icon: "Wallet",
     permission: "earnings.view",
   },
   {

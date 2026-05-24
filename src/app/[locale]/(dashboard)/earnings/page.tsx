@@ -1,5 +1,5 @@
 import { setRequestLocale } from "next-intl/server";
-import { EarningsPageShell } from "@/features/dpd/earnings-page-shell";
+import { EarningsPageShell } from "@/features/earnings/earnings-page-shell";
 import { requirePermission } from "@/lib/auth/require-permission";
 import { logAdminPageView } from "@/lib/audit/log-admin-activity";
 

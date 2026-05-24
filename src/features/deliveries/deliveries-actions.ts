@@ -15,6 +15,27 @@ import type {
   DeliveryStatus,
 } from "./types";
 
+type DeliveryMutationResult =
+  | { ok: true }
+  | { error: DeliveryActionError; errorDetail?: string };
+
+type PgLikeError = {
+  code?: string | null;
+  message?: string | null;
+  details?: string | null;
+  hint?: string | null;
+};
+
+function formatPgErrorDetail(error: PgLikeError | null | undefined): string | undefined {
+  if (!error) return undefined;
+  const parts: string[] = [];
+  if (error.code) parts.push(`code ${error.code}`);
+  if (error.message) parts.push(error.message);
+  if (error.details) parts.push(error.details);
+  if (error.hint) parts.push(`hint: ${error.hint}`);
+  return parts.length > 0 ? parts.join(" — ") : undefined;
+}
+
 async function requireDeliveriesView() {
   const session = await getSessionUser();
   if (
@@ -403,7 +424,7 @@ export async function updateDeliveryStatus(
   deliveryId: string,
   status: DeliveryStatus,
   rejectionReason?: string,
-): Promise<{ ok: true } | { error: DeliveryActionError }> {
+): Promise<DeliveryMutationResult> {
   const session = await requireDeliveriesManage();
   if (!session) return { error: "not_authorized" };
 
@@ -419,7 +440,12 @@ export async function updateDeliveryStatus(
     .eq("id", deliveryId)
     .maybeSingle();
 
-  if (fetchError || !existing) return { error: "update_failed" };
+  if (fetchError || !existing) {
+    return {
+      error: "update_failed",
+      errorDetail: formatPgErrorDetail(fetchError),
+    };
+  }
 
   const updatePayload =
     status === "rejected"
@@ -437,7 +463,12 @@ export async function updateDeliveryStatus(
     .update(updatePayload)
     .eq("id", deliveryId);
 
-  if (error) return { error: "update_failed" };
+  if (error) {
+    return {
+      error: "update_failed",
+      errorDetail: formatPgErrorDetail(error),
+    };
+  }
 
   void logAdminMutation({
     action: "update",
@@ -482,20 +513,20 @@ export async function updateDeliveryStatus(
 
 export async function verifyDelivery(
   deliveryId: string,
-): Promise<{ ok: true } | { error: DeliveryActionError }> {
+): Promise<DeliveryMutationResult> {
   return updateDeliveryStatus(deliveryId, "verified");
 }
 
 export async function rejectDelivery(
   deliveryId: string,
   reason: string,
-): Promise<{ ok: true } | { error: DeliveryActionError }> {
+): Promise<DeliveryMutationResult> {
   return updateDeliveryStatus(deliveryId, "rejected", reason);
 }
 
 export async function deleteDelivery(
   deliveryId: string,
-): Promise<{ ok: true } | { error: DeliveryActionError }> {
+): Promise<DeliveryMutationResult> {
   const session = await requireSuperAdmin();
   if (!session) return { error: "not_authorized" };
 
@@ -506,7 +537,12 @@ export async function deleteDelivery(
     .eq("id", deliveryId)
     .maybeSingle();
 
-  if (fetchError || !row) return { error: "delete_failed" };
+  if (fetchError || !row) {
+    return {
+      error: "delete_failed",
+      errorDetail: formatPgErrorDetail(fetchError),
+    };
+  }
 
   const proofKey = row.order_proof_url?.trim() ?? "";
 
@@ -529,7 +565,12 @@ export async function deleteDelivery(
     .delete()
     .eq("id", deliveryId);
 
-  if (deleteError) return { error: "delete_failed" };
+  if (deleteError) {
+    return {
+      error: "delete_failed",
+      errorDetail: formatPgErrorDetail(deleteError),
+    };
+  }
 
   void logAdminMutation({
     action: "delete",

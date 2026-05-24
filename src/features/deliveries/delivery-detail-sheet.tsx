@@ -263,7 +263,10 @@ export function DeliveryDetailSheet({
           : result.error === "not_authorized"
             ? t("noPermission")
             : t("statusChangeFailed");
-      toast.error(msg);
+      toast.error(msg, {
+        description: result.errorDetail,
+        duration: result.errorDetail ? 9000 : undefined,
+      });
       return;
     }
     toast.success(t("statusChangeSuccess"));
@@ -276,6 +279,10 @@ export function DeliveryDetailSheet({
     if ("error" in result) {
       toast.error(
         result.error === "not_authorized" ? t("noPermission") : t("deleteFailed"),
+        {
+          description: result.errorDetail,
+          duration: result.errorDetail ? 9000 : undefined,
+        },
       );
       return;
     }

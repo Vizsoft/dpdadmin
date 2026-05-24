@@ -76,4 +76,22 @@ export const queryKeys = {
     incentiveRules: () => ["dpd", "incentive-rules"] as const,
     scopeOptions: () => ["dpd", "scope-options"] as const,
   },
+  earnings: {
+    all: () => ["earnings"] as const,
+    daily: (startDate: string, endDate: string, driverId: string | null) =>
+      ["earnings", "daily", startDate, endDate, driverId ?? "all"] as const,
+    overview: (startDate: string, endDate: string, filters: Record<string, unknown> = {}) =>
+      ["earnings", "overview", startDate, endDate, filters] as const,
+    grouped: (
+      startDate: string,
+      endDate: string,
+      groupBy: string,
+      filters: Record<string, unknown> = {},
+    ) => ["earnings", "grouped", startDate, endDate, groupBy, filters] as const,
+  },
+  payouts: {
+    all: () => ["payouts"] as const,
+    list: (startDate: string, endDate: string) => ["payouts", "list", startDate, endDate] as const,
+    detail: (id: string) => ["payouts", "detail", id] as const,
+  },
 } as const;

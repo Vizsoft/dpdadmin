@@ -112,7 +112,10 @@ export function VerificationDetailSheet({
         notes,
       });
       if ("error" in result) {
-        toast.error(t("errors.save_failed"));
+        toast.error(t("errors.save_failed"), {
+          description: result.errorDetail,
+          duration: result.errorDetail ? 9000 : undefined,
+        });
         return;
       }
       toast.success(t("updateSuccess"));
@@ -123,7 +126,10 @@ export function VerificationDetailSheet({
     startTransition(async () => {
       const result = await reconcile.mutateAsync(display.id);
       if ("error" in result) {
-        toast.error(t("errors.reconcile_failed"));
+        toast.error(t("errors.reconcile_failed"), {
+          description: result.errorDetail,
+          duration: result.errorDetail ? 9000 : undefined,
+        });
         return;
       }
       toast.success(t("reconcileSuccess"));
@@ -134,7 +140,10 @@ export function VerificationDetailSheet({
     startTransition(async () => {
       const result = await remove.mutateAsync(display.id);
       if ("error" in result) {
-        toast.error(t("errors.delete_failed"));
+        toast.error(t("errors.delete_failed"), {
+          description: result.errorDetail,
+          duration: result.errorDetail ? 9000 : undefined,
+        });
         return;
       }
       toast.success(t("deleteSuccess"));

@@ -232,6 +232,15 @@ export const MENU_REGISTRY: MenuRegistryItem[] = [
     permission: "earnings.view",
   },
   {
+    id: "payouts",
+    defaultLabel: "Payouts",
+    defaultIcon: "Wallet",
+    href: "/payouts",
+    defaultGroup: "Operations",
+    defaultOrder: 78,
+    permission: "earnings.view",
+  },
+  {
     id: "notifications",
     defaultLabel: "Notifications",
     defaultIcon: "Bell",
@@ -367,6 +376,7 @@ export const APP_NAV_KEY_BY_ID: Record<string, string> = {
   "delivery-rules": "deliveryRules",
   "incentive-rules": "incentiveRules",
   "earnings-calculation": "earningsCalculation",
+  payouts: "payouts",
   notifications: "notifications",
   support: "support",
   profile: "profile",

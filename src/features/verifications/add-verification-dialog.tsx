@@ -162,7 +162,10 @@ export function AddVerificationDialog({
       });
       if ("error" in result) {
         const key = result.error;
-        toast.error(t(`errors.${key}` as "errors.save_failed"));
+        toast.error(t(`errors.${key}` as "errors.save_failed"), {
+          description: result.errorDetail,
+          duration: result.errorDetail ? 9000 : undefined,
+        });
         return;
       }
       toast.success(t("createSuccess"));
