@@ -80,6 +80,56 @@ export type VerificationImportBatchRow = {
   reverted_at: string | null;
 };
 
+export type VerificationExportRestaurantRow = {
+  restaurant_id: string;
+  restaurant_name: string;
+  restaurant_external_id: string | null;
+  partner_id: string | null;
+  partner_name: string;
+  zone_id: string | null;
+  zone_name: string;
+  status: string;
+};
+
+export type VerificationExportZoneRow = {
+  zone_id: string;
+  zone_name: string;
+  zone_code: string;
+  restaurant_id: string | null;
+  restaurant_name: string;
+  restaurant_external_id: string | null;
+  partner_id: string | null;
+  partner_name: string;
+};
+
+export type VerificationExportPartnerRow = {
+  partner_id: string;
+  partner_name: string;
+  restaurant_id: string | null;
+  restaurant_name: string;
+  restaurant_external_id: string | null;
+  zone_id: string | null;
+  zone_name: string;
+};
+
+export type VerificationExportSampleRow = {
+  employee_id: string;
+  driver_code: string;
+  restaurant_external_id: string;
+  restaurant_name: string;
+  partner_name: string;
+  service_date: string;
+  reported_count: number;
+  notes: string;
+};
+
+export type VerificationExportData = {
+  restaurants: VerificationExportRestaurantRow[];
+  zones: VerificationExportZoneRow[];
+  partners: VerificationExportPartnerRow[];
+  sampleImport: VerificationExportSampleRow[];
+};
+
 export type VerificationActionError =
   | "not_authorized"
   | "missing_fields"

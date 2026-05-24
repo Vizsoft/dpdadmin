@@ -28,48 +28,53 @@ export function TrackingGlassCard({
 export function TrackingCommandLayout({
   left,
   center,
+  footer,
   className,
   fullscreen,
 }: {
   left: ReactNode;
   center: ReactNode;
+  footer?: ReactNode;
   className?: string;
   fullscreen?: boolean;
 }) {
   const sharedHeight = cn(LAYOUT.mapAboveFoldHeight, LAYOUT.mapAboveFoldMin);
 
   return (
-    <div
-      className={cn(
-        "grid",
-        LAYOUT.panelGap,
-        fullscreen
-          ? "h-full min-h-0 grid-rows-1 xl:grid-cols-[minmax(240px,1fr)_minmax(0,4fr)]"
-          : cn("xl:grid-cols-[minmax(240px,1fr)_minmax(0,4fr)]", "xl:items-stretch"),
-        "max-xl:grid-cols-1",
-        className,
-      )}
-    >
-      <aside
+    <div className={cn("flex min-h-0 flex-col", LAYOUT.panelGap, fullscreen && "h-full")}>
+      <div
         className={cn(
-          "flex min-h-0 flex-col overflow-hidden",
+          "grid",
           LAYOUT.panelGap,
-          !fullscreen && cn("max-xl:max-h-[420px]", sharedHeight),
-          fullscreen && "h-full min-h-0",
+          fullscreen
+            ? "h-full min-h-0 grid-rows-1 xl:grid-cols-[minmax(240px,1fr)_minmax(0,4fr)]"
+            : cn("xl:grid-cols-[minmax(240px,1fr)_minmax(0,4fr)]", "xl:items-stretch"),
+          "max-xl:grid-cols-1",
+          className,
         )}
       >
-        {left}
-      </aside>
-      <section
-        className={cn(
-          "flex min-h-0 flex-col",
-          LAYOUT.panelGap,
-          fullscreen && "h-full min-h-0",
-          !fullscreen && sharedHeight,
-        )}
-      >
-        {center}
-      </section>
+        <aside
+          className={cn(
+            "flex min-h-0 flex-col overflow-hidden",
+            LAYOUT.panelGap,
+            !fullscreen && cn("max-xl:max-h-[420px]", sharedHeight),
+            fullscreen && "h-full min-h-0",
+          )}
+        >
+          {left}
+        </aside>
+        <section
+          className={cn(
+            "flex min-h-0 flex-col",
+            LAYOUT.panelGap,
+            fullscreen && "h-full min-h-0",
+            !fullscreen && sharedHeight,
+          )}
+        >
+          {center}
+        </section>
+      </div>
+      {footer ? <div className="shrink-0">{footer}</div> : null}
     </div>
   );
 }

@@ -12,6 +12,7 @@ import {
   createVerification,
   deleteVerification,
   fetchDriverAssignedRestaurants,
+  getVerificationExportData,
   fetchVerificationDetail,
   fetchVerificationDriverOptions,
   listImportBatches,
@@ -68,6 +69,15 @@ export function useImportBatches() {
   return useQuery({
     queryKey: queryKeys.verifications.importBatches(),
     queryFn: listImportBatches,
+  });
+}
+
+export function useVerificationExportData(enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.verifications.export(),
+    queryFn: getVerificationExportData,
+    enabled,
+    staleTime: 5 * 60_000,
   });
 }
 

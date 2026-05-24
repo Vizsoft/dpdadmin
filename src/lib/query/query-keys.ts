@@ -43,6 +43,7 @@ export const queryKeys = {
       ["verifications", "list", filters] as const,
     detail: (id: string) => ["verifications", "detail", id] as const,
     importBatches: () => ["verifications", "import-batches"] as const,
+    export: () => ["verifications", "export"] as const,
     lookup: () => ["verifications", "lookup"] as const,
   },
   zones: {

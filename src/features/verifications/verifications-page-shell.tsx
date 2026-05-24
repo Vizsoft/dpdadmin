@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import {
   ClipboardList,
+  Download,
   Loader2,
   Plus,
   RefreshCw,
@@ -20,6 +21,12 @@ import { StatusPill } from "@/components/dashboard/status-pill";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CardContent } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { SearchSelect } from "@/components/ui/search-select";
 import {
   Select,
@@ -31,10 +38,15 @@ import {
 import { driverSearchOptions, restaurantSearchOptions } from "@/lib/search-options";
 import { cn } from "@/lib/utils";
 import { useRestaurantsList } from "@/features/restaurants/use-restaurants";
+import { toast } from "sonner";
 import { AddVerificationDialog } from "./add-verification-dialog";
 import { BulkImportDialog } from "./import/bulk-import-dialog";
 import { VerificationDetailSheet } from "./verification-detail-sheet";
-import { useInfiniteVerifications, useVerificationDriverOptions } from "./use-verifications";
+import {
+  useInfiniteVerifications,
+  useVerificationDriverOptions,
+  useVerificationExportData,
+} from "./use-verifications";
 import {
   VERIFICATION_STATUSES,
   type VerificationListRow,
@@ -68,6 +80,33 @@ function formatDate(iso: string): string {
   }
 }
 
+type ExportTarget = "all" | "restaurantMaster" | "zoneMaster" | "partnerMaster" | "sampleImport";
+
+function toCsv(values: Array<Record<string, string | number | null | undefined>>): string {
+  if (values.length === 0) return "";
+  const header = Object.keys(values[0] ?? {});
+  const escape = (value: string | number | null | undefined) => {
+    const s = String(value ?? "");
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  return [
+    header.join(","),
+    ...values.map((row) => header.map((key) => escape(row[key])).join(",")),
+  ].join("\n");
+}
+
+function downloadCsv(content: string, filename: string) {
+  const blob = new Blob(["\uFEFF" + content], {
+    type: "text/csv;charset=utf-8",
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export function VerificationsPageShell() {
   const t = useTranslations("pages.verifications");
   const [search, setSearch] = useState("");
@@ -80,6 +119,7 @@ export function VerificationsPageShell() {
   const [importOpen, setImportOpen] = useState(false);
   const [selected, setSelected] = useState<VerificationListRow | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   const filters = useMemo(
@@ -111,6 +151,9 @@ export function VerificationsPageShell() {
 
   const { data: drivers = [] } = useVerificationDriverOptions("");
   const { data: restaurants = [] } = useRestaurantsList();
+  const { refetch: loadExportData } = useVerificationExportData(false);
+
+  const dateStamp = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
   const driverFilterItems = useMemo(
     () => [
@@ -161,6 +204,43 @@ export function VerificationsPageShell() {
     return () => obs.disconnect();
   }, [hasNextPage, fetchNextPage]);
 
+  const handleExport = async (target: ExportTarget) => {
+    setIsExporting(true);
+    try {
+      const result = await loadExportData();
+      const payload = result.data;
+      if (!payload) {
+        toast.error(t("exportFailed"));
+        return;
+      }
+
+      const files =
+        target === "all"
+          ? (["restaurantMaster", "zoneMaster", "partnerMaster", "sampleImport"] as const)
+          : ([target] as const);
+
+      for (const fileTarget of files) {
+        if (fileTarget === "restaurantMaster") {
+          const csv = toCsv(payload.restaurants);
+          downloadCsv(csv, `dpd-verification-restaurant-master-${dateStamp}.csv`);
+        } else if (fileTarget === "zoneMaster") {
+          const csv = toCsv(payload.zones);
+          downloadCsv(csv, `dpd-verification-zone-master-${dateStamp}.csv`);
+        } else if (fileTarget === "partnerMaster") {
+          const csv = toCsv(payload.partners);
+          downloadCsv(csv, `dpd-verification-partner-master-${dateStamp}.csv`);
+        } else {
+          const csv = toCsv(payload.sampleImport);
+          downloadCsv(csv, `dpd-verification-sample-import-${dateStamp}.csv`);
+        }
+      }
+    } catch {
+      toast.error(t("exportFailed"));
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <AppPage>
       <AppPageHeader
@@ -202,6 +282,53 @@ export function VerificationsPageShell() {
               <Upload className="me-2 h-3.5 w-3.5" />
               {t("bulkImport")}
             </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                className={cn(
+                  "inline-flex h-8 items-center justify-center rounded-lg border border-input bg-background px-3 text-sm font-medium shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50",
+                )}
+                disabled={isExporting}
+              >
+                {isExporting ? (
+                  <Loader2 className="me-2 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Download className="me-2 h-3.5 w-3.5" />
+                )}
+                {t("export")}
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem
+                  className="cursor-pointer"
+                  onClick={() => void handleExport("all")}
+                >
+                  {t("exportOptionAll")}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="cursor-pointer"
+                  onClick={() => void handleExport("restaurantMaster")}
+                >
+                  {t("exportOptionRestaurantMaster")}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="cursor-pointer"
+                  onClick={() => void handleExport("zoneMaster")}
+                >
+                  {t("exportOptionZoneMaster")}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="cursor-pointer"
+                  onClick={() => void handleExport("partnerMaster")}
+                >
+                  {t("exportOptionPartnerMaster")}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="cursor-pointer"
+                  onClick={() => void handleExport("sampleImport")}
+                >
+                  {t("exportOptionSampleImport")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button
               type="button"
               size="sm"

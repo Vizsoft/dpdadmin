@@ -1,6 +1,8 @@
 import type { DriverLiveLocation } from "@/features/locations/types";
 
 export type LiveDriverMeta = {
+  fullName: string | null;
+  driverCode: string | null;
   zoneId: string | null;
   partnerId: string | null;
   zoneName: string | null;

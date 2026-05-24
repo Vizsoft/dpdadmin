@@ -91,6 +91,8 @@ export function LiveTrackingLiveView({
     for (const row of driversMeta) {
       if (!row.linked_profile_id) continue;
       map.set(row.linked_profile_id, {
+        fullName: row.full_name ?? null,
+        driverCode: row.driver_code ?? null,
         zoneId: row.zone_id ?? null,
         partnerId: row.partner_id ?? null,
         zoneName: row.zone_name ?? null,
@@ -103,8 +105,21 @@ export function LiveTrackingLiveView({
     return map;
   }, [driversMeta]);
 
+  const liveDrivers = useMemo(() => {
+    return locations.map((loc) => {
+      const meta = profileMeta.get(loc.driverId);
+      const fallbackShortId = loc.driverId.slice(0, 8);
+      const hasFallbackName = !loc.driverName || loc.driverName === fallbackShortId;
+      return {
+        ...loc,
+        driverName: hasFallbackName ? (meta?.fullName ?? loc.driverName) : loc.driverName,
+        driverCode: loc.driverCode === "—" ? (meta?.driverCode ?? loc.driverCode) : loc.driverCode,
+      };
+    });
+  }, [locations, profileMeta]);
+
   const filtered = useMemo(() => {
-    return locations.filter((loc) => {
+    return liveDrivers.filter((loc) => {
       const meta = profileMeta.get(loc.driverId);
       if (!matchesLiveTrackingFilters(loc, filters, meta)) return false;
       const status = fleetStatusFromLocation({
@@ -114,11 +129,14 @@ export function LiveTrackingLiveView({
       });
       return visibleStatuses.includes(status);
     });
-  }, [locations, filters, profileMeta, visibleStatuses]);
+  }, [liveDrivers, filters, profileMeta, visibleStatuses]);
 
   const selectedDriver = useMemo(
-    () => filtered.find((d) => d.driverId === selectedId) ?? locations.find((d) => d.driverId === selectedId) ?? null,
-    [filtered, locations, selectedId],
+    () =>
+      filtered.find((d) => d.driverId === selectedId) ??
+      liveDrivers.find((d) => d.driverId === selectedId) ??
+      null,
+    [filtered, liveDrivers, selectedId],
   );
 
   const selectedMeta = selectedDriver ? profileMeta.get(selectedDriver.driverId) : undefined;
@@ -146,8 +164,8 @@ export function LiveTrackingLiveView({
   });
 
   const alertsCount = useMemo(
-    () => locations.filter((l) => l.pinStatus === "alert").length,
-    [locations],
+    () => liveDrivers.filter((l) => l.pinStatus === "alert").length,
+    [liveDrivers],
   );
 
   const mapMarkers = useMemo(
@@ -167,8 +185,8 @@ export function LiveTrackingLiveView({
   );
 
   const inProgressCount = useMemo(
-    () => locations.filter((loc) => loc.trackingStatus === "delivery_submit").length,
-    [locations],
+    () => liveDrivers.filter((loc) => loc.trackingStatus === "delivery_submit").length,
+    [liveDrivers],
   );
 
   const zoneDriverCounts = useMemo(() => {
@@ -222,7 +240,7 @@ export function LiveTrackingLiveView({
       left={
         <FleetOverviewPanel
           totalDrivers={driversMeta.length}
-          trackedCount={locations.length}
+          trackedCount={liveDrivers.length}
           inProgressCount={inProgressCount}
           alertsCount={alertsCount}
           drivers={filtered}
@@ -236,6 +254,14 @@ export function LiveTrackingLiveView({
           onTabChange={onTabChange}
         />
       }
+      footer={
+        !fullscreen && !mapOnlyFullscreen ? (
+          <div className="grid gap-2 md:grid-cols-[minmax(0,1.6fr)_minmax(220px,1fr)]">
+            <TrackingInsightsPanel drivers={liveDrivers} />
+            <TrackingQuickActions />
+          </div>
+        ) : undefined
+      }
       center={
         <TrackingMapStage
           fullscreen={fullscreen || mapOnlyFullscreen}
@@ -243,12 +269,6 @@ export function LiveTrackingLiveView({
           frameClassName={cn(
             mapOnlyFullscreen && "fixed inset-2 z-50 rounded-xl border bg-background shadow-2xl",
           )}
-          footer={
-            <>
-              <TrackingInsightsPanel drivers={locations} />
-              <TrackingQuickActions />
-            </>
-          }
         >
           <DriverLocationsMap
             markers={mapMarkers}

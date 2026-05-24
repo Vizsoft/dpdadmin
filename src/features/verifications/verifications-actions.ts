@@ -11,6 +11,7 @@ import type {
   VerificationActionError,
   VerificationDetailModel,
   VerificationDriverOption,
+  VerificationExportData,
   VerificationImportBatchRow,
   VerificationListCursor,
   VerificationListFilters,
@@ -858,6 +859,94 @@ export async function listImportBatches(): Promise<VerificationImportBatchRow[]>
 
   if (error) throw error;
   return (data ?? []) as VerificationImportBatchRow[];
+}
+
+export async function getVerificationExportData(): Promise<VerificationExportData> {
+  await requireVerificationsView();
+  const supabase = await createClient();
+
+  const { data: rows, error } = await supabase
+    .from("restaurants")
+    .select(
+      `
+      id,
+      name,
+      external_merchant_id,
+      status,
+      partner_id,
+      zone_id,
+      partners (name),
+      zones (name, code)
+    `,
+    )
+    .order("name", { ascending: true });
+
+  if (error) throw error;
+
+  const restaurants = (rows ?? []).map((row) => {
+    const partnerRel = Array.isArray(row.partners) ? row.partners[0] : row.partners;
+    const zoneRel = Array.isArray(row.zones) ? row.zones[0] : row.zones;
+    return {
+      restaurant_id: row.id,
+      restaurant_name: row.name,
+      restaurant_external_id: row.external_merchant_id ?? null,
+      partner_id: row.partner_id ?? null,
+      partner_name: partnerRel?.name ?? "—",
+      zone_id: row.zone_id ?? null,
+      zone_name: zoneRel?.name ?? "—",
+      status: row.status ?? "draft",
+      zone_code: zoneRel?.code ?? "",
+    };
+  });
+
+  const zones = restaurants
+    .map((restaurant) => ({
+      zone_id: restaurant.zone_id ?? "",
+      zone_name: restaurant.zone_name,
+      zone_code: restaurant.zone_code ?? "",
+      restaurant_id: restaurant.restaurant_id,
+      restaurant_name: restaurant.restaurant_name,
+      restaurant_external_id: restaurant.restaurant_external_id,
+      partner_id: restaurant.partner_id,
+      partner_name: restaurant.partner_name,
+    }))
+    .filter((row) => Boolean(row.zone_id));
+
+  const partners = restaurants.map((restaurant) => ({
+    partner_id: restaurant.partner_id ?? "",
+    partner_name: restaurant.partner_name,
+    restaurant_id: restaurant.restaurant_id,
+    restaurant_name: restaurant.restaurant_name,
+    restaurant_external_id: restaurant.restaurant_external_id,
+    zone_id: restaurant.zone_id,
+    zone_name: restaurant.zone_name,
+  }));
+
+  const sampleSource = restaurants[0];
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kuwait",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+
+  return {
+    restaurants: restaurants.map(({ zone_code: _zoneCode, ...rest }) => rest),
+    zones,
+    partners,
+    sampleImport: [
+      {
+        employee_id: "EMP10001",
+        driver_code: "10001",
+        restaurant_external_id: sampleSource?.restaurant_external_id ?? "CC1001",
+        restaurant_name: sampleSource?.restaurant_name ?? "Sample Restaurant",
+        partner_name: sampleSource?.partner_name ?? "Sample Partner",
+        service_date: today,
+        reported_count: 12,
+        notes: "Sample row for DPD bulk import",
+      },
+    ],
+  };
 }
 
 export async function revertImportBatch(
