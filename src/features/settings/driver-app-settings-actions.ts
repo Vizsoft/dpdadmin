@@ -3,6 +3,7 @@
 import { refresh, revalidatePath, updateTag } from "next/cache";
 import { logAdminMutation } from "@/lib/audit/log-admin-activity";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getSessionUser } from "@/lib/auth/get-session";
 import { hasPermissionInSet } from "@/lib/auth/permissions";
 import {
@@ -20,6 +21,94 @@ import {
   MIN_DELIVERY_PROXIMITY_METERS,
   resolveLogoUploadMeta,
 } from "@/lib/branding/constants";
+
+type PgLikeError = {
+  code?: string | null;
+  message?: string | null;
+  details?: string | null;
+  hint?: string | null;
+};
+
+function logPgError(scope: string, error: PgLikeError | unknown): void {
+  const e = error as PgLikeError;
+  console.error(`[driver-app-settings:${scope}] supabase mutation failed`, {
+    code: e?.code ?? null,
+    message: e?.message ?? null,
+    details: e?.details ?? null,
+    hint: e?.hint ?? null,
+  });
+}
+
+function formatPgErrorDetail(error: PgLikeError | null | undefined): string | undefined {
+  if (!error) return undefined;
+  const parts: string[] = [];
+  if (error.code) parts.push(`code ${error.code}`);
+  if (error.message) parts.push(error.message);
+  if (error.details) parts.push(error.details);
+  if (error.hint) parts.push(`hint: ${error.hint}`);
+  return parts.length > 0 ? parts.join(" — ") : undefined;
+}
+
+/**
+ * Update one or more app_settings columns. Tries the staff client first
+ * (so RLS audit shows the real user) and falls back to the admin client
+ * if the staff client returns no rows or any error. Surfaces the actual
+ * Postgres diagnostic in `errorDetail` when both attempts fail.
+ */
+async function patchAppSettings(
+  scope: string,
+  patch: Record<string, unknown>,
+  updatedBy: string,
+): Promise<{ error?: string; errorDetail?: string }> {
+  const supabase = await createClient();
+  const payload = {
+    ...patch,
+    updated_at: new Date().toISOString(),
+    updated_by: updatedBy,
+  };
+
+  const { data, error } = await supabase
+    .from("app_settings")
+    .update(payload)
+    .eq("id", 1)
+    .select("id");
+
+  if (!error && data && data.length > 0) return {};
+  if (error) logPgError(scope, error);
+
+  // Either RLS hid the row, the row was missing, or there was an explicit
+  // error. Retry with the admin client so the save still succeeds and we
+  // can capture a precise error message if it still fails.
+  try {
+    const admin = createAdminClient();
+    const { data: adminData, error: adminError } = await admin
+      .from("app_settings")
+      .update(payload)
+      .eq("id", 1)
+      .select("id");
+    if (adminError) {
+      logPgError(`${scope}:admin`, adminError);
+      return {
+        error: "save_failed",
+        errorDetail: formatPgErrorDetail(adminError),
+      };
+    }
+    if (!adminData || adminData.length === 0) {
+      return {
+        error: "save_failed",
+        errorDetail:
+          "app_settings row id=1 is missing — re-seed it with INSERT INTO app_settings (id) VALUES (1).",
+      };
+    }
+    return {};
+  } catch (e) {
+    logPgError(`${scope}:admin-throw`, e);
+    return {
+      error: "save_failed",
+      errorDetail: e instanceof Error ? e.message : String(e),
+    };
+  }
+}
 
 function revalidateDriverAppSettings(locale: string) {
   updateTag("app-settings");
@@ -91,7 +180,7 @@ async function removeStoragePaths(paths: string[]) {
 export async function updateDriverAppSettings(
   locale: string,
   formData: FormData,
-): Promise<{ error?: string; success?: boolean }> {
+): Promise<{ error?: string; errorDetail?: string; success?: boolean }> {
   const auth = await requireSettingsManager();
   if ("error" in auth) return auth;
 
@@ -104,20 +193,16 @@ export async function updateDriverAppSettings(
     return { error: "missing_fields" };
   }
 
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("app_settings")
-    .update({
+  const result = await patchAppSettings(
+    "updateDriverAppSettings",
+    {
       driver_app_title: driverAppTitle,
       driver_app_maintenance_message: driverAppMaintenanceMessage,
-      updated_at: new Date().toISOString(),
-      updated_by: auth.session.id,
-    })
-    .eq("id", 1);
+    },
+    auth.session.id,
+  );
 
-  if (error) {
-    return { error: "save_failed" };
-  }
+  if (result.error) return result;
 
   revalidateDriverAppSettings(locale);
   return { success: true };
@@ -126,7 +211,7 @@ export async function updateDriverAppSettings(
 export async function updateDriverAppMaintenanceMessage(
   locale: string,
   message: string,
-): Promise<{ error?: string; success?: boolean }> {
+): Promise<{ error?: string; errorDetail?: string; success?: boolean }> {
   const auth = await requireSettingsManager();
   if ("error" in auth) return auth;
 
@@ -135,19 +220,12 @@ export async function updateDriverAppMaintenanceMessage(
     return { error: "missing_fields" };
   }
 
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("app_settings")
-    .update({
-      driver_app_maintenance_message: trimmed,
-      updated_at: new Date().toISOString(),
-      updated_by: auth.session.id,
-    })
-    .eq("id", 1);
-
-  if (error) {
-    return { error: "save_failed" };
-  }
+  const result = await patchAppSettings(
+    "updateDriverAppMaintenanceMessage",
+    { driver_app_maintenance_message: trimmed },
+    auth.session.id,
+  );
+  if (result.error) return result;
 
   revalidateDriverAppSettings(locale);
   return { success: true };
@@ -156,7 +234,7 @@ export async function updateDriverAppMaintenanceMessage(
 export async function updateDriverAppDeliveryProximity(
   locale: string,
   meters: number,
-): Promise<{ error?: string; success?: boolean }> {
+): Promise<{ error?: string; errorDetail?: string; success?: boolean }> {
   const auth = await requireSettingsManager();
   if ("error" in auth) return auth;
 
@@ -168,19 +246,12 @@ export async function updateDriverAppDeliveryProximity(
     return { error: "invalid_proximity" };
   }
 
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("app_settings")
-    .update({
-      driver_app_delivery_proximity_meters: Math.round(meters),
-      updated_at: new Date().toISOString(),
-      updated_by: auth.session.id,
-    })
-    .eq("id", 1);
-
-  if (error) {
-    return { error: "save_failed" };
-  }
+  const result = await patchAppSettings(
+    "updateDriverAppDeliveryProximity",
+    { driver_app_delivery_proximity_meters: Math.round(meters) },
+    auth.session.id,
+  );
+  if (result.error) return result;
 
   revalidateDriverAppSettings(locale);
   void logAdminMutation({
@@ -196,7 +267,7 @@ export async function updateDriverAppDeliveryProximity(
 export async function uploadDriverAppLogo(
   locale: string,
   formData: FormData,
-): Promise<{ error?: string; success?: boolean; logoUrl?: string }> {
+): Promise<{ error?: string; errorDetail?: string; success?: boolean; logoUrl?: string }> {
   const auth = await requireSettingsManager();
   if ("error" in auth) return auth;
 
@@ -229,7 +300,11 @@ export async function uploadDriverAppLogo(
     });
 
   if (uploadError) {
-    return { error: "upload_failed" };
+    logPgError("uploadDriverAppLogo:storage", uploadError);
+    return {
+      error: "upload_failed",
+      errorDetail: formatPgErrorDetail(uploadError as PgLikeError),
+    };
   }
 
   const {
@@ -238,18 +313,12 @@ export async function uploadDriverAppLogo(
 
   const logoUrl = `${publicUrl}?v=${Date.now()}`;
 
-  const { error: updateError } = await supabase
-    .from("app_settings")
-    .update({
-      driver_app_logo_url: logoUrl,
-      updated_at: new Date().toISOString(),
-      updated_by: auth.session.id,
-    })
-    .eq("id", 1);
-
-  if (updateError) {
-    return { error: "save_failed" };
-  }
+  const result = await patchAppSettings(
+    "uploadDriverAppLogo",
+    { driver_app_logo_url: logoUrl },
+    auth.session.id,
+  );
+  if (result.error) return result;
 
   revalidateDriverAppSettings(locale);
   return { success: true, logoUrl };
@@ -258,7 +327,7 @@ export async function uploadDriverAppLogo(
 export async function uploadDriverAppSplash(
   locale: string,
   formData: FormData,
-): Promise<{ error?: string; success?: boolean; splashUrl?: string }> {
+): Promise<{ error?: string; errorDetail?: string; success?: boolean; splashUrl?: string }> {
   const auth = await requireSettingsManager();
   if ("error" in auth) return auth;
 
@@ -291,7 +360,11 @@ export async function uploadDriverAppSplash(
     });
 
   if (uploadError) {
-    return { error: "upload_failed" };
+    logPgError("uploadDriverAppSplash:storage", uploadError);
+    return {
+      error: "upload_failed",
+      errorDetail: formatPgErrorDetail(uploadError as PgLikeError),
+    };
   }
 
   const {
@@ -300,18 +373,12 @@ export async function uploadDriverAppSplash(
 
   const splashUrl = `${publicUrl}?v=${Date.now()}`;
 
-  const { error: updateError } = await supabase
-    .from("app_settings")
-    .update({
-      driver_app_splash_url: splashUrl,
-      updated_at: new Date().toISOString(),
-      updated_by: auth.session.id,
-    })
-    .eq("id", 1);
-
-  if (updateError) {
-    return { error: "save_failed" };
-  }
+  const result = await patchAppSettings(
+    "uploadDriverAppSplash",
+    { driver_app_splash_url: splashUrl },
+    auth.session.id,
+  );
+  if (result.error) return result;
 
   revalidateDriverAppSettings(locale);
   return { success: true, splashUrl };
@@ -320,7 +387,7 @@ export async function uploadDriverAppSplash(
 export async function uploadDriverAppIcon(
   locale: string,
   formData: FormData,
-): Promise<{ error?: string; success?: boolean; iconUrl?: string }> {
+): Promise<{ error?: string; errorDetail?: string; success?: boolean; iconUrl?: string }> {
   const auth = await requireSettingsManager();
   if ("error" in auth) return auth;
 
@@ -353,7 +420,11 @@ export async function uploadDriverAppIcon(
     });
 
   if (uploadError) {
-    return { error: "upload_failed" };
+    logPgError("uploadDriverAppIcon:storage", uploadError);
+    return {
+      error: "upload_failed",
+      errorDetail: formatPgErrorDetail(uploadError as PgLikeError),
+    };
   }
 
   const {
@@ -362,18 +433,12 @@ export async function uploadDriverAppIcon(
 
   const iconUrl = `${publicUrl}?v=${Date.now()}`;
 
-  const { error: updateError } = await supabase
-    .from("app_settings")
-    .update({
-      driver_app_icon_url: iconUrl,
-      updated_at: new Date().toISOString(),
-      updated_by: auth.session.id,
-    })
-    .eq("id", 1);
-
-  if (updateError) {
-    return { error: "save_failed" };
-  }
+  const result = await patchAppSettings(
+    "uploadDriverAppIcon",
+    { driver_app_icon_url: iconUrl },
+    auth.session.id,
+  );
+  if (result.error) return result;
 
   revalidateDriverAppSettings(locale);
   return { success: true, iconUrl };
@@ -381,23 +446,16 @@ export async function uploadDriverAppIcon(
 
 export async function setDriverAppMaintenanceMode(
   enabled: boolean,
-): Promise<{ error?: string; success?: boolean }> {
+): Promise<{ error?: string; errorDetail?: string; success?: boolean }> {
   const auth = await requireSettingsManager();
   if ("error" in auth) return auth;
 
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("app_settings")
-    .update({
-      driver_app_maintenance_mode: enabled,
-      updated_at: new Date().toISOString(),
-      updated_by: auth.session.id,
-    })
-    .eq("id", 1);
-
-  if (error) {
-    return { error: "save_failed" };
-  }
+  const result = await patchAppSettings(
+    "setDriverAppMaintenanceMode",
+    { driver_app_maintenance_mode: enabled },
+    auth.session.id,
+  );
+  if (result.error) return result;
 
   updateTag("app-settings");
   return { success: true };
@@ -405,7 +463,7 @@ export async function setDriverAppMaintenanceMode(
 
 export async function resetDriverAppSettings(
   locale: string,
-): Promise<{ error?: string; success?: boolean }> {
+): Promise<{ error?: string; errorDetail?: string; success?: boolean }> {
   const auth = await requireSettingsManager();
   if ("error" in auth) return auth;
 
@@ -415,10 +473,9 @@ export async function resetDriverAppSettings(
     ...ALLOWED_ICON_EXTENSIONS.map((e) => `${DRIVER_APP_ICON_PREFIX}.${e}`),
   ]);
 
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("app_settings")
-    .update({
+  const result = await patchAppSettings(
+    "resetDriverAppSettings",
+    {
       driver_app_title: DEFAULT_DRIVER_APP_SETTINGS.driver_app_title,
       driver_app_logo_url: null,
       driver_app_splash_url: null,
@@ -428,14 +485,10 @@ export async function resetDriverAppSettings(
         DEFAULT_DRIVER_APP_SETTINGS.driver_app_maintenance_message,
       driver_app_delivery_proximity_meters:
         DEFAULT_DRIVER_APP_SETTINGS.driver_app_delivery_proximity_meters,
-      updated_at: new Date().toISOString(),
-      updated_by: auth.session.id,
-    })
-    .eq("id", 1);
-
-  if (error) {
-    return { error: "save_failed" };
-  }
+    },
+    auth.session.id,
+  );
+  if (result.error) return result;
 
   revalidateDriverAppSettings(locale);
   return { success: true };

@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { Pill } from "@/components/ui/metric-tile";
+import { cn } from "@/lib/utils";
 import { ZoneMap } from "./zone-map";
 import { ZonePlaceSearch } from "./zone-place-search";
 import type { ZoneMapAdapter, ZoneMapViewport } from "./zone-map-adapter";
@@ -12,10 +13,12 @@ export function ZoneMapPanel({
   zones,
   selectedId,
   onZoneSelect,
+  className,
 }: {
   zones: ZoneRow[];
   selectedId: string | null;
   onZoneSelect?: (zoneId: string) => void;
+  className?: string;
 }) {
   const t = useTranslations("pages.zones");
   const mapAdapterRef = useRef<ZoneMapAdapter | null>(null);
@@ -52,7 +55,12 @@ export function ZoneMapPanel({
   );
 
   return (
-    <div className="relative z-0 min-h-0 flex-1 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+    <div
+      className={cn(
+        "relative z-0 min-h-0 flex-1 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900",
+        className,
+      )}
+    >
       <div className="pointer-events-none absolute inset-x-0 top-3 z-10 flex justify-center px-3">
         <ZonePlaceSearch
           onSelect={handlePlaceSelect}
@@ -69,12 +77,12 @@ export function ZoneMapPanel({
       <div className="pointer-events-none absolute bottom-3 end-3 z-10">
         <div className="pointer-events-auto flex flex-col gap-2 rounded-xl border border-slate-200 bg-white/95 px-3 py-2 text-xs shadow-sm dark:border-slate-700 dark:bg-slate-900/95">
           <span className="font-semibold text-slate-900 dark:text-slate-100">
-            {t("zoneLegend")}
+            {t("geofence.zoneLegend")}
           </span>
-          <div className="flex items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5">
             <Pill tone="emerald">{t("geofence.kind.inclusion")}</Pill>
             <Pill tone="rose">{t("geofence.kind.exclusion")}</Pill>
-            <Pill tone="slate">{t("inactiveZone")}</Pill>
+            <Pill tone="slate">{t("geofence.inactiveZone")}</Pill>
           </div>
           <button type="button" className="cursor-pointer text-start text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400">
             {t("viewAll", { count: zones.length })}

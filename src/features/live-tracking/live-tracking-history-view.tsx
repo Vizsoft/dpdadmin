@@ -15,7 +15,7 @@ import { HistoryPlaybackControls } from "./history-playback-controls";
 import { useLiveHistory } from "./use-live-history";
 import { TrackingTabSwitcher, type TrackingViewTab } from "./tracking-tab-switcher";
 import { TrackingCommandLayout, TrackingGlassCard, TrackingMapStage } from "./tracking-shell";
-import { HistorySummaryKpis, computeHistorySummary } from "./history-summary-kpis";
+import { HistorySummaryKpis, computeHistorySummary, formatHistoryDurationMins } from "./history-summary-kpis";
 import { HistoryDatePicker } from "./history-date-picker";
 import { useDriverHistoryActiveDates } from "./use-driver-history-dates";
 import {
@@ -185,12 +185,9 @@ export function LiveTrackingHistoryView({
   );
 
   const durationLabel = useMemo(() => {
-    if (sortedEvents.length < 2) return "—";
-    const start = new Date(sortedEvents[0]!.recordedAt).getTime();
-    const end = new Date(sortedEvents[sortedEvents.length - 1]!.recordedAt).getTime();
-    const mins = Math.round((end - start) / 60000);
-    return `${mins} min`;
-  }, [sortedEvents]);
+    if (summary.durationMins == null || summary.durationMins <= 0) return "—";
+    return formatHistoryDurationMins(summary.durationMins);
+  }, [summary.durationMins]);
 
   useEffect(() => {
     if (!playing || sortedEvents.length < 2) {
@@ -249,40 +246,68 @@ export function LiveTrackingHistoryView({
               <HistorySummaryKpis summary={summary} loading={isLoading} />
             </div>
 
-            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 py-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">{t("historyDriver")}</Label>
-                <SearchSelect
-                  items={driverSelectItems}
-                  value={driverId || null}
-                  onChange={(id) => setDriverId(id ?? "")}
-                  placeholder={t("selectDriver")}
-                  searchPlaceholder={t("searchByDriverHint")}
-                  recentsKey="history-driver-select"
-                  defaultLimit={10}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">{t("historyDate")}</Label>
-                <HistoryDatePicker
-                  value={date}
-                  onChange={setDate}
-                  activeDates={activeDates}
-                  disabled={!driverId}
-                  locale={locale}
-                  onViewMonthChange={setCalendarMonth}
-                />
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                <ToggleChip selected={quickRange === "today"} onClick={() => setDate(kuwaitToday())}>
-                  {t("historyToday")}
-                </ToggleChip>
-                <ToggleChip selected={quickRange === "yesterday"} onClick={() => setDate(kuwaitDateShift(1))}>
-                  {t("historyYesterday")}
-                </ToggleChip>
-                <ToggleChip selected={quickRange === "last7"} onClick={() => setDate(kuwaitDateShift(7))}>
-                  {t("historyLast7Days")}
-                </ToggleChip>
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">{t("historyDriver")}</Label>
+                  <SearchSelect
+                    items={driverSelectItems}
+                    value={driverId || null}
+                    onChange={(id) => setDriverId(id ?? "")}
+                    placeholder={t("selectDriver")}
+                    searchPlaceholder={t("searchByDriverHint")}
+                    recentsKey="history-driver-select"
+                    defaultLimit={10}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">{t("historyDate")}</Label>
+                  <HistoryDatePicker
+                    value={date}
+                    onChange={setDate}
+                    activeDates={activeDates}
+                    disabled={!driverId}
+                    locale={locale}
+                    onViewMonthChange={setCalendarMonth}
+                  />
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  <ToggleChip selected={quickRange === "today"} onClick={() => setDate(kuwaitToday())}>
+                    {t("historyToday")}
+                  </ToggleChip>
+                  <ToggleChip selected={quickRange === "yesterday"} onClick={() => setDate(kuwaitDateShift(1))}>
+                    {t("historyYesterday")}
+                  </ToggleChip>
+                  <ToggleChip selected={quickRange === "last7"} onClick={() => setDate(kuwaitDateShift(7))}>
+                    {t("historyLast7Days")}
+                  </ToggleChip>
+                </div>
+
+                {driverId && sortedEvents.length > 0 ? (
+                  <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 text-xs text-slate-600 dark:border-slate-700/70 dark:bg-slate-900/50 dark:text-slate-300">
+                    <p className="font-semibold text-slate-800 dark:text-slate-100">{t("historyTripOverview")}</p>
+                    <dl className="mt-2 space-y-1.5">
+                      <div className="flex justify-between gap-2">
+                        <dt>{t("historyGpsEvents")}</dt>
+                        <dd className="font-medium tabular-nums text-slate-900 dark:text-slate-50">
+                          {sortedEvents.length}
+                        </dd>
+                      </div>
+                      <div className="flex justify-between gap-2">
+                        <dt>{t("historyFirstPing")}</dt>
+                        <dd className="font-medium tabular-nums text-slate-900 dark:text-slate-50">
+                          {formatTime(sortedEvents[0]!.recordedAt, locale)}
+                        </dd>
+                      </div>
+                      <div className="flex justify-between gap-2">
+                        <dt>{t("historyLastPing")}</dt>
+                        <dd className="font-medium tabular-nums text-slate-900 dark:text-slate-50">
+                          {formatTime(sortedEvents[sortedEvents.length - 1]!.recordedAt, locale)}
+                        </dd>
+                      </div>
+                    </dl>
+                  </div>
+                ) : null}
               </div>
             </div>
           </TrackingGlassCard>

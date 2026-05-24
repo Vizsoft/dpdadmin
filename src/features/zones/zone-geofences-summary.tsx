@@ -4,9 +4,16 @@ import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { Activity, MapPinned, ShieldAlert, ShieldCheck } from "lucide-react";
 import { MetricTile } from "@/components/ui/metric-tile";
+import { cn } from "@/lib/utils";
 import type { GeofenceKind, ZoneRow } from "./types";
 
-export function ZoneGeofencesSummary({ zones }: { zones: ZoneRow[] }) {
+export function ZoneGeofencesSummary({
+  zones,
+  compact = false,
+}: {
+  zones: ZoneRow[];
+  compact?: boolean;
+}) {
   const t = useTranslations("pages.zones");
 
   const stats = useMemo(() => {
@@ -44,7 +51,7 @@ export function ZoneGeofencesSummary({ zones }: { zones: ZoneRow[] }) {
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+    <div className={cn("grid gap-2", compact ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-4")}>
       {cards.map((card) => (
         <MetricTile
           key={card.label}
@@ -52,6 +59,7 @@ export function ZoneGeofencesSummary({ zones }: { zones: ZoneRow[] }) {
           value={card.value}
           tone={card.tone}
           icon={card.icon}
+          className={compact ? "min-h-[76px] p-2.5 [&_p:last-of-type]:text-xl" : undefined}
         />
       ))}
     </div>

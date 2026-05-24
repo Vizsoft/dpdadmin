@@ -10,6 +10,8 @@ export const queryKeys = {
     all: () => ["drivers"] as const,
     list: (filters: Record<string, unknown> = {}) => ["drivers", "list", filters] as const,
     detail: (id: string) => ["drivers", "detail", id] as const,
+    documents: (intakeId: string, profileId: string | null) =>
+      ["drivers", "documents", intakeId, profileId] as const,
   },
   liveTracking: {
     all: () => ["live-tracking"] as const,

@@ -103,7 +103,10 @@ export function RuleFormSheet({
 
       const result = await saveDeliveryRule(formData);
       if (result.error) {
-        toast.error(errorToast(result.error));
+        toast.error(errorToast(result.error), {
+          description: result.errorDetail,
+          duration: result.errorDetail ? 8000 : 4000,
+        });
         return;
       }
       toast.success(isEdit ? t("deliveryRuleUpdated") : t("deliveryRuleCreated"));

@@ -5,6 +5,7 @@ import { queryKeys } from "@/lib/query/query-keys";
 import {
   archiveDriverIntake,
   fetchDriverDetail,
+  fetchDriverDocuments,
   fetchDriversForAdmin,
   regenerateDriverPasscode,
 } from "./drivers-actions";
@@ -28,6 +29,20 @@ export function useDriverDetail(id: string) {
     queryKey: queryKeys.drivers.detail(id),
     queryFn: () => fetchDriverDetail(id),
     enabled: Boolean(id),
+    staleTime: 60_000,
+  });
+}
+
+export function useDriverDocuments(
+  intakeId: string,
+  profileId: string | null,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: queryKeys.drivers.documents(intakeId, profileId),
+    queryFn: () => fetchDriverDocuments(intakeId, profileId),
+    enabled: enabled && Boolean(intakeId),
+    staleTime: 5 * 60_000,
   });
 }
 

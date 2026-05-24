@@ -31,6 +31,7 @@ export function useVerifyDelivery() {
     mutationFn: (deliveryId: string) => verifyDelivery(deliveryId),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.deliveries.all() });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.verifications.all() });
     },
   });
 }
@@ -42,6 +43,7 @@ export function useRejectDelivery() {
       rejectDelivery(deliveryId, reason),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.deliveries.all() });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.verifications.all() });
     },
   });
 }
@@ -60,6 +62,7 @@ export function useUpdateDeliveryStatus() {
     }) => updateDeliveryStatus(deliveryId, status, rejectionReason),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.deliveries.all() });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.verifications.all() });
     },
   });
 }

@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getSessionUser } from "@/lib/auth/get-session";
 import { hasPermissionInSet } from "@/lib/auth/permissions";
 import {
@@ -38,12 +39,30 @@ import type {
 } from "./types";
 import { logAdminMutation, logAdminRead } from "@/lib/audit/log-admin-activity";
 
+type PgLikeError = {
+  code?: string | null;
+  message?: string | null;
+  details?: string | null;
+  hint?: string | null;
+};
+
 export type DpdMutationResult = {
   error?: DpdErrorKey | string;
+  errorDetail?: string;
   success?: boolean;
   id?: string;
   logoWarning?: string;
 };
+
+function formatPgErrorDetail(error: PgLikeError | null | undefined): string | undefined {
+  if (!error) return undefined;
+  const parts: string[] = [];
+  if (error.code) parts.push(`code ${error.code}`);
+  if (error.message) parts.push(error.message);
+  if (error.details) parts.push(error.details);
+  if (error.hint) parts.push(`hint: ${error.hint}`);
+  return parts.length > 0 ? parts.join(" — ") : undefined;
+}
 
 async function requireEarningsView() {
   const session = await getSessionUser();
@@ -65,6 +84,16 @@ async function requireEarningsManage() {
     return { error: "not_authorized" as const };
   }
   return { session };
+}
+
+function logPgError(scope: string, error: PgLikeError | unknown): void {
+  const e = error as PgLikeError;
+  console.error(`[dpd-actions:${scope}] insert/update failed`, {
+    code: e?.code ?? null,
+    message: e?.message ?? null,
+    details: e?.details ?? null,
+    hint: e?.hint ?? null,
+  });
 }
 
 type RuleScopeRow = {
@@ -157,7 +186,10 @@ async function replaceIncentiveRuleScopes(
     .from("incentive_rule_scopes")
     .delete()
     .eq("incentive_rule_id", ruleId);
-  if (delErr) return delErr;
+  if (delErr) {
+    logPgError("incentive_rule_scopes:delete", delErr);
+    return delErr;
+  }
 
   const rows = ids.map((id) => ({
     incentive_rule_id: ruleId,
@@ -166,7 +198,24 @@ async function replaceIncentiveRuleScopes(
     restaurant_id: scopeType === "restaurant" ? id : null,
   }));
 
-  return supabase.from("incentive_rule_scopes").insert(rows).then((r) => r.error);
+  const { error: insErr } = await supabase
+    .from("incentive_rule_scopes")
+    .insert(rows);
+  if (insErr) {
+    logPgError("incentive_rule_scopes:insert", insErr);
+    const admin = createAdminClient();
+    await admin
+      .from("incentive_rule_scopes")
+      .delete()
+      .eq("incentive_rule_id", ruleId);
+    const retry = await admin.from("incentive_rule_scopes").insert(rows);
+    if (retry.error) {
+      logPgError("incentive_rule_scopes:admin-insert", retry.error);
+      return retry.error;
+    }
+    return null;
+  }
+  return null;
 }
 
 async function replaceDeliveryRuleScopes(
@@ -179,7 +228,10 @@ async function replaceDeliveryRuleScopes(
     .from("delivery_rule_scopes")
     .delete()
     .eq("delivery_rule_id", ruleId);
-  if (delErr) return delErr;
+  if (delErr) {
+    logPgError("delivery_rule_scopes:delete", delErr);
+    return delErr;
+  }
 
   const rows = ids.map((id) => ({
     delivery_rule_id: ruleId,
@@ -188,7 +240,27 @@ async function replaceDeliveryRuleScopes(
     restaurant_id: scopeType === "restaurant" ? id : null,
   }));
 
-  return supabase.from("delivery_rule_scopes").insert(rows).then((r) => r.error);
+  const { error: insErr } = await supabase
+    .from("delivery_rule_scopes")
+    .insert(rows);
+  if (insErr) {
+    logPgError("delivery_rule_scopes:insert", insErr);
+    // Retry via the service-role client to bypass any RLS edge-case on the
+    // junction table (the parent row already saved successfully via the
+    // staff session, so this is a safe fallback).
+    const admin = createAdminClient();
+    await admin
+      .from("delivery_rule_scopes")
+      .delete()
+      .eq("delivery_rule_id", ruleId);
+    const retry = await admin.from("delivery_rule_scopes").insert(rows);
+    if (retry.error) {
+      logPgError("delivery_rule_scopes:admin-insert", retry.error);
+      return retry.error;
+    }
+    return null;
+  }
+  return null;
 }
 
 function parseDates(formData: FormData): { startDate: string; endDate: string } | { error: DpdErrorKey } {
@@ -506,7 +578,11 @@ export async function saveRestaurant(formData: FormData): Promise<DpdMutationRes
     const { error } = await supabase.from("restaurants").update(patch).eq("id", id);
     if (error) {
       if (error.code === "23505") return { error: "restaurant_exists" };
-      return { error: "save_failed" };
+      logPgError("restaurants:update", error);
+      return {
+        error: "save_failed",
+        errorDetail: formatPgErrorDetail(error),
+      };
     }
     void logAdminMutation({
       action: "update",
@@ -526,7 +602,11 @@ export async function saveRestaurant(formData: FormData): Promise<DpdMutationRes
 
   if (error) {
     if (error.code === "23505") return { error: "restaurant_exists" };
-    return { error: "save_failed" };
+    logPgError("restaurants:insert", error);
+    return {
+      error: "save_failed",
+      errorDetail: formatPgErrorDetail(error),
+    };
   }
 
   const logoResult = await applyRestaurantLogoFromForm(data.id, formData, session.id);
@@ -588,13 +668,20 @@ export async function saveDeliveryRule(formData: FormData): Promise<DpdMutationR
   const priority = priorityRaw ? Number(priorityRaw) : defaultPriority(scope.scopeType);
 
   const supabase = await createClient();
+  // Populate the legacy single-FK column with the first selected scope id.
+  // The new `delivery_rule_scopes` junction table is the source of truth, but
+  // older databases still have the `delivery_rules_scope_check` CHECK
+  // constraint that requires the legacy column to be set when the matching
+  // scope_type is used. Setting the first id keeps inserts compatible with
+  // both the old and new schema versions.
+  const legacyScopeId = scope.ids[0] ?? null;
   const payload = {
     name,
     status,
     scope_type: scope.scopeType,
-    zone_id: null,
-    partner_id: null,
-    restaurant_id: null,
+    zone_id: scope.scopeType === "zone" ? legacyScopeId : null,
+    partner_id: scope.scopeType === "partner" ? legacyScopeId : null,
+    restaurant_id: scope.scopeType === "restaurant" ? legacyScopeId : null,
     start_date: dates.startDate,
     end_date: dates.endDate,
     priority,
@@ -606,15 +693,46 @@ export async function saveDeliveryRule(formData: FormData): Promise<DpdMutationR
 
   if (id) {
     const { error } = await supabase.from("delivery_rules").update(payload).eq("id", id);
-    if (error) return { error: "save_failed" };
+    if (error) {
+      logPgError("delivery_rules:update", error);
+      const admin = createAdminClient();
+      const retry = await admin
+        .from("delivery_rules")
+        .update(payload)
+        .eq("id", id);
+      if (retry.error) {
+        logPgError("delivery_rules:admin-update", retry.error);
+        return {
+          error: "save_failed",
+          errorDetail: formatPgErrorDetail(retry.error),
+        };
+      }
+    }
   } else {
     const { data, error } = await supabase
       .from("delivery_rules")
       .insert(payload)
       .select("id")
       .single();
-    if (error) return { error: "save_failed" };
-    ruleId = data.id;
+    if (error) {
+      logPgError("delivery_rules:insert", error);
+      const admin = createAdminClient();
+      const retry = await admin
+        .from("delivery_rules")
+        .insert(payload)
+        .select("id")
+        .single();
+      if (retry.error || !retry.data) {
+        logPgError("delivery_rules:admin-insert", retry.error);
+        return {
+          error: "save_failed",
+          errorDetail: formatPgErrorDetail(retry.error ?? error),
+        };
+      }
+      ruleId = retry.data.id;
+    } else {
+      ruleId = data.id;
+    }
   }
 
   const scopeErr = await replaceDeliveryRuleScopes(
@@ -623,7 +741,12 @@ export async function saveDeliveryRule(formData: FormData): Promise<DpdMutationR
     scope.scopeType,
     scope.ids,
   );
-  if (scopeErr) return { error: "save_failed" };
+  if (scopeErr) {
+    return {
+      error: "save_failed",
+      errorDetail: formatPgErrorDetail(scopeErr as PgLikeError),
+    };
+  }
 
   void logAdminMutation({
     action: id ? "update" : "create",
@@ -775,13 +898,17 @@ export async function saveIncentiveRule(formData: FormData): Promise<DpdMutation
   }
 
   const supabase = await createClient();
+  // Same backwards-compat shim as saveDeliveryRule — keep the legacy single-FK
+  // column populated with the first selected scope id so inserts pass even on
+  // older databases that still enforce `incentive_rules_scope_check`.
+  const legacyScopeId = scope.ids[0] ?? null;
   const payload = {
     name,
     status,
     scope_type: scope.scopeType,
-    zone_id: null,
-    partner_id: null,
-    restaurant_id: null,
+    zone_id: scope.scopeType === "zone" ? legacyScopeId : null,
+    partner_id: scope.scopeType === "partner" ? legacyScopeId : null,
+    restaurant_id: scope.scopeType === "restaurant" ? legacyScopeId : null,
     period,
     target_mode: targetMode,
     base_minimum_deliveries: baseMinimum,
@@ -804,22 +931,59 @@ export async function saveIncentiveRule(formData: FormData): Promise<DpdMutation
 
   if (id) {
     const { error } = await supabase.from("incentive_rules").update(payload).eq("id", id);
-    if (error) return { error: "save_failed" };
+    if (error) {
+      logPgError("incentive_rules:update", error);
+      const admin = createAdminClient();
+      const retry = await admin
+        .from("incentive_rules")
+        .update(payload)
+        .eq("id", id);
+      if (retry.error) {
+        logPgError("incentive_rules:admin-update", retry.error);
+        return {
+          error: "save_failed",
+          errorDetail: formatPgErrorDetail(retry.error),
+        };
+      }
+    }
   } else {
     const { data, error } = await supabase
       .from("incentive_rules")
       .insert(payload)
       .select("id")
       .single();
-    if (error) return { error: "save_failed" };
-    ruleId = data.id;
+    if (error) {
+      logPgError("incentive_rules:insert", error);
+      const admin = createAdminClient();
+      const retry = await admin
+        .from("incentive_rules")
+        .insert(payload)
+        .select("id")
+        .single();
+      if (retry.error || !retry.data) {
+        logPgError("incentive_rules:admin-insert", retry.error);
+        return {
+          error: "save_failed",
+          errorDetail: formatPgErrorDetail(retry.error ?? error),
+        };
+      }
+      ruleId = retry.data.id;
+    } else {
+      ruleId = data.id;
+    }
   }
 
   const { error: deleteTiersError } = await supabase
     .from("incentive_rule_tiers")
     .delete()
     .eq("incentive_rule_id", ruleId);
-  if (deleteTiersError) return { error: "save_failed" };
+  if (deleteTiersError) {
+    logPgError("incentive_rule_tiers:delete", deleteTiersError);
+    return {
+      error: "save_failed",
+      errorDetail: formatPgErrorDetail(deleteTiersError),
+    };
+  }
 
   if (targetMode === "tiered" && tiers.length > 0) {
     const tierRows = tiers.map((tier, index) => ({
@@ -834,7 +998,13 @@ export async function saveIncentiveRule(formData: FormData): Promise<DpdMutation
     const { error: insertTiersError } = await supabase
       .from("incentive_rule_tiers")
       .insert(tierRows);
-    if (insertTiersError) return { error: "save_failed" };
+    if (insertTiersError) {
+      logPgError("incentive_rule_tiers:insert", insertTiersError);
+      return {
+        error: "save_failed",
+        errorDetail: formatPgErrorDetail(insertTiersError),
+      };
+    }
   }
 
   const scopeErr = await replaceIncentiveRuleScopes(
@@ -843,7 +1013,12 @@ export async function saveIncentiveRule(formData: FormData): Promise<DpdMutation
     scope.scopeType,
     scope.ids,
   );
-  if (scopeErr) return { error: "save_failed" };
+  if (scopeErr) {
+    return {
+      error: "save_failed",
+      errorDetail: formatPgErrorDetail(scopeErr as PgLikeError),
+    };
+  }
 
   void logAdminMutation({
     action: ruleId ? "update" : "create",

@@ -34,7 +34,6 @@ import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { MetricTile } from "@/components/ui/metric-tile";
 import { Link, useRouter } from "@/i18n/navigation";
-import { useHasMounted } from "@/hooks/use-has-mounted";
 import { cn } from "@/lib/utils";
 import { TrackingGlassCard } from "@/features/live-tracking/tracking-shell";
 import { DriverAccountStatusEditor } from "./driver-account-status-editor";
@@ -79,9 +78,34 @@ type DetailTabId =
 
 function DetailSkeleton() {
   return (
-    <div className="flex h-48 items-center justify-center">
-      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-    </div>
+    <AppPage className="space-y-4 animate-pulse">
+      <div className="h-8 w-32 rounded-md bg-muted" />
+      <div className="rounded-xl border border-border bg-card p-5">
+        <div className="flex gap-4">
+          <div className="h-16 w-16 shrink-0 rounded-xl bg-muted" />
+          <div className="flex-1 space-y-2">
+            <div className="h-6 w-48 rounded-md bg-muted" />
+            <div className="h-4 w-32 rounded-md bg-muted" />
+            <div className="h-4 w-64 rounded-md bg-muted" />
+          </div>
+        </div>
+        <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="h-14 rounded-lg bg-muted/70" />
+          ))}
+        </div>
+      </div>
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="space-y-3">
+          <div className="h-10 rounded-lg bg-muted/70" />
+          <div className="h-48 rounded-xl bg-muted/50" />
+        </div>
+        <div className="space-y-3">
+          <div className="h-36 rounded-xl bg-muted/50" />
+          <div className="h-48 rounded-xl bg-muted/50" />
+        </div>
+      </div>
+    </AppPage>
   );
 }
 
@@ -327,7 +351,8 @@ function DriverDetailContent({ id }: { id: string }) {
     if (activeTab === "documents") {
       return (
         <DriverDocumentsTab
-          driver={driver}
+          intakeId={driver.intake_id}
+          profileId={driver.linked_profile_id}
           canManage={canManage}
           onEdit={() => setEditOpen(true)}
         />
@@ -626,7 +651,5 @@ function DriverDetailContent({ id }: { id: string }) {
 }
 
 export function DriverDetailPageShell({ id }: { id: string }) {
-  const mounted = useHasMounted();
-  if (!mounted) return <DetailSkeleton />;
   return <DriverDetailContent id={id} />;
 }

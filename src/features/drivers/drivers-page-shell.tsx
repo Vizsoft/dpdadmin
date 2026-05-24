@@ -47,6 +47,9 @@ import {
 import { useHasMounted } from "@/hooks/use-has-mounted";
 import { cn } from "@/lib/utils";
 import { useDriverFormOptions } from "./use-driver-form-options";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query/query-keys";
+import { fetchDriverDetail } from "./drivers-actions";
 import { useDriversList, type DriversTabFilter } from "./use-drivers";
 import {
   DRIVERS_PAGE_SIZE,
@@ -152,6 +155,7 @@ function DriversPageSkeleton() {
 function DriversPageContent() {
   const t = useTranslations("pages.drivers");
   const router = useRouter();
+  const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const [tabFilter, setTabFilter] = useState<DriversTabFilter>("all");
   const listArchived = tabFilter === "archived";
@@ -167,6 +171,14 @@ function DriversPageContent() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const loadMoreRef = useRef<HTMLTableRowElement | null>(null);
+
+  const prefetchDriverDetail = (driverId: string) => {
+    void queryClient.prefetchQuery({
+      queryKey: queryKeys.drivers.detail(driverId),
+      queryFn: () => fetchDriverDetail(driverId),
+      staleTime: 60_000,
+    });
+  };
 
   useEffect(() => {
     if (searchParams.get("add") === "1") {
@@ -588,6 +600,8 @@ function DriversPageContent() {
                           selectedIds.has(driver.id) && "bg-muted/20",
                         )}
                         onClick={() => router.push(`/drivers/${driver.id}`)}
+                        onMouseEnter={() => prefetchDriverDetail(driver.id)}
+                        onFocus={() => prefetchDriverDetail(driver.id)}
                         onKeyDown={(event) => {
                           if (event.key === "Enter" || event.key === " ") {
                             event.preventDefault();

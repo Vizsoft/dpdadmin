@@ -31,6 +31,7 @@ import {
   type DriverRemoteDocument,
   type DriverWorkflowStatus,
 } from "./types";
+import { useDriverDocuments } from "./use-drivers";
 import { useDriverFormOptions } from "./use-driver-form-options";
 import { DriverFormAssignmentCard } from "./form/driver-form-assignment-card";
 import { DriverFormDocumentsGrid } from "./form/driver-form-documents-grid";
@@ -94,6 +95,12 @@ export function DriverFormSheet({
   const { data: options, isLoading: optionsLoading } = useDriverFormOptions();
   const isEdit = mode === "edit";
   const activeDriver = isEdit ? driver ?? null : null;
+  const intakeIdForDocs = isEdit ? (intakeId ?? activeDriver?.intake_id ?? "") : "";
+  const { data: fetchedDocuments } = useDriverDocuments(
+    intakeIdForDocs,
+    activeDriver?.linked_profile_id ?? null,
+    open && isEdit && Boolean(intakeIdForDocs),
+  );
 
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
@@ -153,7 +160,7 @@ export function DriverFormSheet({
         return next;
       });
       setDocuments(EMPTY_DOCS);
-      setRemoteDocuments(activeDriver.documents ?? {});
+      setRemoteDocuments({});
       setAvatarPreview(activeDriver.avatar_url ?? null);
       return;
     }
@@ -185,6 +192,11 @@ export function DriverFormSheet({
     setFieldErrors({});
     setShowErrors(false);
   }, [open, isEdit, activeDriver]);
+
+  useEffect(() => {
+    if (!open || !isEdit || !fetchedDocuments) return;
+    setRemoteDocuments(fetchedDocuments);
+  }, [open, isEdit, fetchedDocuments]);
 
   useEffect(() => {
     return () => {

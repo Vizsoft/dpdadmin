@@ -81,6 +81,17 @@ function createMapAdapter(
     setDragging: controls?.setDragging,
     deleteSelected: controls?.deleteSelected,
     clearDraft: controls?.clearDraft,
+    setMapType(type) {
+      map.setMapTypeId(type);
+    },
+    zoomIn() {
+      const current = map.getZoom?.() ?? 12;
+      map.setZoom(current + 1);
+    },
+    zoomOut() {
+      const current = map.getZoom?.() ?? 12;
+      map.setZoom(Math.max(0, current - 1));
+    },
   };
 }
 

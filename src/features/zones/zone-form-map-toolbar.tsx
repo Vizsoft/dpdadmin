@@ -17,13 +17,22 @@ export function ZoneFormMapToolbar({
   activeTool,
   onToolChange,
   labels,
+  className,
 }: {
   activeTool: ZoneMapTool;
   onToolChange: (tool: ZoneMapTool) => void;
   labels: Record<ZoneMapTool, string>;
+  className?: string;
 }) {
   return (
-    <div className="inline-flex flex-wrap items-center gap-1 rounded-xl border border-border/70 bg-background/95 p-1 shadow-sm backdrop-blur">
+    <div
+      className={cn(
+        "inline-flex flex-wrap items-center gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-md dark:border-slate-700 dark:bg-slate-900",
+        className,
+      )}
+      role="toolbar"
+      aria-label="Map drawing tools"
+    >
       {(Object.keys(TOOL_ICON) as ZoneMapTool[]).map((tool) => {
         const Icon = TOOL_ICON[tool];
         const active = activeTool === tool;
@@ -32,19 +41,19 @@ export function ZoneFormMapToolbar({
             key={tool}
             type="button"
             onClick={() => onToolChange(tool)}
+            aria-pressed={active}
             className={cn(
-              "inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition-colors",
+              "inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg px-3 text-xs font-medium transition-colors",
               active
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "text-muted-foreground hover:bg-muted/70 hover:text-foreground",
+                ? "bg-primary/10 text-primary ring-1 ring-primary/30"
+                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white",
             )}
           >
-            <Icon className="h-3.5 w-3.5" />
-            {labels[tool]}
+            <Icon className="h-4 w-4" />
+            <span>{labels[tool]}</span>
           </button>
         );
       })}
     </div>
   );
 }
-

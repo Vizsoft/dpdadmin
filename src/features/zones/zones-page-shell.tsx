@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { ChevronDown, Filter, Loader2, Plus, Search } from "lucide-react";
 import { AppPage } from "@/components/app/app-page";
-import { LAYOUT } from "@/components/app/layout-spacing";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -16,7 +15,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/auth-context";
-import { useHasMounted } from "@/hooks/use-has-mounted";
 import { cn } from "@/lib/utils";
 import { useZonesList } from "./use-zones";
 import { ZoneGeofencesSummary, zoneMatchesKindFilter } from "./zone-geofences-summary";
@@ -24,19 +22,23 @@ import { ZoneListPanel } from "./zone-list-panel";
 import { ZoneMapPanel } from "./zone-map-panel";
 import type { GeofenceKind, ZoneRow } from "./types";
 
+/** Map stage uses ~95% of viewport below dashboard chrome */
+const ZONES_VIEWPORT_HEIGHT = "h-[calc(100dvh-4rem)] min-h-[520px]";
+
 function ZonesPageSkeleton() {
   return (
-    <div className="flex h-full min-h-[560px] flex-col gap-4">
-      <div className="h-10 shrink-0 animate-pulse rounded-lg bg-muted/40" />
-      <div className="flex min-h-0 flex-1 overflow-hidden rounded-xl border border-border">
-        <aside className="flex h-full w-[300px] shrink-0 flex-col border-r border-border bg-card">
-          <div className="flex flex-1 items-center justify-center">
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-          </div>
-        </aside>
-        <div className="flex flex-1 items-center justify-center bg-muted/30">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+    <div className={cn("grid gap-3", ZONES_VIEWPORT_HEIGHT, "lg:grid-cols-[minmax(360px,400px)_minmax(0,1fr)]")}>
+      <aside className="flex animate-pulse flex-col gap-3 rounded-xl border border-border bg-card p-3">
+        <div className="grid grid-cols-2 gap-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-20 rounded-lg bg-muted/50" />
+          ))}
         </div>
+        <div className="h-9 rounded-lg bg-muted/50" />
+        <div className="min-h-0 flex-1 rounded-lg bg-muted/30" />
+      </aside>
+      <div className="flex items-center justify-center rounded-xl border border-border bg-muted/20">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     </div>
   );
@@ -86,65 +88,91 @@ function ZonesPageContent() {
     { id: "exclusion", label: t("geofence.filterExclusion") },
   ];
 
+  if (isLoading && zones.length === 0) {
+    return (
+      <AppPage className="!space-y-0">
+        <ZonesPageSkeleton />
+      </AppPage>
+    );
+  }
+
   return (
-    <AppPage className="flex h-full min-h-[560px] flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-        <div className="relative min-w-[240px] flex-1 md:max-w-sm">
-          <Search className="pointer-events-none absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-          <Input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder={t("placeholders.searchZones")}
-            className="h-9 rounded-lg border-slate-200 bg-slate-50 ps-8 dark:border-slate-700 dark:bg-slate-800"
-          />
-        </div>
-        <Button type="button" variant="outline" size="sm" className="h-9 cursor-pointer rounded-lg border-slate-200 dark:border-slate-700">
-          <Filter className="me-1.5 h-3.5 w-3.5" />
-          {t("geofence.filters")}
-        </Button>
-        <DropdownMenu>
-          <DropdownMenuTrigger className="inline-flex h-9 cursor-pointer items-center rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium shadow-xs transition-[color,box-shadow] hover:bg-slate-100 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800">
-            {t("geofence.bulkActions")}
-            <ChevronDown className="ms-1.5 h-3.5 w-3.5" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-44">
-            <DropdownMenuItem disabled>{t("geofence.bulkEnable")}</DropdownMenuItem>
-            <DropdownMenuItem disabled>{t("geofence.bulkDisable")}</DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem disabled>{t("geofence.bulkDelete")}</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        {canManage ? (
-          <Button type="button" size="sm" className="h-9 cursor-pointer rounded-lg bg-blue-600 text-white hover:bg-blue-700" onClick={handleAdd}>
-            <Plus className="me-1.5 h-3.5 w-3.5" />
-            {t("geofence.createButton")}
-          </Button>
-        ) : null}
-      </div>
-
-      <ZoneGeofencesSummary zones={zones} />
-
+    <AppPage className="!space-y-0">
       <div
         className={cn(
-          "grid min-h-0 gap-3 overflow-hidden lg:grid-cols-[minmax(520px,0.95fr)_1.05fr]",
-          LAYOUT.mapAboveFoldHeight,
-          LAYOUT.mapAboveFoldMin,
+          "grid min-h-0 gap-3 overflow-hidden",
+          ZONES_VIEWPORT_HEIGHT,
+          "lg:grid-cols-[minmax(360px,400px)_minmax(0,1fr)]",
         )}
       >
-        <ZoneListPanel
-          zones={filteredZones}
-          chips={kindChips}
-          kindFilter={kindFilter}
-          selectedId={effectiveSelectedId}
-          isLoading={isLoading}
-          onKindFilterChange={setKindFilter}
-          onSelect={setSelectedId}
-          onEdit={handleEdit}
-        />
+        <aside className="flex min-h-0 flex-col gap-3 overflow-hidden">
+          <ZoneGeofencesSummary zones={zones} compact />
+
+          <div className="shrink-0 space-y-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+            <div className="relative">
+              <Search className="pointer-events-none absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+              <Input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder={t("placeholders.searchZones")}
+                className="h-9 rounded-lg border-slate-200 bg-slate-50 ps-8 text-sm dark:border-slate-700 dark:bg-slate-800"
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 flex-1 cursor-pointer rounded-lg border-slate-200 text-xs dark:border-slate-700"
+              >
+                <Filter className="me-1.5 h-3.5 w-3.5" />
+                {t("geofence.filters")}
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger className="inline-flex h-8 flex-1 cursor-pointer items-center justify-center rounded-lg border border-slate-200 bg-white px-2 text-xs font-medium shadow-xs hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800">
+                  {t("geofence.bulkActions")}
+                  <ChevronDown className="ms-1 h-3.5 w-3.5" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-44">
+                  <DropdownMenuItem disabled>{t("geofence.bulkEnable")}</DropdownMenuItem>
+                  <DropdownMenuItem disabled>{t("geofence.bulkDisable")}</DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem disabled>{t("geofence.bulkDelete")}</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              {canManage ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-8 w-full cursor-pointer rounded-lg bg-blue-600 text-sm text-white hover:bg-blue-700 sm:w-auto sm:min-w-[9.5rem]"
+                  onClick={handleAdd}
+                >
+                  <Plus className="me-1.5 h-3.5 w-3.5" />
+                  {t("geofence.createButton")}
+                </Button>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-hidden">
+            <ZoneListPanel
+              zones={filteredZones}
+              chips={kindChips}
+              kindFilter={kindFilter}
+              selectedId={effectiveSelectedId}
+              isLoading={isLoading}
+              onKindFilterChange={setKindFilter}
+              onSelect={setSelectedId}
+              onEdit={handleEdit}
+            />
+          </div>
+        </aside>
+
         <ZoneMapPanel
           zones={filteredZones}
           selectedId={effectiveSelectedId}
           onZoneSelect={setSelectedId}
+          className="h-full min-h-0"
         />
       </div>
     </AppPage>
@@ -152,11 +180,5 @@ function ZonesPageContent() {
 }
 
 export function ZonesPageShell() {
-  const mounted = useHasMounted();
-
-  if (!mounted) {
-    return <ZonesPageSkeleton />;
-  }
-
   return <ZonesPageContent />;
 }

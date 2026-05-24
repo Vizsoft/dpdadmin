@@ -25,11 +25,41 @@ import type {
 
 export type RestaurantMutationResult = {
   error?: RestaurantErrorKey | string;
+  errorDetail?: string;
   success?: boolean;
   id?: string;
   logoUrl?: string | null;
   logoWarning?: RestaurantErrorKey | string;
 };
+
+type PgLikeError = {
+  code?: string | null;
+  message?: string | null;
+  details?: string | null;
+  hint?: string | null;
+};
+
+function formatPgErrorDetail(
+  error: PgLikeError | null | undefined,
+): string | undefined {
+  if (!error) return undefined;
+  const parts: string[] = [];
+  if (error.code) parts.push(`code ${error.code}`);
+  if (error.message) parts.push(error.message);
+  if (error.details) parts.push(error.details);
+  if (error.hint) parts.push(`hint: ${error.hint}`);
+  return parts.length > 0 ? parts.join(" — ") : undefined;
+}
+
+function logPgError(scope: string, error: PgLikeError | unknown): void {
+  const e = error as PgLikeError;
+  console.error(`[restaurants:${scope}]`, {
+    code: e?.code ?? null,
+    message: e?.message ?? null,
+    details: e?.details ?? null,
+    hint: e?.hint ?? null,
+  });
+}
 
 function isMissingRelationError(error: { code?: string; message?: string } | null) {
   if (!error) return false;
@@ -197,7 +227,8 @@ export async function saveRestaurant(formData: FormData): Promise<RestaurantMuta
     const { error } = await supabase.from("restaurants").update(patch).eq("id", id);
     if (error) {
       if (error.code === "23505") return { error: "restaurant_exists" };
-      return { error: "save_failed" };
+      logPgError("update", error);
+      return { error: "save_failed", errorDetail: formatPgErrorDetail(error) };
     }
     void logAdminMutation({
       action: "update",
@@ -227,7 +258,8 @@ export async function saveRestaurant(formData: FormData): Promise<RestaurantMuta
 
   if (error) {
     if (error.code === "23505") return { error: "restaurant_exists" };
-    return { error: "save_failed" };
+    logPgError("insert", error);
+    return { error: "save_failed", errorDetail: formatPgErrorDetail(error) };
   }
 
   const logoResult = await applyRestaurantLogoFromForm(

@@ -11,6 +11,7 @@ import {
   applyImportBatch,
   createVerification,
   deleteVerification,
+  fetchDriverAssignedRestaurants,
   fetchVerificationDetail,
   fetchVerificationDriverOptions,
   listImportBatches,
@@ -51,6 +52,15 @@ export function useVerificationDriverOptions(search: string) {
   return useQuery({
     queryKey: [...queryKeys.verifications.lookup(), search],
     queryFn: () => fetchVerificationDriverOptions(search),
+  });
+}
+
+export function useDriverAssignedRestaurants(driverId: string | null) {
+  return useQuery({
+    queryKey: [...queryKeys.verifications.lookup(), "driver-restaurants", driverId ?? ""],
+    queryFn: () => (driverId ? fetchDriverAssignedRestaurants(driverId) : []),
+    enabled: Boolean(driverId),
+    staleTime: 60_000,
   });
 }
 

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { ExternalLink, FileText } from "lucide-react";
+import { ExternalLink, FileText, Loader2 } from "lucide-react";
 import { AppEmptyState } from "@/components/app/app-empty-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,11 +13,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import {
-  DOCUMENT_TYPES,
-  type DriverDetailModel,
-  type DriverRemoteDocument,
-} from "./types";
+import { DOCUMENT_TYPES, type DriverRemoteDocument } from "./types";
+import { useDriverDocuments } from "./use-drivers";
 
 function formatFileSize(bytes: number | null): string {
   if (bytes == null) return "—";
@@ -142,20 +139,35 @@ function DocumentCard({
 }
 
 export function DriverDocumentsTab({
-  driver,
+  intakeId,
+  profileId,
   onEdit,
   canManage,
 }: {
-  driver: DriverDetailModel;
+  intakeId: string | null;
+  profileId: string | null;
   onEdit?: () => void;
   canManage?: boolean;
 }) {
   const t = useTranslations("pages.driverDetail");
   const tNew = useTranslations("pages.driverNew");
+  const { data: documents = {}, isLoading } = useDriverDocuments(
+    intakeId ?? "",
+    profileId,
+    Boolean(intakeId),
+  );
 
-  const uploadedCount = DOCUMENT_TYPES.filter(
-    (docType) => driver.documents[docType],
-  ).length;
+  if (isLoading) {
+    return (
+      <Card className="rounded-xl border-border shadow-sm">
+        <CardContent className="flex min-h-[240px] items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const uploadedCount = DOCUMENT_TYPES.filter((docType) => documents[docType]).length;
 
   if (uploadedCount === 0) {
     return (
@@ -165,7 +177,7 @@ export function DriverDocumentsTab({
             title={t("documentsEmptyTitle")}
             description={t("documentsEmptyDescription")}
           />
-          {canManage && onEdit && driver.intake_id ? (
+          {canManage && onEdit && intakeId ? (
             <div className="mt-4 flex justify-center">
               <Button
                 type="button"
@@ -194,7 +206,7 @@ export function DriverDocumentsTab({
             {t("documentsTabSummary", { count: uploadedCount })}
           </p>
         </div>
-        {canManage && onEdit && driver.intake_id ? (
+        {canManage && onEdit && intakeId ? (
           <Button
             type="button"
             variant="outline"
@@ -217,7 +229,7 @@ export function DriverDocumentsTab({
           {DOCUMENT_TYPES.map((docType) => (
             <DocumentCard
               key={docType}
-              doc={driver.documents[docType]}
+              doc={documents[docType]}
               label={tNew(`documents.${docType}`)}
               viewLabel={t("viewDocument")}
               previewLabel={t("previewDocument")}

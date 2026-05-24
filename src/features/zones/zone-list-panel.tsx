@@ -1,15 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { EllipsisVertical, Loader2, Pencil } from "lucide-react";
+import { Loader2, Users } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Table,
   TableBody,
@@ -22,6 +16,8 @@ import { Pill, StatusDot } from "@/components/ui/metric-tile";
 import { formatZoneArea, zoneAreaSqKm } from "@/lib/geo/zone-area";
 import { cn } from "@/lib/utils";
 import type { GeofenceKind, ZoneRow } from "./types";
+
+const PAGE_SIZE = 20;
 
 function formatCreatedAt(value: string, locale: string) {
   try {
@@ -63,33 +59,49 @@ export function ZoneListPanel({
 }) {
   const t = useTranslations("pages.zones");
   const locale = useLocale();
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const loadMoreRef = useRef<HTMLTableRowElement>(null);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
 
-  const totalPages = Math.max(1, Math.ceil(zones.length / pageSize));
-  const safePage = Math.min(page, totalPages);
-  const pagedZones = useMemo(() => {
-    const start = (safePage - 1) * pageSize;
-    return zones.slice(start, start + pageSize);
-  }, [pageSize, safePage, zones]);
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [zones, kindFilter]);
+
+  const visibleZones = zones.slice(0, visibleCount);
+  const hasMore = visibleCount < zones.length;
+
+  useEffect(() => {
+    const root = scrollRef.current;
+    const target = loadMoreRef.current;
+    if (!root || !target || !hasMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setVisibleCount((count) => Math.min(count + PAGE_SIZE, zones.length));
+        }
+      },
+      { root, rootMargin: "120px", threshold: 0 },
+    );
+
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [hasMore, zones.length, visibleCount]);
 
   const allVisibleSelected =
-    pagedZones.length > 0 && pagedZones.every((zone) => selectedRows.has(zone.id));
+    visibleZones.length > 0 && visibleZones.every((zone) => selectedRows.has(zone.id));
 
   const toggleAllVisible = (checked: boolean) => {
     setSelectedRows((prev) => {
       const next = new Set(prev);
-      for (const zone of pagedZones) {
+      for (const zone of visibleZones) {
         if (checked) next.add(zone.id);
         else next.delete(zone.id);
       }
       return next;
     });
   };
-
-  const startCount = zones.length === 0 ? 0 : (safePage - 1) * pageSize + 1;
-  const endCount = Math.min(safePage * pageSize, zones.length);
 
   return (
     <aside className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
@@ -112,12 +124,13 @@ export function ZoneListPanel({
               </button>
             ))}
           </div>
-          <span className="shrink-0 text-xs text-slate-500 dark:text-slate-300">
+          <span className="shrink-0 text-xs tabular-nums text-slate-500 dark:text-slate-300">
             {zones.length}
           </span>
         </div>
       </div>
-      <div className="flex-1 overflow-auto">
+
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
         <Table>
           <TableHeader className="sticky top-0 z-10 bg-white dark:bg-slate-900">
             <TableRow className="border-slate-200 dark:border-slate-700">
@@ -132,8 +145,8 @@ export function ZoneListPanel({
               <TableHead>{t("geofence.colType")}</TableHead>
               <TableHead>{t("geofence.colArea")}</TableHead>
               <TableHead>{t("geofence.colStatus")}</TableHead>
+              <TableHead className="text-end">{t("geofence.colDrivers")}</TableHead>
               <TableHead>{t("geofence.colCreated")}</TableHead>
-              <TableHead className="w-10">{t("colActions")}</TableHead>
             </TableRow>
           </TableHeader>
 
@@ -144,136 +157,107 @@ export function ZoneListPanel({
                   <Loader2 className="mx-auto h-5 w-5 animate-spin text-slate-400" />
                 </TableCell>
               </TableRow>
-            ) : pagedZones.length === 0 ? (
+            ) : visibleZones.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="py-16 text-center text-sm text-slate-500 dark:text-slate-300">
+                <TableCell
+                  colSpan={7}
+                  className="py-16 text-center text-sm text-slate-500 dark:text-slate-300"
+                >
                   {t("emptyTitle")}
                 </TableCell>
               </TableRow>
             ) : (
-              pagedZones.map((zone) => {
-                const areaLabel = formatZoneArea(zoneAreaSqKm(zone.zone_type, zone.geometry));
-                const created = formatCreatedAt(zone.created_at, locale);
-                const selected = selectedId === zone.id;
-                const typeTone = zone.geofence_kind === "inclusion" ? "emerald" : "rose";
+              <>
+                {visibleZones.map((zone) => {
+                  const areaLabel = formatZoneArea(zoneAreaSqKm(zone.zone_type, zone.geometry));
+                  const created = formatCreatedAt(zone.created_at, locale);
+                  const selected = selectedId === zone.id;
+                  const typeTone = zone.geofence_kind === "inclusion" ? "emerald" : "rose";
 
-                return (
-                  <TableRow
-                    key={zone.id}
-                    className={cn(
-                      "cursor-pointer border-slate-100 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/40",
-                      selected && "border-l-2 border-l-blue-600 bg-blue-50/40 dark:bg-blue-500/10",
-                    )}
-                    onClick={() => onSelect(zone.id)}
-                  >
-                    <TableCell onClick={(event) => event.stopPropagation()}>
-                      <Checkbox
-                        checked={selectedRows.has(zone.id)}
-                        onCheckedChange={(checked) =>
-                          setSelectedRows((prev) => {
-                            const next = new Set(prev);
-                            if (checked) next.add(zone.id);
-                            else next.delete(zone.id);
-                            return next;
-                          })
-                        }
-                        aria-label={t("geofence.selectOne", { name: zone.name })}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <div className="inline-flex items-start gap-2">
-                        <StatusDot tone={typeTone} className="mt-1" />
-                        <span>
-                          <span className="block font-medium text-slate-900 dark:text-slate-100">
-                            {zone.name}
+                  return (
+                    <TableRow
+                      key={zone.id}
+                      className={cn(
+                        "cursor-pointer border-slate-100 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/40",
+                        selected && "border-l-2 border-l-blue-600 bg-blue-50/40 dark:bg-blue-500/10",
+                      )}
+                      onClick={() => onSelect(zone.id)}
+                      onDoubleClick={() => onEdit(zone)}
+                      title={t("geofence.doubleClickToEdit")}
+                    >
+                      <TableCell onClick={(event) => event.stopPropagation()}>
+                        <Checkbox
+                          checked={selectedRows.has(zone.id)}
+                          onCheckedChange={(checked) =>
+                            setSelectedRows((prev) => {
+                              const next = new Set(prev);
+                              if (checked) next.add(zone.id);
+                              else next.delete(zone.id);
+                              return next;
+                            })
+                          }
+                          aria-label={t("geofence.selectOne", { name: zone.name })}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <div className="inline-flex items-start gap-2">
+                          <StatusDot tone={typeTone} className="mt-1" />
+                          <span>
+                            <span className="block font-medium text-slate-900 dark:text-slate-100">
+                              {zone.name}
+                            </span>
+                            <span className="text-xs text-slate-500 dark:text-slate-300">
+                              {zone.code}
+                            </span>
                           </span>
-                          <span className="text-xs text-slate-500 dark:text-slate-300">
-                            {zone.code}
-                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Pill tone={typeTone}>{t(`geofence.kind.${zone.geofence_kind}`)}</Pill>
+                      </TableCell>
+                      <TableCell className="tabular-nums text-slate-700 dark:text-slate-200">
+                        {areaLabel}
+                      </TableCell>
+                      <TableCell>
+                        <Pill tone={zone.status === "active" ? "emerald" : "slate"}>
+                          {t(`geofence.status.${zone.status}`)}
+                        </Pill>
+                      </TableCell>
+                      <TableCell className="text-end">
+                        <span className="inline-flex items-center justify-end gap-1 tabular-nums text-sm font-medium text-slate-800 dark:text-slate-100">
+                          <Users className="h-3.5 w-3.5 text-slate-400" aria-hidden />
+                          {zone.driver_count}
                         </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Pill tone={typeTone}>{t(`geofence.kind.${zone.geofence_kind}`)}</Pill>
-                    </TableCell>
-                    <TableCell className="tabular-nums text-slate-700 dark:text-slate-200">
-                      {areaLabel}
-                    </TableCell>
-                    <TableCell>
-                      <Pill tone={zone.status === "active" ? "emerald" : "slate"}>
-                        {t(`geofence.status.${zone.status}`)}
-                      </Pill>
-                    </TableCell>
-                    <TableCell>
-                      <span className="block text-xs text-slate-700 dark:text-slate-200">
-                        {created.date}
-                      </span>
-                      <span className="text-xs text-slate-500 dark:text-slate-300">
-                        {created.time}
-                      </span>
-                    </TableCell>
-                    <TableCell onClick={(event) => event.stopPropagation()}>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100">
-                          <EllipsisVertical className="h-4 w-4" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-36">
-                          <DropdownMenuItem onClick={() => onEdit(zone)}>
-                            <Pencil className="h-3.5 w-3.5" />
-                            {t("editZone")}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      </TableCell>
+                      <TableCell>
+                        <span className="block text-xs text-slate-700 dark:text-slate-200">
+                          {created.date}
+                        </span>
+                        <span className="text-xs text-slate-500 dark:text-slate-300">
+                          {created.time}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+                {hasMore ? (
+                  <TableRow ref={loadMoreRef} className="hover:bg-transparent">
+                    <TableCell colSpan={7} className="py-4 text-center">
+                      <Loader2 className="mx-auto h-4 w-4 animate-spin text-slate-400" />
                     </TableCell>
                   </TableRow>
-                );
-              })
+                ) : null}
+              </>
             )}
           </TableBody>
         </Table>
       </div>
 
-      <div className="flex items-center justify-between gap-3 border-t border-slate-200 px-3 py-2 text-xs dark:border-slate-700">
-        <span className="text-slate-500 dark:text-slate-300">
-          {t("showingPageRange", {
-            start: startCount,
-            end: endCount,
-            total: zones.length,
-          })}
-        </span>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-            disabled={safePage <= 1}
-          >
-            &lt;
-          </button>
-          <span className="rounded border border-blue-200 bg-blue-50 px-2 py-1 tabular-nums text-blue-700 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-200">
-            {safePage}
-          </span>
-          <button
-            type="button"
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-            disabled={safePage >= totalPages}
-          >
-            &gt;
-          </button>
-          <select
-            value={pageSize}
-            onChange={(event) => {
-              setPageSize(Number(event.target.value));
-              setPage(1);
-            }}
-            className="h-7 rounded border border-slate-200 bg-white px-2 text-xs dark:border-slate-700 dark:bg-slate-900"
-          >
-            <option value={10}>10 / page</option>
-            <option value={20}>20 / page</option>
-            <option value={30}>30 / page</option>
-          </select>
-        </div>
+      <div className="shrink-0 border-t border-slate-200 px-3 py-2 text-xs text-slate-500 dark:border-slate-700 dark:text-slate-300">
+        <p>{t("geofence.showingCount", { shown: visibleZones.length, total: zones.length })}</p>
+        <p className="mt-0.5 text-[11px] text-slate-400 dark:text-slate-400">
+          {t("geofence.doubleClickToEdit")}
+        </p>
       </div>
     </aside>
   );

@@ -1,20 +1,30 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { Layers, Loader2, Trash2 } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+  Trash2,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import {
   MAX_RADIUS_METERS,
   MIN_RADIUS_METERS,
@@ -30,11 +40,15 @@ import {
 } from "./zone-colors";
 import { ZoneMap } from "./zone-map";
 import { ZonePlaceSearch } from "./zone-place-search";
-import type { ZoneMapAdapter, ZoneMapViewport } from "./zone-map-adapter";
+import type {
+  ZoneMapAdapter,
+  ZoneMapViewport,
+} from "./zone-map-adapter";
 import { DEFAULT_GEOFENCE_SETTINGS } from "./geofence-defaults";
 import {
   ZoneAlertSettingsSection,
   ZoneAssignSettingsSection,
+  ZoneGeofenceShapeSection,
   ZoneGeofenceStatusSection,
   ZoneGeofenceTypeSection,
   ZoneNotificationSettingsSection,
@@ -43,7 +57,19 @@ import { createZone, updateZone } from "./zones-actions";
 import { isZoneErrorKey } from "./zone-errors";
 import type { ZoneGeofenceSettings, ZoneRow } from "./types";
 import { formatZoneArea, zoneAreaSqKm } from "@/lib/geo/zone-area";
-import { ZoneFormMapToolbar, type ZoneMapTool } from "./zone-form-map-toolbar";
+import {
+  ZoneFormMapToolbar,
+  type ZoneMapTool,
+} from "./zone-form-map-toolbar";
+import {
+  ZoneFormFindMyLocation,
+  ZoneFormMapTypeToggle,
+  ZoneFormZoomControls,
+} from "./zone-form-map-controls";
+import { ZoneFormMapLegend } from "./zone-form-map-legend";
+import { ZoneFormGeofenceList } from "./zone-form-geofence-list";
+
+const DESCRIPTION_MAX = 150;
 
 function zoneErrorToast(
   t: ReturnType<typeof useTranslations<"pages.zones">>,
@@ -61,6 +87,7 @@ export type ZoneFormBodyProps = {
   onClose: () => void;
   onSaved: () => void;
   onRequestDelete: () => void;
+  /** Kept for compatibility, ignored — body always renders as full page now */
   asPage?: boolean;
 };
 
@@ -70,7 +97,6 @@ export function ZoneFormBody({
   onClose,
   onSaved,
   onRequestDelete,
-  asPage = false,
 }: ZoneFormBodyProps) {
   const t = useTranslations("pages.zones");
   const { can } = useAuth();
@@ -85,7 +111,9 @@ export function ZoneFormBody({
     if (!zone) setCode(suggestZoneCode());
   }, [zone]);
 
-  const [zoneType, setZoneType] = useState<ZoneGeometryType>(zone?.zone_type ?? "polygon");
+  const [zoneType, setZoneType] = useState<ZoneGeometryType>(
+    zone?.zone_type ?? "polygon",
+  );
   const [color, setColor] = useState(() => {
     const initial = normalizeZoneColor(
       zone?.color ?? pickAutoZoneColor(existingZones.map((z) => z.color)),
@@ -100,6 +128,7 @@ export function ZoneFormBody({
       setColor(pickAutoZoneColor(existingZones.map((z) => z.color)));
     }
   }, [zone, existingZones]);
+
   const [geofence, setGeofence] = useState<ZoneGeofenceSettings>(() =>
     zone
       ? {
@@ -118,41 +147,55 @@ export function ZoneFormBody({
         }
       : { ...DEFAULT_GEOFENCE_SETTINGS },
   );
-  const [geometry, setGeometry] = useState<ZoneGeoFeature | null>(zone?.geometry ?? null);
+  const [geometry, setGeometry] = useState<ZoneGeoFeature | null>(
+    zone?.geometry ?? null,
+  );
   const [radiusInput, setRadiusInput] = useState(
     zone?.zone_type === "circle" && zone.geometry?.properties?.radiusMeters
       ? String(zone.geometry.properties.radiusMeters)
       : "1000",
   );
   const mapAdapterRef = useRef<ZoneMapAdapter | null>(null);
-  const [activeTool, setActiveTool] = useState<ZoneMapTool>(isEdit ? "edit" : "draw");
+  const [mapAdapter, setMapAdapter] = useState<ZoneMapAdapter | null>(null);
+  const [activeTool, setActiveTool] = useState<ZoneMapTool>(
+    isEdit ? "edit" : "draw",
+  );
+  const [detailsOpen, setDetailsOpen] = useState(true);
 
   const driverGroupItems = useMemo(
     () =>
       [...new Set(existingZones.map((item) => item.driver_group_label).filter(Boolean))]
-        .map((label) => ({ value: label ?? "", label: label ?? "", keywords: [label ?? ""] })),
+        .map((label) => ({
+          value: label ?? "",
+          label: label ?? "",
+          keywords: [label ?? ""],
+        })),
     [existingZones],
   );
 
-  const handleMapReady = useCallback((adapter: ZoneMapAdapter) => {
-    mapAdapterRef.current = adapter;
-    adapter.invalidateSize?.();
-    if (isEdit && zone?.geometry) {
-      const viewport = zone.geometry.bbox;
-      if (viewport && viewport.length === 4) {
-        adapter.fitViewport({
-          west: viewport[0],
-          south: viewport[1],
-          east: viewport[2],
-          north: viewport[3],
-        });
+  const handleMapReady = useCallback(
+    (adapter: ZoneMapAdapter) => {
+      mapAdapterRef.current = adapter;
+      setMapAdapter(adapter);
+      adapter.invalidateSize?.();
+      if (isEdit && zone?.geometry) {
+        const viewport = zone.geometry.bbox;
+        if (viewport && viewport.length === 4) {
+          adapter.fitViewport({
+            west: viewport[0],
+            south: viewport[1],
+            east: viewport[2],
+            north: viewport[3],
+          });
+        }
+        adapter.setEditing?.(true);
+        adapter.setDrawMode?.(null);
+      } else {
+        adapter.setDrawMode?.(zoneType);
       }
-      adapter.setEditing?.(true);
-      adapter.setDrawMode?.(null);
-    } else {
-      adapter.setDrawMode?.(zoneType);
-    }
-  }, [isEdit, zone?.geometry, zoneType]);
+    },
+    [isEdit, zone?.geometry, zoneType],
+  );
 
   const handlePlaceSelect = useCallback(
     (place: { lat: number; lng: number; viewport?: ZoneMapViewport }) => {
@@ -167,13 +210,29 @@ export function ZoneFormBody({
     [],
   );
 
-  const startDrawing = () => {
-    setGeometry(null);
-    setActiveTool("draw");
-    mapAdapterRef.current?.setDrawMode?.(zoneType);
-  };
+  const handleZoomToZone = useCallback(
+    (zoneId: string) => {
+      const adapter = mapAdapterRef.current;
+      if (!adapter) return;
+      const target = existingZones.find((z) => z.id === zoneId);
+      if (!target?.geometry) return;
+      const viewport = target.geometry.bbox;
+      if (viewport && viewport.length === 4) {
+        adapter.fitViewport({
+          west: viewport[0],
+          south: viewport[1],
+          east: viewport[2],
+          north: viewport[3],
+        });
+      }
+    },
+    [existingZones],
+  );
 
-  const handleGeometryChange = (geo: ZoneGeoFeature | null, type: ZoneGeometryType) => {
+  const handleGeometryChange = (
+    geo: ZoneGeoFeature | null,
+    type: ZoneGeometryType,
+  ) => {
     setGeometry(geo);
     setZoneType(type);
     if (geo && type === "circle" && geo.properties?.radiusMeters) {
@@ -221,9 +280,10 @@ export function ZoneFormBody({
         geofence,
       };
 
-      const result = isEdit && zone
-        ? await updateZone({ id: zone.id, ...payload })
-        : await createZone(payload);
+      const result =
+        isEdit && zone
+          ? await updateZone({ id: zone.id, ...payload })
+          : await createZone(payload);
 
       if (result.error) {
         toast.error(zoneErrorToast(t, result.error));
@@ -238,31 +298,28 @@ export function ZoneFormBody({
 
   const recentZones = [...existingZones]
     .sort(
-      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
     )
-    .slice(0, 5);
+    .slice(0, 4);
 
   const summary = {
     total: existingZones.length + (isEdit ? 0 : 1),
     inclusion:
-      existingZones.filter((item) => item.geofence_kind === "inclusion").length +
-      (isEdit
-        ? 0
-        : geofence.geofence_kind === "inclusion"
-          ? 1
-          : 0),
+      existingZones.filter((item) => item.geofence_kind === "inclusion")
+        .length +
+      (isEdit ? 0 : geofence.geofence_kind === "inclusion" ? 1 : 0),
     exclusion:
-      existingZones.filter((item) => item.geofence_kind === "exclusion").length +
-      (isEdit
-        ? 0
-        : geofence.geofence_kind === "exclusion"
-          ? 1
-          : 0),
+      existingZones.filter((item) => item.geofence_kind === "exclusion")
+        .length +
+      (isEdit ? 0 : geofence.geofence_kind === "exclusion" ? 1 : 0),
     activeAlerts:
       existingZones.filter(
         (item) =>
           item.status === "active" &&
-          (item.alert_on_entry || item.alert_on_exit || item.alert_on_dwell),
+          (item.alert_on_entry ||
+            item.alert_on_exit ||
+            item.alert_on_dwell),
       ).length +
       (isEdit
         ? 0
@@ -274,183 +331,244 @@ export function ZoneFormBody({
           : 0),
   };
 
-  const draftArea = geometry ? formatZoneArea(zoneAreaSqKm(zoneType, geometry)) : "—";
+  const draftArea = geometry
+    ? formatZoneArea(zoneAreaSqKm(zoneType, geometry))
+    : "—";
+
+  const description = geofence.description ?? "";
+  const descriptionUsed = description.length;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-        <div className="order-2 flex min-h-0 w-full shrink-0 flex-col lg:order-1 lg:w-[420px] lg:min-w-[380px]">
-          {asPage ? null : (
-            <DialogHeader className="border-b border-border px-6 py-4 pr-14">
-              <DialogTitle className="text-lg">{isEdit ? t("editZoneTitle") : t("addZoneTitle")}</DialogTitle>
-              <DialogDescription className="sr-only">
-                {isEdit ? t("editZoneTitle") : t("addZoneTitle")}
-              </DialogDescription>
-            </DialogHeader>
-          )}
+    <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-hidden lg:grid-cols-[minmax(340px,380px)_minmax(0,1fr)]">
+      <aside className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+        <header className="space-y-1 border-b border-slate-200 px-4 py-3 dark:border-slate-700">
+          <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+            <Link href="/zones" className="hover:text-primary hover:underline">
+              {t("geofence.pageTitle")}
+            </Link>
+            <span className="px-1.5 text-slate-300">/</span>
+            <span className="text-slate-700 dark:text-slate-200">
+              {isEdit ? t("editZoneTitle") : t("addZoneTitle")}
+            </span>
+          </p>
+          <h1 className="text-base font-semibold text-slate-900 dark:text-slate-50">
+            {isEdit
+              ? t("geofence.formEditTitle")
+              : t("geofence.formCreateTitle")}
+          </h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            {isEdit
+              ? t("geofence.formEditSubtitle")
+              : t("geofence.formCreateSubtitle")}
+          </p>
+        </header>
 
-          <div className="flex-1 space-y-4 overflow-y-auto px-6 py-4">
-            <section className="space-y-1.5 rounded-xl border border-border/70 bg-muted/20 p-3">
-              <p className="text-xs font-semibold text-foreground">{t("geofence.detailsTitle")}</p>
-              <p className="text-[11px] text-muted-foreground">{t("geofence.detailsHint")}</p>
-              <div className="space-y-1.5 pt-1">
-                <Label htmlFor="zone-name">{t("fieldName")}</Label>
-                <Input
-                  id="zone-name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder={t("fieldNamePlaceholder")}
-                  className="rounded-lg"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="zone-code">{t("fieldCode")}</Label>
-                <Input
-                  id="zone-code"
-                  value={code}
-                  onChange={(e) => setCode(e.target.value.toUpperCase())}
-                  placeholder="ZN-1025"
-                  className="rounded-lg font-mono"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="zone-description">{t("geofence.description")}</Label>
-                <Input
-                  id="zone-description"
-                  value={geofence.description ?? ""}
-                  onChange={(event) =>
-                    setGeofence((current) => ({
-                      ...current,
-                      description: event.target.value,
-                    }))
-                  }
-                  className="rounded-lg"
-                  placeholder={t("geofence.detailsHint")}
-                />
-              </div>
-            </section>
-
-            <section className="space-y-2 rounded-xl border border-border p-3">
-              <Label>{t("fieldColor")}</Label>
-              <ZoneColorPicker value={color} onChange={setColor} />
-              <p className="text-[11px] text-muted-foreground">{t("colorHelp")}</p>
-            </section>
-
-            <section className="space-y-2 rounded-xl border border-border p-3">
-              <ZoneGeofenceTypeSection value={geofence} onChange={setGeofence} />
-              <ZoneGeofenceStatusSection value={geofence} onChange={setGeofence} />
-            </section>
-
-            <section className="space-y-2 rounded-xl border border-border p-3">
-              <div className="flex items-center justify-between gap-2">
-                <Label>{t("fieldType")}</Label>
-                <button
-                  type="button"
-                  className="cursor-pointer text-xs font-medium text-primary hover:underline"
-                  onClick={startDrawing}
-                >
-                  {zoneType === "polygon" ? t("startDrawPolygon") : t("startDrawCircle")}
-                </button>
-              </div>
-              <div className="flex gap-2">
-                {(["polygon", "circle"] as const).map((type) => (
-                  <Button
-                    key={type}
-                    type="button"
-                    variant={zoneType === type ? "default" : "outline"}
-                    className="flex-1 cursor-pointer rounded-lg"
-                    onClick={() => {
-                      setZoneType(type);
-                      setGeometry(null);
-                      setActiveTool("draw");
-                    }}
-                  >
-                    {type === "polygon" ? t("typePolygon") : t("typeCircle")}
-                  </Button>
-                ))}
-              </div>
-              {zoneType === "circle" ? (
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4">
+          <section className="rounded-xl border border-slate-200 dark:border-slate-700">
+            <button
+              type="button"
+              className="flex w-full cursor-pointer items-center justify-between px-3 py-2.5 text-start"
+              onClick={() => setDetailsOpen((open) => !open)}
+              aria-expanded={detailsOpen}
+            >
+              <span className="text-xs font-semibold text-slate-900 dark:text-slate-100">
+                {t("geofence.geofenceDetailsTitle")}
+              </span>
+              {detailsOpen ? (
+                <ChevronUp className="h-3.5 w-3.5 text-slate-500" />
+              ) : (
+                <ChevronDown className="h-3.5 w-3.5 text-slate-500" />
+              )}
+            </button>
+            {detailsOpen ? (
+              <div className="space-y-3 border-t border-slate-200 px-3 py-3 dark:border-slate-700">
                 <div className="space-y-1.5">
-                  <Label htmlFor="zone-radius">{t("fieldRadius")}</Label>
+                  <Label
+                    htmlFor="zone-name"
+                    className="text-xs font-medium text-slate-700 dark:text-slate-300"
+                  >
+                    {t("geofence.geofenceNameRequired")}
+                  </Label>
                   <Input
-                    id="zone-radius"
-                    type="number"
-                    min={MIN_RADIUS_METERS}
-                    max={MAX_RADIUS_METERS}
-                    value={radiusInput}
-                    onChange={(e) => setRadiusInput(e.target.value)}
-                    className="rounded-lg"
+                    id="zone-name"
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                    placeholder={t("geofence.geofenceNamePlaceholder")}
+                    className="h-9 rounded-lg"
                   />
                 </div>
-              ) : null}
-              <div
-                className={
-                  geometry
-                    ? "rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-400"
-                    : "rounded-lg border border-dashed border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground"
-                }
-              >
-                {geometry ? t("geometryReady") : t("geometryPending")}
+                <div className="space-y-1.5">
+                  <div className="flex items-baseline justify-between">
+                    <Label
+                      htmlFor="zone-description"
+                      className="text-xs font-medium text-slate-700 dark:text-slate-300"
+                    >
+                      {t("geofence.descriptionOptional")}
+                    </Label>
+                    <span className="text-[10px] tabular-nums text-slate-400">
+                      {descriptionUsed}/{DESCRIPTION_MAX}
+                    </span>
+                  </div>
+                  <Textarea
+                    id="zone-description"
+                    value={description}
+                    onChange={(event) =>
+                      setGeofence((current) => ({
+                        ...current,
+                        description: event.target.value.slice(
+                          0,
+                          DESCRIPTION_MAX,
+                        ),
+                      }))
+                    }
+                    rows={2}
+                    placeholder={t("geofence.descriptionPlaceholder")}
+                    className="min-h-[64px] resize-none rounded-lg text-sm"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label
+                    htmlFor="zone-code"
+                    className="text-xs font-medium text-slate-700 dark:text-slate-300"
+                  >
+                    {t("fieldCode")}
+                  </Label>
+                  <Input
+                    id="zone-code"
+                    value={code}
+                    onChange={(event) =>
+                      setCode(event.target.value.toUpperCase())
+                    }
+                    placeholder="ZN-1025"
+                    className="h-9 rounded-lg font-mono"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                    {t("fieldColor")}
+                  </Label>
+                  <ZoneColorPicker value={color} onChange={setColor} />
+                </div>
+                <ZoneGeofenceStatusSection
+                  value={geofence}
+                  onChange={setGeofence}
+                />
               </div>
-            </section>
+            ) : null}
+          </section>
 
-            <section className="space-y-3 rounded-xl border border-border p-3">
-              <ZoneAlertSettingsSection value={geofence} onChange={setGeofence} />
-              <ZoneAssignSettingsSection
-                value={geofence}
-                onChange={setGeofence}
-                groupItems={driverGroupItems}
+          <ZoneGeofenceTypeSection value={geofence} onChange={setGeofence} />
+
+          <ZoneGeofenceShapeSection
+            value={zoneType}
+            onChange={(next) => {
+              setZoneType(next);
+              setGeometry(null);
+              setActiveTool("draw");
+              mapAdapterRef.current?.setDrawMode?.(next);
+            }}
+          />
+
+          {zoneType === "circle" ? (
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="zone-radius"
+                className="text-xs font-medium text-slate-700 dark:text-slate-300"
+              >
+                {t("fieldRadius")}
+              </Label>
+              <Input
+                id="zone-radius"
+                type="number"
+                min={MIN_RADIUS_METERS}
+                max={MAX_RADIUS_METERS}
+                value={radiusInput}
+                onChange={(event) => setRadiusInput(event.target.value)}
+                className="h-9 rounded-lg"
               />
-              <ZoneNotificationSettingsSection value={geofence} onChange={setGeofence} />
-            </section>
-          </div>
+            </div>
+          ) : null}
 
-          <DialogFooter className="flex-row items-center justify-between gap-2 border-t border-border px-6 py-4">
+          <ZoneAlertSettingsSection value={geofence} onChange={setGeofence} />
+          <ZoneAssignSettingsSection
+            value={geofence}
+            onChange={setGeofence}
+            groupItems={driverGroupItems}
+          />
+          <ZoneNotificationSettingsSection
+            value={geofence}
+            onChange={setGeofence}
+          />
+
+          <div
+            className={cn(
+              "rounded-lg border px-3 py-2 text-xs font-medium",
+              geometry
+                ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-400"
+                : "border-dashed border-slate-300 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-400",
+            )}
+          >
+            {geometry ? t("geometryReady") : t("geometryPending")}
+          </div>
+        </div>
+
+        <footer className="flex items-center justify-between gap-2 border-t border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/60">
+          {isEdit && canManage ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-9 cursor-pointer rounded-lg border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+              onClick={onRequestDelete}
+              disabled={isPending}
+              aria-label={t("deleteZone")}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-9 cursor-pointer rounded-lg"
+              onClick={onClose}
+              disabled={isPending}
+            >
+              {t("cancel")}
+            </Button>
+          )}
+          <div className="flex items-center gap-2">
             {isEdit && canManage ? (
               <Button
                 type="button"
                 variant="outline"
-                className="cursor-pointer rounded-lg border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                onClick={onRequestDelete}
-                disabled={isPending}
-              >
-                <Trash2 className="me-2 h-3.5 w-3.5" />
-                {t("deleteZone")}
-              </Button>
-            ) : (
-              <span />
-            )}
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                className="cursor-pointer rounded-lg"
+                className="h-9 cursor-pointer rounded-lg"
                 onClick={onClose}
                 disabled={isPending}
               >
                 {t("cancel")}
               </Button>
-              <Button
-                type="button"
-                className="cursor-pointer rounded-lg"
-                onClick={handleSave}
-                disabled={isPending || !name.trim() || !code.trim() || !geometry}
-              >
-                {isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : isEdit ? (
-                  t("saveChanges")
-                ) : (
-                  t("createZone")
-                )}
-              </Button>
-            </div>
-          </DialogFooter>
-        </div>
+            ) : null}
+            <Button
+              type="button"
+              className="h-9 cursor-pointer rounded-lg bg-blue-600 px-4 text-sm text-white hover:bg-blue-700"
+              onClick={handleSave}
+              disabled={
+                isPending || !name.trim() || !code.trim() || !geometry
+              }
+            >
+              {isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                t("geofence.saveGeofence")
+              )}
+            </Button>
+          </div>
+        </footer>
+      </aside>
 
-        <div className="zones-draw-map-wrapper zones-draw-map-wrapper--modal relative order-1 min-h-[40vh] flex-1 border-b border-border lg:order-2 lg:min-h-0 lg:border-b-0 lg:border-l">
-          <div className="pointer-events-none absolute start-3 top-3 z-30">
-            <div className="pointer-events-auto">
+      <section className="flex min-h-0 flex-col">
+        <div className="zones-draw-map-wrapper zones-draw-map-wrapper--modal relative min-h-[420px] flex-1 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between gap-2 px-3 pt-3">
+            <div className="pointer-events-auto flex flex-wrap items-center gap-2">
               <ZoneFormMapToolbar
                 activeTool={activeTool}
                 onToolChange={setActiveTool}
@@ -462,37 +580,76 @@ export function ZoneFormBody({
                   clear: t("geofence.mapToolClear"),
                 }}
               />
+              <span className="hidden rounded-lg border border-slate-200 bg-white/95 px-3 py-1.5 text-[11px] font-medium text-slate-600 shadow-sm md:inline-flex dark:border-slate-700 dark:bg-slate-900/95 dark:text-slate-300">
+                {t("geofence.drawHint")}
+              </span>
+            </div>
+            <div className="pointer-events-auto flex items-center gap-2">
+              <ZoneFormGeofenceList
+                zones={existingZones}
+                onZoneSelect={handleZoomToZone}
+              />
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label={t("geofence.closeForm")}
+                className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-md transition-colors hover:bg-slate-100 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
           </div>
-          <div className="pointer-events-none absolute inset-x-0 top-3 z-20 flex justify-center px-3">
-            <ZonePlaceSearch
-              onSelect={handlePlaceSelect}
-              className="pointer-events-auto mt-10 w-full max-w-sm"
-            />
+
+          <div className="pointer-events-none absolute inset-x-0 top-16 z-20 flex justify-center px-3 md:hidden">
+            <span className="pointer-events-auto rounded-lg border border-slate-200 bg-white/95 px-3 py-1.5 text-[11px] font-medium text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-900/95 dark:text-slate-300">
+              {t("geofence.drawHint")}
+            </span>
           </div>
-          <div className="pointer-events-none absolute end-3 top-3 z-30">
-            <div className="pointer-events-auto inline-flex items-center gap-1 rounded-full border border-border/70 bg-background/95 p-1 text-xs shadow-sm backdrop-blur">
-              <button type="button" className="cursor-pointer rounded-full px-2 py-1 text-primary">
-                {t("layers.roadmap")}
-              </button>
-              <button type="button" className="cursor-pointer rounded-full px-2 py-1 text-muted-foreground hover:bg-muted/60">
-                {t("layers.satellite")}
-              </button>
-              <button type="button" className="cursor-pointer rounded-full px-2 py-1 text-muted-foreground hover:bg-muted/60">
-                {t("layers.hybrid")}
-              </button>
+
+          <div className="pointer-events-none absolute end-3 top-20 z-20 hidden md:block">
+            <div className="pointer-events-auto">
+              <ZonePlaceSearch
+                onSelect={handlePlaceSelect}
+                className="w-72"
+              />
             </div>
           </div>
+
+          <div className="pointer-events-none absolute end-3 top-20 z-20 flex flex-col items-end gap-2 md:start-auto md:top-32">
+            <div className="pointer-events-auto">
+              <ZoneFormMapTypeToggle adapter={mapAdapter} />
+            </div>
+            <div className="pointer-events-auto">
+              <ZoneFormZoomControls adapter={mapAdapter} />
+            </div>
+            <div className="pointer-events-auto">
+              <ZoneFormFindMyLocation adapter={mapAdapter} />
+            </div>
+          </div>
+
+          <div className="pointer-events-none absolute bottom-3 end-3 z-20">
+            <div className="pointer-events-auto">
+              <ZoneFormMapLegend
+                zones={existingZones}
+                onZoneSelect={handleZoomToZone}
+              />
+            </div>
+          </div>
+
           <div className="pointer-events-none absolute bottom-3 start-3 z-20">
-            <div className="pointer-events-auto rounded-xl border border-border/70 bg-background/95 px-3 py-2 shadow-sm backdrop-blur">
-              <p className="text-xs font-semibold text-foreground">
+            <div
+              className="pointer-events-auto rounded-xl border border-slate-200 bg-white/95 px-3 py-2 shadow-md dark:border-slate-700 dark:bg-slate-900/95"
+              style={{ borderLeftColor: color, borderLeftWidth: 4 }}
+            >
+              <p className="text-xs font-semibold text-slate-900 dark:text-slate-100">
                 {name.trim() || t("geofence.unnamed")}
               </p>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-[10px] text-slate-500 dark:text-slate-400">
                 {t("geofence.colArea")}: {draftArea}
               </p>
             </div>
           </div>
+
           <ZoneMap
             zones={existingZones}
             selectedId={null}
@@ -506,65 +663,110 @@ export function ZoneFormBody({
             className="zones-google-map h-full w-full"
           />
         </div>
-      </div>
 
-      <div className="grid gap-3 border-t border-border bg-muted/20 px-4 py-3 lg:grid-cols-2">
-        <div className="rounded-xl border border-border bg-card px-3 py-3 shadow-sm">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            {t("geofence.summaryDockTitle")}
-          </p>
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="rounded-lg bg-muted/40 px-2 py-1.5">
-              <p className="text-muted-foreground">{t("geofence.summaryTotal")}</p>
-              <p className="text-base font-semibold">{summary.total}</p>
-            </div>
-            <div className="rounded-lg bg-muted/40 px-2 py-1.5">
-              <p className="text-muted-foreground">{t("geofence.summaryInclusion")}</p>
-              <p className="text-base font-semibold">{summary.inclusion}</p>
-            </div>
-            <div className="rounded-lg bg-muted/40 px-2 py-1.5">
-              <p className="text-muted-foreground">{t("geofence.summaryExclusion")}</p>
-              <p className="text-base font-semibold">{summary.exclusion}</p>
-            </div>
-            <div className="rounded-lg bg-muted/40 px-2 py-1.5">
-              <p className="text-muted-foreground">{t("geofence.summaryAlerts")}</p>
-              <p className="text-base font-semibold">{summary.activeAlerts}</p>
+        <div className="mt-3 grid shrink-0 gap-3 lg:grid-cols-[minmax(0,300px)_minmax(0,1fr)]">
+          <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+            <p className="mb-2 text-xs font-semibold text-slate-900 dark:text-slate-100">
+              {t("geofence.summarySectionTitle")}
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                {
+                  label: t("geofence.summaryRowTotal"),
+                  value: summary.total,
+                  tone: "text-slate-900 dark:text-slate-50",
+                },
+                {
+                  label: t("geofence.summaryRowInclusion"),
+                  value: summary.inclusion,
+                  tone: "text-emerald-600",
+                },
+                {
+                  label: t("geofence.summaryRowExclusion"),
+                  value: summary.exclusion,
+                  tone: "text-rose-600",
+                },
+                {
+                  label: t("geofence.summaryRowAlerts"),
+                  value: summary.activeAlerts,
+                  tone: "text-rose-600",
+                },
+              ].map((card) => (
+                <div
+                  key={card.label}
+                  className="rounded-lg bg-slate-50 px-2.5 py-2 dark:bg-slate-800/40"
+                >
+                  <p className="text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    {card.label}
+                  </p>
+                  <p
+                    className={cn(
+                      "mt-0.5 text-xl font-semibold tabular-nums",
+                      card.tone,
+                    )}
+                  >
+                    {card.value}
+                  </p>
+                </div>
+              ))}
             </div>
           </div>
-        </div>
 
-        <div className="rounded-xl border border-border bg-card px-3 py-3 shadow-sm">
-          <p className="mb-2 flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            <Layers className="h-3.5 w-3.5" />
-            {t("geofence.recentTitle")}
-          </p>
-          <div className="space-y-1.5">
+          <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-xs font-semibold text-slate-900 dark:text-slate-100">
+                {t("geofence.recentSectionTitle")}
+              </p>
+              <Link
+                href="/zones"
+                className="text-xs font-medium text-primary hover:underline"
+              >
+                {t("geofence.viewAll")}
+              </Link>
+            </div>
             {recentZones.length === 0 ? (
-              <p className="text-xs text-muted-foreground">{t("emptyTitle")}</p>
+              <p className="rounded-lg bg-slate-50 px-3 py-3 text-center text-xs text-slate-500 dark:bg-slate-800/40 dark:text-slate-400">
+                {t("emptyTitle")}
+              </p>
             ) : (
-              recentZones.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-center justify-between rounded-lg border border-border/70 px-2 py-1.5"
-                >
-                  <span className="min-w-0">
-                    <span className="block truncate text-xs font-medium text-foreground">
-                      {item.name}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground">#{item.code}</span>
-                  </span>
-                  <Badge
-                    variant={item.geofence_kind === "exclusion" ? "destructive" : "secondary"}
-                    className="text-[10px]"
+              <ul className="space-y-1.5">
+                {recentZones.map((item) => (
+                  <li
+                    key={item.id}
+                    className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 px-2.5 py-1.5 dark:border-slate-700"
                   >
-                    {t(`geofence.kind.${item.geofence_kind}`)}
-                  </Badge>
-                </div>
-              ))
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span
+                        aria-hidden
+                        className="h-2.5 w-2.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: normalizeZoneColor(item.color) }}
+                      />
+                      <span className="min-w-0">
+                        <span className="block truncate text-xs font-medium text-slate-900 dark:text-slate-100">
+                          {item.name}
+                        </span>
+                        <span className="block truncate text-[10px] text-slate-500 dark:text-slate-400">
+                          #{item.code}
+                        </span>
+                      </span>
+                    </span>
+                    <Badge
+                      variant={
+                        item.geofence_kind === "exclusion"
+                          ? "destructive"
+                          : "secondary"
+                      }
+                      className="text-[10px]"
+                    >
+                      {t(`geofence.kind.${item.geofence_kind}`)}
+                    </Badge>
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

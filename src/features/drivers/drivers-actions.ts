@@ -28,6 +28,7 @@ import {
   type DriverDetailModel,
   type DriverDocumentType,
   type DriverListRow,
+  type DriverRemoteDocument,
   type DriverWorkflowStatus,
 } from "./types";
 
@@ -831,6 +832,15 @@ export async function updateDriverIntake(
   return { success: true, id: intakeId };
 }
 
+export async function fetchDriverDocuments(
+  intakeId: string,
+  driverProfileId: string | null,
+): Promise<Partial<Record<DriverDocumentType, DriverRemoteDocument>>> {
+  await requireDriversView();
+  if (!intakeId) return {};
+  return listExistingDriverDocuments(intakeId, driverProfileId);
+}
+
 export async function fetchDriverDetail(
   id: string,
 ): Promise<DriverDetailModel | null> {
@@ -917,15 +927,11 @@ export async function fetchDriverDetail(
       : null;
 
     const restaurant_ids = await fetchIntakeRestaurantIds(supabase, intake.id);
-    const restaurant_names = await loadRestaurantNames(supabase, restaurant_ids);
-    const has_published_restaurant = await hasPublishedActiveRestaurants(
-      supabase,
-      restaurant_ids,
-    );
-    const documents = await listExistingDriverDocuments(
-      intake.id,
-      intake.linked_profile_id,
-    );
+    const [restaurant_names, has_published_restaurant, avatar_url] = await Promise.all([
+      loadRestaurantNames(supabase, restaurant_ids),
+      hasPublishedActiveRestaurants(supabase, restaurant_ids),
+      resolveDriverAvatarUrl(profile?.avatar_url ?? intake.avatar_url),
+    ]);
 
     return {
       id: intake.id,
@@ -937,7 +943,7 @@ export async function fetchDriverDetail(
       email: profile?.email ?? null,
       civil_id: intake.civil_id,
       employee_id: linkedDriver?.employee_id ?? null,
-      avatar_url: await resolveDriverAvatarUrl(profile?.avatar_url ?? intake.avatar_url),
+      avatar_url,
       partner_name: relName(
         intake.partners as { name: string } | { name: string }[] | null,
       ),
@@ -968,7 +974,7 @@ export async function fetchDriverDetail(
       blocked_reason: linkedDriver?.blocked_reason ?? null,
       blocked_at: linkedDriver?.blocked_at ?? null,
       archived_at: intake.archived_at,
-      documents,
+      documents: {},
     };
   }
 
@@ -1028,14 +1034,11 @@ export async function fetchDriverDetail(
   const restaurant_ids = intakeForDriver?.id
     ? await fetchIntakeRestaurantIds(supabase, intakeForDriver.id)
     : await fetchDriverRestaurantIds(supabase, id);
-  const restaurant_names = await loadRestaurantNames(supabase, restaurant_ids);
-  const has_published_restaurant = await hasPublishedActiveRestaurants(
-    supabase,
-    restaurant_ids,
-  );
-  const documents = intakeForDriver?.id
-    ? await listExistingDriverDocuments(intakeForDriver.id, id)
-    : {};
+  const [restaurant_names, has_published_restaurant, avatar_url] = await Promise.all([
+    loadRestaurantNames(supabase, restaurant_ids),
+    hasPublishedActiveRestaurants(supabase, restaurant_ids),
+    resolveDriverAvatarUrl(prof?.avatar_url ?? intakeForDriver?.avatar_url ?? null),
+  ]);
 
   return {
     id: driverRow.id,
@@ -1047,7 +1050,7 @@ export async function fetchDriverDetail(
     email: prof?.email ?? null,
     civil_id: driverRow.civil_id ?? "—",
     employee_id: driverRow.employee_id ?? null,
-    avatar_url: await resolveDriverAvatarUrl(prof?.avatar_url ?? intakeForDriver?.avatar_url ?? null),
+    avatar_url,
     partner_name: relName(driverRow.partners as { name: string } | { name: string }[] | null),
     zone_label: relZone(driverRow.zones),
     vehicle_label: vehicleRow
@@ -1079,7 +1082,7 @@ export async function fetchDriverDetail(
     blocked_reason: driverRow.blocked_reason ?? null,
     blocked_at: driverRow.blocked_at ?? null,
     archived_at: intakeForDriver?.archived_at ?? driverRow.archived_at,
-    documents,
+    documents: {},
   };
 }
 

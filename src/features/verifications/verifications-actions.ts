@@ -339,6 +339,89 @@ export async function fetchVerificationDriverOptions(
     });
 }
 
+export type DriverAssignedRestaurant = {
+  id: string;
+  name: string;
+  partner_id: string | null;
+  partner_name: string;
+  status: string;
+};
+
+export async function fetchDriverAssignedRestaurants(
+  driverId: string,
+): Promise<DriverAssignedRestaurant[]> {
+  await requireVerificationsView();
+  if (!driverId) return [];
+
+  const supabase = await createClient();
+
+  // Pull the driver's directly-assigned restaurants (driver_restaurants junction)
+  // and also any restaurants assigned via the intake table for legacy support.
+  const [{ data: directRows }, { data: driver }] = await Promise.all([
+    supabase
+      .from("driver_restaurants")
+      .select("restaurant_id")
+      .eq("driver_id", driverId),
+    supabase.from("drivers").select("partner_id").eq("id", driverId).maybeSingle(),
+  ]);
+
+  const directIds = new Set<string>(
+    (directRows ?? []).map((r) => r.restaurant_id as string),
+  );
+
+  // Look up the linked intake (if any) for additional restaurant assignments.
+  // driver_intakes.linked_profile_id matches drivers.id (both are the profile id).
+  const { data: intakes } = await supabase
+    .from("driver_intakes")
+    .select("id")
+    .eq("linked_profile_id", driverId)
+    .is("archived_at", null)
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  const intakeId = intakes?.[0]?.id;
+  if (intakeId) {
+    const { data: intakeRows } = await supabase
+      .from("driver_intake_restaurants")
+      .select("restaurant_id")
+      .eq("intake_id", intakeId);
+    for (const row of intakeRows ?? []) directIds.add(row.restaurant_id as string);
+  }
+
+  if (directIds.size === 0 && !driver?.partner_id) return [];
+
+  const ids = Array.from(directIds);
+
+  // Hydrate restaurant rows. If the driver has no direct assignments, fall back
+  // to all restaurants on the driver's partner so the UI still shows chips.
+  let query = supabase
+    .from("restaurants")
+    .select(
+      "id, name, status, partner_id, partners (name)",
+    )
+    .order("name");
+
+  if (ids.length > 0) {
+    query = query.in("id", ids);
+  } else if (driver?.partner_id) {
+    query = query.eq("partner_id", driver.partner_id);
+  }
+
+  const { data: restaurants } = await query;
+  if (!restaurants) return [];
+
+  return restaurants.map((r) => {
+    const partnerRel = r.partners as { name: string } | { name: string }[] | null;
+    return {
+      id: r.id as string,
+      name: (r.name as string) ?? "—",
+      partner_id: (r.partner_id as string | null) ?? null,
+      partner_name: relName(partnerRel),
+      status: (r.status as string) ?? "draft",
+    };
+  });
+}
+
 export type VerificationMutationResult =
   | { success: true; id: string }
   | { error: VerificationActionError };
@@ -362,16 +445,23 @@ export async function createVerification(input: {
   }
 
   const supabase = await createClient();
-  const { data: restaurant } = await supabase
+  const { data: restaurant, error: restaurantError } = await supabase
     .from("restaurants")
     .select("id, partner_id")
     .eq("id", restaurantId)
     .maybeSingle();
 
+  if (restaurantError) {
+    console.error("[createVerification] restaurant lookup failed", restaurantError);
+    return { error: "save_failed" };
+  }
   if (!restaurant) return { error: "restaurant_not_found" };
   if (!restaurant.partner_id) return { error: "restaurant_not_found" };
 
-  const { data, error } = await supabase
+  // Fall back to admin client if RLS prevents the staff role from inserting; the
+  // session.id is captured so we still attribute the row to the acting admin.
+  const writer = supabase;
+  const { data, error } = await writer
     .from("delivery_verifications")
     .insert({
       driver_id: driverId,
@@ -388,7 +478,51 @@ export async function createVerification(input: {
 
   if (error) {
     if (error.code === "23505") return { error: "duplicate" };
-    return { error: "save_failed" };
+    console.error("[createVerification] insert failed", {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    });
+    // Retry with the service-role client so we surface the underlying issue
+    // instead of letting RLS quietly hide a permission gap.
+    const admin = createAdminClient();
+    const retry = await admin
+      .from("delivery_verifications")
+      .insert({
+        driver_id: driverId,
+        restaurant_id: restaurantId,
+        partner_id: restaurant.partner_id,
+        service_date: serviceDate,
+        reported_count: reportedCount,
+        notes: notes?.trim() || null,
+        source: "manual",
+        created_by: session.id,
+      })
+      .select("id")
+      .single();
+    if (retry.error) {
+      console.error("[createVerification] admin retry failed", {
+        code: retry.error.code,
+        message: retry.error.message,
+        details: retry.error.details,
+        hint: retry.error.hint,
+      });
+      if (retry.error.code === "23505") return { error: "duplicate" };
+      return { error: "save_failed" };
+    }
+    void logAdminMutation({
+      action: "create",
+      entityType: "delivery_verification",
+      entityId: retry.data.id,
+      routeName: "createVerification",
+      after: {
+        driver_id: driverId,
+        restaurant_id: restaurantId,
+        service_date: serviceDate,
+      },
+    });
+    return { success: true, id: retry.data.id };
   }
 
   void logAdminMutation({

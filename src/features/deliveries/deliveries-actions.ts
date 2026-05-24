@@ -53,6 +53,138 @@ function earnDateFromDeliveredAt(deliveredAt: string): string {
   }).format(d);
 }
 
+/**
+ * Keep DPD verification in sync after a delivery's status changes.
+ *
+ * When an admin approves (or moves out of) a delivery on the deliveries page
+ * we want the DPD verification page to immediately reflect that admin's
+ * decision instead of waiting for the restaurant to file a report. We:
+ *
+ *  1. Count the deliveries on the same Kuwait service-date for the same
+ *     driver+restaurant (or driver+partner if the delivery has no restaurant
+ *     attached) that are eligible to be matched (i.e. not rejected).
+ *  2. Upsert a delivery_verifications row with `reported_count` set to that
+ *     count so the trigger reconciles statuses on its own.
+ *
+ * Auto-created rows are tagged in `notes` so we never overwrite a
+ * restaurant-reported figure once a human has entered one.
+ */
+async function syncVerificationForDelivery(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  delivery: {
+    id: string;
+    driver_id: string;
+    delivered_at: string;
+    partner_id: string | null;
+    restaurant_id: string | null;
+  },
+  actorId: string,
+): Promise<void> {
+  // We need at least a partner to scope the verification (verifications.partner_id
+  // is NOT NULL). If the delivery has no partner, skip — there's nothing to
+  // reconcile against.
+  if (!delivery.partner_id) return;
+
+  const serviceDate = earnDateFromDeliveredAt(delivery.delivered_at);
+
+  // Resolve the restaurant we'll attach the verification to. If the delivery
+  // has its own restaurant, use that; otherwise, fall back to a single
+  // restaurant on the partner so we still have one to write to.
+  let restaurantId: string | null = delivery.restaurant_id;
+  if (!restaurantId) {
+    const { data: partnerRestaurants } = await supabase
+      .from("restaurants")
+      .select("id")
+      .eq("partner_id", delivery.partner_id)
+      .order("created_at", { ascending: true })
+      .limit(2);
+    // Only auto-attach when the partner has exactly one restaurant — otherwise
+    // we'd be guessing which one the delivery belongs to.
+    if ((partnerRestaurants ?? []).length === 1) {
+      restaurantId = partnerRestaurants![0]!.id;
+    } else {
+      return;
+    }
+  }
+
+  // Count eligible deliveries for this driver+restaurant_or_partner+date.
+  const startIso = `${serviceDate}T00:00:00+03:00`;
+  const endIso = `${serviceDate}T23:59:59.999+03:00`;
+
+  const { data: dayRows, error: countError } = await supabase
+    .from("deliveries")
+    .select("id, status, restaurant_id, partner_id")
+    .eq("driver_id", delivery.driver_id)
+    .gte("delivered_at", startIso)
+    .lte("delivered_at", endIso);
+  if (countError) {
+    console.error("[syncVerificationForDelivery] count failed", countError);
+    return;
+  }
+
+  const eligible = (dayRows ?? []).filter(
+    (d) =>
+      d.status !== "rejected" &&
+      (d.restaurant_id === restaurantId ||
+        (d.restaurant_id == null && d.partner_id === delivery.partner_id)),
+  );
+  const reported = eligible.length;
+
+  // Look up an existing verification for the same key.
+  const { data: existing } = await supabase
+    .from("delivery_verifications")
+    .select("id, source, reported_count, notes")
+    .eq("driver_id", delivery.driver_id)
+    .eq("restaurant_id", restaurantId)
+    .eq("service_date", serviceDate)
+    .maybeSingle();
+
+  const AUTO_TAG = "[auto:delivery-approval]";
+
+  if (existing) {
+    const isAuto = (existing.notes ?? "").includes(AUTO_TAG);
+    // Don't clobber a real restaurant report; just trigger a reconcile by
+    // touching the row so the trigger re-runs.
+    if (!isAuto) {
+      await supabase
+        .from("delivery_verifications")
+        .update({ updated_at: new Date().toISOString() })
+        .eq("id", existing.id);
+      return;
+    }
+    if (existing.reported_count !== reported) {
+      await supabase
+        .from("delivery_verifications")
+        .update({
+          reported_count: reported,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", existing.id);
+    }
+    return;
+  }
+
+  // No verification exists yet — create one tagged so future syncs know it's
+  // safe to update the count.
+  if (reported === 0) return;
+
+  const { error: insertError } = await supabase
+    .from("delivery_verifications")
+    .insert({
+      driver_id: delivery.driver_id,
+      restaurant_id: restaurantId,
+      partner_id: delivery.partner_id,
+      service_date: serviceDate,
+      reported_count: reported,
+      notes: AUTO_TAG,
+      source: "manual",
+      created_by: actorId,
+    });
+  if (insertError && insertError.code !== "23505") {
+    console.error("[syncVerificationForDelivery] insert failed", insertError);
+  }
+}
+
 async function recalcEarningsForDelivery(
   supabase: Awaited<ReturnType<typeof createClient>>,
   driverId: string,
@@ -283,7 +415,7 @@ export async function updateDeliveryStatus(
   const supabase = await createClient();
   const { data: existing, error: fetchError } = await supabase
     .from("deliveries")
-    .select("id, driver_id, delivered_at, status")
+    .select("id, driver_id, delivered_at, status, partner_id, restaurant_id")
     .eq("id", deliveryId)
     .maybeSingle();
 
@@ -330,6 +462,20 @@ export async function updateDeliveryStatus(
       existing.delivered_at,
     );
   }
+
+  // Mirror the admin's decision into DPD verifications so the verification
+  // page stays in sync without a manual entry.
+  await syncVerificationForDelivery(
+    supabase,
+    {
+      id: existing.id,
+      driver_id: existing.driver_id,
+      delivered_at: existing.delivered_at,
+      partner_id: (existing as { partner_id: string | null }).partner_id ?? null,
+      restaurant_id: (existing as { restaurant_id: string | null }).restaurant_id ?? null,
+    },
+    session.id,
+  );
 
   return { ok: true };
 }

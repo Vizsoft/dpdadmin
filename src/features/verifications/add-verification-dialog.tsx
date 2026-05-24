@@ -1,14 +1,15 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import {
   Calendar,
+  Check,
   ClipboardCheck,
   Loader2,
   Search,
   Sparkles,
-  UtensilsCrossed,
+  Store,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -28,8 +29,13 @@ import { SearchSelect } from "@/components/ui/search-select";
 import { useRestaurantsList } from "@/features/restaurants/use-restaurants";
 import { restaurantSearchOptions } from "@/lib/search-options";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import type { VerificationDriverOption } from "./types";
-import { useCreateVerification, useVerificationDriverOptions } from "./use-verifications";
+import {
+  useCreateVerification,
+  useDriverAssignedRestaurants,
+  useVerificationDriverOptions,
+} from "./use-verifications";
 
 function todayKuwait(): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kuwait" }).format(
@@ -66,6 +72,8 @@ export function AddVerificationDialog({
 
   const { data: drivers = [] } = useVerificationDriverOptions(driverSearch);
   const { data: restaurants = [] } = useRestaurantsList();
+  const { data: assignedRestaurants = [], isLoading: assignedLoading } =
+    useDriverAssignedRestaurants(selectedDriver?.id ?? null);
 
   const publishedRestaurants = useMemo(
     () => restaurants.filter((r) => r.status === "published"),
@@ -85,6 +93,23 @@ export function AddVerificationDialog({
     () => restaurantSearchOptions(filteredRestaurants),
     [filteredRestaurants],
   );
+
+  const assignedRestaurantIds = useMemo(
+    () => new Set(assignedRestaurants.map((r) => r.id)),
+    [assignedRestaurants],
+  );
+
+  // Auto-select the only assigned restaurant when there's exactly one and the
+  // user hasn't picked anything yet — saves a tap on the common case.
+  useEffect(() => {
+    if (
+      selectedDriver &&
+      !restaurantId &&
+      assignedRestaurants.length === 1
+    ) {
+      setRestaurantId(assignedRestaurants[0]!.id);
+    }
+  }, [selectedDriver, restaurantId, assignedRestaurants]);
 
   const create = useCreateVerification();
   const maxDate = todayKuwait();
@@ -264,38 +289,95 @@ export function AddVerificationDialog({
           <div className="space-y-1.5">
             <div className="flex items-center justify-between gap-2">
               <Label>{t("fieldRestaurant")}</Label>
-              {selectedDriver?.partner_id ? (
+              {selectedDriver ? (
                 <Button
                   type="button"
                   variant="link"
                   className="h-auto cursor-pointer px-0 text-xs"
                   onClick={() => {
                     setShowAllRestaurants((v) => !v);
-                    setRestaurantId("");
+                    if (showAllRestaurants) {
+                      setRestaurantId("");
+                    }
                   }}
                 >
                   {showAllRestaurants
-                    ? t("filterByPartner")
+                    ? t("showAssignedOnly")
                     : t("showAllRestaurants")}
                 </Button>
               ) : null}
             </div>
-            {!showAllRestaurants && selectedDriver?.partner_id ? (
-              <p className="text-[11px] text-muted-foreground">{t("filterByPartner")}</p>
+
+            {selectedDriver && !showAllRestaurants ? (
+              assignedLoading ? (
+                <div className="flex items-center gap-2 rounded-lg border border-border/70 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                  <Loader2 className="size-3.5 animate-spin" />
+                  {t("loadingAssignedRestaurants")}
+                </div>
+              ) : assignedRestaurants.length > 0 ? (
+                <>
+                  <p className="text-[11px] text-muted-foreground">
+                    {t("assignedRestaurantsHint")}
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {assignedRestaurants.map((r) => {
+                      const active = restaurantId === r.id;
+                      return (
+                        <button
+                          key={r.id}
+                          type="button"
+                          onClick={() => {
+                            setRestaurantId(active ? "" : r.id);
+                            clearFieldError("restaurant");
+                          }}
+                          className={cn(
+                            "group inline-flex max-w-full cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition",
+                            active
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-border bg-background text-foreground hover:border-primary/40 hover:bg-muted/60",
+                          )}
+                          title={r.partner_name}
+                        >
+                          {active ? (
+                            <Check className="size-3 shrink-0" aria-hidden />
+                          ) : (
+                            <Store className="size-3 shrink-0 text-muted-foreground" aria-hidden />
+                          )}
+                          <span className="truncate">{r.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              ) : (
+                <div className="rounded-lg border border-dashed border-border bg-muted/20 px-3 py-3 text-xs text-muted-foreground">
+                  {t("noAssignedRestaurants")}
+                </div>
+              )
             ) : null}
-            <SearchSelect
-              items={restaurantItems}
-              value={restaurantId || null}
-              onChange={(v) => {
-                setRestaurantId(v ?? "");
-                clearFieldError("restaurant");
-              }}
-              placeholder={t("selectRestaurant")}
-              searchPlaceholder={t("selectRestaurant")}
-              defaultLimit={10}
-              recentsKey="verification-add-restaurant"
-              className="w-full"
-            />
+
+            {showAllRestaurants || !selectedDriver || assignedRestaurants.length === 0 ? (
+              <SearchSelect
+                items={restaurantItems}
+                value={restaurantId || null}
+                onChange={(v) => {
+                  setRestaurantId(v ?? "");
+                  clearFieldError("restaurant");
+                }}
+                placeholder={t("selectRestaurant")}
+                searchPlaceholder={t("selectRestaurant")}
+                defaultLimit={10}
+                recentsKey="verification-add-restaurant"
+                className="w-full"
+              />
+            ) : null}
+
+            {restaurantId && !assignedRestaurantIds.has(restaurantId) && selectedDriver ? (
+              <p className="text-[11px] text-muted-foreground">
+                {t("nonAssignedRestaurantWarning")}
+              </p>
+            ) : null}
+
             {fieldErrors.restaurant ? (
               <p className="text-xs text-destructive">{fieldErrors.restaurant}</p>
             ) : null}

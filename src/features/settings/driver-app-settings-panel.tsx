@@ -174,7 +174,10 @@ export function DriverAppSettingsPanel({
                   const result = await updateDriverAppSettings(locale, formData);
                   if (result.error) {
                     setError(result.error);
-                    toast.error(t("errors.saveFailed"));
+                    toast.error(t("errors.saveFailed"), {
+                      description: result.errorDetail,
+                      duration: result.errorDetail ? 12000 : 5000,
+                    });
                     return;
                   }
                   toast.success(t("saved"));
@@ -223,7 +226,10 @@ export function DriverAppSettingsPanel({
                       const result = await uploadDriverAppLogo(locale, formData);
                       if (result.error) {
                         setError(result.error);
-                        toast.error(t("errors.saveFailed"));
+                        toast.error(t("errors.saveFailed"), {
+                          description: result.errorDetail,
+                          duration: result.errorDetail ? 12000 : 5000,
+                        });
                         return;
                       }
                       if (result.logoUrl) setLogoPreview(result.logoUrl);
@@ -257,7 +263,10 @@ export function DriverAppSettingsPanel({
                       const result = await uploadDriverAppSplash(locale, formData);
                       if (result.error) {
                         setError(result.error);
-                        toast.error(t("errors.saveFailed"));
+                        toast.error(t("errors.saveFailed"), {
+                          description: result.errorDetail,
+                          duration: result.errorDetail ? 12000 : 5000,
+                        });
                         return;
                       }
                       if (result.splashUrl) setSplashPreview(result.splashUrl);
@@ -291,7 +300,10 @@ export function DriverAppSettingsPanel({
                       const result = await uploadDriverAppIcon(locale, formData);
                       if (result.error) {
                         setError(result.error);
-                        toast.error(t("errors.saveFailed"));
+                        toast.error(t("errors.saveFailed"), {
+                          description: result.errorDetail,
+                          duration: result.errorDetail ? 12000 : 5000,
+                        });
                         return;
                       }
                       if (result.iconUrl) setIconPreview(result.iconUrl);

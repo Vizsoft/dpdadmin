@@ -170,7 +170,10 @@ function RestaurantFormBody({
 
       const result = await saveRestaurant(formData);
       if (result.error) {
-        toast.error(errorToast(t, result.error));
+        toast.error(errorToast(t, result.error), {
+          description: result.errorDetail,
+          duration: result.errorDetail ? 8000 : 4000,
+        });
         return;
       }
       if (result.logoWarning && isRestaurantErrorKey(result.logoWarning)) {

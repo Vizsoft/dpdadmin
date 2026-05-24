@@ -7,6 +7,8 @@ export type ZoneMapViewport = {
   west: number;
 };
 
+export type ZoneMapType = "roadmap" | "satellite" | "hybrid" | "terrain";
+
 export type ZoneMapAdapter = {
   panTo: (lat: number, lng: number, zoom?: number) => void;
   fitViewport: (viewport: ZoneMapViewport) => void;
@@ -16,6 +18,9 @@ export type ZoneMapAdapter = {
   setDragging?: (enabled: boolean) => void;
   deleteSelected?: () => void;
   clearDraft?: () => void;
+  setMapType?: (mapType: ZoneMapType) => void;
+  zoomIn?: () => void;
+  zoomOut?: () => void;
 };
 
 export function viewportFromGooglePlace(viewport: {
