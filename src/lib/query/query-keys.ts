@@ -95,4 +95,14 @@ export const queryKeys = {
     list: (startDate: string, endDate: string) => ["payouts", "list", startDate, endDate] as const,
     detail: (id: string) => ["payouts", "detail", id] as const,
   },
+  notifications: {
+    all: () => ["notifications"] as const,
+    dashboard: () => ["notifications", "dashboard"] as const,
+    list: (filters: Record<string, unknown> = {}) =>
+      ["notifications", "list", filters] as const,
+    detail: (id: string) => ["notifications", "detail", id] as const,
+    templates: () => ["notifications", "templates"] as const,
+    automations: () => ["notifications", "automations"] as const,
+    targetingOptions: () => ["notifications", "targeting-options"] as const,
+  },
 } as const;

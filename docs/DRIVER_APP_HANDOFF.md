@@ -308,30 +308,142 @@ supabase.channel(`notifications:driver:${driverId}`).on(...)
 
 ---
 
-## 7. Push notifications
+## 7. Push notifications (Notification Center v2)
 
-Admin sends via `notifications` table. Payload shape:
+Admin now sends via `notification_campaigns` + `notification_dispatch_items` (FCM provider), not direct inserts to legacy `notifications`.
+
+### FCM data payload (version 1)
+
+Admin dispatch sends FCM with notification title/body plus a flat string `data` map:
 
 ```json
 {
-  "title": "string",
-  "body": "string",
-  "on_click_action": "home | deliveries | vehicle | profile | hygiene_task | custom_link",
-  "link_url": "optional",
-  "hygiene_task_id": "optional uuid"
+  "campaign_id": "uuid",
+  "payload_version": "1",
+  "action_type": "open_screen | open_module | open_record | open_workflow | open_url | custom_payload | silent_update_trigger",
+  "action_params": "{\"screen\":\"home\",\"delivery_id\":\"optional-uuid\"}",
+  "category": "incentive | reminder | compliance | attendance | salary | emergency | announcement | operations | system_alert",
+  "priority": "low | normal | high | critical",
+  "deep_link": "optional musallam://..."
 }
 ```
 
+Parse `action_params` as JSON on the client. Unknown keys must be ignored for forward compatibility.
+
+### Lifecycle states
+
+`draft` → `pending_approval` (when high/critical/emergency/broadcast-to-all) → `scheduled` | `queued` → `processing` → `sent` → `delivered` → `opened` → `clicked` | `failed` | `cancelled` | `expired`
+
+Approval policy (admin): high priority, critical priority, emergency category, or target mode `all` require `notifications.approve` before send.
+
+### Client event ingestion
+
+POST `https://dpdadmin.vercel.app/api/notifications/events` with rider session:
+
+```json
+{
+  "campaign_id": "uuid",
+  "dispatch_item_id": "uuid",
+  "event_type": "delivered | opened | clicked | failed | token_invalid",
+  "event_at": "ISO timestamp",
+  "meta": { "app_version": "1.0.0", "platform": "ios|android" }
+}
+```
+
+Alternatively call RPC `record_notification_client_event(p_campaign_id, p_dispatch_item_id, p_event_type, p_event_at, p_metadata)` as the authenticated rider.
+
+### Push token registration
+
+Upsert into `driver_push_tokens` on login/token refresh:
+
+| Column | Value |
+|--------|-------|
+| `driver_id` | `auth.uid()` |
+| `token` | FCM device token |
+| `platform` | `ios` \| `android` |
+| `is_active` | `true` |
+
+Deactivate stale tokens when FCM returns invalid-registration.
+
 ### Deep links
 
-| on_click_action | Route |
-|-----------------|-------|
-| home | `/` |
-| deliveries | `/deliveries` |
-| vehicle | `/vehicle` |
-| profile | `/profile` |
-| hygiene_task | `/hygiene/{task_id}` |
-| custom_link | `link_url` |
+| action_type | Behavior |
+|-------------|----------|
+| `open_screen` | Navigate using `action_params.screen` (+ optional params) |
+| `open_module` | Open app module from `action_params.module` |
+| `open_record` | Open entity detail from `action_params.record_type` + `record_id` |
+| `open_workflow` | Start workflow from `action_params.workflow` |
+| `open_url` | External URL from `action_params.url` |
+| `custom_payload` | App-defined handler for `action_params` |
+| `silent_update_trigger` | Background refresh only; no UI navigation |
+
+Scheme: `musallam://` (configure in app)
+
+---
+
+## 7b. Legacy push section (deprecated)
+
+The block below is superseded by §7 above. Do not implement against the old shape.
+
+### Campaign payload shape (version 1) — deprecated reference
+
+```json
+{
+  "version": 1,
+  "title": "string",
+  "body": "string",
+  "category": "general | operations | compliance | payroll | alerts",
+  "priority": "low | normal | high | broadcast | emergency",
+  "action_payload": {
+    "action": "open_screen | open_deeplink | open_url | acknowledge",
+    "route": "/home",
+    "params": {
+      "hygiene_task_id": "optional uuid",
+      "delivery_id": "optional uuid"
+    },
+    "deeplink": "optional musallam://..."
+  },
+  "data_payload": {
+    "campaign_id": "uuid",
+    "dispatch_item_id": "uuid",
+    "source": "admin_notification_center",
+    "meta": {}
+  }
+}
+```
+
+### Client ack/open/click event contract — deprecated reference
+
+App must POST/emit these back to backend bridge (or equivalent ingestion endpoint) per dispatch item:
+
+- `acknowledged` when push received in device queue
+- `opened` when user opens notification content
+- `clicked` when primary action/deeplink is executed
+
+Minimum fields:
+
+```json
+{
+  "campaign_id": "uuid",
+  "dispatch_item_id": "uuid",
+  "event_type": "acknowledged | opened | clicked",
+  "event_at": "ISO timestamp",
+  "meta": {
+    "app_version": "string",
+    "platform": "ios|android",
+    "deeplink": "optional"
+  }
+}
+```
+
+### Deep links — deprecated reference
+
+| action_payload.action | Route/Behavior |
+|-----------------------|----------------|
+| `open_screen` | use `action_payload.route` |
+| `open_deeplink` | use `action_payload.deeplink` |
+| `open_url` | external URL in `action_payload.params.url` |
+| `acknowledge` | stay in place and emit `clicked` |
 
 Scheme: `musallam://` (configure in app)
 
@@ -448,7 +560,7 @@ Tag admin PRs: `[admin+app]` in `.cursor/rules/project-architecture.mdc` change 
 - **React Native / Expo** or **Flutter**
 - **Supabase JS** client with secure storage for session
 - **Mapbox / Google Maps** for zone overlay
-- **FCM + APNs** for push (trigger via Supabase Edge Function on `notifications` insert)
+- **FCM + APNs** for push (triggered from Notification Center dispatch worker / queue)
 
 ---
 
@@ -502,6 +614,13 @@ Every completed upload is recorded in `storage_uploads` and shown on **Settings 
 
 ## 15. Supabase connection
 
+Staging/internal driver builds must use TEST. Production app-store builds must use PROD.
+
+| Build target | Supabase URL |
+|--------------|--------------|
+| Staging / internal | `https://cgpioijpvriiqqnauwlx.supabase.co` |
+| Production | `https://ytfmsgckjatiserpgdbz.supabase.co` |
+
 ```env
 EXPO_PUBLIC_SUPABASE_URL=https://ytfmsgckjatiserpgdbz.supabase.co
 EXPO_PUBLIC_SUPABASE_ANON_KEY=<anon key from admin .env.local>
@@ -511,7 +630,9 @@ Never ship `SUPABASE_SERVICE_ROLE_KEY` in the mobile app.
 
 ---
 
-*Last synced: 2026-06-23 — [admin+app] Geofence schema upgrade (`zone_geofence_settings`, `geofence_events`), default settings fallback for legacy zones, realtime publication for geofence tables, and create/edit geofence rule controls.*
+*Last synced: 2026-05-25 — [admin+app] Notification Center v2 contract: `notification_*` domain tables, lifecycle states, priority approvals, versioned payload (`action_payload` + `data_payload`), and required `acknowledged/opened/clicked` event callbacks.*
+
+*Prior: 2026-06-23 — [admin+app] Geofence schema upgrade (`zone_geofence_settings`, `geofence_events`), default settings fallback for legacy zones, realtime publication for geofence tables, and create/edit geofence rule controls.*
 
 *Prior: 2026-06-07 — [admin+app] R2 env-only credentials; storage stats dashboard; driver upload API (`/api/driver-uploads/*`) + `storage_uploads` audit table.*
 

@@ -102,6 +102,8 @@
     "resetFailed": "تعذر إرسال البريد. حاول مرة أخرى.",
     "updatePasswordFailed": "تعذر تحديث كلمة المرور.",
     "missingFields": "يرجى تعبئة جميع الحقول المطلوبة",
+    "invalidEmail": "أدخل بريداً إلكترونياً صالحاً",
+    "emailAlreadyRegistered": "هذا البريد مسجل بالفعل. جرّب تسجيل الدخول.",
     "signupFailed": "تعذر إنشاء الحساب.",
     "invalidCredentials": "بريد أو كلمة مرور غير صحيحة",
     "notAuthorized": "حسابك غير مصرح له بالوصول للوحة الإدارة",

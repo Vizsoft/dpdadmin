@@ -68,6 +68,51 @@ export const PERMISSION_CATALOG: readonly PermissionCatalogEntry[] = [
     label: "Manage notifications",
     category: "notifications",
   },
+  {
+    slug: "notifications.approve",
+    label: "Approve notifications",
+    category: "notifications",
+  },
+  {
+    slug: "notifications.send",
+    label: "Send notifications",
+    category: "notifications",
+  },
+  {
+    slug: "notifications.export",
+    label: "Export notification reports",
+    category: "notifications",
+  },
+  {
+    slug: "notifications.approve",
+    label: "Approve notifications",
+    category: "notifications",
+  },
+  {
+    slug: "notifications.send",
+    label: "Send notifications",
+    category: "notifications",
+  },
+  {
+    slug: "notifications.export",
+    label: "Export notifications",
+    category: "notifications",
+  },
+  {
+    slug: "notifications.approve",
+    label: "Approve notifications",
+    category: "notifications",
+  },
+  {
+    slug: "notifications.send",
+    label: "Send notifications",
+    category: "notifications",
+  },
+  {
+    slug: "notifications.export",
+    label: "Export notification reports",
+    category: "notifications",
+  },
   { slug: "support.view", label: "View support", category: "support" },
   { slug: "support.manage", label: "Manage support", category: "support" },
   { slug: "settings.view", label: "View settings", category: "settings" },
