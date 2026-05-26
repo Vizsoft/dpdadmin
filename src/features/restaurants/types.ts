@@ -1,6 +1,12 @@
+import type {
+  ZoneGeoFeature,
+  ZoneGeometryType,
+} from "@/lib/geo/zone-geometry";
 import type { RestaurantStatus } from "./restaurant-status";
 
 export type { RestaurantStatus };
+
+export type RestaurantGeofenceKind = "inclusion" | "exclusion";
 
 export type RestaurantRow = {
   id: string;
@@ -30,4 +36,34 @@ export type RestaurantZoneOption = {
   id: string;
   name: string;
   code: string;
+};
+
+export type RestaurantGeofence = {
+  id: string;
+  restaurant_id: string;
+  kind: RestaurantGeofenceKind;
+  zone_type: ZoneGeometryType;
+  geometry: ZoneGeoFeature;
+  name: string | null;
+  color: string;
+  created_at: string;
+};
+
+/** Client-side geofence row (temp id allowed before first save). */
+export type RestaurantGeofenceDraft = {
+  id: string;
+  kind: RestaurantGeofenceKind;
+  zone_type: ZoneGeometryType;
+  geometry: ZoneGeoFeature;
+  name: string | null;
+  color: string;
+};
+
+export type RestaurantGeofenceInput = {
+  id?: string;
+  kind: RestaurantGeofenceKind;
+  zone_type: ZoneGeometryType;
+  geometry: ZoneGeoFeature;
+  name?: string | null;
+  color?: string;
 };

@@ -1120,6 +1120,43 @@
       "noLogo": "No logo",
       "uploadLogo": "Upload logo",
       "removeLogo": "Remove logo",
+      "geofences": {
+        "title": "Delivery zones",
+        "subtitle": "Draw inclusion zones to restrict where drivers can log deliveries. Exclusion zones override and block those areas.",
+        "kindTitle": "Zone type",
+        "shapeTitle": "Shape",
+        "empty": "No zones drawn yet. Switch to Draw mode on the map to add inclusion or exclusion areas.",
+        "deleteOne": "Remove zone",
+        "namePlaceholder": "Optional label",
+        "drawHint": "Draw a polygon or circle on the map. Use Move to reposition, Edit to adjust vertices.",
+        "kind": {
+          "inclusion": "Inclusion",
+          "exclusion": "Exclusion"
+        },
+        "shape": {
+          "polygon": "Polygon",
+          "circle": "Circle"
+        },
+        "toolbar": {
+          "pin": "Pin",
+          "draw": "Draw",
+          "drawShape": "Draw",
+          "move": "Move",
+          "delete": "Delete",
+          "clear": "Clear"
+        },
+        "errors": {
+          "geometry_required": "Draw a zone on the map before saving",
+          "invalid_circle": "Circle geometry is invalid",
+          "invalid_radius": "Radius must be between 50 m and 50 km",
+          "invalid_polygon": "Polygon geometry is invalid",
+          "polygon_too_small": "Polygon needs at least 3 points",
+          "polygon_self_intersect": "Polygon edges must not cross",
+          "invalid_kind": "Zone type must be inclusion or exclusion",
+          "save_failed": "Could not save delivery zones",
+          "load_failed": "Could not load delivery zones"
+        }
+      },
       "errors": {
         "not_authorized": "You do not have permission to manage restaurants",
         "missing_fields": "Restaurant name is required",

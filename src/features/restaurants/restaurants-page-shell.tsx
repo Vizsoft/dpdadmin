@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import {
   Download,
   Filter,
@@ -40,9 +40,7 @@ import {
 import { useAuth } from "@/contexts/auth-context";
 import { canManageRestaurants } from "@/lib/auth/permissions";
 import { useHasMounted } from "@/hooks/use-has-mounted";
-import { queryKeys } from "@/lib/query/query-keys";
 import { cn } from "@/lib/utils";
-import { RestaurantFormSheet } from "./restaurant-form-sheet";
 import { useRestaurantsList } from "./use-restaurants";
 import type { RestaurantRow, RestaurantStatus } from "./types";
 
@@ -113,16 +111,14 @@ function RestaurantsPageSkeleton() {
 
 function RestaurantsPageContent() {
   const locale = useLocale();
+  const router = useRouter();
   const t = useTranslations("pages.restaurants");
   const { permissions, isSuperAdmin } = useAuth();
   const canManage = canManageRestaurants(new Set(permissions), isSuperAdmin);
-  const queryClient = useQueryClient();
 
   const { data: restaurants = [], isLoading, refetch } = useRestaurantsList();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [editing, setEditing] = useState<RestaurantRow | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const hasActiveFilters = statusFilter !== "all";
@@ -145,10 +141,6 @@ function RestaurantsPageContent() {
     });
   }, [restaurants, search, statusFilter]);
 
-  const invalidateRestaurants = useCallback(() => {
-    void queryClient.invalidateQueries({ queryKey: queryKeys.restaurants.all() });
-  }, [queryClient]);
-
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
@@ -159,13 +151,11 @@ function RestaurantsPageContent() {
   };
 
   const handleAdd = () => {
-    setEditing(null);
-    setSheetOpen(true);
+    router.push("/restaurants/new");
   };
 
   const handleEdit = (row: RestaurantRow) => {
-    setEditing(row);
-    setSheetOpen(true);
+    router.push(`/restaurants/${row.id}/edit`);
   };
 
   const statusFilterLabel = (value: StatusFilter) => {
@@ -493,14 +483,6 @@ function RestaurantsPageContent() {
           </CardContent>
         )}
       </AppListCard>
-
-      <RestaurantFormSheet
-        open={sheetOpen}
-        onOpenChange={setSheetOpen}
-        restaurant={editing}
-        onSaved={invalidateRestaurants}
-        onDeleted={invalidateRestaurants}
-      />
     </>
   );
 }

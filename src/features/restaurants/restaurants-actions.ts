@@ -17,7 +17,16 @@ import {
   validateRestaurantCoordinates,
 } from "./parse-restaurant-form";
 import { resolveRestaurantLogoUrls } from "@/lib/storage/restaurant-logo-url";
+import {
+  validateZoneGeometry,
+  type ZoneGeoFeature,
+  type ZoneGeometryType,
+} from "@/lib/geo/zone-geometry";
+import type { Json } from "@/types/database";
 import type {
+  RestaurantGeofence,
+  RestaurantGeofenceKind,
+  RestaurantGeofenceInput,
   RestaurantPartnerOption,
   RestaurantRow,
   RestaurantZoneOption,
@@ -30,7 +39,15 @@ export type RestaurantMutationResult = {
   id?: string;
   logoUrl?: string | null;
   logoWarning?: RestaurantErrorKey | string;
+  geofenceError?: string;
 };
+
+export type RestaurantGeofenceMutationResult = {
+  error?: string;
+  success?: boolean;
+};
+
+export type { RestaurantGeofenceInput };
 
 type PgLikeError = {
   code?: string | null;
@@ -179,6 +196,130 @@ export async function fetchRestaurantsForAdmin(): Promise<RestaurantRow[]> {
   }));
 
   return resolveRestaurantLogoUrls(rows);
+}
+
+function validateGeofenceInput(
+  input: RestaurantGeofenceInput,
+): string | null {
+  if (input.kind !== "inclusion" && input.kind !== "exclusion") {
+    return "invalid_kind";
+  }
+  return validateZoneGeometry(input.zone_type, input.geometry);
+}
+
+function mapGeofenceRow(row: {
+  id: string;
+  restaurant_id: string;
+  kind: string;
+  zone_type: string;
+  geometry: Json;
+  name: string | null;
+  color: string;
+  created_at: string;
+}): RestaurantGeofence {
+  return {
+    id: row.id,
+    restaurant_id: row.restaurant_id,
+    kind: row.kind as RestaurantGeofenceKind,
+    zone_type: row.zone_type as ZoneGeometryType,
+    geometry: row.geometry as unknown as ZoneGeoFeature,
+    name: row.name,
+    color: row.color,
+    created_at: row.created_at,
+  };
+}
+
+export async function fetchRestaurantGeofences(
+  restaurantId: string,
+): Promise<RestaurantGeofence[]> {
+  await requireRestaurantsView();
+  if (!restaurantId) return [];
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("restaurant_geofences")
+    .select(
+      "id, restaurant_id, kind, zone_type, geometry, name, color, created_at",
+    )
+    .eq("restaurant_id", restaurantId)
+    .order("created_at");
+
+  if (error) throw error;
+  return (data ?? []).map(mapGeofenceRow);
+}
+
+export async function saveRestaurantGeofences(
+  restaurantId: string,
+  geofences: RestaurantGeofenceInput[],
+): Promise<RestaurantGeofenceMutationResult> {
+  const auth = await requireRestaurantsManage();
+  if (auth.error) return { error: auth.error };
+  if (!restaurantId) return { error: "missing_fields" };
+
+  for (const geofence of geofences) {
+    const validationError = validateGeofenceInput(geofence);
+    if (validationError) return { error: validationError };
+  }
+
+  const supabase = await createClient();
+  const { data: existing, error: fetchError } = await supabase
+    .from("restaurant_geofences")
+    .select("id")
+    .eq("restaurant_id", restaurantId);
+
+  if (fetchError) return { error: "save_failed" };
+
+  const incomingIds = new Set(
+    geofences.map((g) => g.id).filter((id): id is string => Boolean(id)),
+  );
+  const toDelete = (existing ?? [])
+    .map((row) => row.id)
+    .filter((id) => !incomingIds.has(id));
+
+  if (toDelete.length > 0) {
+    const { error: deleteError } = await supabase
+      .from("restaurant_geofences")
+      .delete()
+      .in("id", toDelete);
+    if (deleteError) return { error: "save_failed" };
+  }
+
+  for (const geofence of geofences) {
+    const payload = {
+      restaurant_id: restaurantId,
+      kind: geofence.kind,
+      zone_type: geofence.zone_type,
+      geometry: geofence.geometry as unknown as Json,
+      name: geofence.name?.trim() || null,
+      color: geofence.color ?? (geofence.kind === "inclusion" ? "#22c55e" : "#ef4444"),
+      updated_at: new Date().toISOString(),
+    };
+
+    if (geofence.id) {
+      const { error } = await supabase
+        .from("restaurant_geofences")
+        .update(payload)
+        .eq("id", geofence.id)
+        .eq("restaurant_id", restaurantId);
+      if (error) return { error: "save_failed" };
+    } else {
+      const { error } = await supabase.from("restaurant_geofences").insert({
+        ...payload,
+        created_by: auth.session.id,
+      });
+      if (error) return { error: "save_failed" };
+    }
+  }
+
+  void logAdminMutation({
+    action: "update",
+    entityType: "restaurant",
+    entityId: restaurantId,
+    routeName: "saveRestaurantGeofences",
+    after: { geofence_count: geofences.length },
+  });
+
+  return { success: true };
 }
 
 export async function saveRestaurant(formData: FormData): Promise<RestaurantMutationResult> {

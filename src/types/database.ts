@@ -3229,6 +3229,60 @@ export type Database = {
           },
         ]
       }
+      restaurant_geofences: {
+        Row: {
+          color: string
+          created_at: string
+          created_by: string | null
+          geometry: Json
+          id: string
+          kind: Database["public"]["Enums"]["restaurant_geofence_kind"]
+          name: string | null
+          restaurant_id: string
+          updated_at: string
+          zone_type: Database["public"]["Enums"]["zone_geometry_type"]
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          created_by?: string | null
+          geometry: Json
+          id?: string
+          kind: Database["public"]["Enums"]["restaurant_geofence_kind"]
+          name?: string | null
+          restaurant_id: string
+          updated_at?: string
+          zone_type: Database["public"]["Enums"]["zone_geometry_type"]
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          created_by?: string | null
+          geometry?: Json
+          id?: string
+          kind?: Database["public"]["Enums"]["restaurant_geofence_kind"]
+          name?: string | null
+          restaurant_id?: string
+          updated_at?: string
+          zone_type?: Database["public"]["Enums"]["zone_geometry_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "restaurant_geofences_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "restaurant_geofences_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       restaurants: {
         Row: {
           created_at: string
@@ -3801,9 +3855,28 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      _driver_restaurant_delivery_allowed: {
+        Args: {
+          p_driver_id: string
+          p_lat: number
+          p_lng: number
+          p_proximity_meters: number
+          p_restaurant_id: string
+        }
+        Returns: boolean
+      }
       _haversine_meters: {
         Args: { p_lat1: number; p_lat2: number; p_lng1: number; p_lng2: number }
         Returns: number
+      }
+      _point_in_restaurant_geofence: {
+        Args: {
+          p_geometry: Json
+          p_lat: number
+          p_lng: number
+          p_zone_type: Database["public"]["Enums"]["zone_geometry_type"]
+        }
+        Returns: boolean
       }
       _point_within_zone_proximity: {
         Args: {
@@ -4218,6 +4291,7 @@ export type Database = {
       project_type: "group" | "rent"
       request_status: "pending" | "approved" | "rejected"
       request_type: "loan" | "leave" | "fuel" | "complaint" | "document"
+      restaurant_geofence_kind: "inclusion" | "exclusion"
       restaurant_status: "draft" | "published" | "archived"
       rule_scope_type: "zone" | "partner" | "restaurant"
       rule_status: "draft" | "active" | "ended"
@@ -4485,6 +4559,7 @@ export const Constants = {
       project_type: ["group", "rent"],
       request_status: ["pending", "approved", "rejected"],
       request_type: ["loan", "leave", "fuel", "complaint", "document"],
+      restaurant_geofence_kind: ["inclusion", "exclusion"],
       restaurant_status: ["draft", "published", "archived"],
       rule_scope_type: ["zone", "partner", "restaurant"],
       rule_status: ["draft", "active", "ended"],

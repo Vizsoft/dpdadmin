@@ -669,7 +669,72 @@ Never ship `SUPABASE_SERVICE_ROLE_KEY` in the mobile app.
 
 ---
 
-*Last synced: 2026-05-25 — [admin+app] Notification Center v2 contract: `notification_*` domain tables, lifecycle states, priority approvals, versioned payload (`action_payload` + `data_payload`), and required `acknowledged/opened/clicked` event callbacks.*
+## 16. Restaurant delivery geofences (admin-managed)
+
+### What admin manages
+
+Admins create and edit restaurants at `/restaurants/new` and `/restaurants/[id]/edit` (full-page editor). Alongside the existing restaurant fields — partner, zone, name, external merchant ID, **map link**, **latitude/longitude pin**, logo, and status — admins can author any number of **inclusion** and **exclusion** geofences per restaurant. Each geofence is either a **polygon** or **circle**, drawn on the map in the admin panel.
+
+Inclusion geofences define where drivers linked to that restaurant may log deliveries. Exclusion geofences block delivery points inside their shape regardless of inclusion coverage. When a restaurant has no inclusion geofences, proximity enforcement falls back to the existing pin-based radius check around `restaurants.latitude` / `restaurants.longitude`.
+
+### New storage
+
+Table `public.restaurant_geofences`:
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | uuid | Primary key |
+| `restaurant_id` | uuid | FK → `restaurants(id)` ON DELETE CASCADE |
+| `kind` | `restaurant_geofence_kind` enum | `inclusion` \| `exclusion` |
+| `zone_type` | `zone_geometry_type` enum | `polygon` \| `circle` (reuses zones enum) |
+| `geometry` | jsonb | GeoJSON `Feature` — same contract as `zones.geometry` |
+| `name` | text | Optional admin label |
+| `color` | text | Hex display color (defaults: green inclusion, red exclusion) |
+| `created_at`, `updated_at` | timestamptz | Audit timestamps |
+| `created_by` | uuid | FK → `profiles(id)` |
+
+Migration: `20260626900000_restaurant_geofences.sql`.
+
+### Existing `restaurants` surface unchanged
+
+Columns `partner_id`, `zone_id`, `name`, `external_merchant_id`, `map_link`, `latitude`, `longitude`, `status`, `logo_url` retain the same meaning, types, and constraints. The pin remains the primary location marker; geofences are additive.
+
+### RLS
+
+- **Staff** (`is_admin_panel_user()`): full read/write on `restaurant_geofences`.
+- **Drivers**: SELECT only for rows whose `restaurant_id` appears in `driver_restaurants` for `auth.uid()`.
+
+### Proximity gate (Postgres)
+
+`public.driver_is_within_delivery_range(p_driver_id, p_lat, p_lng, p_proximity_meters)` now evaluates each driver-linked restaurant:
+
+1. If the restaurant has **inclusion** geofences → point must fall inside at least one.
+2. If no inclusion geofences → fall back to pin proximity (`ST_DWithin` of `latitude`/`longitude`).
+3. If any **exclusion** geofence contains the point → blocked for that restaurant.
+4. If no linked restaurant satisfies the above, the existing driver **zone** proximity branch still applies.
+
+`public.driver_create_delivery` continues to call this function; its return contract is unchanged.
+
+### Context RPC payload extension
+
+`public.driver_get_delivery_proximity_context()` returns the existing top-level fields plus, for each linked restaurant in the `restaurants` array, a `geofences` array:
+
+```json
+{
+  "id": "uuid",
+  "kind": "inclusion | exclusion",
+  "zone_type": "polygon | circle",
+  "geometry": { "type": "Feature", "geometry": { ... }, "properties": { ... } },
+  "name": "string | null",
+  "color": "#hex"
+}
+```
+
+No new RPC was added; the existing function's restaurant objects gained the `geofences` field.
+
+---
+
+*Last synced: 2026-05-26 — [admin+app] Restaurant delivery geofences: `restaurant_geofences` table, full-page admin editor at `/restaurants/[id]/edit`, updated `driver_is_within_delivery_range` and `driver_get_delivery_proximity_context`.*
 
 *Prior: 2026-06-23 — [admin+app] Geofence schema upgrade (`zone_geofence_settings`, `geofence_events`), default settings fallback for legacy zones, realtime publication for geofence tables, and create/edit geofence rule controls.*
 
