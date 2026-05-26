@@ -37,13 +37,15 @@ Open [http://localhost:3000](http://localhost:3000) (redirects to `/en`).
 | `FIREBASE_PERFORMANCE_ENABLED` | Toggle latency/performance telemetry hooks |
 | `FIREBASE_REMOTE_CONFIG_ENABLED` | Toggle remote config operational controls |
 
-### Environment split (minimal)
+### Backend (production only)
 
-- **Production stays unchanged:** Supabase `ytfmsgckjatiserpgdbz` + R2 bucket `dpd-private`
-- **Local/dev/testing:** Supabase `cgpioijpvriiqqnauwlx` + R2 bucket `dpd-private-dev`
-- **Keep same across environments:** Google Maps key, MapTiler key/id, R2 account credentials
-- **Do not run** `npm run env:push-vercel` until the script is updated for separate targets; it pushes one file to all Vercel environments.
-- **Firebase:** configure per environment (`FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`) for Notification Center delivery and telemetry hooks.
+- **Supabase:** `ytfmsgckjatiserpgdbz` (project name **DPD**) — all admin and driver traffic
+- **R2:** `dpd-private` bucket (same Cloudflare account credentials)
+- **Local `npm run dev`:** point `.env.local` at the same prod Supabase + R2 keys (see [docs/RUN_NOW.md](docs/RUN_NOW.md)). You are working against live data — avoid destructive tests on localhost.
+- **Vercel Production:** must use prod Supabase URL (`https://ytfmsgckjatiserpgdbz.supabase.co`). **Preview** should use the same keys (copy from Production in the Vercel dashboard if preview builds fail).
+- **Do not run** `npm run env:push-vercel` — it pushes one file to all Vercel environments.
+- **Firebase:** `FIREBASE_*` for Notification Center (see `.env.example`)
+- The former test project `dpd-test` (`cgpioijpvriiqqnauwlx`) was removed; do not recreate unless you need a separate sandbox again.
 
 ## Auth
 

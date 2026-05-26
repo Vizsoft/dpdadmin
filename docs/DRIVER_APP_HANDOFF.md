@@ -658,16 +658,11 @@ Every completed upload is recorded in `storage_uploads` and shown on **Settings 
 
 ## 15. Supabase connection
 
-Staging/internal driver builds must use TEST. Production app-store builds must use PROD.
-
-| Build target | Supabase URL |
-|--------------|--------------|
-| Staging / internal | `https://cgpioijpvriiqqnauwlx.supabase.co` |
-| Production | `https://ytfmsgckjatiserpgdbz.supabase.co` |
+All driver builds use the **DPD production** Supabase project (`ytfmsgckjatiserpgdbz`). The former test project `dpd-test` was removed.
 
 ```env
 EXPO_PUBLIC_SUPABASE_URL=https://ytfmsgckjatiserpgdbz.supabase.co
-EXPO_PUBLIC_SUPABASE_ANON_KEY=<anon key from admin .env.local>
+EXPO_PUBLIC_SUPABASE_ANON_KEY=<anon key from DPD project API settings>
 ```
 
 Never ship `SUPABASE_SERVICE_ROLE_KEY` in the mobile app.

@@ -1,30 +1,35 @@
 # Get DPD Admin running (do this now)
 
-## Environment split (implemented)
+## Backend (production only)
 
-- **Production:** Supabase `ytfmsgckjatiserpgdbz` + R2 bucket `dpd-private`
-- **Test/local:** Supabase `cgpioijpvriiqqnauwlx` + R2 bucket `dpd-private-dev`
-- Keep Google Maps / MapTiler / R2 account credentials shared.
-- Only Supabase keys + `R2_BUCKET_NAME` differ by environment.
+- **Supabase:** [DPD](https://supabase.com/dashboard/project/ytfmsgckjatiserpgdbz) — `ytfmsgckjatiserpgdbz`
+- **R2:** `dpd-private` (not `dpd-private-dev`)
+- Local dev uses the **same** prod keys as Vercel production. You are on live deliveries/drivers data.
 
-## Step 1 — Add service role key locally
+## Step 1 — Local environment (`.env.local`)
 
-1. Open [Supabase Dashboard](https://supabase.com/dashboard/project/cgpioijpvriiqqnauwlx/settings/api)
-2. Copy **service_role** key (secret)
-3. Paste into `dpdadmin/.env.local` as `SUPABASE_SERVICE_ROLE_KEY=...`
-4. Set `ADMIN_EMAIL` and `ADMIN_PASSWORD` (min 8 chars) in the same file
+1. Open [Supabase API settings (DPD)](https://supabase.com/dashboard/project/ytfmsgckjatiserpgdbz/settings/api)
+2. Set in `dpdadmin/.env.local`:
+   - `NEXT_PUBLIC_SUPABASE_URL=https://ytfmsgckjatiserpgdbz.supabase.co`
+   - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` and/or `NEXT_PUBLIC_SUPABASE_ANON_KEY` from the dashboard
+   - `SUPABASE_SERVICE_ROLE_KEY` (secret)
+   - `R2_BUCKET_NAME=dpd-private`
+   - `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` from Cloudflare R2 API token
+3. Set `ADMIN_EMAIL` and `ADMIN_PASSWORD` (min 8 chars) for `npm run bootstrap:admin` if needed
+
+Or run: `npx supabase projects api-keys --project-ref ytfmsgckjatiserpgdbz` for anon/service_role keys.
 
 ## Step 2 — Apply database migrations
 
-Link Supabase CLI (one time) and push migrations (includes `app_settings`, RBAC tables, approval flow):
+Link Supabase CLI (one time) to **production** only:
 
 ```bash
 cd dpdadmin
-npx supabase link --project-ref cgpioijpvriiqqnauwlx
+npx supabase link --project-ref ytfmsgckjatiserpgdbz
 npx supabase db push
 ```
 
-If CLI is unavailable, run SQL from `supabase/migrations/` in the [SQL editor](https://supabase.com/dashboard/project/cgpioijpvriiqqnauwlx/sql). Required migrations:
+If CLI is unavailable, run SQL from `supabase/migrations/` in the [DPD SQL editor](https://supabase.com/dashboard/project/ytfmsgckjatiserpgdbz/sql). Required migrations:
 
 - `20260518120000_app_settings.sql` — branding
 - `20260519000000_rbac_approval_setup.sql` — roles, permissions, sign-up approval, super-admin claim, maintenance mode
@@ -67,6 +72,8 @@ In Dashboard → **Authentication** → **Providers** → **Email**:
 - Turn **ON** “Confirm email” only if you want email verification (bootstrap sets `email_confirm: true` so you can leave it off for internal admin)
 
 ## Step 6 — Production (Vercel)
+
+**Preview deployments:** Prod Supabase + R2 vars are set for all preview branches. To re-apply after key rotation: `node scripts/vercel-preview-env.mjs` (uses Vercel REST API; reads `.env.local`).
 
 Env vars must be set on Vercel (already partially done). Required:
 
