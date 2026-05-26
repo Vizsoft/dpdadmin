@@ -76,6 +76,10 @@ export type RestaurantMutationResult = {
   logoUrl?: string | null;
   logoWarning?: string;
   geofenceError?: string;
+  /** Server may downgrade status when restaurant has no pin or inclusion zone. */
+  statusWarning?: "auto_downgraded_to_draft";
+  /** Final status persisted (after possible auto-downgrade). */
+  finalStatus?: RestaurantStatus;
 };
 
 export type RestaurantGeofenceMutationResult = {

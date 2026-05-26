@@ -1105,7 +1105,12 @@
         "googleMapsReferrerFix": "في Google Cloud → Credentials → مفتاح Maps → قيود المواقع، أضف https://dpdadmin.vercel.app/* و http://localhost:3000/*. فعّل Maps JavaScript API و Places API. تأكد أن Vercel يستخدم نفس المفتاح.",
         "googleMapsLoadFailed": "تعذر تحميل Google Maps. تحقق من حاصر الإعلانات وقيود المفتاح وأعد النشر بعد تغيير المتغيرات.",
         "status": "يظهر المطاعم المنشورة فقط عند إضافة سائق.",
-        "logo": "PNG أو JPG أو WebP أو SVG · بحد أقصى 2 ميجابايت. يظهر في قائمة المطاعم وتطبيق السائق."
+        "logo": "PNG أو JPG أو WebP أو SVG · بحد أقصى 2 ميجابايت. يظهر في قائمة المطاعم وتطبيق السائق.",
+        "publishRequiresLocation": "للنشر، أضِف دبوسًا على الخريطة (إحداثيات) أو منطقة شمول واحدة على الأقل. بدون أيّهما سيُحفظ المطعم كمسودة."
+      },
+      "warnings": {
+        "auto_downgraded_to_draft": "تم الحفظ كمسودة",
+        "auto_downgraded_to_draft_description": "أضِف دبوسًا على الخريطة أو منطقة شمول، ثم انشره."
       },
       "noLogo": "بدون شعار",
       "uploadLogo": "رفع الشعار",

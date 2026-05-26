@@ -358,6 +358,34 @@ export async function saveRestaurantGeofences(
   return { success: true };
 }
 
+function hasValidCoordinates(
+  latitude: number | null,
+  longitude: number | null,
+): boolean {
+  return (
+    latitude != null &&
+    longitude != null &&
+    Number.isFinite(latitude) &&
+    Number.isFinite(longitude)
+  );
+}
+
+async function countInclusionGeofences(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  restaurantId: string,
+): Promise<number> {
+  const { count, error } = await supabase
+    .from("restaurant_geofences")
+    .select("id", { count: "exact", head: true })
+    .eq("restaurant_id", restaurantId)
+    .eq("kind", "inclusion");
+  if (error) {
+    logPgError("count_inclusion_geofences", error);
+    return 0;
+  }
+  return count ?? 0;
+}
+
 export async function saveRestaurant(formData: FormData): Promise<RestaurantMutationResult> {
   const auth = await requireRestaurantsManage();
   if (auth.error) return { error: auth.error };
@@ -370,10 +398,10 @@ export async function saveRestaurant(formData: FormData): Promise<RestaurantMuta
     name,
     externalMerchantId,
     mapLink,
-    status,
-    isActive,
+    status: requestedStatus,
     latitude,
     longitude,
+    inclusionGeofenceCount,
   } = parsed;
 
   if (!name) return { error: "missing_fields" };
@@ -382,6 +410,24 @@ export async function saveRestaurant(formData: FormData): Promise<RestaurantMuta
   if (coordError) return { error: coordError };
 
   const supabase = await createClient();
+
+  let status = requestedStatus;
+  let statusWarning: RestaurantMutationResult["statusWarning"];
+
+  if (status === "published") {
+    let hasInclusionGeofence = inclusionGeofenceCount > 0;
+    if (!hasInclusionGeofence && id) {
+      hasInclusionGeofence = (await countInclusionGeofences(supabase, id)) > 0;
+    }
+    const hasCoords = hasValidCoordinates(latitude, longitude);
+    if (!hasCoords && !hasInclusionGeofence) {
+      status = "draft";
+      statusWarning = "auto_downgraded_to_draft";
+    }
+  }
+
+  const isActive = status === "published";
+
   const payload = {
     partner_id: partnerId || null,
     zone_id: zoneId || null,
@@ -419,6 +465,8 @@ export async function saveRestaurant(formData: FormData): Promise<RestaurantMuta
       id,
       logoUrl: logoResult.logoUrl,
       logoWarning: logoResult.logoWarning,
+      statusWarning,
+      finalStatus: status,
     };
   }
 
@@ -467,6 +515,8 @@ export async function saveRestaurant(formData: FormData): Promise<RestaurantMuta
     id: data.id,
     logoUrl: logoResult.logoUrl,
     logoWarning: logoResult.logoWarning,
+    statusWarning,
+    finalStatus: status,
   };
 }
 

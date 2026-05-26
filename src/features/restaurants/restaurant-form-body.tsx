@@ -255,6 +255,13 @@ export function RestaurantFormBody({
     if (selectedGeofenceId === id) setSelectedGeofenceId(null);
   };
 
+  const inclusionGeofenceCount = geofences.filter(
+    (g) => g.kind === "inclusion",
+  ).length;
+  const hasLocationProof = location !== null || inclusionGeofenceCount > 0;
+  const wantsToPublishWithoutLocation =
+    status === "published" && !hasLocationProof;
+
   const handleSave = () => {
     if (!name.trim()) {
       toast.error(t("errors.missing_fields"));
@@ -270,6 +277,10 @@ export function RestaurantFormBody({
       formData.append("externalMerchantId", externalMerchantId);
       formData.append("mapLink", mapLink);
       formData.append("status", status);
+      formData.append(
+        "inclusionGeofenceCount",
+        String(inclusionGeofenceCount),
+      );
       if (location) {
         formData.append("latitude", String(location.lat));
         formData.append("longitude", String(location.lng));
@@ -304,7 +315,15 @@ export function RestaurantFormBody({
       if (result.logoWarning && isRestaurantErrorKey(result.logoWarning)) {
         toast.warning(t(`errors.${result.logoWarning}`));
       }
-      toast.success(isEdit ? t("restaurantUpdated") : t("restaurantCreated"));
+      if (result.statusWarning === "auto_downgraded_to_draft") {
+        if (result.finalStatus) setStatus(result.finalStatus);
+        toast.warning(t("warnings.auto_downgraded_to_draft"), {
+          description: t("warnings.auto_downgraded_to_draft_description"),
+          duration: 6000,
+        });
+      } else {
+        toast.success(isEdit ? t("restaurantUpdated") : t("restaurantCreated"));
+      }
       invalidate();
       onSaved();
       onClose();
@@ -423,6 +442,12 @@ export function RestaurantFormBody({
             onStatusChange={setStatus}
             onLocationChange={handleLocationChange}
           />
+
+          {wantsToPublishWithoutLocation ? (
+            <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-[11px] leading-snug text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100">
+              {t("hints.publishRequiresLocation")}
+            </p>
+          ) : null}
 
           {!partnersLoading && partners.length === 0 ? (
             <p className="text-[11px] text-muted-foreground">

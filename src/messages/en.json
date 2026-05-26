@@ -1117,7 +1117,12 @@
         "googleMapsReferrerFix": "In Google Cloud → Credentials → your Maps key → Website restrictions, use https://dpdadmin.vercel.app/* and http://localhost:3000/* (not only the root URL). Enable Maps JavaScript API and Places API. Ensure Vercel uses the same key.",
         "googleMapsLoadFailed": "Google Maps failed to load. Check ad blockers, API key restrictions, and redeploy after env changes.",
         "status": "Only published restaurants are selectable when adding a driver.",
-        "logo": "PNG, JPG, WebP, or SVG · max 2 MB. Shown in the restaurants list and driver app."
+        "logo": "PNG, JPG, WebP, or SVG · max 2 MB. Shown in the restaurants list and driver app.",
+        "publishRequiresLocation": "To publish, add a map pin (coordinates) or at least one inclusion zone. Without either, the restaurant will be saved as Draft."
+      },
+      "warnings": {
+        "auto_downgraded_to_draft": "Saved as Draft",
+        "auto_downgraded_to_draft_description": "Add a map pin or an inclusion zone, then publish."
       },
       "noLogo": "No logo",
       "uploadLogo": "Upload logo",

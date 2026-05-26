@@ -21,6 +21,9 @@ export function parseRestaurantFormData(formData: FormData) {
   const statusRaw = String(formData.get("status") ?? "draft").trim();
   const latitude = parseOptionalCoord(String(formData.get("latitude") ?? ""));
   const longitude = parseOptionalCoord(String(formData.get("longitude") ?? ""));
+  const inclusionRaw = Number(formData.get("inclusionGeofenceCount") ?? 0);
+  const inclusionGeofenceCount =
+    Number.isFinite(inclusionRaw) && inclusionRaw > 0 ? Math.floor(inclusionRaw) : 0;
 
   const status = RESTAURANT_STATUSES.includes(statusRaw as RestaurantStatus)
     ? (statusRaw as RestaurantStatus)
@@ -37,6 +40,7 @@ export function parseRestaurantFormData(formData: FormData) {
     isActive: isActiveFromRestaurantStatus(status),
     latitude,
     longitude,
+    inclusionGeofenceCount,
   };
 }
 
