@@ -2,6 +2,7 @@ import {
   AlertTriangle,
   Bell,
   Bike,
+  CalendarClock,
   ClipboardCheck,
   Folder,
   Handshake,
@@ -25,6 +26,7 @@ import {
   Cloud,
   ScrollText,
   Radar,
+  Timer,
   type LucideIcon,
 } from "lucide-react";
 import type { Permission } from "@/lib/auth/permissions";
@@ -46,6 +48,7 @@ export const ICON_MAP: Record<string, LucideIcon> = {
   Users,
   Package,
   Bike,
+  CalendarClock,
   ClipboardCheck,
   Inbox,
   AlertTriangle,
@@ -68,6 +71,7 @@ export const ICON_MAP: Record<string, LucideIcon> = {
   Cloud,
   ScrollText,
   Radar,
+  Timer,
 };
 
 export const ICON_NAMES = Object.keys(ICON_MAP);
@@ -175,6 +179,24 @@ export const MENU_REGISTRY: MenuRegistryItem[] = [
     href: "/attendance",
     defaultGroup: "Operations",
     defaultOrder: 7,
+    permission: "attendance.view",
+  },
+  {
+    id: "driver-shifts",
+    defaultLabel: "Driver shifts",
+    defaultIcon: "CalendarClock",
+    href: "/driver-shifts",
+    defaultGroup: "Operations",
+    defaultOrder: 8,
+    permission: "attendance.view",
+  },
+  {
+    id: "worktime",
+    defaultLabel: "Worktime",
+    defaultIcon: "Timer",
+    href: "/worktime",
+    defaultGroup: "Operations",
+    defaultOrder: 9,
     permission: "attendance.view",
   },
   {
@@ -370,6 +392,8 @@ export const APP_NAV_KEY_BY_ID: Record<string, string> = {
   "dpd-verification": "dpdVerification",
   vehicles: "vehicles",
   attendance: "attendance",
+  "driver-shifts": "driverShifts",
+  worktime: "worktime",
   requests: "requests",
   "wrong-actions": "wrongActions",
   earnings: "earnings",

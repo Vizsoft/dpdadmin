@@ -66,6 +66,14 @@ export const queryKeys = {
     list: (filters: Record<string, unknown> = {}) => ["attendance", "list", filters] as const,
     kpis: (date: string) => ["attendance", "kpis", date] as const,
   },
+  driverShifts: {
+    all: () => ["driver-shifts"] as const,
+    list: (filters: Record<string, unknown> = {}) => ["driver-shifts", "list", filters] as const,
+  },
+  worktime: {
+    all: () => ["worktime"] as const,
+    list: (filters: Record<string, unknown> = {}) => ["worktime", "list", filters] as const,
+  },
   admin: {
     roles: () => ["admin", "roles"] as const,
     pendingProfiles: () => ["admin", "profiles", "pending"] as const,

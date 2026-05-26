@@ -14,6 +14,7 @@ import { PayrollReadinessWidget } from "./widgets/payroll-readiness-widget";
 import { SystemStatusBanner } from "./widgets/system-status-banner";
 import { DeliveryMonitorWidget } from "./widgets/delivery-monitor-widget";
 import { AttendanceMonitorWidget } from "./widgets/attendance-monitor-widget";
+import { FleetOpsWidget } from "./widgets/fleet-ops-widget";
 import { PartnerHealthWidget } from "./widgets/partner-health-widget";
 import { WorkforceQueueWidget } from "./widgets/workforce-queue-widget";
 
@@ -56,6 +57,8 @@ export function DashboardPageShell({
         ) : null}
 
         <AdminKpiBar kpis={snapshot.kpis} />
+
+        {perms.attendance ? <FleetOpsWidget /> : null}
 
         <div className="grid gap-4 lg:grid-cols-3">
           <AdminActionQueueWidget items={snapshot.adminActionQueue} locale={locale} />

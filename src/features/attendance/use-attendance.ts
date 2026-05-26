@@ -19,7 +19,7 @@ export function useAttendanceList(filters: AttendanceListFilters) {
     queryKey: queryKeys.attendance.list(filters),
     queryFn: () =>
       fetchAttendanceForTab(filters.tab, filters.fromDate, filters.toDate),
-    refetchInterval: filters.tab === "live" ? 30_000 : false,
+    refetchInterval: false,
   });
 }
 

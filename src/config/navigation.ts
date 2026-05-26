@@ -68,6 +68,18 @@ export const NAV_ITEMS: NavItem[] = [
     permission: "attendance.view",
   },
   {
+    href: "/driver-shifts",
+    labelKey: "nav.driverShifts",
+    icon: "ClipboardCheck",
+    permission: "attendance.view",
+  },
+  {
+    href: "/worktime",
+    labelKey: "nav.worktime",
+    icon: "ClipboardCheck",
+    permission: "attendance.view",
+  },
+  {
     href: "/requests",
     labelKey: "nav.requests",
     icon: "Inbox",

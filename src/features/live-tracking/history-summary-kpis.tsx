@@ -15,6 +15,8 @@ const MAX_SEGMENT_CAP_WINDOW_MS = 2 * 60 * 1000;
 export type HistorySummary = {
   totalDistanceKm: number | null;
   durationMins: number | null;
+  idleMinutes: number | null;
+  movingMinutes: number | null;
   avgSpeedKmh: number | null;
   maxSpeedKmh: number | null;
   stops: number | null;
@@ -33,6 +35,8 @@ export function computeHistorySummary(events: DriverLocationEvent[]): HistorySum
     return {
       totalDistanceKm: null,
       durationMins: null,
+      idleMinutes: null,
+      movingMinutes: null,
       avgSpeedKmh: null,
       maxSpeedKmh: null,
       stops: null,
@@ -43,6 +47,8 @@ export function computeHistorySummary(events: DriverLocationEvent[]): HistorySum
   const sorted = [...events].sort((a, b) => a.recordedAt.localeCompare(b.recordedAt));
   let totalMeters = 0;
   let activeMs = 0;
+  let idleMs = 0;
+  let movingMs = 0;
   let maxSpeedMps = 0;
   let deliveries = 0;
   let stops = 0;
@@ -62,6 +68,14 @@ export function computeHistorySummary(events: DriverLocationEvent[]): HistorySum
 
     if (gapMs > 0 && gapMs <= MAX_ACTIVE_GAP_MS) {
       activeMs += gapMs;
+      if (prev.trackingStatus === "idle") {
+        idleMs += gapMs;
+      } else if (
+        prev.trackingStatus === "moving" ||
+        prev.trackingStatus === "delivery_submit"
+      ) {
+        movingMs += gapMs;
+      }
     }
   }
 
@@ -98,6 +112,8 @@ export function computeHistorySummary(events: DriverLocationEvent[]): HistorySum
   return {
     totalDistanceKm,
     durationMins: sorted.length > 1 ? durationMins : 0,
+    idleMinutes: sorted.length > 1 ? Math.round(idleMs / 60000) : 0,
+    movingMinutes: sorted.length > 1 ? Math.round(movingMs / 60000) : 0,
     avgSpeedKmh: activeMs > 0 ? avgSpeedKmh : 0,
     maxSpeedKmh: maxSpeedMps * 3.6,
     stops,
@@ -150,6 +166,26 @@ export function HistorySummaryKpis({
         value={loading ? "..." : valueOrDash(summary.maxSpeedKmh, (n) => `${n.toFixed(1)} km/h`)}
         icon={MapPinned}
         tone="amber"
+      />
+      <MetricTile
+        label={t("historyIdleMinutes")}
+        value={
+          loading
+            ? "..."
+            : valueOrDash(summary.idleMinutes, (n) => formatHistoryDurationMins(n))
+        }
+        icon={PauseCircle}
+        tone="slate"
+      />
+      <MetricTile
+        label={t("historyMovingMinutes")}
+        value={
+          loading
+            ? "..."
+            : valueOrDash(summary.movingMinutes, (n) => formatHistoryDurationMins(n))
+        }
+        icon={Gauge}
+        tone="emerald"
       />
       <MetricTile
         label={t("historyStops")}

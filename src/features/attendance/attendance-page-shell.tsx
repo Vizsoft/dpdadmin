@@ -50,6 +50,8 @@ import { useAuth } from "@/contexts/auth-context";
 import { selectOptions } from "@/lib/select-items";
 import { exportAttendanceCsv } from "./attendance-actions";
 import { AttendanceCorrectionSheet } from "./attendance-correction-sheet";
+import { queryKeys } from "@/lib/query/query-keys";
+import { useRealtimeInvalidator } from "@/lib/realtime/use-realtime-invalidator";
 import { useAttendanceList } from "./use-attendance";
 import type { AttendanceListRow, AttendanceStatus, AttendanceTabFilter } from "./types";
 
@@ -109,15 +111,31 @@ function AttendancePageContent() {
   const [toDate, setToDate] = useState(today);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [sortKey, setSortKey] = useState<
+    "date_desc" | "date_asc" | "name_asc" | "status"
+  >("date_desc");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedRow, setSelectedRow] = useState<AttendanceListRow | null>(null);
   const [createMode, setCreateMode] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  const { data, isLoading, refetch } = useAttendanceList({
+  const listFilters = {
     tab: tabFilter,
     fromDate: tabFilter === "logs" ? fromDate : undefined,
     toDate: tabFilter === "logs" ? toDate : undefined,
+  };
+
+  const { data, isLoading, refetch } = useAttendanceList(listFilters);
+
+  useRealtimeInvalidator({
+    channel: "admin-attendance-live",
+    enabled: tabFilter === "live",
+    tables: [
+      { table: "attendance_logs" },
+      { table: "driver_attendance" },
+      { table: "drivers" },
+    ],
+    invalidateKeys: [queryKeys.attendance.list(listFilters)],
   });
 
   const rows = data?.rows ?? [];
@@ -125,7 +143,7 @@ function AttendancePageContent() {
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return rows.filter((r) => {
+    const filtered = rows.filter((r) => {
       if (statusFilter !== "all" && r.status !== statusFilter) return false;
       if (!q) return true;
       return (
@@ -134,7 +152,22 @@ function AttendancePageContent() {
         r.driver_phone.toLowerCase().includes(q)
       );
     });
-  }, [rows, search, statusFilter]);
+    const sorted = [...filtered];
+    sorted.sort((a, b) => {
+      switch (sortKey) {
+        case "date_asc":
+          return a.log_date.localeCompare(b.log_date);
+        case "name_asc":
+          return a.driver_name.localeCompare(b.driver_name);
+        case "status":
+          return a.status.localeCompare(b.status);
+        case "date_desc":
+        default:
+          return b.log_date.localeCompare(a.log_date);
+      }
+    });
+    return sorted;
+  }, [rows, search, statusFilter, sortKey]);
 
   const statusFilterItems = useMemo(
     () =>
@@ -164,6 +197,7 @@ function AttendancePageContent() {
       { label: t("kpiAbsent"), value: kpis.absent },
       { label: t("kpiOnLeave"), value: kpis.on_leave },
       { label: t("kpiActiveNow"), value: kpis.active_now },
+      { label: t("kpiOutsideZone"), value: kpis.outside_zone },
     ];
   }, [kpis, tabFilter, t]);
 
@@ -312,6 +346,19 @@ function AttendancePageContent() {
                   </SelectItem>
                 </SelectContent>
               </Select>
+              {tabFilter === "logs" ? (
+                <Select value={sortKey} onValueChange={(v) => setSortKey(v as typeof sortKey)}>
+                  <SelectTrigger className="h-9 w-[180px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="date_desc">{t("sortDateDesc")}</SelectItem>
+                    <SelectItem value="date_asc">{t("sortDateAsc")}</SelectItem>
+                    <SelectItem value="name_asc">{t("sortNameAsc")}</SelectItem>
+                    <SelectItem value="status">{t("sortStatus")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : null}
             </div>
           </div>
         }
@@ -334,6 +381,9 @@ function AttendancePageContent() {
                   <TableHead className={TABLE_HEAD_CLASS}>{t("colCheckIn")}</TableHead>
                   <TableHead className={TABLE_HEAD_CLASS}>{t("colCheckOut")}</TableHead>
                   <TableHead className={TABLE_HEAD_CLASS}>{t("colStatus")}</TableHead>
+                  {tabFilter === "live" ? (
+                    <TableHead className={TABLE_HEAD_CLASS}>{t("colValidation")}</TableHead>
+                  ) : null}
                   <TableHead className={TABLE_HEAD_CLASS}>{t("colDistance")}</TableHead>
                   <TableHead className={`${TABLE_HEAD_CLASS} hidden sm:table-cell`}>
                     {t("colOnDuty")}
@@ -366,6 +416,17 @@ function AttendancePageContent() {
                         {t(`status.${row.status}`)}
                       </StatusPill>
                     </TableCell>
+                    {tabFilter === "live" ? (
+                      <TableCell className="text-sm text-muted-foreground">
+                        {row.app_attendance_status
+                          ? row.app_attendance_status === "present"
+                            ? t("validationPresent")
+                            : row.app_attendance_status === "online_unvalidated"
+                              ? t("validationUnvalidated")
+                              : row.app_attendance_status
+                          : "—"}
+                      </TableCell>
+                    ) : null}
                     <TableCell className="text-sm text-muted-foreground">
                       {formatDistanceMeters(row.distance_meters)}
                     </TableCell>
@@ -403,6 +464,17 @@ function AttendancePageContent() {
                                   {t("markAttendance")}
                                 </>
                               )}
+                            </DropdownMenuItem>
+                          ) : null}
+                          {row.is_on_duty ? (
+                            <DropdownMenuItem
+                              className="cursor-pointer"
+                              render={
+                                <Link href={`/${locale}/live-tracking?driverId=${row.driver_id}`} />
+                              }
+                            >
+                              <ExternalLink className="me-2 h-3.5 w-3.5" />
+                              {t("viewOnMap")}
                             </DropdownMenuItem>
                           ) : null}
                           <DropdownMenuItem

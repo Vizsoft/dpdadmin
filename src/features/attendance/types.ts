@@ -25,6 +25,8 @@ export type AttendanceListRow = {
   is_on_duty: boolean;
   is_active_now: boolean;
   is_exception: boolean;
+  app_attendance_status: string | null;
+  online_seconds_today: number | null;
 };
 
 export type AttendanceKpis = {

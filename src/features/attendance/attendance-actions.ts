@@ -84,6 +84,7 @@ function buildListRow(
   driver: DriverRow,
   log: AttendanceLogRow | null,
   logDate: string,
+  appAttendance?: { status: string; online_seconds: number } | null,
 ): AttendanceListRow {
   const { name, phone } = relProfileName(driver.profiles);
   const status: AttendanceStatus = log?.status ?? "absent";
@@ -110,6 +111,8 @@ function buildListRow(
     is_on_duty: driver.is_on_duty,
     is_active_now: isActiveNow,
     is_exception: isException,
+    app_attendance_status: appAttendance?.status ?? null,
+    online_seconds_today: appAttendance?.online_seconds ?? null,
   };
 }
 
@@ -184,13 +187,28 @@ export async function fetchAttendanceLive(): Promise<{
   await requireAttendanceView();
   void logAdminRead("attendance", "fetchAttendanceLive");
   const today = kuwaitToday();
+  const supabase = await createClient();
   const [drivers, logs] = await Promise.all([
     fetchActiveDrivers(),
     fetchLogsForDate(today),
   ]);
 
+  const { data: appRows } = await supabase
+    .from("driver_attendance")
+    .select("driver_id, status, online_seconds, last_online_at")
+    .eq("attendance_date", today);
+
+  const appByDriver = new Map(
+    (appRows ?? []).map((a) => [
+      a.driver_id,
+      { status: a.status, online_seconds: a.online_seconds ?? 0 },
+    ]),
+  );
+
   const logByDriver = new Map(logs.map((l) => [l.driver_id, l]));
-  const rows = drivers.map((d) => buildListRow(d, logByDriver.get(d.id) ?? null, today));
+  const rows = drivers.map((d) =>
+    buildListRow(d, logByDriver.get(d.id) ?? null, today, appByDriver.get(d.id)),
+  );
 
   return { rows, kpis: computeKpis(rows) };
 }

@@ -99,7 +99,7 @@ export function LiveDriverDetailsPanel({
           <CompactStat label={t("currentSpeed")} value={formatSpeedKmh(driver.speedMps)} />
           <CompactStat label={t("colBattery")} value={formatBatteryLevel(driver.batteryPct)} />
           <CompactStat label={t("colAccuracy")} value={formatAccuracyMeters(driver.accuracyMeters)} />
-          <CompactStat label={t("shiftTime")} value={formatDurationSince(driver.updatedAt)} />
+          <CompactStat label={t("lastGpsUpdate")} value={formatDurationSince(driver.updatedAt)} />
         </div>
 
         <div className="border-t border-slate-200 px-3 py-2 dark:border-slate-700/80">
@@ -185,7 +185,7 @@ export function LiveDriverDetailsPanel({
 
           <div className="mt-3 grid grid-cols-2 gap-2 rounded-lg border border-slate-200 bg-white p-2 text-xs dark:border-slate-700 dark:bg-slate-900">
             <div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-300">{t("shiftTime")}</p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-300">{t("lastGpsUpdate")}</p>
               <p className="mt-0.5 font-semibold text-slate-900 dark:text-slate-100">
                 {formatDurationSince(driver.updatedAt)}
               </p>

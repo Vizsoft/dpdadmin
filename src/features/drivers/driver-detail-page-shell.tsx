@@ -41,6 +41,7 @@ import { DriverAccountStatusEditor } from "./driver-account-status-editor";
 import { DriverBlockEditor } from "./driver-block-editor";
 import { DriverDocumentsTab } from "./driver-documents-tab";
 import { DriverLocationTab } from "./driver-location-tab";
+import { DriverAttendanceTab } from "./driver-attendance-tab";
 import { DriverEditSheet } from "./driver-edit-sheet";
 import { avatarTintFromName } from "./form/driver-form-primitives";
 import { LinkedBadge, WorkflowStatusPill } from "./driver-workflow-ui";
@@ -362,6 +363,23 @@ function DriverDetailContent({ id }: { id: string }) {
           profileDriverId={driver.linked_profile_id}
           driverName={driver.full_name}
         />
+      );
+    }
+
+    if (activeTab === "attendance" && driver.linked_profile_id) {
+      return <DriverAttendanceTab driverId={driver.linked_profile_id} />;
+    }
+
+    if (activeTab === "attendance") {
+      return (
+        <TrackingGlassCard className="border-slate-200 bg-white dark:border-slate-700/80 dark:bg-slate-900">
+          <div className="py-12">
+            <AppEmptyState
+              title={t("attendanceNeedsLinkTitle")}
+              description={t("attendanceNeedsLinkDescription")}
+            />
+          </div>
+        </TrackingGlassCard>
       );
     }
 
