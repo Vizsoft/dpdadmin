@@ -277,6 +277,47 @@ export async function listNotificationCampaigns(
   return (data ?? []).map((row: Record<string, unknown>) => mapCampaign(row));
 }
 
+export type NotificationDispatchItemRow = {
+  id: string;
+  driver_id: string;
+  status: string;
+  error_code: string | null;
+  error_message: string | null;
+  sent_at: string | null;
+  driver_label: string;
+};
+
+export async function getNotificationDispatchItems(
+  campaignId: string,
+): Promise<NotificationDispatchItemRow[]> {
+  await requireNotificationsView();
+  const supabase = await notificationsDb();
+  const { data, error } = await supabase
+    .from("notification_dispatch_items")
+    .select("id, driver_id, status, error_code, error_message, sent_at, drivers(driver_code, profiles(full_name))")
+    .eq("campaign_id", campaignId)
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+
+  return (data ?? []).map((row: Record<string, unknown>) => {
+    const drivers = row.drivers as
+      | { driver_code?: string; profiles?: { full_name?: string | null } | Array<{ full_name?: string | null }> }
+      | null;
+    const profile = Array.isArray(drivers?.profiles) ? drivers?.profiles[0] : drivers?.profiles;
+    const name = profile?.full_name?.trim() || "Driver";
+    const code = drivers?.driver_code ?? "—";
+    return {
+      id: row.id as string,
+      driver_id: row.driver_id as string,
+      status: row.status as string,
+      error_code: (row.error_code as string | null) ?? null,
+      error_message: (row.error_message as string | null) ?? null,
+      sent_at: (row.sent_at as string | null) ?? null,
+      driver_label: `${code} · ${name}`,
+    };
+  });
+}
+
 export async function getNotificationCampaign(
   id: string,
 ): Promise<NotificationCampaignRow | null> {
@@ -580,27 +621,59 @@ async function executeNotificationDispatch(
   const pushImageUrl = pushImageKey
     ? await resolveNotificationMediaReadUrl(pushImageKey)
     : null;
-  const dataPayload = buildFcmDataPayload({
-    campaignId,
-    action,
-    category: campaign.category,
-    priority: campaign.priority,
-    media: campaignMedia,
-    imageUrl: pushImageUrl,
+
+  // Pre-create one dispatch_items row per recipient so each FCM push can
+  // include its own dispatch_item_id in the data payload. Without this
+  // the rider app receives the push but cannot record delivered/opened/
+  // clicked events (the rider RPC requires both campaign_id + dispatch_item_id).
+  const pendingItemRows = recipientIds.map((driverId: string) => {
+    const tokenRow = tokenByDriver.get(driverId);
+    return {
+      run_id: run.id,
+      campaign_id: campaignId,
+      driver_id: driverId,
+      push_token_id: tokenRow?.id ?? null,
+      status: tokenRow ? "pending" : "skipped",
+      error_code: tokenRow ? null : "no_token",
+      error_message: tokenRow ? null : "No active push token",
+    };
   });
+  const { data: insertedItems, error: insertError } = await service
+    .from("notification_dispatch_items")
+    .insert(pendingItemRows)
+    .select("id, driver_id");
+  if (insertError) {
+    return { error: "dispatch_failed" };
+  }
+  const dispatchIdByDriver = new Map<string, string>(
+    (insertedItems ?? []).map((row: { id: string; driver_id: string }) => [
+      row.driver_id,
+      row.id,
+    ]),
+  );
 
   const messages = recipientIds
     .map((driverId: string) => {
       const tokenRow = tokenByDriver.get(driverId);
-      if (!tokenRow) return null;
+      const dispatchItemId = dispatchIdByDriver.get(driverId);
+      if (!tokenRow || !dispatchItemId) return null;
       return {
         token: tokenRow.token,
         title: campaign.title,
         body: campaign.body,
-        data: dataPayload,
+        data: buildFcmDataPayload({
+          campaignId,
+          dispatchItemId,
+          action,
+          category: campaign.category,
+          priority: campaign.priority,
+          media: campaignMedia,
+          imageUrl: pushImageUrl,
+        }),
         imageUrl: pushImageUrl,
         driverId,
         pushTokenId: tokenRow.id,
+        dispatchItemId,
       };
     })
     .filter(Boolean) as Array<{
@@ -611,28 +684,49 @@ async function executeNotificationDispatch(
     imageUrl: string | null;
     driverId: string;
     pushTokenId: string;
+    dispatchItemId: string;
   }>;
 
   const batchResult = await sendPushBatch(messages);
 
-  const itemRows = recipientIds.map((driverId: string) => {
-    const sent = messages.find((m) => m.driverId === driverId);
-    const messageId = batchResult.messageIds.find((m) => m.token === sent?.token)?.messageId;
-    const err = batchResult.errors.find((e) => e.token === sent?.token);
-    return {
-      run_id: run.id,
-      campaign_id: campaignId,
-      driver_id: driverId,
-      push_token_id: sent?.pushTokenId ?? null,
-      status: messageId ? "sent" : sent ? "failed" : "skipped",
-      provider_message_id: messageId ?? null,
-      error_code: err?.code ?? (sent ? null : "no_token"),
-      error_message: err?.message ?? (sent ? null : "No active push token"),
-      sent_at: messageId ? new Date().toISOString() : null,
-    };
-  });
+  // FCM error codes that mean the token is permanently dead — deactivate so
+  // future campaigns skip it cleanly instead of re-erroring on every retry.
+  const DEAD_TOKEN_CODES = new Set([
+    "messaging/registration-token-not-registered",
+    "messaging/invalid-registration-token",
+    "messaging/invalid-argument",
+    "messaging/sender-id-mismatch",
+    "messaging/mismatched-credential",
+  ]);
 
-  await service.from("notification_dispatch_items").insert(itemRows);
+  const nowIso = new Date().toISOString();
+  const deadTokenIds: string[] = [];
+  for (const message of messages) {
+    const messageId = batchResult.messageIds.find(
+      (m) => m.token === message.token,
+    )?.messageId;
+    const err = batchResult.errors.find((e) => e.token === message.token);
+    if (err && DEAD_TOKEN_CODES.has(err.code)) {
+      deadTokenIds.push(message.pushTokenId);
+    }
+    await service
+      .from("notification_dispatch_items")
+      .update({
+        status: messageId ? "sent" : "failed",
+        provider_message_id: messageId ?? null,
+        error_code: err?.code ?? null,
+        error_message: err?.message ?? null,
+        sent_at: messageId ? nowIso : null,
+      })
+      .eq("id", message.dispatchItemId);
+  }
+
+  if (deadTokenIds.length > 0) {
+    await service
+      .from("driver_push_tokens")
+      .update({ is_active: false, updated_at: nowIso })
+      .in("id", deadTokenIds);
+  }
 
   const sentCount = batchResult.successCount;
   const failedCount = recipientIds.length - sentCount;

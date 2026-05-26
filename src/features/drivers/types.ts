@@ -144,3 +144,52 @@ export type DriverDetailModel = {
   archived_at: string | null;
   documents: Partial<Record<DriverDocumentType, DriverRemoteDocument>>;
 };
+
+export const DRIVER_IMPORT_FIELDS = [
+  "full_name",
+  "phone",
+  "civil_id",
+  "employee_id",
+  "partner_name",
+  "zone_name",
+  "vehicle_label",
+  "restaurants",
+] as const;
+
+export type DriverImportTargetField = (typeof DRIVER_IMPORT_FIELDS)[number];
+
+export type DriverImportPreviewStatus =
+  | "ok"
+  | "duplicate_phone"
+  | "duplicate_civil_id"
+  | "duplicate_employee_id"
+  | "invalid_phone"
+  | "invalid_civil_id"
+  | "invalid_employee_id"
+  | "missing_fields"
+  | "unmatched_partner"
+  | "unmatched_zone"
+  | "unmatched_vehicle"
+  | "unmatched_restaurant";
+
+export type DriverImportMappedRow = {
+  rowIndex: number;
+  full_name: string | null;
+  phone: string | null;
+  civil_id: string | null;
+  employee_id: string | null;
+  partner_name: string | null;
+  zone_name: string | null;
+  vehicle_label: string | null;
+  restaurants: string | null;
+};
+
+export type DriverImportPreviewRow = DriverImportMappedRow & {
+  status: DriverImportPreviewStatus;
+  partner_id: string | null;
+  zone_id: string | null;
+  vehicle_id: string | null;
+  restaurant_ids: string[];
+  restaurant_names: string[];
+  skip?: boolean;
+};

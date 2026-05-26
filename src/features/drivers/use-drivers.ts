@@ -9,7 +9,14 @@ import {
   fetchDriversForAdmin,
   regenerateDriverPasscode,
 } from "./drivers-actions";
-import type { DriverListRow } from "./types";
+import {
+  applyDriverImportBatch,
+  approveDriverIntake,
+  resolveDriverImportPreview,
+} from "./drivers-import-actions";
+import type { DriverImportPreviewRow, DriverListRow } from "./types";
+
+export type { DriverImportPreviewRow };
 
 export type DriversTabFilter = "all" | "pending" | "on_duty" | "archived";
 
@@ -68,6 +75,36 @@ export function useArchiveDriverIntake() {
       if (result.error) throw new Error(result.error);
       return result;
     },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.drivers.all() });
+    },
+  });
+}
+
+export function useApproveDriverIntake() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (intakeId: string) => {
+      const result = await approveDriverIntake(intakeId);
+      if ("error" in result) throw new Error(result.error);
+      return result;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.drivers.all() });
+    },
+  });
+}
+
+export function useResolveDriverImportPreview() {
+  return useMutation({
+    mutationFn: resolveDriverImportPreview,
+  });
+}
+
+export function useApplyDriverImportBatch() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: applyDriverImportBatch,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.drivers.all() });
     },

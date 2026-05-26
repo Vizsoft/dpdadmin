@@ -6,6 +6,7 @@ export const DRIVER_ERROR_KEYS = [
   "invalid_civil_id",
   "phone_exists",
   "employee_id_exists",
+  "employee_id_format",
   "driver_code_exists",
   "missing_documents",
   "invalid_document_type",
@@ -17,6 +18,7 @@ export const DRIVER_ERROR_KEYS = [
   "missing_active_restaurant",
   "missing_block_reason",
   "driver_not_found",
+  "intake_already_linked",
   "save_failed",
 ] as const;
 
@@ -30,6 +32,12 @@ export function mapDriverDbError(
   error: { code?: string; message?: string },
   context?: "employee_id",
 ): DriverErrorKey {
+  if (error.code === "23514") {
+    const msg = error.message ?? "";
+    if (context === "employee_id" || msg.includes("employee_id")) {
+      return "employee_id_format";
+    }
+  }
   if (error.code === "23505") {
     if (context === "employee_id") return "employee_id_exists";
     const msg = error.message ?? "";
@@ -39,7 +47,15 @@ export function mapDriverDbError(
   return "save_failed";
 }
 
+const EMPLOYEE_ID_RE = /^[0-9]{1,8}$/;
+
 export function normalizeEmployeeId(raw: string): string | null {
   const trimmed = raw.trim();
-  return trimmed.length > 0 ? trimmed : null;
+  if (!trimmed) return null;
+  if (!EMPLOYEE_ID_RE.test(trimmed)) return null;
+  return trimmed;
+}
+
+export function isValidEmployeeId(raw: string): boolean {
+  return EMPLOYEE_ID_RE.test(raw.trim());
 }

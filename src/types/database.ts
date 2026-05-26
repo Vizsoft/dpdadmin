@@ -908,6 +908,65 @@ export type Database = {
           },
         ]
       }
+      driver_daily_shifts: {
+        Row: {
+          created_at: string
+          driver_id: string
+          id: string
+          session1_end: string
+          session1_end_day_offset: number
+          session1_start: string
+          session2_end: string | null
+          session2_end_day_offset: number
+          session2_start: string | null
+          session2_start_day_offset: number
+          shift_date: string
+          shift_type: string
+          submitted_at: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          driver_id: string
+          id?: string
+          session1_end: string
+          session1_end_day_offset?: number
+          session1_start: string
+          session2_end?: string | null
+          session2_end_day_offset?: number
+          session2_start?: string | null
+          session2_start_day_offset?: number
+          shift_date: string
+          shift_type: string
+          submitted_at?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          driver_id?: string
+          id?: string
+          session1_end?: string
+          session1_end_day_offset?: number
+          session1_start?: string
+          session2_end?: string | null
+          session2_end_day_offset?: number
+          session2_start?: string | null
+          session2_start_day_offset?: number
+          shift_date?: string
+          shift_type?: string
+          submitted_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_daily_shifts_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       driver_documents: {
         Row: {
           created_at: string
@@ -1005,6 +1064,53 @@ export type Database = {
           },
         ]
       }
+      driver_import_batches: {
+        Row: {
+          applied_count: number
+          approved_count: number
+          file_name: string
+          id: string
+          mapping: Json
+          row_count: number
+          skipped_count: number
+          status: Database["public"]["Enums"]["driver_import_batch_status"]
+          uploaded_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          applied_count?: number
+          approved_count?: number
+          file_name: string
+          id?: string
+          mapping?: Json
+          row_count?: number
+          skipped_count?: number
+          status?: Database["public"]["Enums"]["driver_import_batch_status"]
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          applied_count?: number
+          approved_count?: number
+          file_name?: string
+          id?: string
+          mapping?: Json
+          row_count?: number
+          skipped_count?: number
+          status?: Database["public"]["Enums"]["driver_import_batch_status"]
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_import_batches_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       driver_intake_restaurants: {
         Row: {
           created_at: string
@@ -1046,6 +1152,7 @@ export type Database = {
           civil_id: string
           created_at: string
           driver_code: string
+          employee_id: string
           full_name: string
           id: string
           linked: boolean
@@ -1067,6 +1174,7 @@ export type Database = {
           civil_id: string
           created_at?: string
           driver_code: string
+          employee_id: string
           full_name: string
           id?: string
           linked?: boolean
@@ -1088,6 +1196,7 @@ export type Database = {
           civil_id?: string
           created_at?: string
           driver_code?: string
+          employee_id?: string
           full_name?: string
           id?: string
           linked?: boolean
@@ -1523,7 +1632,7 @@ export type Database = {
           current_lat: number | null
           current_lng: number | null
           driver_code: string
-          employee_id: string | null
+          employee_id: string
           id: string
           is_blocked: boolean
           is_on_duty: boolean
@@ -1549,7 +1658,7 @@ export type Database = {
           current_lat?: number | null
           current_lng?: number | null
           driver_code: string
-          employee_id?: string | null
+          employee_id: string
           id: string
           is_blocked?: boolean
           is_on_duty?: boolean
@@ -1575,7 +1684,7 @@ export type Database = {
           current_lat?: number | null
           current_lng?: number | null
           driver_code?: string
-          employee_id?: string | null
+          employee_id?: string
           id?: string
           is_blocked?: boolean
           is_on_duty?: boolean
@@ -3667,6 +3776,31 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _driver_find_active_shift: {
+        Args: { p_driver_id: string; p_now?: string }
+        Returns: {
+          created_at: string
+          driver_id: string
+          id: string
+          session1_end: string
+          session1_end_day_offset: number
+          session1_start: string
+          session2_end: string | null
+          session2_end_day_offset: number
+          session2_start: string | null
+          session2_start_day_offset: number
+          shift_date: string
+          shift_type: string
+          submitted_at: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "driver_daily_shifts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       _haversine_meters: {
         Args: { p_lat1: number; p_lat2: number; p_lng1: number; p_lng2: number }
         Returns: number
@@ -3681,12 +3815,27 @@ export type Database = {
         }
         Returns: boolean
       }
+      _shift_end_day_offset: {
+        Args: { p_end: string; p_end_day_offset?: number; p_start: string }
+        Returns: number
+      }
+      _shift_row_to_json: {
+        Args: {
+          p_now?: string
+          p_row: Database["public"]["Tables"]["driver_daily_shifts"]["Row"]
+        }
+        Returns: Json
+      }
       _zone_geography_from_feature: {
         Args: {
           p_geometry: Json
           p_zone_type: Database["public"]["Enums"]["zone_geometry_type"]
         }
         Returns: unknown
+      }
+      admin_approve_driver: {
+        Args: { p_email: string; p_intake_id: string; p_user_id: string }
+        Returns: Json
       }
       admin_correct_attendance: {
         Args: {
@@ -3777,6 +3926,7 @@ export type Database = {
       driver_get_delivery_proximity_context: { Args: never; Returns: Json }
       driver_get_extra_earnings: { Args: never; Returns: Json }
       driver_get_home_dashboard: { Args: never; Returns: Json }
+      driver_get_today_shift: { Args: never; Returns: Json }
       driver_has_active_restaurant: {
         Args: { p_driver_id: string }
         Returns: boolean
@@ -3790,6 +3940,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      driver_list_notifications: {
+        Args: { p_before?: string; p_limit?: number; p_unread_only?: boolean }
+        Returns: Json
+      }
+      driver_mark_notifications_read: {
+        Args: { p_dispatch_item_ids?: string[] }
+        Returns: number
+      }
+      driver_notifications_unread_count: { Args: never; Returns: number }
       driver_report_location: {
         Args: {
           p_accuracy_meters?: number
@@ -3805,6 +3964,17 @@ export type Database = {
       }
       driver_set_duty_state: {
         Args: { p_is_on_duty: boolean; p_is_online: boolean }
+        Returns: Json
+      }
+      driver_submit_daily_shift: {
+        Args: {
+          p_session1_end: string
+          p_session1_start: string
+          p_session2_end?: string
+          p_session2_start?: string
+          p_shift_date?: string
+          p_shift_type: string
+        }
         Returns: Json
       }
       driver_update_avatar: { Args: { p_object_key: string }; Returns: Json }
@@ -3834,6 +4004,10 @@ export type Database = {
       get_payout_run_detail: { Args: { p_run_id: string }; Returns: Json }
       incentive_rule_matches_driver: {
         Args: { p_driver_id: string; p_rule_id: string }
+        Returns: boolean
+      }
+      intake_has_active_restaurant: {
+        Args: { p_intake_id: string }
         Returns: boolean
       }
       is_admin_panel_user: { Args: never; Returns: boolean }
@@ -3916,6 +4090,10 @@ export type Database = {
         Args: { p_blocked: boolean; p_driver_id: string; p_reason?: string }
         Returns: Json
       }
+      shift_session_instant: {
+        Args: { p_day_offset?: number; p_shift_date: string; p_time: string }
+        Returns: string
+      }
       sync_driver_wallet_earning_credit: {
         Args: {
           p_approved_by?: string
@@ -3953,6 +4131,7 @@ export type Database = {
       delivery_status: "pending" | "verified" | "rejected" | "under_review"
       delivery_verification_status: "pending" | "verified"
       document_type: "license" | "civil_id" | "work_permit" | "passport"
+      driver_import_batch_status: "previewed" | "applied" | "failed"
       driver_intake_status: "awaiting_app_link" | "linked" | "cancelled"
       driver_status: "active" | "suspended" | "pending"
       driver_workflow_status: "draft" | "pending" | "approved"
@@ -4212,6 +4391,7 @@ export const Constants = {
       delivery_status: ["pending", "verified", "rejected", "under_review"],
       delivery_verification_status: ["pending", "verified"],
       document_type: ["license", "civil_id", "work_permit", "passport"],
+      driver_import_batch_status: ["previewed", "applied", "failed"],
       driver_intake_status: ["awaiting_app_link", "linked", "cancelled"],
       driver_status: ["active", "suspended", "pending"],
       driver_workflow_status: ["draft", "pending", "approved"],

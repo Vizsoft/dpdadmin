@@ -18,8 +18,8 @@ The **admin panel** verifies deliveries, approves requests, manages zones/vehicl
 
 | Item | Value |
 |------|-------|
-| **Primary method** | `driver_code` + **6-digit App Passcode** (issued by admin) |
-| Fallback (first link) | Phone **+965** + OTP (`supabase.auth.signInWithOtp`) — used **once** to bind the auth user to the intake/driver row |
+| **Primary method** | `driver_code` + **6-digit App Passcode** (issued by admin on **Verify & approve**) |
+| Fallback (legacy) | Phone **+965** + OTP — only for intakes approved before admin-first provisioning |
 | Profile table | `profiles` where `role = 'rider'` |
 | Driver row | `drivers` where `id = auth.uid()` (1:1 with profile) |
 | Locale | `profiles.locale` — `en` \| `ar` |
@@ -43,9 +43,18 @@ The admin panel auto-issues a **6-digit numeric passcode** (`drivers.app_passcod
 - **`drivers.status = 'active'` is blocked** unless the driver has ≥1 **published + active** restaurant in `driver_restaurants` (helper `driver_has_active_restaurant`, trigger on `drivers` + auto-downgrade when restaurants are removed). Admins set status via RPC `set_driver_account_status(p_driver_id, p_status)` on `/drivers/[id]`.
 - **Admin app block** (`drivers.is_blocked`, `drivers.blocked_reason`): separate from account status. Admins block/unblock on `/drivers/[id]` via RPC `set_driver_blocked(p_driver_id, p_blocked, p_reason)`. Blocking forces `is_on_duty = false`. On login, `driver_app_lookup_by_passcode` returns `{ ok: false, error: 'driver_blocked', message: '<reason>' }`. For signed-in sessions, subscribe to `drivers` realtime and read `is_blocked` + `blocked_reason`; show a full-screen block view when blocked.
 
-### 2b. First-time link (OTP — kept as a one-shot bootstrap)
+### 2b. Admin-first provisioning (default)
 
-The very first time a driver opens the app — before they have a `drivers` row — they still need to bind their phone to an `auth.users` row. Use OTP for that single bootstrap step, then switch to passcode for subsequent sessions.
+Staff use **Verify & approve** on `/drivers/[id]` (or bulk import with **Approve immediately**). Server action creates `auth.users` (phone + synthetic email `{driver_code}@driver.dpd.local`) then RPC `admin_approve_driver(p_intake_id, p_user_id, p_email)`:
+
+- Inserts `profiles` + `drivers`, copies `driver_intake_restaurants` → `driver_restaurants`, sets `drivers.status = 'active'`, mints `app_passcode`, marks intake `linked`.
+- Driver signs in with **driver_code + passcode** via edge function `driver-passcode-login` (magic link on synthetic email).
+
+`employee_id` on intakes/drivers: **required**, 1–8 digits, unique.
+
+### 2c. Legacy OTP bootstrap (old intakes only)
+
+For intakes still `linked = false` from before admin-first approval, the driver may OTP once to bind phone to `auth.users`.
 
 **On first login (OTP success):** call `link_driver_by_phone(phone)` (RPC or edge function — implement in Supabase when wiring the app):
 
@@ -60,9 +69,9 @@ The very first time a driver opens the app — before they have a `drivers` row 
    - Or call RPC: `select mark_driver_intake_linked(p_phone, p_profile_id)`.
 3. **Else** (no intake): create minimal `profiles` + `drivers` (self-signup path).
 
-Admin panel **does not** create auth users; it only inserts `driver_intakes` via **Add Driver** (`/drivers/new`):
-- `workflow_status = 'draft'` (staff change manually to `pending` / `approved` in admin UI)
-- `linked = false` until mobile OTP link
+Admin panel creates `driver_intakes` via **Add Driver**, **bulk import**, or edit; auth users are created on **Verify & approve** (not on intake insert alone).
+- `employee_id` required on every intake (1–8 digits)
+- `linked = false` until **Verify & approve** (or legacy OTP link)
 
 | Table / bucket | Admin | Driver app |
 |----------------|-------|------------|

@@ -20,7 +20,7 @@ import {
   dispatchNotificationCampaign,
   rejectNotificationCampaign,
 } from "./notifications-actions";
-import { useNotificationCampaign } from "./use-notifications";
+import { useNotificationCampaign, useNotificationDispatchItems } from "./use-notifications";
 import { previewPayloadSchema, buildActionPayload } from "./payload-contract";
 import { pickNotificationMediaByRole } from "./notification-media";
 import { NotificationMediaPreview } from "./notification-media-preview";
@@ -32,6 +32,7 @@ export function NotificationDetailPageShell({ campaignId }: { campaignId: string
   const auth = useAuth();
   const [pending, startTransition] = useTransition();
   const { data: campaign, isLoading, refetch } = useNotificationCampaign(campaignId);
+  const { data: dispatchItems, refetch: refetchDispatch } = useNotificationDispatchItems(campaignId);
 
   const canSend = auth.can("notifications.send");
   const canApprove = auth.can("notifications.approve");
@@ -64,6 +65,8 @@ export function NotificationDetailPageShell({ campaignId }: { campaignId: string
   );
   const bannerMedia = pickNotificationMediaByRole(campaign.media, "banner");
   const pushImageMedia = pickNotificationMediaByRole(campaign.media, "image");
+  const noTokenCount = dispatchItems?.filter((item) => item.error_code === "no_token").length ?? 0;
+  const canRetrySend = canSend && ["draft", "queued", "scheduled", "pending_approval", "failed"].includes(campaign.status);
 
   return (
     <AppPage narrow>
@@ -115,8 +118,7 @@ export function NotificationDetailPageShell({ campaignId }: { campaignId: string
                 </Button>
               </>
             ) : null}
-            {canSend &&
-            ["draft", "queued", "scheduled", "pending_approval"].includes(campaign.status) ? (
+            {canRetrySend ? (
               <Button
                 className="h-9 cursor-pointer"
                 disabled={pending}
@@ -127,12 +129,13 @@ export function NotificationDetailPageShell({ campaignId }: { campaignId: string
                     else {
                       toast.success(t("sentSuccess", { sent: result.sent, failed: result.failed }));
                       void refetch();
+                      void refetchDispatch();
                     }
                   })
                 }
               >
                 <Send className="size-4" />
-                {t("sendNow")}
+                {campaign.status === "failed" ? t("retrySend") : t("sendNow")}
               </Button>
             ) : null}
             {canManage ? (
@@ -197,7 +200,46 @@ export function NotificationDetailPageShell({ campaignId }: { campaignId: string
               <span className="text-muted-foreground">{t("colSent")}: </span>
               {campaign.sent_at ?? "—"}
             </p>
+            {campaign.status === "failed" && campaign.failed_count > 0 ? (
+              <p className="sm:col-span-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-destructive">
+                {noTokenCount > 0 && noTokenCount === (dispatchItems?.length ?? 0)
+                  ? t("dispatchAllNoToken", { count: noTokenCount })
+                  : t("dispatchFailedSummary", {
+                      failed: campaign.failed_count,
+                      total: campaign.recipient_count || campaign.estimated_audience_count,
+                    })}
+              </p>
+            ) : null}
           </div>
+          {dispatchItems && dispatchItems.length > 0 ? (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground">{t("dispatchOutcomes")}</p>
+              <div className="overflow-x-auto rounded-lg border border-border">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-muted/30 text-muted-foreground">
+                    <tr>
+                      <th className="px-3 py-2 font-medium">{t("colDriver")}</th>
+                      <th className="px-3 py-2 font-medium">{t("colDispatchStatus")}</th>
+                      <th className="px-3 py-2 font-medium">{t("colDispatchError")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dispatchItems.map((item) => (
+                      <tr key={item.id} className="border-t border-border">
+                        <td className="px-3 py-2">{item.driver_label}</td>
+                        <td className="px-3 py-2">{item.status}</td>
+                        <td className="px-3 py-2 text-muted-foreground">
+                          {item.error_code === "no_token"
+                            ? t("dispatchNoToken")
+                            : item.error_message ?? item.error_code ?? "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : null}
           {bannerMedia ? (
             <div className="space-y-1">
               <p className="text-xs font-semibold text-muted-foreground">{t("fieldBanner")}</p>

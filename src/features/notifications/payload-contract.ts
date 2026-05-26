@@ -18,6 +18,7 @@ export function buildActionPayload(input: {
 
 export function buildFcmDataPayload(input: {
   campaignId: string;
+  dispatchItemId?: string | null;
   action: ActionPayload;
   category: string;
   priority: string;
@@ -32,6 +33,7 @@ export function buildFcmDataPayload(input: {
     category: input.category,
     priority: input.priority,
     ...(input.action.deep_link ? { deep_link: input.action.deep_link } : {}),
+    ...(input.dispatchItemId ? { dispatch_item_id: input.dispatchItemId } : {}),
   };
 
   if (input.media && input.media.length > 0) {

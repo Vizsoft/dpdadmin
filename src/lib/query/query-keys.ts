@@ -101,6 +101,7 @@ export const queryKeys = {
     list: (filters: Record<string, unknown> = {}) =>
       ["notifications", "list", filters] as const,
     detail: (id: string) => ["notifications", "detail", id] as const,
+    dispatchItems: (id: string) => ["notifications", "dispatch-items", id] as const,
     templates: () => ["notifications", "templates"] as const,
     templateDetail: (id: string) => ["notifications", "templates", id] as const,
     automations: () => ["notifications", "automations"] as const,

@@ -5,6 +5,7 @@ import { queryKeys } from "@/lib/query/query-keys";
 import {
   getNotificationAutomation,
   getNotificationCampaign,
+  getNotificationDispatchItems,
   getNotificationDashboardKpis,
   getNotificationTemplate,
   getNotificationTargetingOptions,
@@ -35,6 +36,14 @@ export function useNotificationCampaign(id: string | null) {
     queryKey: queryKeys.notifications.detail(id ?? ""),
     queryFn: () => getNotificationCampaign(id!),
     enabled: Boolean(id),
+  });
+}
+
+export function useNotificationDispatchItems(campaignId: string | null) {
+  return useQuery({
+    queryKey: queryKeys.notifications.dispatchItems(campaignId ?? ""),
+    queryFn: () => getNotificationDispatchItems(campaignId!),
+    enabled: Boolean(campaignId),
   });
 }
 

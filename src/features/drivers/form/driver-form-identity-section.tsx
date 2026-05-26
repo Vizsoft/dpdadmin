@@ -23,7 +23,7 @@ export function DriverFormIdentitySection({
   onCivilIdChange,
   employeeId,
   onEmployeeIdChange,
-  showEmployeeId,
+  employeeIdRequired = true,
   driverCode,
   driverCodeHint,
   labels,
@@ -44,7 +44,7 @@ export function DriverFormIdentitySection({
   onCivilIdChange: (next: string) => void;
   employeeId: string;
   onEmployeeIdChange: (next: string) => void;
-  showEmployeeId: boolean;
+  employeeIdRequired?: boolean;
   driverCode: string;
   driverCodeHint: string;
   labels: {
@@ -69,6 +69,7 @@ export function DriverFormIdentitySection({
     fullName?: string;
     phone?: string;
     civilId?: string;
+    employeeId?: string;
   };
 }) {
   return (
@@ -76,14 +77,7 @@ export function DriverFormIdentitySection({
       <SectionHeading icon={User} accent="primary">
         {labels.section}
       </SectionHeading>
-      <div
-        className={cn(
-          "grid items-end gap-2.5",
-          showEmployeeId
-            ? "grid-cols-[48px_minmax(0,1.15fr)_minmax(0,0.95fr)_minmax(0,0.95fr)_minmax(0,0.75fr)_minmax(0,0.75fr)]"
-            : "grid-cols-[48px_minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.85fr)]",
-        )}
-      >
+      <div className="grid grid-cols-[48px_minmax(0,1.15fr)_minmax(0,0.95fr)_minmax(0,0.95fr)_minmax(0,0.75fr)_minmax(0,0.75fr)] items-end gap-2.5">
         <DriverAvatarUpload
           variant="badge"
           fullName={fullName}
@@ -147,18 +141,30 @@ export function DriverFormIdentitySection({
           <FieldError message={errors.civilId} />
         </FieldBlock>
 
-        {showEmployeeId ? (
-          <FieldBlock>
-            <FieldLabel htmlFor="driver-employee-id">{labels.employeeId}</FieldLabel>
-            <Input
-              id="driver-employee-id"
-              value={employeeId}
-              disabled={disabled}
-              onChange={(event) => onEmployeeIdChange(event.target.value)}
-              className="h-9 rounded-md font-mono text-sm tabular-nums"
-            />
-          </FieldBlock>
-        ) : null}
+        <FieldBlock>
+          <FieldLabel htmlFor="driver-employee-id">
+            {labels.employeeId}
+            {employeeIdRequired ? (
+              <span className="text-destructive" aria-hidden>
+                {" "}
+                *
+              </span>
+            ) : null}
+          </FieldLabel>
+          <Input
+            id="driver-employee-id"
+            value={employeeId}
+            disabled={disabled}
+            inputMode="numeric"
+            maxLength={8}
+            onChange={(event) =>
+              onEmployeeIdChange(restrictDigits(event.target.value, 8))
+            }
+            className="h-9 rounded-md font-mono text-sm tabular-nums"
+            aria-invalid={Boolean(errors.employeeId)}
+          />
+          <FieldError message={errors.employeeId} />
+        </FieldBlock>
 
         <FieldBlock>
           <FieldLabel>{labels.driverCode}</FieldLabel>

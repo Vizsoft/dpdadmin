@@ -11,6 +11,7 @@ import {
   Bike,
   CalendarClock,
   Check,
+  CheckCircle2,
   ClipboardList,
   Copy,
   Eye,
@@ -51,10 +52,12 @@ import {
   formatDriverCodeDisplay,
 } from "./driver-list-ui";
 import {
+  useApproveDriverIntake,
   useArchiveDriverIntake,
   useDriverDetail,
   useRegenerateDriverPasscode,
 } from "./use-drivers";
+import { isDriverErrorKey } from "./driver-errors";
 
 const ASSET_ICONS = {
   gps: MapPin,
@@ -234,6 +237,7 @@ function DriverDetailContent({ id }: { id: string }) {
   const { data: driver, isLoading, isError } = useDriverDetail(id);
   const searchParams = useSearchParams();
   const archiveDriver = useArchiveDriverIntake();
+  const approveDriver = useApproveDriverIntake();
   const [activeTab, setActiveTab] = useState<DetailTabId>("assets");
   const [editOpen, setEditOpen] = useState(false);
 
@@ -251,19 +255,6 @@ function DriverDetailContent({ id }: { id: string }) {
     setEditOpen(true);
     router.replace(`/drivers/${id}`);
   }, [searchParams, driver, canManage, id, router]);
-
-  const workflowLabel = (status: DriverWorkflowStatus) => {
-    switch (status) {
-      case "draft":
-        return tList("statusDraft");
-      case "pending":
-        return tList("statusPending");
-      case "approved":
-        return tList("statusApproved");
-      default:
-        return status ?? "";
-    }
-  };
 
   const tabs: TabItem[] = [
     { id: "attendance", label: t("tabAttendance"), icon: CalendarClock },
@@ -298,6 +289,32 @@ function DriverDetailContent({ id }: { id: string }) {
       </div>
     );
   }
+
+  const workflowLabel = (status: DriverWorkflowStatus) => {
+    if (driver.linked && driver.account_status === "active") {
+      return t("statusActive");
+    }
+    if (driver.linked) {
+      return t("approveAwaitingLogin");
+    }
+    switch (status) {
+      case "draft":
+        return tList("statusDraft");
+      case "pending":
+        return tList("statusPending");
+      case "approved":
+        return tList("statusApproved");
+      default:
+        return status ?? "";
+    }
+  };
+
+  const canApprove =
+    canManage &&
+    !isArchived &&
+    Boolean(driver.intake_id) &&
+    !driver.linked_profile_id &&
+    driver.restaurant_ids.length > 0;
 
   const initials = driver.full_name
     .split(/\s+/)
@@ -507,9 +524,46 @@ function DriverDetailContent({ id }: { id: string }) {
             </div>
             {canManage && driver.intake_id && !isArchived ? (
               <div className="flex shrink-0 flex-wrap items-center gap-2">
+                {canApprove ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="cursor-pointer rounded-lg"
+                    disabled={approveDriver.isPending}
+                    onClick={async () => {
+                      if (!window.confirm(t("approveConfirmBody"))) return;
+                      try {
+                        const result = await approveDriver.mutateAsync(driver.intake_id!);
+                        toast.success(t("approveSuccess"), {
+                          description: result.passcode
+                            ? t("approvePasscodeHint", { passcode: result.passcode })
+                            : undefined,
+                        });
+                      } catch (err) {
+                        const key =
+                          err instanceof Error && isDriverErrorKey(err.message)
+                            ? err.message
+                            : "save_failed";
+                        toast.error(
+                          isDriverErrorKey(key)
+                            ? t(`approveErrors.${key}` as "approveErrors.save_failed")
+                            : t("approveErrors.save_failed"),
+                        );
+                      }
+                    }}
+                  >
+                    {approveDriver.isPending ? (
+                      <Loader2 className="me-2 h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="me-2 h-3.5 w-3.5" />
+                    )}
+                    {t("approveAction")}
+                  </Button>
+                ) : null}
                 <Button
                   type="button"
                   size="sm"
+                  variant="outline"
                   className="cursor-pointer rounded-lg"
                   onClick={() => setEditOpen(true)}
                 >
@@ -599,27 +653,31 @@ function DriverDetailContent({ id }: { id: string }) {
               </div>
             </TrackingGlassCard>
           ) : null}
-          {driver.linked_profile_id && !isArchived && canManage ? (
+          {!isArchived && canManage ? (
             <TrackingGlassCard className="border-slate-200 bg-white dark:border-slate-700/80 dark:bg-slate-900">
               <div className="border-b border-border px-4 py-3">
                 <p className="text-sm font-semibold text-foreground">{t("accountStatus.title")}</p>
               </div>
               <div className="px-4 py-4">
-                <DriverAccountStatusEditor
-                  driverId={driver.linked_profile_id}
-                  status={driver.account_status}
-                  hasPublishedRestaurant={driver.has_published_restaurant}
-                  canManage={canManage}
-                />
+                {driver.linked_profile_id ? (
+                  <DriverAccountStatusEditor
+                    driverId={driver.linked_profile_id}
+                    status={driver.account_status}
+                    hasPublishedRestaurant={driver.has_published_restaurant}
+                    canManage={canManage}
+                  />
+                ) : (
+                  <p className="text-sm text-muted-foreground">{t("approvePendingHint")}</p>
+                )}
               </div>
             </TrackingGlassCard>
           ) : null}
-          {driver.linked_profile_id && !isArchived ? (
+          {!isArchived ? (
             <PasscodeCard
-              driverId={driver.linked_profile_id}
+              driverId={driver.linked_profile_id ?? driver.intake_id ?? ""}
               passcode={driver.app_passcode}
               isActive={driver.account_status === "active"}
-              canManage={canManage}
+              canManage={canManage && Boolean(driver.linked_profile_id)}
             />
           ) : null}
           <TrackingGlassCard className="border-slate-200 bg-white dark:border-slate-700/80 dark:bg-slate-900">

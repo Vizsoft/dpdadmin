@@ -1,3 +1,4 @@
+import { isValidEmployeeId } from "./driver-errors";
 import {
   isValidCivilIdDigits,
   isValidKuwaitPhoneDigits,
@@ -19,6 +20,7 @@ export type DriverFormField =
   | "fullName"
   | "phone"
   | "civilId"
+  | "employeeId"
   | "partnerId"
   | "zoneId";
 
@@ -63,6 +65,7 @@ export type ValidateDriverFormInput = {
   fullName: string;
   phone: string;
   civilId: string;
+  employeeId: string;
   partnerId: string;
   zoneId: string;
   documents: Record<DriverDocumentType, File | null>;
@@ -89,6 +92,13 @@ export function validateDriverForm(
     errors.civilId = "missing_fields";
   } else if (!isValidCivilIdDigits(civilDigits)) {
     errors.civilId = "invalid_civil_id";
+  }
+
+  const empDigits = restrictDigits(input.employeeId.trim(), 8);
+  if (!empDigits) {
+    errors.employeeId = "missing_fields";
+  } else if (!isValidEmployeeId(empDigits)) {
+    errors.employeeId = "employee_id_format";
   }
 
   for (const docType of DOCUMENT_TYPES) {

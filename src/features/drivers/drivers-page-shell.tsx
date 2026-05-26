@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import { useSearchParams } from "next/navigation";
 import {
+  CheckCircle2,
   Download,
   Eye,
   Loader2,
@@ -12,8 +13,10 @@ import {
   Plus,
   RefreshCw,
   Search,
+  Upload,
   X,
 } from "lucide-react";
+import { toast } from "sonner";
 import { TABLE_HEAD_CLASS } from "@/components/app/constants";
 import { AppListCard } from "@/components/app/app-list-card";
 import { AppPage } from "@/components/app/app-page";
@@ -50,7 +53,10 @@ import { useDriverFormOptions } from "./use-driver-form-options";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query/query-keys";
 import { fetchDriverDetail } from "./drivers-actions";
-import { useDriversList, type DriversTabFilter } from "./use-drivers";
+import { useAuth } from "@/contexts/auth-context";
+import { useApproveDriverIntake, useDriversList, type DriversTabFilter } from "./use-drivers";
+import { DriverBulkImportDialog } from "./import/bulk-import-dialog";
+import { isDriverErrorKey } from "./driver-errors";
 import {
   DRIVERS_PAGE_SIZE,
   DRIVERS_SORT_KEYS,
@@ -154,6 +160,10 @@ function DriversPageSkeleton() {
 
 function DriversPageContent() {
   const t = useTranslations("pages.drivers");
+  const { can } = useAuth();
+  const canManage = can("drivers.manage");
+  const approveDriver = useApproveDriverIntake();
+  const [bulkOpen, setBulkOpen] = useState(false);
   const router = useRouter();
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
@@ -505,6 +515,18 @@ function DriversPageContent() {
                   <Download className="h-4 w-4" />
                   <span className="ms-1.5 hidden sm:inline">{t("export")}</span>
                 </Button>
+                {canManage ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-9 shrink-0 cursor-pointer rounded-lg px-2.5"
+                    onClick={() => setBulkOpen(true)}
+                  >
+                    <Upload className="h-4 w-4" />
+                    <span className="ms-1.5 hidden sm:inline">{t("bulkImport")}</span>
+                  </Button>
+                ) : null}
                 <Button
                   type="button"
                   size="sm"
@@ -697,6 +719,47 @@ function DriversPageContent() {
                               />
                               <TooltipContent>{t("viewDriver")}</TooltipContent>
                             </Tooltip>
+                            {canManage &&
+                            !driver.linked_profile_id &&
+                            !driver.archived_at ? (
+                              <Tooltip>
+                                <TooltipTrigger
+                                  render={
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon-sm"
+                                      className="h-8 w-8 cursor-pointer rounded-md text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
+                                      disabled={approveDriver.isPending}
+                                      onClick={async () => {
+                                        if (!window.confirm(t("approveConfirmBody"))) return;
+                                        try {
+                                          await approveDriver.mutateAsync(driver.id);
+                                          toast.success(t("approveSuccess"));
+                                        } catch (err) {
+                                          const key =
+                                            err instanceof Error &&
+                                            isDriverErrorKey(err.message)
+                                              ? err.message
+                                              : "save_failed";
+                                          toast.error(
+                                            isDriverErrorKey(key)
+                                              ? t(
+                                                  `approveErrors.${key}` as "approveErrors.save_failed",
+                                                )
+                                              : t("approveErrors.save_failed"),
+                                          );
+                                        }
+                                      }}
+                                      aria-label={t("approveAction")}
+                                    >
+                                      <CheckCircle2 className="h-4 w-4" />
+                                    </Button>
+                                  }
+                                />
+                                <TooltipContent>{t("approveAction")}</TooltipContent>
+                              </Tooltip>
+                            ) : null}
                             <Tooltip>
                               <TooltipTrigger
                                 render={
@@ -738,6 +801,9 @@ function DriversPageContent() {
         )}
       </AppListCard>
       <DriverFormSheet mode="create" open={addOpen} onOpenChange={setAddOpen} />
+      {canManage ? (
+        <DriverBulkImportDialog open={bulkOpen} onOpenChange={setBulkOpen} />
+      ) : null}
     </AppPage>
   );
 }

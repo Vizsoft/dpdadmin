@@ -269,6 +269,8 @@ export async function createDriverIntake(
   const fullName = String(formData.get("fullName") ?? "").trim();
   const phoneRaw = String(formData.get("phone") ?? "").trim();
   const civilId = String(formData.get("civilId") ?? "").trim();
+  const employeeIdRaw = String(formData.get("employeeId") ?? "");
+  const employeeId = normalizeEmployeeId(employeeIdRaw);
   const partnerId = String(formData.get("partnerId") ?? "").trim();
   const zoneId = String(formData.get("zoneId") ?? "").trim();
   const vehicleId = String(formData.get("vehicleId") ?? "").trim();
@@ -279,7 +281,7 @@ export async function createDriverIntake(
       ? workflowStatusRaw
       : "draft";
 
-  if (!fullName || !phoneRaw || !civilId) {
+  if (!fullName || !phoneRaw || !civilId || !employeeId) {
     return { error: "missing_fields" };
   }
 
@@ -362,6 +364,7 @@ export async function createDriverIntake(
       phone,
       full_name: fullName,
       civil_id: civilIdNormalized,
+      employee_id: employeeId,
       driver_code: allocatedCode,
       partner_id: partnerId || null,
       zone_id: zoneId || null,
@@ -381,7 +384,7 @@ export async function createDriverIntake(
     } catch {
       /* best-effort rollback */
     }
-    return { error: mapDriverDbError(error) };
+    return { error: mapDriverDbError(error, "employee_id") };
   }
 
   await syncIntakeRestaurants(supabase, data.id, restaurantIds);
@@ -402,6 +405,7 @@ type IntakeListRow = {
   full_name: string;
   phone: string;
   driver_code: string;
+  employee_id: string;
   partner_id: string;
   zone_id: string;
   linked_profile_id: string | null;
@@ -474,6 +478,7 @@ export async function fetchDriversForAdmin(options?: {
       full_name,
       phone,
       driver_code,
+      employee_id,
       partner_id,
       zone_id,
       linked_profile_id,
@@ -586,8 +591,8 @@ export async function fetchDriversForAdmin(options?: {
         id: row.id,
         driver_code: row.driver_code,
         employee_id: row.linked_profile_id
-          ? (driverByProfileId.get(row.linked_profile_id)?.employee_id ?? null)
-          : null,
+          ? (driverByProfileId.get(row.linked_profile_id)?.employee_id ?? row.employee_id)
+          : row.employee_id,
         full_name: row.full_name,
         phone: row.phone,
         partner_id: row.partner_id,
@@ -685,7 +690,7 @@ export async function updateDriverIntake(
   const hasAvatarUpload = avatarFile instanceof File && avatarFile.size > 0;
   const removeAvatar = formData.get("removeAvatar") === "true";
 
-  if (!intakeId || !fullName || !phoneRaw || !civilId) {
+  if (!intakeId || !fullName || !phoneRaw || !civilId || !employeeId) {
     return { error: "missing_fields" };
   }
 
@@ -764,6 +769,7 @@ export async function updateDriverIntake(
       full_name: fullName,
       phone,
       civil_id: civilIdNormalized,
+      employee_id: employeeId,
       partner_id: partnerId || null,
       zone_id: zoneId || null,
       vehicle_id: vehicleId || null,
@@ -774,7 +780,7 @@ export async function updateDriverIntake(
     })
     .eq("id", intakeId);
 
-  if (error) return { error: mapDriverDbError(error) };
+  if (error) return { error: mapDriverDbError(error, "employee_id") };
 
   await syncIntakeRestaurants(supabase, intakeId, restaurantIds);
 
@@ -856,6 +862,7 @@ export async function fetchDriverDetail(
       full_name,
       phone,
       civil_id,
+      employee_id,
       driver_code,
       workflow_status,
       linked,
@@ -942,7 +949,7 @@ export async function fetchDriverDetail(
       phone: profile?.phone ?? intake.phone,
       email: profile?.email ?? null,
       civil_id: intake.civil_id,
-      employee_id: linkedDriver?.employee_id ?? null,
+      employee_id: linkedDriver?.employee_id ?? intake.employee_id ?? null,
       avatar_url,
       partner_name: relName(
         intake.partners as { name: string } | { name: string }[] | null,
@@ -1207,3 +1214,4 @@ export async function regenerateDriverPasscode(
 
   return { success: true, passcode: payload.passcode };
 }
+
