@@ -116,10 +116,12 @@ type DriverCoreRow = {
   partner_id: string | null;
   zone_id: string | null;
   is_on_duty: boolean;
-  profiles: { full_name: string | null; phone: string | null } | { full_name: string | null; phone: string | null }[] | null;
+  profiles:
+    | { full_name: string | null; phone: string | null; avatar_url: string | null }
+    | { full_name: string | null; phone: string | null; avatar_url: string | null }[]
+    | null;
   partners: { name: string } | { name: string }[] | null;
   zones: { name: string } | { name: string }[] | null;
-  driver_intakes: { id: string; avatar_url: string | null } | { id: string; avatar_url: string | null }[] | null;
 };
 
 function relOne<T>(rel: T | T[] | null | undefined): T | null {
@@ -133,12 +135,12 @@ async function enrichAssignDriverRows(
 ): Promise<AssignDriverRow[]> {
   if (driverIds.length === 0) return [];
 
-  const [{ data: drivers, error }, { data: links }, { data: locations }, { data: inTransit }] =
+  const [{ data: drivers, error }, { data: links }, { data: locations }, { data: inTransit }, { data: intakes }] =
     await Promise.all([
       supabase
         .from("drivers")
         .select(
-          "id, driver_code, partner_id, zone_id, is_on_duty, profiles(full_name, phone), partners(name), zones(name), driver_intakes(id, avatar_url)",
+          "id, driver_code, partner_id, zone_id, is_on_duty, profiles(full_name, phone, avatar_url), partners(name), zones(name)",
         )
         .in("id", driverIds),
       supabase.from("driver_restaurants").select("driver_id, restaurant_id").in("driver_id", driverIds),
@@ -151,9 +153,20 @@ async function enrichAssignDriverRows(
         .select("driver_id")
         .in("driver_id", driverIds)
         .filter("status", "eq", "in_transit"),
+      supabase
+        .from("driver_intakes")
+        .select("id, linked_profile_id, avatar_url")
+        .in("linked_profile_id", driverIds)
+        .is("archived_at", null),
     ]);
 
   if (error) throw error;
+
+  const intakeByProfileId = new Map(
+    (intakes ?? [])
+      .filter((row) => row.linked_profile_id)
+      .map((row) => [row.linked_profile_id as string, row]),
+  );
 
   const restaurantIds = [...new Set((links ?? []).map((l) => l.restaurant_id))];
   const { data: restaurants } =
@@ -187,8 +200,8 @@ async function enrichAssignDriverRows(
     (drivers ?? []).map(async (raw) => {
       const row = raw as unknown as DriverCoreRow;
       const profile = relOne(row.profiles);
-      const intake = relOne(row.driver_intakes);
-      const avatarKey = intake?.avatar_url ?? null;
+      const intake = intakeByProfileId.get(row.id);
+      const avatarKey = profile?.avatar_url ?? intake?.avatar_url ?? null;
       let avatar_url: string | null = null;
       if (avatarKey) {
         if (avatarCache.has(avatarKey)) {
@@ -233,14 +246,30 @@ export async function fetchRestaurantAssignedDriversForAssign(
   if (!restaurantId) return [];
 
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("driver_restaurants")
-    .select("driver_id")
-    .eq("restaurant_id", restaurantId);
-  if (error) throw error;
+  const [{ data: linkedRows, error: linkedErr }, { data: intakeRows, error: intakeErr }] =
+    await Promise.all([
+      supabase
+        .from("driver_restaurants")
+        .select("driver_id")
+        .eq("restaurant_id", restaurantId),
+      supabase
+        .from("driver_intake_restaurants")
+        .select("intake_id, driver_intakes(linked, linked_profile_id)")
+        .eq("restaurant_id", restaurantId),
+    ]);
+  if (linkedErr) throw linkedErr;
+  if (intakeErr) throw intakeErr;
 
-  const driverIds = [...new Set((data ?? []).map((r) => r.driver_id))];
-  const rows = await enrichAssignDriverRows(supabase, driverIds);
+  const driverIds = new Set<string>();
+  for (const row of linkedRows ?? []) driverIds.add(row.driver_id);
+  for (const row of intakeRows ?? []) {
+    const intake = relOne(row.driver_intakes);
+    if (intake?.linked && intake.linked_profile_id) {
+      driverIds.add(intake.linked_profile_id);
+    }
+  }
+
+  const rows = await enrichAssignDriverRows(supabase, [...driverIds]);
   return rows.sort((a, b) => a.name.localeCompare(b.name));
 }
 
