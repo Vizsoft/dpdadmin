@@ -125,19 +125,27 @@ export async function fetchRestaurantsForAdmin(): Promise<RestaurantRow[]> {
   void logAdminRead("restaurants", "fetchRestaurantsForAdmin");
   const supabase = await createClient();
 
-  const [{ data: restaurants, error }, { data: partners }, { data: zones }] =
-    await Promise.all([
-      supabase
-        .from("restaurants")
-        .select(
-          "id, partner_id, zone_id, name, logo_url, external_merchant_id, map_link, latitude, longitude, status, is_active, created_at",
-        )
-        .order("name"),
-      supabase.from("partners").select("id, name"),
-      supabase.from("zones").select("id, name, code"),
-    ]);
+  const [
+    { data: restaurants, error: restaurantsError },
+    { data: partners, error: partnersError },
+    { data: zones, error: zonesError },
+  ] = await Promise.all([
+    supabase
+      .from("restaurants")
+      .select(
+        "id, partner_id, zone_id, name, logo_url, external_merchant_id, map_link, latitude, longitude, status, is_active, created_at",
+      )
+      .order("name"),
+    supabase.from("partners").select("id, name"),
+    supabase.from("zones").select("id, name, code"),
+  ]);
 
-  if (error) throw error;
+  if (restaurantsError) {
+    logPgError("list", restaurantsError);
+    throw restaurantsError;
+  }
+  if (partnersError) logPgError("list_partners", partnersError);
+  if (zonesError) logPgError("list_zones", zonesError);
 
   const partnerMap = new Map((partners ?? []).map((p) => [p.id, p.name]));
   const zoneMap = new Map(
@@ -195,7 +203,51 @@ export async function fetchRestaurantsForAdmin(): Promise<RestaurantRow[]> {
     created_at: row.created_at,
   }));
 
-  return resolveRestaurantLogoUrls(rows);
+  try {
+    return await resolveRestaurantLogoUrls(rows);
+  } catch (error) {
+    logPgError("logo_urls", error);
+    return rows.map((row) => ({ ...row, logo_display_url: null }));
+  }
+}
+
+export async function fetchRestaurantPickerOptions(): Promise<
+  Array<{
+    id: string;
+    name: string;
+    partner_id: string | null;
+    partner_name: string | null;
+    status: RestaurantRow["status"];
+  }>
+> {
+  await requireRestaurantsView();
+  const supabase = await createClient();
+  const [{ data: restaurants, error }, { data: partners, error: partnersError }] =
+    await Promise.all([
+      supabase
+        .from("restaurants")
+        .select("id, name, partner_id, status")
+        .order("name"),
+      supabase.from("partners").select("id, name"),
+    ]);
+
+  if (error) {
+    logPgError("picker", error);
+    throw error;
+  }
+  if (partnersError) logPgError("picker_partners", partnersError);
+
+  const partnerNameById = new Map((partners ?? []).map((p) => [p.id, p.name]));
+
+  return (restaurants ?? []).map((row) => ({
+    id: row.id,
+    name: row.name,
+    partner_id: row.partner_id,
+    partner_name: row.partner_id
+      ? (partnerNameById.get(row.partner_id) ?? null)
+      : null,
+    status: row.status,
+  }));
 }
 
 function validateGeofenceInput(

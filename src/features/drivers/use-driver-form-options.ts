@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { queryKeys } from "@/lib/query/query-keys";
 import { fetchPartners } from "@/features/partners/use-partners";
+import { fetchRestaurantPickerOptions } from "@/features/restaurants/restaurants-actions";
 import { fetchZones } from "@/features/zones/use-zones";
 import type { PartnerOption, RestaurantOption, VehicleOption, ZoneOption } from "./types";
 
@@ -32,22 +33,12 @@ export type DriverFormOptions = {
 };
 
 export async function fetchDriverFormOptions(): Promise<DriverFormOptions> {
-  const supabase = createClient();
-  const [partners, zones, vehicles, { data: restaurants, error }, { data: partnerRows }] =
-    await Promise.all([
+  const [partners, zones, vehicles, restaurants] = await Promise.all([
     fetchPartners(),
     fetchZones(),
     fetchAvailableVehicles(),
-    supabase
-      .from("restaurants")
-      .select("id, name, partner_id, status")
-      .order("name"),
-    supabase.from("partners").select("id, name"),
+    fetchRestaurantPickerOptions(),
   ]);
-
-  if (error) throw error;
-
-  const partnerNameById = new Map((partnerRows ?? []).map((p) => [p.id, p.name]));
 
   return {
     partners: partners.map((p) => ({
@@ -61,11 +52,11 @@ export async function fetchDriverFormOptions(): Promise<DriverFormOptions> {
       code: z.code,
     })),
     vehicles,
-    restaurants: (restaurants ?? []).map((r) => ({
+    restaurants: restaurants.map((r) => ({
       id: r.id,
       name: r.name,
       partner_id: r.partner_id,
-      partner_name: r.partner_id ? partnerNameById.get(r.partner_id) ?? null : null,
+      partner_name: r.partner_name,
       status: r.status,
     })),
   };

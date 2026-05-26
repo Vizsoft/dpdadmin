@@ -1075,6 +1075,8 @@
       "driversCount": "{count, plural, one {# driver} other {# drivers}}",
       "emptyTitle": "No restaurants yet",
       "emptyDescription": "Add merchants under a partner so you can assign them to drivers and delivery rules.",
+      "loadFailedTitle": "Could not load restaurants",
+      "loadFailedDescription": "The list failed to load. Refresh to try again.",
       "emptySearchTitle": "No restaurants match your filters",
       "emptySearchDescription": "Try adjusting search or filters.",
       "cancel": "Cancel",

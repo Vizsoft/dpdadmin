@@ -12,7 +12,6 @@ import {
   parseRestaurantFormData,
   validateRestaurantCoordinates,
 } from "@/features/restaurants/parse-restaurant-form";
-import { resolveRestaurantLogoUrls } from "@/lib/storage/restaurant-logo-url";
 import { isDpdErrorKey, type DpdErrorKey } from "./dpd-errors";
 import {
   getDriverEarningsDetail,
@@ -33,7 +32,6 @@ import type {
   IncentiveRuleTierRow,
   IncentiveTargetMode,
   IncentivePeriod,
-  RestaurantRow,
   RuleScopeType,
   RuleStatus,
 } from "./types";
@@ -312,50 +310,6 @@ export async function fetchDpdScopeOptions(): Promise<DpdScopeOptions> {
       partner_name: r.partner_id ? (partnerMap.get(r.partner_id) ?? "—") : "—",
     })),
   };
-}
-
-export async function fetchRestaurantsForAdmin(): Promise<RestaurantRow[]> {
-  await requireEarningsView();
-  void logAdminRead("restaurants", "fetchRestaurantsForAdmin");
-  const supabase = await createClient();
-  const [{ data, error }, { data: partners }, { data: zones }] = await Promise.all([
-    supabase
-      .from("restaurants")
-      .select(
-        "id, partner_id, zone_id, name, logo_url, external_merchant_id, map_link, latitude, longitude, status, is_active, created_at",
-      )
-      .order("name"),
-    supabase.from("partners").select("id, name"),
-    supabase.from("zones").select("id, name, code"),
-  ]);
-
-  if (error) throw error;
-
-  const partnerMap = new Map((partners ?? []).map((p) => [p.id, p.name]));
-  const zoneMap = new Map(
-    (zones ?? []).map((z) => [z.id, `${z.name} (${z.code})`]),
-  );
-
-  const rows = (data ?? []).map((row) => {
-    return {
-      id: row.id,
-      partner_id: row.partner_id,
-      partner_name: row.partner_id ? (partnerMap.get(row.partner_id) ?? "—") : "—",
-      zone_id: row.zone_id,
-      zone_name: row.zone_id ? (zoneMap.get(row.zone_id) ?? "—") : "—",
-      name: row.name,
-      logo_url: row.logo_url,
-      external_merchant_id: row.external_merchant_id,
-      map_link: row.map_link,
-      latitude: row.latitude != null ? Number(row.latitude) : null,
-      longitude: row.longitude != null ? Number(row.longitude) : null,
-      status: row.status,
-      is_active: row.is_active,
-      created_at: row.created_at,
-    };
-  });
-
-  return resolveRestaurantLogoUrls(rows);
 }
 
 async function loadScopeLabelMaps(supabase: Awaited<ReturnType<typeof createClient>>) {

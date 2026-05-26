@@ -116,7 +116,7 @@ function RestaurantsPageContent() {
   const { permissions, isSuperAdmin } = useAuth();
   const canManage = canManageRestaurants(new Set(permissions), isSuperAdmin);
 
-  const { data: restaurants = [], isLoading, refetch } = useRestaurantsList();
+  const { data: restaurants = [], isLoading, isError, refetch } = useRestaurantsList();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -337,6 +337,21 @@ function RestaurantsPageContent() {
         {isLoading ? (
           <div className="flex justify-center py-16">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : isError ? (
+          <div className="px-6 py-12 text-center">
+            <p className="text-sm font-medium text-foreground">{t("loadFailedTitle")}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{t("loadFailedDescription")}</p>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="mt-4 cursor-pointer rounded-lg"
+              onClick={() => void refetch()}
+            >
+              <RefreshCw className="me-2 h-3.5 w-3.5" />
+              {t("refresh")}
+            </Button>
           </div>
         ) : showEmptyAll ? (
           <div className="px-6 py-12 text-center">

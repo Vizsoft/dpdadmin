@@ -1063,6 +1063,8 @@
       "driversCount": "{count, plural, one {سائق واحد} other {# سائقين}}",
       "emptyTitle": "لا توجد مطاعم بعد",
       "emptyDescription": "أضف متاجر تحت شريك لتعيينها للسائقين وقواعد التوصيل.",
+      "loadFailedTitle": "تعذّر تحميل المطاعم",
+      "loadFailedDescription": "فشل تحميل القائمة. حدّث الصفحة للمحاولة مرة أخرى.",
       "emptySearchTitle": "لا توجد مطاعم مطابقة",
       "emptySearchDescription": "جرّب تعديل البحث أو التصفية.",
       "cancel": "إلغاء",
