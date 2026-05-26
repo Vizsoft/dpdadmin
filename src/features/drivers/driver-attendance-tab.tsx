@@ -14,7 +14,7 @@ import {
 } from "@/features/driver-tracking/tracking-read-actions";
 import { formatDurationSeconds, kuwaitToday } from "@/features/driver-tracking/kuwait-time";
 export function DriverAttendanceTab({ driverId }: { driverId: string }) {
-  const t = useTranslations("pages.drivers");
+  const t = useTranslations("pages.driverDetail");
   const today = kuwaitToday();
   const month = useMemo(() => {
     const [y, m] = today.split("-").map(Number);
@@ -25,21 +25,15 @@ export function DriverAttendanceTab({ driverId }: { driverId: string }) {
     queryKey: ["drivers", "attendance-summary", driverId, today],
     queryFn: () => fetchDriverTodayTrackingSummary(driverId),
     enabled: Boolean(driverId),
+    staleTime: 60_000,
   });
 
   const { data: monthRows = [], isLoading: monthLoading } = useQuery({
     queryKey: ["drivers", "attendance-month", driverId, month.year, month.month],
     queryFn: () => fetchDriverAttendanceMonth(driverId, month.year, month.month),
     enabled: Boolean(driverId),
+    staleTime: 120_000,
   });
-
-  if (summaryLoading) {
-    return (
-      <div className="flex h-40 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
 
   const wt = summary?.worktime;
   const shift = summary?.shift;
@@ -48,6 +42,11 @@ export function DriverAttendanceTab({ driverId }: { driverId: string }) {
     <div className="space-y-3">
       <TrackingGlassCard className="border-slate-200 bg-white p-4 dark:border-slate-700/80 dark:bg-slate-900">
         <p className="mb-3 text-sm font-semibold">{t("attendanceTodayTitle")}</p>
+        {summaryLoading ? (
+          <div className="flex h-24 items-center justify-center">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
         <dl className="grid gap-2 text-sm sm:grid-cols-2">
           <div>
             <dt className="text-muted-foreground">{t("attendanceCheckIn")}</dt>
@@ -98,10 +97,12 @@ export function DriverAttendanceTab({ driverId }: { driverId: string }) {
             </dd>
           </div>
         </dl>
+        )}
         <div className="mt-4 flex flex-wrap gap-2">
           <Button
             variant="outline"
             size="sm"
+            disabled={summaryLoading}
             render={<Link href={`/worktime?from=${today}&to=${today}`} />}
           >
             {t("attendanceOpenWorktime")}
@@ -109,6 +110,7 @@ export function DriverAttendanceTab({ driverId }: { driverId: string }) {
           <Button
             variant="outline"
             size="sm"
+            disabled={summaryLoading}
             render={<Link href={`/driver-shifts?from=${today}&to=${today}`} />}
           >
             {t("attendanceOpenShifts")}
@@ -116,6 +118,7 @@ export function DriverAttendanceTab({ driverId }: { driverId: string }) {
           <Button
             variant="outline"
             size="sm"
+            disabled={summaryLoading}
             render={<Link href={`/live-tracking?driverId=${driverId}`} />}
           >
             {t("attendanceOpenMap")}

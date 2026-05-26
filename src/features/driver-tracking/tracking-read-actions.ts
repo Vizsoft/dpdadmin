@@ -454,17 +454,207 @@ export async function fetchFleetOpsCounts(): Promise<FleetOpsCounts> {
   };
 }
 
+async function fetchSingleDriverMeta(driverId: string): Promise<DriverMeta | null> {
+  const supabase = await createClient();
+  const { data: d, error } = await supabase
+    .from("drivers")
+    .select(
+      "id, driver_code, is_on_duty, zone_id, partner_id, zones(name), partners(name)",
+    )
+    .eq("id", driverId)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!d) return null;
+
+  const { data: prof } = await supabase
+    .from("profiles")
+    .select("full_name, phone")
+    .eq("id", driverId)
+    .maybeSingle();
+
+  const zones = d.zones as { name: string } | { name: string }[] | null;
+  const partners = d.partners as { name: string } | { name: string }[] | null;
+  const zoneName = Array.isArray(zones) ? zones[0]?.name : zones?.name;
+  const partnerName = Array.isArray(partners) ? partners[0]?.name : partners?.name;
+
+  return {
+    id: d.id,
+    driver_code: d.driver_code,
+    is_on_duty: d.is_on_duty,
+    zone_id: d.zone_id,
+    partner_id: d.partner_id,
+    zone_name: zoneName?.trim() || "—",
+    partner_name: partnerName?.trim() || "—",
+    full_name: prof?.full_name?.trim() || "—",
+    phone: prof?.phone?.trim() || "—",
+  };
+}
+
 export async function fetchDriverTodayTrackingSummary(driverId: string): Promise<{
   shift: DriverShiftListRow | null;
   worktime: WorktimeListRow | null;
 }> {
+  await requireAttendanceView();
   const today = kuwaitToday();
-  const [shifts, worktimes] = await Promise.all([
-    fetchDriverShiftsList({ fromDate: today, toDate: today }),
-    fetchWorktimeList({ fromDate: today, toDate: today }),
+  const supabase = await createClient();
+  const { from: rangeFrom, to: rangeTo } = kuwaitDayBounds(today);
+
+  const [
+    driver,
+    shiftRes,
+    attendanceRes,
+    logRes,
+    sessionsRes,
+    eventsRes,
+    openSessionRes,
+  ] = await Promise.all([
+    fetchSingleDriverMeta(driverId),
+    supabase
+      .from("driver_daily_shifts")
+      .select("*")
+      .eq("driver_id", driverId)
+      .eq("shift_date", today)
+      .maybeSingle(),
+    supabase
+      .from("driver_attendance")
+      .select("*")
+      .eq("driver_id", driverId)
+      .eq("attendance_date", today)
+      .maybeSingle(),
+    supabase
+      .from("attendance_logs")
+      .select(
+        "id, driver_id, log_date, check_in_at, check_out_at, distance_meters, status",
+      )
+      .eq("driver_id", driverId)
+      .eq("log_date", today)
+      .maybeSingle(),
+    supabase
+      .from("driver_sessions")
+      .select("id, driver_id, is_online, went_online_at, went_offline_at")
+      .eq("driver_id", driverId)
+      .gte("went_online_at", rangeFrom)
+      .lte("went_online_at", rangeTo),
+    supabase
+      .from("driver_location_events")
+      .select(
+        "id, driver_id, latitude, longitude, speed_mps, accuracy_meters, battery_pct, tracking_status, zone_status, delivery_id, recorded_at",
+      )
+      .eq("driver_id", driverId)
+      .gte("recorded_at", rangeFrom)
+      .lte("recorded_at", rangeTo)
+      .order("recorded_at", { ascending: true }),
+    supabase
+      .from("driver_sessions")
+      .select("id")
+      .eq("driver_id", driverId)
+      .eq("is_online", true)
+      .maybeSingle(),
   ]);
-  return {
-    shift: shifts.find((s) => s.driver_id === driverId) ?? null,
-    worktime: worktimes.find((w) => w.driver_id === driverId) ?? null,
-  };
+
+  if (sessionsRes.error) throw sessionsRes.error;
+  if (eventsRes.error) throw eventsRes.error;
+  if (shiftRes.error) throw shiftRes.error;
+  if (attendanceRes.error) throw attendanceRes.error;
+  if (logRes.error) throw logRes.error;
+
+  if (!driver) return { shift: null, worktime: null };
+
+  let shift: DriverShiftListRow | null = null;
+  if (shiftRes.data) {
+    const row = shiftRes.data as ShiftRow;
+    const flags = computeShiftFlags(row);
+    const session1 = formatSessionRange(
+      row.session1_start,
+      row.session1_end,
+      row.session1_end_day_offset,
+    );
+    const session2 =
+      row.shift_type === "split" && row.session2_start && row.session2_end
+        ? formatSessionRange(
+            row.session2_start,
+            row.session2_end,
+            row.session2_end_day_offset,
+          )
+        : null;
+    shift = {
+      id: row.id,
+      driver_id: row.driver_id,
+      driver_code: driver.driver_code,
+      driver_name: driver.full_name,
+      driver_phone: driver.phone,
+      zone_name: driver.zone_name,
+      partner_name: driver.partner_name,
+      shift_date: row.shift_date,
+      shift_type: row.shift_type as "single" | "split",
+      session1_label: session1,
+      session2_label: session2,
+      is_within_window: flags.isWithinWindow,
+      is_locked: flags.isLocked,
+      is_on_duty: driver.is_on_duty,
+      submitted_at: row.submitted_at,
+    };
+  }
+
+  const att = attendanceRes.data;
+  const log = logRes.data;
+  const hasOpenSession = Boolean(openSessionRes.data);
+  const events = (eventsRes.data ?? []).map((raw) => ({
+    id: raw.id,
+    driverId: raw.driver_id,
+    latitude: Number(raw.latitude),
+    longitude: Number(raw.longitude),
+    speedMps: raw.speed_mps != null ? Number(raw.speed_mps) : null,
+    accuracyMeters: raw.accuracy_meters != null ? Number(raw.accuracy_meters) : null,
+    batteryPct: raw.battery_pct,
+    trackingStatus: parseTrackingStatus(raw.tracking_status),
+    zoneStatus: raw.zone_status as DriverLocationEvent["zoneStatus"],
+    deliveryId: raw.delivery_id,
+    recordedAt: raw.recorded_at,
+  }));
+  const summary = computeHistorySummary(events);
+
+  let sessionCount = 0;
+  for (const s of sessionsRes.data ?? []) {
+    if (!s.went_online_at) continue;
+    if (kuwaitDateFromIso(s.went_online_at) === today) sessionCount += 1;
+  }
+
+  const worktime: WorktimeListRow | null =
+    att || log
+      ? {
+          key: `${driverId}:${today}`,
+          driver_id: driverId,
+          driver_code: driver.driver_code,
+          driver_name: driver.full_name,
+          driver_phone: driver.phone,
+          zone_name: driver.zone_name,
+          partner_name: driver.partner_name,
+          attendance_date: today,
+          check_in_at: log?.check_in_at ?? null,
+          check_out_at: log?.check_out_at ?? null,
+          log_duration_seconds: logDurationSeconds(
+            log?.check_in_at ?? null,
+            log?.check_out_at ?? null,
+          ),
+          online_seconds: displayOnlineSeconds(
+            att?.online_seconds ?? 0,
+            today,
+            att?.last_online_at ?? null,
+            hasOpenSession,
+          ),
+          session_count: sessionCount,
+          distance_meters: log?.distance_meters ?? null,
+          idle_minutes: summary.idleMinutes,
+          moving_minutes: summary.movingMinutes,
+          attendance_status: att?.status ?? null,
+          is_validated: att?.is_validated ?? false,
+          validation_source: att?.validation_source ?? null,
+          is_on_duty: driver.is_on_duty,
+          log_id: log?.id ?? null,
+        }
+      : null;
+
+  return { shift, worktime };
 }
