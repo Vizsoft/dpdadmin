@@ -1,6 +1,6 @@
 import { setRequestLocale } from "next-intl/server";
 import { requirePermission } from "@/lib/auth/require-permission";
-import { NotificationAutomationsPageShell } from "@/features/notifications/subpages-shell";
+import { AutomationsListPageShell } from "@/features/notifications/automations-list-page-shell";
 
 export default async function NotificationAutomationsPage({
   params,
@@ -10,5 +10,5 @@ export default async function NotificationAutomationsPage({
   const { locale } = await params;
   setRequestLocale(locale);
   await requirePermission(locale, "notifications.view");
-  return <NotificationAutomationsPageShell />;
+  return <AutomationsListPageShell />;
 }

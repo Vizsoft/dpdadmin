@@ -45,7 +45,16 @@ CREATE POLICY driver_attendance_staff_all ON public.driver_attendance
   USING (public.is_admin_panel_user())
   WITH CHECK (public.is_admin_panel_user());
 
-ALTER PUBLICATION supabase_realtime ADD TABLE public.driver_attendance;
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime'
+      AND schemaname = 'public'
+      AND tablename = 'driver_attendance'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.driver_attendance;
+  END IF;
+END $$;
 
 CREATE OR REPLACE FUNCTION public.driver_update_avatar(
   p_object_key text

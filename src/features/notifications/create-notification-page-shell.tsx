@@ -23,18 +23,25 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { TabBar } from "@/components/dashboard/tab-bar";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/auth-context";
 import {
   NOTIFICATION_ACTION_TYPES,
   NOTIFICATION_CATEGORIES,
   NOTIFICATION_PRIORITIES,
   NOTIFICATION_TARGET_MODES,
+  requiresApproval,
 } from "./constants";
 import { previewPayloadSchema, buildActionPayload } from "./payload-contract";
+import {
+  buildMediaFromKeys,
+  NotificationMediaFields,
+} from "./notification-media-fields";
 import {
   dispatchNotificationCampaign,
   estimateNotificationAudience,
   saveNotificationCampaign,
   scheduleNotificationCampaign,
+  submitNotificationForApproval,
 } from "./notifications-actions";
 import { useNotificationTargetingOptions } from "./use-notifications";
 import type { NotificationActionType, NotificationCategory, NotificationPriority, TargetSpec } from "./types";
@@ -45,6 +52,7 @@ export function CreateNotificationPageShell() {
   const t = useTranslations("pages.notifications");
   const locale = useLocale();
   const router = useRouter();
+  const auth = useAuth();
   const [section, setSection] = useState<SectionId>("recipients");
   const [pending, startTransition] = useTransition();
 
@@ -61,6 +69,13 @@ export function CreateNotificationPageShell() {
   const [scheduleMode, setScheduleMode] = useState<"now" | "later">("now");
   const [scheduledFor, setScheduledFor] = useState("");
   const [audienceCount, setAudienceCount] = useState<number | null>(null);
+  const [bannerObjectKey, setBannerObjectKey] = useState<string | null>(null);
+  const [pushImageObjectKey, setPushImageObjectKey] = useState<string | null>(null);
+
+  const campaignMedia = useMemo(
+    () => buildMediaFromKeys({ bannerObjectKey, imageObjectKey: pushImageObjectKey }),
+    [bannerObjectKey, pushImageObjectKey],
+  );
 
   const { data: targeting } = useNotificationTargetingOptions();
 
@@ -83,16 +98,25 @@ export function CreateNotificationPageShell() {
     () =>
       previewPayloadSchema(
         buildActionPayload({ actionType, actionParams }),
+        campaignMedia,
       ),
-    [actionType, actionParams],
+    [actionType, actionParams, campaignMedia],
   );
 
   async function refreshAudience() {
-    const count = await estimateNotificationAudience(targetSpec);
-    setAudienceCount(count);
+    try {
+      const count = await estimateNotificationAudience(targetSpec);
+      setAudienceCount(count);
+    } catch {
+      toast.error(t("errors.audienceEstimateFailed"));
+    }
   }
 
   function buildInput() {
+    const scheduledIso =
+      scheduleMode === "later" && scheduledFor.trim()
+        ? new Date(scheduledFor).toISOString()
+        : null;
     return {
       title,
       body,
@@ -101,18 +125,59 @@ export function CreateNotificationPageShell() {
       targetSpec,
       actionType,
       actionParams,
+      media: campaignMedia,
       scheduleSpec: {
         mode: scheduleMode,
-        scheduled_for: scheduleMode === "later" ? scheduledFor || null : null,
+        scheduled_for: scheduledIso,
       },
     };
   }
 
+  function resolveErrorMessage(error: string) {
+    switch (error) {
+      case "not_authorized":
+      case "invalid_input":
+      case "missing_content":
+      case "empty_recipients":
+      case "approval_required":
+      case "empty_audience":
+      case "dispatch_failed":
+      case "invalid_schedule":
+        return t(`errors.${error}`);
+      default:
+        return t("errors.saveFailed");
+    }
+  }
+
+  function validateBeforeSave(): { error: string; section: SectionId } | null {
+    if (!title.trim() || !body.trim()) {
+      return { error: "missing_content", section: "content" };
+    }
+    if (targetMode === "custom" && driverIds.length === 0) {
+      return { error: "empty_recipients", section: "recipients" };
+    }
+    if (targetMode === "zone" && zoneIds.length === 0) {
+      return { error: "empty_recipients", section: "recipients" };
+    }
+    if (targetMode === "partner" && partnerIds.length === 0) {
+      return { error: "empty_recipients", section: "recipients" };
+    }
+    return null;
+  }
+
   function handleSaveDraft() {
+    const validation = validateBeforeSave();
+    if (validation) {
+      toast.error(resolveErrorMessage(validation.error));
+      setSection(validation.section);
+      return;
+    }
     startTransition(async () => {
       const result = await saveNotificationCampaign(buildInput());
       if ("error" in result) {
-        toast.error(t("errors.saveFailed"));
+        toast.error(resolveErrorMessage(result.error));
+        if (result.error === "invalid_input") setSection("content");
+        if (result.error === "empty_recipients") setSection("recipients");
         return;
       }
       toast.success(t("savedDraft"));
@@ -121,16 +186,46 @@ export function CreateNotificationPageShell() {
   }
 
   function handleSubmit() {
+    if (scheduleMode === "later" && !scheduledFor.trim()) {
+      toast.error(t("errors.invalid_schedule"));
+      setSection("schedule");
+      return;
+    }
+    const validation = validateBeforeSave();
+    if (validation) {
+      toast.error(resolveErrorMessage(validation.error));
+      setSection(validation.section);
+      return;
+    }
     startTransition(async () => {
-      const saved = await saveNotificationCampaign(buildInput());
+      const input = buildInput();
+      const saved = await saveNotificationCampaign(input);
       if ("error" in saved) {
-        toast.error(t("errors.saveFailed"));
+        toast.error(resolveErrorMessage(saved.error));
+        if (saved.error === "invalid_input") setSection("content");
+        if (saved.error === "empty_recipients") setSection("recipients");
         return;
       }
       if (scheduleMode === "now") {
+        const needsApproval = requiresApproval({
+          category: input.category,
+          priority: input.priority,
+          targetMode: input.targetSpec.mode,
+        });
+        if (needsApproval && !auth.can("notifications.approve")) {
+          const submitted = await submitNotificationForApproval(saved.id);
+          if ("error" in submitted) {
+            toast.error(t("errors.saveFailed"));
+            router.push(`/${locale}/notifications/${saved.id}`);
+            return;
+          }
+          toast.success(t("submittedForApproval"));
+          router.push(`/${locale}/notifications/${saved.id}`);
+          return;
+        }
         const sent = await dispatchNotificationCampaign(saved.id);
         if ("error" in sent) {
-          toast.error(t(`errors.${sent.error}`));
+          toast.error(resolveErrorMessage(sent.error));
           router.push(`/${locale}/notifications/${saved.id}`);
           return;
         }
@@ -296,6 +391,12 @@ export function CreateNotificationPageShell() {
                 <Label>{t("fieldBody")}</Label>
                 <Textarea rows={4} value={body} onChange={(e) => setBody(e.target.value)} />
               </div>
+              <NotificationMediaFields
+                bannerObjectKey={bannerObjectKey}
+                imageObjectKey={pushImageObjectKey}
+                onBannerChange={setBannerObjectKey}
+                onImageChange={setPushImageObjectKey}
+              />
             </>
           ) : null}
 
@@ -360,6 +461,9 @@ export function CreateNotificationPageShell() {
             <div className="space-y-3">
               <div className="rounded-lg border border-border bg-muted/20 p-3">
                 <p className="text-xs font-semibold text-accent">{t("previewMessage")}</p>
+                {bannerObjectKey ? (
+                  <p className="mt-2 text-xs text-muted-foreground">{t("previewBannerAttached")}</p>
+                ) : null}
                 <p className="mt-1 text-sm font-semibold">{title || t("previewTitlePlaceholder")}</p>
                 <p className="text-sm text-muted-foreground">{body || t("previewBodyPlaceholder")}</p>
               </div>
@@ -372,7 +476,7 @@ export function CreateNotificationPageShell() {
         </CardContent>
       </Card>
 
-      <AppModalFooter title={t("createTitle")} subtitle={t("createFooterHint")}>
+      <AppModalFooter asPage title={t("createTitle")} subtitle={t("createFooterHint")}>
         <Link
           href={`/${locale}/notifications`}
           className="inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-4 text-sm font-medium shadow-xs hover:bg-accent"

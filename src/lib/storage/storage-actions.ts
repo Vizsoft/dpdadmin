@@ -19,6 +19,9 @@ function canReadStorageKey(
       hasPermissionInSet(permissions, "partners.manage", isSuperAdmin)
     );
   }
+  if (key.startsWith("notifications/")) {
+    return hasPermissionInSet(permissions, "notifications.view", isSuperAdmin);
+  }
   return false;
 }
 

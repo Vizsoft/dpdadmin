@@ -21,6 +21,12 @@ export function SignUpForm() {
   const errorMessage =
     error === "missing_fields"
       ? t("missingFields")
+      : error === "invalid_email"
+        ? t("invalidEmail")
+        : error === "weak_password"
+          ? t("weakPassword")
+          : error === "email_exists"
+            ? t("emailAlreadyRegistered")
       : error === "signup_failed"
         ? t("signupFailed")
         : null;

@@ -22,6 +22,8 @@ import {
 } from "./notifications-actions";
 import { useNotificationCampaign } from "./use-notifications";
 import { previewPayloadSchema, buildActionPayload } from "./payload-contract";
+import { pickNotificationMediaByRole } from "./notification-media";
+import { NotificationMediaPreview } from "./notification-media-preview";
 
 export function NotificationDetailPageShell({ campaignId }: { campaignId: string }) {
   const t = useTranslations("pages.notifications");
@@ -47,13 +49,21 @@ export function NotificationDetailPageShell({ campaignId }: { campaignId: string
     return <p className="py-12 text-center text-sm text-muted-foreground">{t("notFound")}</p>;
   }
 
+  const awaitingApproval =
+    campaign.requires_approval &&
+    !campaign.approved_at &&
+    (campaign.status === "pending_approval" || campaign.status === "draft");
+
   const payloadPreview = previewPayloadSchema(
     buildActionPayload({
       actionType: campaign.action_type,
       actionParams: campaign.action_params,
       campaignId: campaign.id,
     }),
+    campaign.media,
   );
+  const bannerMedia = pickNotificationMediaByRole(campaign.media, "banner");
+  const pushImageMedia = pickNotificationMediaByRole(campaign.media, "image");
 
   return (
     <AppPage narrow>
@@ -66,7 +76,7 @@ export function NotificationDetailPageShell({ campaignId }: { campaignId: string
         ]}
         actions={
           <div className="flex flex-wrap gap-2">
-            {campaign.status === "pending_approval" && canApprove ? (
+            {awaitingApproval && canApprove ? (
               <>
                 <Button
                   className="h-9 cursor-pointer"
@@ -188,6 +198,22 @@ export function NotificationDetailPageShell({ campaignId }: { campaignId: string
               {campaign.sent_at ?? "—"}
             </p>
           </div>
+          {bannerMedia ? (
+            <div className="space-y-1">
+              <p className="text-xs font-semibold text-muted-foreground">{t("fieldBanner")}</p>
+              <NotificationMediaPreview objectKey={bannerMedia.object_key} alt={t("fieldBanner")} />
+            </div>
+          ) : null}
+          {pushImageMedia ? (
+            <div className="space-y-1">
+              <p className="text-xs font-semibold text-muted-foreground">{t("fieldPushImage")}</p>
+              <NotificationMediaPreview
+                objectKey={pushImageMedia.object_key}
+                alt={t("fieldPushImage")}
+                className="h-32 max-w-xs rounded-lg object-cover"
+              />
+            </div>
+          ) : null}
           <pre className="overflow-x-auto rounded-lg border border-border bg-muted/20 p-3 text-xs">
             {payloadPreview}
           </pre>

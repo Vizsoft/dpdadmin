@@ -21,8 +21,10 @@ export function buildFcmDataPayload(input: {
   action: ActionPayload;
   category: string;
   priority: string;
+  media?: Array<{ role: string; type: string; object_key: string; alt?: string }>;
+  imageUrl?: string | null;
 }): Record<string, string> {
-  return {
+  const payload: Record<string, string> = {
     campaign_id: input.campaignId,
     payload_version: String(input.action.payload_version),
     action_type: input.action.action_type,
@@ -31,15 +33,28 @@ export function buildFcmDataPayload(input: {
     priority: input.priority,
     ...(input.action.deep_link ? { deep_link: input.action.deep_link } : {}),
   };
+
+  if (input.media && input.media.length > 0) {
+    payload.media = JSON.stringify(input.media);
+  }
+  if (input.imageUrl) {
+    payload.image_url = input.imageUrl;
+  }
+
+  return payload;
 }
 
-export function previewPayloadSchema(action: ActionPayload): string {
+export function previewPayloadSchema(
+  action: ActionPayload,
+  media?: Array<{ role: string; type: string; object_key: string; alt?: string }>,
+): string {
   return JSON.stringify(
     {
       version: action.payload_version,
       action_type: action.action_type,
       action_params: action.action_params,
       deep_link: action.deep_link,
+      ...(media && media.length > 0 ? { media } : {}),
     },
     null,
     2,

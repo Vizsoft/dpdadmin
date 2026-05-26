@@ -28,15 +28,8 @@ CREATE POLICY rider_select_assigned_restaurant ON public.restaurants
   USING (
     public.is_rider()
     AND (
-      -- Legacy direct FK on drivers
-      id IN (
-        SELECT d.restaurant_id
-        FROM public.drivers d
-        WHERE d.id = auth.uid()
-          AND d.restaurant_id IS NOT NULL
-      )
       -- Same partner as the driver's primary partner
-      OR partner_id IN (
+      partner_id IN (
         SELECT d.partner_id
         FROM public.drivers d
         WHERE d.id = auth.uid()
@@ -54,14 +47,6 @@ CREATE POLICY rider_select_assigned_restaurant ON public.restaurants
         FROM public.driver_intake_restaurants dir
         JOIN public.driver_intakes di ON di.id = dir.intake_id
         WHERE di.linked_profile_id = auth.uid()
-      )
-      -- Any restaurant in the driver's assigned zone (lets the rider
-      -- discover places they can still serve before formal assignment)
-      OR zone_id IN (
-        SELECT d.zone_id
-        FROM public.drivers d
-        WHERE d.id = auth.uid()
-          AND d.zone_id IS NOT NULL
       )
     )
   );

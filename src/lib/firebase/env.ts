@@ -1,3 +1,5 @@
+import { resolveFirebaseAdminCredentials } from "./credentials";
+
 export type FirebaseServerEnv = {
   projectId: string;
   clientEmail: string;
@@ -13,10 +15,6 @@ export type NotificationRuntimeConfig = {
 let cachedFirebaseEnv: FirebaseServerEnv | null = null;
 let cachedRuntimeConfig: NotificationRuntimeConfig | null = null;
 
-function normalizePrivateKey(raw: string): string {
-  return raw.replace(/\\n/g, "\n").trim();
-}
-
 export function invalidateFirebaseEnvCache(): void {
   cachedFirebaseEnv = null;
   cachedRuntimeConfig = null;
@@ -25,21 +23,14 @@ export function invalidateFirebaseEnvCache(): void {
 export function resolveFirebaseServerEnv(): FirebaseServerEnv {
   if (cachedFirebaseEnv) return cachedFirebaseEnv;
 
-  const projectId = process.env.FIREBASE_PROJECT_ID?.trim();
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL?.trim();
-  const privateKeyRaw = process.env.FIREBASE_PRIVATE_KEY?.trim();
-
-  if (!projectId || !clientEmail || !privateKeyRaw) {
+  const config = resolveFirebaseAdminCredentials();
+  if (!config) {
     throw new Error(
-      "Firebase server env missing. Set FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY.",
+      "Firebase server env missing. Set FIREBASE_SERVICE_ACCOUNT_JSON or FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY.",
     );
   }
 
-  cachedFirebaseEnv = {
-    projectId,
-    clientEmail,
-    privateKey: normalizePrivateKey(privateKeyRaw),
-  };
+  cachedFirebaseEnv = config;
   return cachedFirebaseEnv;
 }
 

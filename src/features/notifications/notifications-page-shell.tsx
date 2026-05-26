@@ -72,7 +72,9 @@ export function NotificationsPageShell() {
   const { data: campaigns, isLoading, refetch } = useNotificationCampaigns({});
 
   const quickLinks = [
-    { href: "/notifications/new", label: t("navCreate"), icon: Plus },
+    ...(canManage
+      ? [{ href: "/notifications/new", label: t("navCreate"), icon: Plus }]
+      : []),
     { href: "/notifications/history", label: t("navHistory"), icon: History },
     { href: "/notifications/templates", label: t("navTemplates"), icon: Sparkles },
     { href: "/notifications/automations", label: t("navAutomations"), icon: Workflow },

@@ -102,7 +102,11 @@ export const queryKeys = {
       ["notifications", "list", filters] as const,
     detail: (id: string) => ["notifications", "detail", id] as const,
     templates: () => ["notifications", "templates"] as const,
+    templateDetail: (id: string) => ["notifications", "templates", id] as const,
     automations: () => ["notifications", "automations"] as const,
+    automationDetail: (id: string) => ["notifications", "automations", id] as const,
+    analyticsDaily: (filters: Record<string, unknown> = {}) =>
+      ["notifications", "analytics-daily", filters] as const,
     targetingOptions: () => ["notifications", "targeting-options"] as const,
   },
 } as const;

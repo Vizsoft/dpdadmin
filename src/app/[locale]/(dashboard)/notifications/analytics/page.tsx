@@ -1,6 +1,6 @@
 import { setRequestLocale } from "next-intl/server";
 import { requirePermission } from "@/lib/auth/require-permission";
-import { NotificationAnalyticsPageShell } from "@/features/notifications/subpages-shell";
+import { AnalyticsPageShell } from "@/features/notifications/analytics-page-shell";
 
 export default async function NotificationAnalyticsPage({
   params,
@@ -10,5 +10,5 @@ export default async function NotificationAnalyticsPage({
   const { locale } = await params;
   setRequestLocale(locale);
   await requirePermission(locale, "notifications.view");
-  return <NotificationAnalyticsPageShell />;
+  return <AnalyticsPageShell />;
 }

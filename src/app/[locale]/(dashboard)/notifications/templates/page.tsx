@@ -1,6 +1,6 @@
 import { setRequestLocale } from "next-intl/server";
 import { requirePermission } from "@/lib/auth/require-permission";
-import { NotificationTemplatesPageShell } from "@/features/notifications/subpages-shell";
+import { TemplatesListPageShell } from "@/features/notifications/templates-list-page-shell";
 
 export default async function NotificationTemplatesPage({
   params,
@@ -10,5 +10,5 @@ export default async function NotificationTemplatesPage({
   const { locale } = await params;
   setRequestLocale(locale);
   await requirePermission(locale, "notifications.view");
-  return <NotificationTemplatesPageShell />;
+  return <TemplatesListPageShell />;
 }

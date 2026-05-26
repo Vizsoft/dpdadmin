@@ -245,7 +245,7 @@ export const MENU_REGISTRY: MenuRegistryItem[] = [
     defaultLabel: "Notifications",
     defaultIcon: "Bell",
     href: "/notifications",
-    defaultGroup: "WIP",
+    defaultGroup: "operations",
     defaultOrder: 9,
     permission: "notifications.view",
   },

@@ -5,6 +5,7 @@ export type PushMessageInput = {
   title: string;
   body: string;
   data?: Record<string, string>;
+  imageUrl?: string | null;
 };
 
 export type PushBatchResult = {
@@ -38,12 +39,17 @@ export async function sendPushBatch(messages: PushMessageInput[]): Promise<PushB
     notification: {
       title: message.title,
       body: message.body,
+      ...(message.imageUrl ? { imageUrl: message.imageUrl } : {}),
     },
     data: message.data ?? {},
-    android: { priority: "high" as const },
+    android: {
+      priority: "high" as const,
+      ...(message.imageUrl ? { notification: { imageUrl: message.imageUrl } } : {}),
+    },
     apns: {
       headers: { "apns-priority": "10" },
       payload: { aps: { sound: "default" } },
+      ...(message.imageUrl ? { fcm_options: { image: message.imageUrl } } : {}),
     },
   }));
 

@@ -50,6 +50,13 @@ export type ScheduleSpec = {
   send_limit?: number | null;
 };
 
+export type NotificationMediaItem = {
+  role: "banner" | "image";
+  type: "image";
+  object_key: string;
+  alt?: string;
+};
+
 export type NotificationCampaignRow = {
   id: string;
   title: string;
@@ -63,6 +70,7 @@ export type NotificationCampaignRow = {
   action_type: NotificationActionType;
   action_params: Record<string, unknown>;
   payload_version: number;
+  media: NotificationMediaItem[];
   schedule_spec: ScheduleSpec;
   timezone: string;
   scheduled_for: string | null;
@@ -88,11 +96,13 @@ export type NotificationTemplateRow = {
   priority: NotificationPriority;
   title_template: string;
   body_template: string;
+  variable_schema: unknown[];
   action_type: NotificationActionType;
   action_params: Record<string, unknown>;
   payload_version: number;
   is_archived: boolean;
   created_at: string;
+  updated_at: string;
 };
 
 export type NotificationAutomationRow = {
@@ -104,14 +114,33 @@ export type NotificationAutomationRow = {
   trigger_config: Record<string, unknown>;
   condition_spec: Record<string, unknown>;
   target_spec: TargetSpec;
+  exclusion_spec: ExclusionSpec;
+  template_id: string | null;
+  title_template: string | null;
+  body_template: string | null;
   category: NotificationCategory;
   priority: NotificationPriority;
+  action_type: NotificationActionType;
+  action_params: Record<string, unknown>;
   throttle_minutes: number;
   cooldown_minutes: number;
+  max_retries: number;
   consecutive_failures: number;
   last_run_at: string | null;
   next_run_at: string | null;
   created_at: string;
+  updated_at: string;
+};
+
+export type NotificationAnalyticsDailyRow = {
+  metric_date: string;
+  campaign_id: string;
+  sent_count: number;
+  delivered_count: number;
+  opened_count: number;
+  clicked_count: number;
+  failed_count: number;
+  campaign?: { title: string; category: NotificationCategory } | null;
 };
 
 export type NotificationDashboardKpis = {
@@ -139,6 +168,7 @@ export type NotificationActionError =
   | "invalid_input"
   | "approval_required"
   | "empty_audience"
+  | "empty_recipients"
   | "dispatch_failed"
   | "save_failed";
 
@@ -152,10 +182,43 @@ export type SaveCampaignInput = {
   exclusionSpec?: ExclusionSpec;
   actionType: NotificationActionType;
   actionParams?: Record<string, unknown>;
+  media?: NotificationMediaItem[];
   scheduleSpec: ScheduleSpec;
   timezone?: string;
   expiresAt?: string | null;
   sendLimit?: number | null;
+};
+
+export type SaveTemplateInput = {
+  name: string;
+  description?: string | null;
+  category: NotificationCategory;
+  priority: NotificationPriority;
+  titleTemplate: string;
+  bodyTemplate: string;
+  variableSchema?: unknown[];
+  actionType: NotificationActionType;
+  actionParams?: Record<string, unknown>;
+};
+
+export type SaveAutomationInput = {
+  name: string;
+  description?: string | null;
+  triggerType: NotificationAutomationTrigger;
+  triggerConfig?: Record<string, unknown>;
+  conditionSpec?: Record<string, unknown>;
+  targetSpec?: TargetSpec;
+  exclusionSpec?: ExclusionSpec;
+  templateId?: string | null;
+  titleTemplate?: string | null;
+  bodyTemplate?: string | null;
+  category: NotificationCategory;
+  priority: NotificationPriority;
+  actionType?: NotificationActionType;
+  actionParams?: Record<string, unknown>;
+  throttleMinutes?: number;
+  cooldownMinutes?: number;
+  maxRetries?: number;
 };
 
 /** @deprecated Use NotificationCampaignRow */

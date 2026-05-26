@@ -83,6 +83,16 @@ export async function signUp(
   const { data, error } = await supabase.auth.signUp({ email, password });
 
   if (error) {
+    const message = error.message.toLowerCase();
+    if (message.includes("invalid") && message.includes("email")) {
+      return { error: "invalid_email" };
+    }
+    if (message.includes("password") && (message.includes("at least") || message.includes("weak"))) {
+      return { error: "weak_password" };
+    }
+    if (message.includes("already registered") || message.includes("already exists")) {
+      return { error: "email_exists" };
+    }
     return { error: "signup_failed" };
   }
 

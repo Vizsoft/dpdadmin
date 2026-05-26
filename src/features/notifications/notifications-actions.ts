@@ -7,15 +7,25 @@ import { getSessionUser } from "@/lib/auth/get-session";
 import { hasPermissionInSet } from "@/lib/auth/permissions";
 import { buildActionPayload, buildFcmDataPayload } from "./payload-contract";
 import { DEFAULT_TIMEZONE, PAYLOAD_VERSION, requiresApproval } from "./constants";
+import {
+  parseNotificationMedia,
+  pickPushNotificationImageKey,
+  resolveNotificationMediaReadUrl,
+} from "./notification-media";
+import { uploadNotificationMediaFile } from "./notification-media-storage";
 import { sendPushBatch } from "@/lib/firebase/fcm-provider";
 import type {
   NotificationActionError,
+  NotificationAnalyticsDailyRow,
   NotificationAutomationRow,
   NotificationCampaignRow,
+  NotificationCategory,
   NotificationDashboardKpis,
   NotificationListFilters,
   NotificationTemplateRow,
+  SaveAutomationInput,
   SaveCampaignInput,
+  SaveTemplateInput,
   TargetSpec,
 } from "./types";
 
@@ -73,12 +83,96 @@ async function requireNotificationsApprove() {
   return session;
 }
 
+async function ensureCampaignApprovedForDispatch(
+  campaignId: string,
+  session: NonNullable<Awaited<ReturnType<typeof requireNotificationsSend>>>,
+): Promise<{ ok: true } | { error: NotificationActionError }> {
+  const supabase = await notificationsDb();
+  const { data: campaign } = await supabase
+    .from("notification_campaigns")
+    .select("requires_approval, approved_at, status")
+    .eq("id", campaignId)
+    .maybeSingle();
+  if (!campaign) return { error: "not_found" };
+
+  if (!campaign.requires_approval || campaign.approved_at) {
+    return { ok: true };
+  }
+
+  if (
+    !hasPermissionInSet(session.permissions, "notifications.approve", session.isSuperAdmin)
+  ) {
+    return { error: "approval_required" };
+  }
+
+  const { error } = await supabase
+    .from("notification_campaigns")
+    .update({
+      approved_by: session.id,
+      approved_at: new Date().toISOString(),
+      updated_by: session.id,
+      status: ["draft", "pending_approval"].includes(campaign.status)
+        ? "queued"
+        : campaign.status,
+    })
+    .eq("id", campaignId)
+    .is("approved_at", null);
+  if (error) return { error: "save_failed" };
+
+  await logAdminMutation({
+    action: "update",
+    entityType: "notification_campaign",
+    entityId: campaignId,
+    routeName: "notifications",
+    context: { step: "auto_approve_on_dispatch" },
+  });
+  return { ok: true };
+}
+
+async function estimateAudienceCount(
+  supabase: Awaited<ReturnType<typeof notificationsDb>>,
+  targetSpec: TargetSpec,
+  exclusionSpec: Record<string, unknown> = {},
+): Promise<number> {
+  const { data, error } = await supabase.rpc("estimate_notification_audience", {
+    p_target_spec: targetSpec,
+    p_exclusion_spec: exclusionSpec,
+  });
+  if (error) {
+    console.error("[notifications] estimate_notification_audience failed:", error.message);
+    return 0;
+  }
+  return Number(data ?? 0);
+}
+
+function validateCampaignInput(input: SaveCampaignInput): NotificationActionError | null {
+  if (!input.title.trim() || !input.body.trim()) {
+    return "invalid_input";
+  }
+
+  const mode = input.targetSpec.mode;
+  if (mode === "custom" && !(input.targetSpec.driver_ids?.length ?? 0)) {
+    return "empty_recipients";
+  }
+  if (mode === "zone" && !(input.targetSpec.zone_ids?.length ?? 0)) {
+    return "empty_recipients";
+  }
+  if (mode === "partner" && !(input.targetSpec.partner_ids?.length ?? 0)) {
+    return "empty_recipients";
+  }
+
+  return null;
+}
+
 function kuwaitToday(): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: KUWAIT_TZ }).format(new Date());
 }
 
 function mapCampaign(row: Record<string, unknown>): NotificationCampaignRow {
-  return row as unknown as NotificationCampaignRow;
+  return {
+    ...(row as unknown as NotificationCampaignRow),
+    media: parseNotificationMedia(row.media),
+  };
 }
 
 export async function getNotificationDashboardKpis(): Promise<NotificationDashboardKpis> {
@@ -211,6 +305,24 @@ export async function estimateNotificationAudience(
   return Number(data ?? 0);
 }
 
+export async function uploadNotificationMedia(
+  formData: FormData,
+): Promise<
+  { objectKey: string } | { error: NotificationActionError | "file_too_large" | "invalid_type" | "upload_failed" }
+> {
+  const session = await requireNotificationsManage();
+  if (!session) return { error: "not_authorized" };
+
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) return { error: "invalid_input" };
+
+  const result = await uploadNotificationMediaFile(file, session.id);
+  if (result.error) return { error: result.error };
+  if (!result.objectKey) return { error: "invalid_input" };
+
+  return { objectKey: result.objectKey };
+}
+
 export async function saveNotificationCampaign(
   input: SaveCampaignInput,
   campaignId?: string | null,
@@ -218,9 +330,8 @@ export async function saveNotificationCampaign(
   const session = await requireNotificationsManage();
   if (!session) return { error: "not_authorized" };
 
-  if (!input.title.trim() || !input.body.trim()) {
-    return { error: "invalid_input" };
-  }
+  const validationError = validateCampaignInput(input);
+  if (validationError) return { error: validationError };
 
   const needsApproval = requiresApproval({
     category: input.category,
@@ -229,7 +340,8 @@ export async function saveNotificationCampaign(
   });
 
   const supabase = await notificationsDb();
-  const audience = await estimateNotificationAudience(
+  const audience = await estimateAudienceCount(
+    supabase,
     input.targetSpec,
     input.exclusionSpec ?? {},
   );
@@ -245,6 +357,7 @@ export async function saveNotificationCampaign(
     action_type: input.actionType,
     action_params: input.actionParams ?? {},
     payload_version: PAYLOAD_VERSION,
+    media: input.media ?? [],
     schedule_spec: input.scheduleSpec,
     timezone: input.timezone ?? KUWAIT_TZ,
     scheduled_for: input.scheduleSpec.scheduled_for ?? null,
@@ -279,7 +392,10 @@ export async function saveNotificationCampaign(
     .insert({ ...row, created_by: session.id, status: "draft" })
     .select("id")
     .single();
-  if (error || !data) return { error: "save_failed" };
+  if (error || !data) {
+    console.error("[notifications] save campaign insert failed:", error?.message);
+    return { error: "save_failed" };
+  }
   await logAdminMutation({
     action: "create",
     entityType: "notification_campaign",
@@ -344,7 +460,7 @@ export async function approveNotificationCampaign(
       updated_by: session.id,
     })
     .eq("id", campaignId)
-    .eq("status", "pending_approval");
+    .in("status", ["draft", "pending_approval"]);
   if (error) return { error: "save_failed" };
   await logAdminMutation({
     action: "update",
@@ -361,6 +477,10 @@ export async function dispatchNotificationCampaign(
 ): Promise<{ ok: true; sent: number; failed: number } | { error: NotificationActionError }> {
   const session = await requireNotificationsSend();
   if (!session) return { error: "not_authorized" };
+
+  const approval = await ensureCampaignApprovedForDispatch(campaignId, session);
+  if ("error" in approval) return approval;
+
   return executeNotificationDispatch(campaignId, session.id);
 }
 
@@ -368,7 +488,14 @@ async function executeNotificationDispatch(
   campaignId: string,
   actorUserId: string | null,
 ): Promise<{ ok: true; sent: number; failed: number } | { error: NotificationActionError }> {
-  const service = notificationsAdminDb();
+  let service;
+  try {
+    service = notificationsAdminDb();
+  } catch (error) {
+    console.error("[notifications] admin client unavailable:", error);
+    return { error: "dispatch_failed" };
+  }
+
   const { data: campaign, error: campaignError } = await service
     .from("notification_campaigns")
     .select("*")
@@ -448,11 +575,18 @@ async function executeNotificationDispatch(
     actionParams: (campaign.action_params ?? {}) as Record<string, unknown>,
     campaignId,
   });
+  const campaignMedia = parseNotificationMedia(campaign.media);
+  const pushImageKey = pickPushNotificationImageKey(campaignMedia);
+  const pushImageUrl = pushImageKey
+    ? await resolveNotificationMediaReadUrl(pushImageKey)
+    : null;
   const dataPayload = buildFcmDataPayload({
     campaignId,
     action,
     category: campaign.category,
     priority: campaign.priority,
+    media: campaignMedia,
+    imageUrl: pushImageUrl,
   });
 
   const messages = recipientIds
@@ -464,6 +598,7 @@ async function executeNotificationDispatch(
         title: campaign.title,
         body: campaign.body,
         data: dataPayload,
+        imageUrl: pushImageUrl,
         driverId,
         pushTokenId: tokenRow.id,
       };
@@ -473,6 +608,7 @@ async function executeNotificationDispatch(
     title: string;
     body: string;
     data: Record<string, string>;
+    imageUrl: string | null;
     driverId: string;
     pushTokenId: string;
   }>;
@@ -562,6 +698,7 @@ export async function cloneNotificationCampaign(
       action_type: source.action_type,
       action_params: source.action_params,
       payload_version: source.payload_version,
+      media: source.media ?? [],
       schedule_spec: source.schedule_spec,
       timezone: source.timezone,
       requires_approval: source.requires_approval,
@@ -696,7 +833,6 @@ export async function rejectNotificationCampaign(
     .update({
       status: "cancelled",
       cancelled_at: new Date().toISOString(),
-      last_error: reason ?? "Rejected by approver",
       updated_by: session.id,
     })
     .eq("id", campaignId)
@@ -783,63 +919,307 @@ export async function exportNotificationCampaignsCsv(
   return { csv: [header.join(","), ...lines].join("\n") };
 }
 
-export async function saveNotificationTemplate(input: {
-  name: string;
-  category: string;
-  titleTemplate: string;
-  bodyTemplate: string;
-  actionType?: string;
-  actionParams?: Record<string, unknown>;
-}): Promise<{ id: string } | { error: NotificationActionError }> {
+export async function getNotificationTemplate(
+  id: string,
+): Promise<NotificationTemplateRow | null> {
+  await requireNotificationsView();
+  const supabase = await notificationsDb();
+  const { data, error } = await supabase
+    .from("notification_templates")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data ? (data as NotificationTemplateRow) : null;
+}
+
+export async function getNotificationAutomation(
+  id: string,
+): Promise<NotificationAutomationRow | null> {
+  await requireNotificationsView();
+  const supabase = await notificationsDb();
+  const { data, error } = await supabase
+    .from("notification_automations")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) return null;
+  return {
+    ...(data as NotificationAutomationRow),
+    target_spec: (data.target_spec ?? { mode: "all" }) as TargetSpec,
+    exclusion_spec: (data.exclusion_spec ?? {}) as NotificationAutomationRow["exclusion_spec"],
+  };
+}
+
+export async function listNotificationAnalyticsDaily(filters: {
+  fromDate?: string;
+  toDate?: string;
+} = {}): Promise<NotificationAnalyticsDailyRow[]> {
+  await requireNotificationsView();
+  const supabase = await notificationsDb();
+  let query = supabase
+    .from("notification_analytics_daily")
+    .select("*, notification_campaigns(title, category)")
+    .order("metric_date", { ascending: false })
+    .limit(200);
+  if (filters.fromDate) query = query.gte("metric_date", filters.fromDate);
+  if (filters.toDate) query = query.lte("metric_date", filters.toDate);
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row: Record<string, unknown>) => {
+    const rawCampaign = row.notification_campaigns;
+    const campaign = Array.isArray(rawCampaign) ? rawCampaign[0] : rawCampaign;
+    return {
+      metric_date: String(row.metric_date),
+      campaign_id: String(row.campaign_id),
+      sent_count: Number(row.sent_count ?? 0),
+      delivered_count: Number(row.delivered_count ?? 0),
+      opened_count: Number(row.opened_count ?? 0),
+      clicked_count: Number(row.clicked_count ?? 0),
+      failed_count: Number(row.failed_count ?? 0),
+      campaign:
+        campaign && typeof campaign === "object" && "title" in campaign
+          ? {
+              title: String((campaign as { title: string }).title),
+              category: (campaign as { category: NotificationCategory }).category,
+            }
+          : null,
+    } satisfies NotificationAnalyticsDailyRow;
+  });
+}
+
+export async function listNotificationAutomationRuns(
+  automationId: string,
+): Promise<Array<Record<string, unknown>>> {
+  await requireNotificationsView();
+  const supabase = await notificationsDb();
+  const { data, error } = await supabase
+    .from("notification_automation_runs")
+    .select("*")
+    .eq("automation_id", automationId)
+    .order("started_at", { ascending: false })
+    .limit(50);
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+export async function saveNotificationTemplate(
+  input: SaveTemplateInput,
+): Promise<{ id: string } | { error: NotificationActionError }> {
   const session = await requireNotificationsManage();
   if (!session) return { error: "not_authorized" };
+  if (!input.name.trim() || !input.titleTemplate.trim() || !input.bodyTemplate.trim()) {
+    return { error: "invalid_input" };
+  }
 
   const supabase = await notificationsDb();
   const { data, error } = await supabase
     .from("notification_templates")
     .insert({
       name: input.name.trim(),
+      description: input.description?.trim() || null,
       category: input.category,
+      priority: input.priority,
       title_template: input.titleTemplate.trim(),
       body_template: input.bodyTemplate.trim(),
-      action_type: input.actionType ?? "open_screen",
+      variable_schema: input.variableSchema ?? [],
+      action_type: input.actionType,
       action_params: input.actionParams ?? {},
       created_by: session.id,
     })
     .select("id")
     .single();
   if (error || !data) return { error: "save_failed" };
+
+  await logAdminMutation({
+    action: "create",
+    entityType: "notification_template",
+    entityId: data.id,
+    routeName: "notifications/templates",
+    context: { name: input.name },
+  });
   return { id: data.id };
 }
 
-export async function saveNotificationAutomation(input: {
-  name: string;
-  triggerType: string;
-  category?: string;
-  priority?: string;
-  throttleMinutes?: number;
-  cooldownMinutes?: number;
-}): Promise<{ id: string } | { error: NotificationActionError }> {
+export async function updateNotificationTemplate(
+  id: string,
+  input: SaveTemplateInput,
+): Promise<{ id: string } | { error: NotificationActionError }> {
   const session = await requireNotificationsManage();
   if (!session) return { error: "not_authorized" };
+  if (!input.name.trim() || !input.titleTemplate.trim() || !input.bodyTemplate.trim()) {
+    return { error: "invalid_input" };
+  }
+
+  const supabase = await notificationsDb();
+  const { data, error } = await supabase
+    .from("notification_templates")
+    .update({
+      name: input.name.trim(),
+      description: input.description?.trim() || null,
+      category: input.category,
+      priority: input.priority,
+      title_template: input.titleTemplate.trim(),
+      body_template: input.bodyTemplate.trim(),
+      variable_schema: input.variableSchema ?? [],
+      action_type: input.actionType,
+      action_params: input.actionParams ?? {},
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .eq("is_archived", false)
+    .select("id")
+    .maybeSingle();
+  if (error || !data) return { error: "not_found" };
+
+  await logAdminMutation({
+    action: "update",
+    entityType: "notification_template",
+    entityId: id,
+    routeName: "notifications/templates",
+    context: { name: input.name },
+  });
+  return { id: data.id };
+}
+
+export async function archiveNotificationTemplate(
+  id: string,
+): Promise<{ ok: true } | { error: NotificationActionError }> {
+  const session = await requireNotificationsManage();
+  if (!session) return { error: "not_authorized" };
+
+  const supabase = await notificationsDb();
+  const { error } = await supabase
+    .from("notification_templates")
+    .update({ is_archived: true, updated_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) return { error: "save_failed" };
+
+  await logAdminMutation({
+    action: "delete",
+    entityType: "notification_template",
+    entityId: id,
+    routeName: "notifications/templates",
+    context: { archived: true },
+  });
+  return { ok: true };
+}
+
+export async function saveNotificationAutomation(
+  input: SaveAutomationInput,
+): Promise<{ id: string } | { error: NotificationActionError }> {
+  const session = await requireNotificationsManage();
+  if (!session) return { error: "not_authorized" };
+  if (!input.name.trim()) return { error: "invalid_input" };
 
   const supabase = await notificationsDb();
   const { data, error } = await supabase
     .from("notification_automations")
     .insert({
       name: input.name.trim(),
+      description: input.description?.trim() || null,
       trigger_type: input.triggerType,
-      category: input.category ?? "reminder",
-      priority: input.priority ?? "normal",
+      trigger_config: input.triggerConfig ?? {},
+      condition_spec: input.conditionSpec ?? {},
+      target_spec: input.targetSpec ?? { mode: "all" },
+      exclusion_spec: input.exclusionSpec ?? {},
+      template_id: input.templateId ?? null,
+      title_template: input.titleTemplate?.trim() || null,
+      body_template: input.bodyTemplate?.trim() || null,
+      category: input.category,
+      priority: input.priority,
+      action_type: input.actionType ?? "open_screen",
+      action_params: input.actionParams ?? {},
       throttle_minutes: input.throttleMinutes ?? 60,
       cooldown_minutes: input.cooldownMinutes ?? 1440,
+      max_retries: input.maxRetries ?? 3,
       status: "draft",
       created_by: session.id,
     })
     .select("id")
     .single();
   if (error || !data) return { error: "save_failed" };
+
+  await logAdminMutation({
+    action: "create",
+    entityType: "notification_automation",
+    entityId: data.id,
+    routeName: "notifications/automations",
+    context: { name: input.name, trigger: input.triggerType },
+  });
   return { id: data.id };
+}
+
+export async function updateNotificationAutomation(
+  id: string,
+  input: SaveAutomationInput,
+): Promise<{ id: string } | { error: NotificationActionError }> {
+  const session = await requireNotificationsManage();
+  if (!session) return { error: "not_authorized" };
+  if (!input.name.trim()) return { error: "invalid_input" };
+
+  const supabase = await notificationsDb();
+  const { data, error } = await supabase
+    .from("notification_automations")
+    .update({
+      name: input.name.trim(),
+      description: input.description?.trim() || null,
+      trigger_type: input.triggerType,
+      trigger_config: input.triggerConfig ?? {},
+      condition_spec: input.conditionSpec ?? {},
+      target_spec: input.targetSpec ?? { mode: "all" },
+      exclusion_spec: input.exclusionSpec ?? {},
+      template_id: input.templateId ?? null,
+      title_template: input.titleTemplate?.trim() || null,
+      body_template: input.bodyTemplate?.trim() || null,
+      category: input.category,
+      priority: input.priority,
+      action_type: input.actionType ?? "open_screen",
+      action_params: input.actionParams ?? {},
+      throttle_minutes: input.throttleMinutes ?? 60,
+      cooldown_minutes: input.cooldownMinutes ?? 1440,
+      max_retries: input.maxRetries ?? 3,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .neq("status", "archived")
+    .select("id")
+    .maybeSingle();
+  if (error || !data) return { error: "not_found" };
+
+  await logAdminMutation({
+    action: "update",
+    entityType: "notification_automation",
+    entityId: id,
+    routeName: "notifications/automations",
+    context: { name: input.name },
+  });
+  return { id: data.id };
+}
+
+export async function setNotificationAutomationStatus(
+  id: string,
+  status: "active" | "paused" | "archived" | "draft",
+): Promise<{ ok: true } | { error: NotificationActionError }> {
+  const session = await requireNotificationsManage();
+  if (!session) return { error: "not_authorized" };
+
+  const supabase = await notificationsDb();
+  const { error } = await supabase
+    .from("notification_automations")
+    .update({ status, updated_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) return { error: "save_failed" };
+
+  await logAdminMutation({
+    action: "update",
+    entityType: "notification_automation",
+    entityId: id,
+    routeName: "notifications/automations",
+    context: { status },
+  });
+  return { ok: true };
 }
 
 export async function listNotificationDispatchHistory(
@@ -908,9 +1288,12 @@ export async function createNotificationAutomation(input: {
 }): Promise<{ id: string } | { error: NotificationActionError }> {
   return saveNotificationAutomation({
     name: input.name,
-    triggerType: input.triggerKey,
+    triggerType: input.triggerKey as SaveAutomationInput["triggerType"],
+    category: "reminder",
+    priority: "normal",
     cooldownMinutes: Math.ceil((input.cooldownSeconds ?? 900) / 60),
-    throttleMinutes: Math.ceil(60 / Math.max(input.throttlePerHour ?? 100, 1)),
+    throttleMinutes: Math.max(1, Math.ceil(60 / Math.max(input.throttlePerHour ?? 100, 1))),
+    maxRetries: input.maxRetries ?? 3,
   });
 }
 
@@ -923,9 +1306,11 @@ export async function createNotificationTemplate(input: {
 }): Promise<{ template: { key: string; id: string } } | { error: NotificationActionError }> {
   const result = await saveNotificationTemplate({
     name: input.name,
-    category: input.category,
+    category: input.category as SaveTemplateInput["category"],
+    priority: "normal",
     titleTemplate: input.titleTemplate,
     bodyTemplate: input.bodyTemplate,
+    actionType: "open_screen",
   });
   if ("error" in result) return result;
   return { template: { key: input.key || input.name, id: result.id } };

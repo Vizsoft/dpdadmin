@@ -1,8 +1,15 @@
 # Get DPD Admin running (do this now)
 
+## Environment split (implemented)
+
+- **Production:** Supabase `ytfmsgckjatiserpgdbz` + R2 bucket `dpd-private`
+- **Test/local:** Supabase `cgpioijpvriiqqnauwlx` + R2 bucket `dpd-private-dev`
+- Keep Google Maps / MapTiler / R2 account credentials shared.
+- Only Supabase keys + `R2_BUCKET_NAME` differ by environment.
+
 ## Step 1 — Add service role key locally
 
-1. Open [Supabase Dashboard](https://supabase.com/dashboard/project/ytfmsgckjatiserpgdbz/settings/api)
+1. Open [Supabase Dashboard](https://supabase.com/dashboard/project/cgpioijpvriiqqnauwlx/settings/api)
 2. Copy **service_role** key (secret)
 3. Paste into `dpdadmin/.env.local` as `SUPABASE_SERVICE_ROLE_KEY=...`
 4. Set `ADMIN_EMAIL` and `ADMIN_PASSWORD` (min 8 chars) in the same file
@@ -13,11 +20,11 @@ Link Supabase CLI (one time) and push migrations (includes `app_settings`, RBAC 
 
 ```bash
 cd dpdadmin
-npx supabase link --project-ref ytfmsgckjatiserpgdbz
+npx supabase link --project-ref cgpioijpvriiqqnauwlx
 npx supabase db push
 ```
 
-If CLI is unavailable, run SQL from `supabase/migrations/` in the [SQL editor](https://supabase.com/dashboard/project/ytfmsgckjatiserpgdbz/sql). Required migrations:
+If CLI is unavailable, run SQL from `supabase/migrations/` in the [SQL editor](https://supabase.com/dashboard/project/cgpioijpvriiqqnauwlx/sql). Required migrations:
 
 - `20260518120000_app_settings.sql` — branding
 - `20260519000000_rbac_approval_setup.sql` — roles, permissions, sign-up approval, super-admin claim, maintenance mode

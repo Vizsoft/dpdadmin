@@ -244,12 +244,12 @@ export type Database = {
           app_name: string
           app_subtitle: string
           driver_app_delivery_proximity_meters: number
+          driver_app_icon_url: string | null
           driver_app_login_hint: string
           driver_app_logo_url: string | null
           driver_app_maintenance_message: string
           driver_app_maintenance_mode: boolean
           driver_app_splash_url: string | null
-          driver_app_icon_url: string | null
           driver_app_title: string
           font_family: string
           id: number
@@ -266,12 +266,12 @@ export type Database = {
           app_name?: string
           app_subtitle?: string
           driver_app_delivery_proximity_meters?: number
+          driver_app_icon_url?: string | null
           driver_app_login_hint?: string
           driver_app_logo_url?: string | null
           driver_app_maintenance_message?: string
           driver_app_maintenance_mode?: boolean
           driver_app_splash_url?: string | null
-          driver_app_icon_url?: string | null
           driver_app_title?: string
           font_family?: string
           id?: number
@@ -288,12 +288,12 @@ export type Database = {
           app_name?: string
           app_subtitle?: string
           driver_app_delivery_proximity_meters?: number
+          driver_app_icon_url?: string | null
           driver_app_login_hint?: string
           driver_app_logo_url?: string | null
           driver_app_maintenance_message?: string
           driver_app_maintenance_mode?: boolean
           driver_app_splash_url?: string | null
-          driver_app_icon_url?: string | null
           driver_app_title?: string
           font_family?: string
           id?: number
@@ -834,6 +834,80 @@ export type Database = {
           },
         ]
       }
+      driver_attendance: {
+        Row: {
+          attendance_date: string
+          corrected_at: string | null
+          corrected_by: string | null
+          created_at: string
+          driver_id: string
+          first_online_at: string | null
+          id: string
+          is_manual: boolean
+          is_validated: boolean
+          last_online_at: string | null
+          manual_reason: string | null
+          online_seconds: number
+          status: string
+          total_ping_count: number
+          updated_at: string
+          valid_ping_count: number
+          validated_at: string | null
+          validation_ref_id: string | null
+          validation_source: string | null
+        }
+        Insert: {
+          attendance_date: string
+          corrected_at?: string | null
+          corrected_by?: string | null
+          created_at?: string
+          driver_id: string
+          first_online_at?: string | null
+          id?: string
+          is_manual?: boolean
+          is_validated?: boolean
+          last_online_at?: string | null
+          manual_reason?: string | null
+          online_seconds?: number
+          status?: string
+          total_ping_count?: number
+          updated_at?: string
+          valid_ping_count?: number
+          validated_at?: string | null
+          validation_ref_id?: string | null
+          validation_source?: string | null
+        }
+        Update: {
+          attendance_date?: string
+          corrected_at?: string | null
+          corrected_by?: string | null
+          created_at?: string
+          driver_id?: string
+          first_online_at?: string | null
+          id?: string
+          is_manual?: boolean
+          is_validated?: boolean
+          last_online_at?: string | null
+          manual_reason?: string | null
+          online_seconds?: number
+          status?: string
+          total_ping_count?: number
+          updated_at?: string
+          valid_ping_count?: number
+          validated_at?: string | null
+          validation_ref_id?: string | null
+          validation_source?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_attendance_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       driver_documents: {
         Row: {
           created_at: string
@@ -875,6 +949,8 @@ export type Database = {
       driver_earnings_daily: {
         Row: {
           base_kwd: number
+          breakdown: Json
+          calculated_at: string | null
           created_at: string
           deliveries: number
           driver_id: string
@@ -889,6 +965,8 @@ export type Database = {
         }
         Insert: {
           base_kwd?: number
+          breakdown?: Json
+          calculated_at?: string | null
           created_at?: string
           deliveries?: number
           driver_id: string
@@ -903,6 +981,8 @@ export type Database = {
         }
         Update: {
           base_kwd?: number
+          breakdown?: Json
+          calculated_at?: string | null
           created_at?: string
           deliveries?: number
           driver_id?: string
@@ -961,8 +1041,8 @@ export type Database = {
       driver_intakes: {
         Row: {
           archived_at: string | null
-          avatar_url: string | null
           assets_issued: Json
+          avatar_url: string | null
           civil_id: string
           created_at: string
           driver_code: string
@@ -982,8 +1062,8 @@ export type Database = {
         }
         Insert: {
           archived_at?: string | null
-          avatar_url?: string | null
           assets_issued?: Json
+          avatar_url?: string | null
           civil_id: string
           created_at?: string
           driver_code: string
@@ -1003,8 +1083,8 @@ export type Database = {
         }
         Update: {
           archived_at?: string | null
-          avatar_url?: string | null
           assets_issued?: Json
+          avatar_url?: string | null
           civil_id?: string
           created_at?: string
           driver_code?: string
@@ -1170,6 +1250,140 @@ export type Database = {
           },
         ]
       }
+      driver_payouts: {
+        Row: {
+          adjustment_kwd: number
+          base_kwd: number
+          breakdown_snapshot: Json
+          created_at: string
+          delivery_count: number
+          driver_id: string
+          id: string
+          incentive_kwd: number
+          loan_deduction_kwd: number
+          net_payable_kwd: number
+          notes: string | null
+          paid_at: string | null
+          penalty_kwd: number
+          period_end: string
+          period_start: string
+          reimbursement_kwd: number
+          run_id: string
+          status: Database["public"]["Enums"]["payout_run_status"]
+          updated_at: string
+        }
+        Insert: {
+          adjustment_kwd?: number
+          base_kwd?: number
+          breakdown_snapshot?: Json
+          created_at?: string
+          delivery_count?: number
+          driver_id: string
+          id?: string
+          incentive_kwd?: number
+          loan_deduction_kwd?: number
+          net_payable_kwd?: number
+          notes?: string | null
+          paid_at?: string | null
+          penalty_kwd?: number
+          period_end: string
+          period_start: string
+          reimbursement_kwd?: number
+          run_id: string
+          status?: Database["public"]["Enums"]["payout_run_status"]
+          updated_at?: string
+        }
+        Update: {
+          adjustment_kwd?: number
+          base_kwd?: number
+          breakdown_snapshot?: Json
+          created_at?: string
+          delivery_count?: number
+          driver_id?: string
+          id?: string
+          incentive_kwd?: number
+          loan_deduction_kwd?: number
+          net_payable_kwd?: number
+          notes?: string | null
+          paid_at?: string | null
+          penalty_kwd?: number
+          period_end?: string
+          period_start?: string
+          reimbursement_kwd?: number
+          run_id?: string
+          status?: Database["public"]["Enums"]["payout_run_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_payouts_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "driver_payouts_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "payout_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      driver_push_tokens: {
+        Row: {
+          app_version: string | null
+          created_at: string
+          device_id: string | null
+          driver_id: string
+          id: string
+          invalidated_at: string | null
+          is_active: boolean
+          last_seen_at: string
+          platform: string
+          provider: string
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          app_version?: string | null
+          created_at?: string
+          device_id?: string | null
+          driver_id: string
+          id?: string
+          invalidated_at?: string | null
+          is_active?: boolean
+          last_seen_at?: string
+          platform?: string
+          provider?: string
+          token: string
+          updated_at?: string
+        }
+        Update: {
+          app_version?: string | null
+          created_at?: string
+          device_id?: string | null
+          driver_id?: string
+          id?: string
+          invalidated_at?: string | null
+          is_active?: boolean
+          last_seen_at?: string
+          platform?: string
+          provider?: string
+          token?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_push_tokens_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       driver_restaurants: {
         Row: {
           created_at: string
@@ -1298,6 +1512,8 @@ export type Database = {
         Row: {
           app_passcode: string | null
           archived_at: string | null
+          avatar_object_key: string | null
+          avatar_updated_at: string | null
           base_earnings_kwd: number | null
           blocked_at: string | null
           blocked_by: string | null
@@ -1322,6 +1538,8 @@ export type Database = {
         Insert: {
           app_passcode?: string | null
           archived_at?: string | null
+          avatar_object_key?: string | null
+          avatar_updated_at?: string | null
           base_earnings_kwd?: number | null
           blocked_at?: string | null
           blocked_by?: string | null
@@ -1346,6 +1564,8 @@ export type Database = {
         Update: {
           app_passcode?: string | null
           archived_at?: string | null
+          avatar_object_key?: string | null
+          avatar_updated_at?: string | null
           base_earnings_kwd?: number | null
           blocked_at?: string | null
           blocked_by?: string | null
@@ -1838,6 +2058,737 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_analytics_daily: {
+        Row: {
+          campaign_id: string
+          clicked_count: number
+          created_at: string
+          delivered_count: number
+          failed_count: number
+          metric_date: string
+          opened_count: number
+          sent_count: number
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          clicked_count?: number
+          created_at?: string
+          delivered_count?: number
+          failed_count?: number
+          metric_date: string
+          opened_count?: number
+          sent_count?: number
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          clicked_count?: number
+          created_at?: string
+          delivered_count?: number
+          failed_count?: number
+          metric_date?: string
+          opened_count?: number
+          sent_count?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_analytics_daily_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "notification_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_audience_snapshots: {
+        Row: {
+          campaign_id: string
+          compiled_at: string
+          created_at: string
+          exclusion_spec: Json
+          id: string
+          recipient_count: number
+          recipient_ids: string[]
+          target_spec: Json
+        }
+        Insert: {
+          campaign_id: string
+          compiled_at?: string
+          created_at?: string
+          exclusion_spec?: Json
+          id?: string
+          recipient_count?: number
+          recipient_ids?: string[]
+          target_spec?: Json
+        }
+        Update: {
+          campaign_id?: string
+          compiled_at?: string
+          created_at?: string
+          exclusion_spec?: Json
+          id?: string
+          recipient_count?: number
+          recipient_ids?: string[]
+          target_spec?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_audience_snapshots_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "notification_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_automation_runs: {
+        Row: {
+          automation_id: string
+          campaign_id: string | null
+          created_at: string
+          error_summary: string | null
+          failed_count: number
+          finished_at: string | null
+          id: string
+          matched_count: number
+          sent_count: number
+          started_at: string
+          status: string
+        }
+        Insert: {
+          automation_id: string
+          campaign_id?: string | null
+          created_at?: string
+          error_summary?: string | null
+          failed_count?: number
+          finished_at?: string | null
+          id?: string
+          matched_count?: number
+          sent_count?: number
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          automation_id?: string
+          campaign_id?: string | null
+          created_at?: string
+          error_summary?: string | null
+          failed_count?: number
+          finished_at?: string | null
+          id?: string
+          matched_count?: number
+          sent_count?: number
+          started_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_automation_runs_automation_id_fkey"
+            columns: ["automation_id"]
+            isOneToOne: false
+            referencedRelation: "notification_automations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_automation_runs_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "notification_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_automations: {
+        Row: {
+          action_params: Json
+          action_type: Database["public"]["Enums"]["notification_action_type"]
+          body_template: string | null
+          category: Database["public"]["Enums"]["notification_category"]
+          condition_spec: Json
+          consecutive_failures: number
+          cooldown_minutes: number
+          created_at: string
+          created_by: string | null
+          description: string | null
+          exclusion_spec: Json
+          failure_threshold: number
+          id: string
+          last_run_at: string | null
+          max_retries: number
+          name: string
+          next_run_at: string | null
+          priority: Database["public"]["Enums"]["notification_priority"]
+          status: Database["public"]["Enums"]["notification_automation_status"]
+          target_spec: Json
+          template_id: string | null
+          throttle_minutes: number
+          title_template: string | null
+          trigger_config: Json
+          trigger_type: Database["public"]["Enums"]["notification_automation_trigger"]
+          updated_at: string
+        }
+        Insert: {
+          action_params?: Json
+          action_type?: Database["public"]["Enums"]["notification_action_type"]
+          body_template?: string | null
+          category?: Database["public"]["Enums"]["notification_category"]
+          condition_spec?: Json
+          consecutive_failures?: number
+          cooldown_minutes?: number
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          exclusion_spec?: Json
+          failure_threshold?: number
+          id?: string
+          last_run_at?: string | null
+          max_retries?: number
+          name: string
+          next_run_at?: string | null
+          priority?: Database["public"]["Enums"]["notification_priority"]
+          status?: Database["public"]["Enums"]["notification_automation_status"]
+          target_spec?: Json
+          template_id?: string | null
+          throttle_minutes?: number
+          title_template?: string | null
+          trigger_config?: Json
+          trigger_type: Database["public"]["Enums"]["notification_automation_trigger"]
+          updated_at?: string
+        }
+        Update: {
+          action_params?: Json
+          action_type?: Database["public"]["Enums"]["notification_action_type"]
+          body_template?: string | null
+          category?: Database["public"]["Enums"]["notification_category"]
+          condition_spec?: Json
+          consecutive_failures?: number
+          cooldown_minutes?: number
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          exclusion_spec?: Json
+          failure_threshold?: number
+          id?: string
+          last_run_at?: string | null
+          max_retries?: number
+          name?: string
+          next_run_at?: string | null
+          priority?: Database["public"]["Enums"]["notification_priority"]
+          status?: Database["public"]["Enums"]["notification_automation_status"]
+          target_spec?: Json
+          template_id?: string | null
+          throttle_minutes?: number
+          title_template?: string | null
+          trigger_config?: Json
+          trigger_type?: Database["public"]["Enums"]["notification_automation_trigger"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_automations_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "notification_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_campaigns: {
+        Row: {
+          action_params: Json
+          action_type: Database["public"]["Enums"]["notification_action_type"]
+          approved_at: string | null
+          approved_by: string | null
+          body: string
+          cancelled_at: string | null
+          category: Database["public"]["Enums"]["notification_category"]
+          clicked_count: number
+          cloned_from_id: string | null
+          created_at: string
+          created_by: string | null
+          delivered_count: number
+          estimated_audience_count: number
+          exclusion_spec: Json
+          expires_at: string | null
+          failed_count: number
+          id: string
+          media: Json
+          opened_count: number
+          payload_version: number
+          priority: Database["public"]["Enums"]["notification_priority"]
+          quiet_hours: Json
+          recipient_count: number
+          requires_approval: boolean
+          schedule_spec: Json
+          scheduled_for: string | null
+          send_limit: number | null
+          sent_at: string | null
+          status: Database["public"]["Enums"]["notification_campaign_status"]
+          submitted_for_approval_at: string | null
+          target_spec: Json
+          template_id: string | null
+          timezone: string
+          title: string
+          updated_at: string
+          updated_by: string | null
+          variables: Json
+        }
+        Insert: {
+          action_params?: Json
+          action_type?: Database["public"]["Enums"]["notification_action_type"]
+          approved_at?: string | null
+          approved_by?: string | null
+          body: string
+          cancelled_at?: string | null
+          category?: Database["public"]["Enums"]["notification_category"]
+          clicked_count?: number
+          cloned_from_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          delivered_count?: number
+          estimated_audience_count?: number
+          exclusion_spec?: Json
+          expires_at?: string | null
+          failed_count?: number
+          id?: string
+          media?: Json
+          opened_count?: number
+          payload_version?: number
+          priority?: Database["public"]["Enums"]["notification_priority"]
+          quiet_hours?: Json
+          recipient_count?: number
+          requires_approval?: boolean
+          schedule_spec?: Json
+          scheduled_for?: string | null
+          send_limit?: number | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["notification_campaign_status"]
+          submitted_for_approval_at?: string | null
+          target_spec?: Json
+          template_id?: string | null
+          timezone?: string
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+          variables?: Json
+        }
+        Update: {
+          action_params?: Json
+          action_type?: Database["public"]["Enums"]["notification_action_type"]
+          approved_at?: string | null
+          approved_by?: string | null
+          body?: string
+          cancelled_at?: string | null
+          category?: Database["public"]["Enums"]["notification_category"]
+          clicked_count?: number
+          cloned_from_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          delivered_count?: number
+          estimated_audience_count?: number
+          exclusion_spec?: Json
+          expires_at?: string | null
+          failed_count?: number
+          id?: string
+          media?: Json
+          opened_count?: number
+          payload_version?: number
+          priority?: Database["public"]["Enums"]["notification_priority"]
+          quiet_hours?: Json
+          recipient_count?: number
+          requires_approval?: boolean
+          schedule_spec?: Json
+          scheduled_for?: string | null
+          send_limit?: number | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["notification_campaign_status"]
+          submitted_for_approval_at?: string | null
+          target_spec?: Json
+          template_id?: string | null
+          timezone?: string
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+          variables?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_campaigns_cloned_from_id_fkey"
+            columns: ["cloned_from_id"]
+            isOneToOne: false
+            referencedRelation: "notification_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_campaigns_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "notification_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_dedup_keys: {
+        Row: {
+          automation_id: string | null
+          campaign_id: string | null
+          created_at: string
+          dedup_key: string
+          driver_id: string | null
+          expires_at: string
+          id: string
+        }
+        Insert: {
+          automation_id?: string | null
+          campaign_id?: string | null
+          created_at?: string
+          dedup_key: string
+          driver_id?: string | null
+          expires_at: string
+          id?: string
+        }
+        Update: {
+          automation_id?: string | null
+          campaign_id?: string | null
+          created_at?: string
+          dedup_key?: string
+          driver_id?: string | null
+          expires_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_dedup_keys_automation_id_fkey"
+            columns: ["automation_id"]
+            isOneToOne: false
+            referencedRelation: "notification_automations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_dedup_keys_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "notification_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_dedup_keys_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_dispatch_items: {
+        Row: {
+          campaign_id: string
+          clicked_at: string | null
+          created_at: string
+          delivered_at: string | null
+          driver_id: string
+          error_code: string | null
+          error_message: string | null
+          id: string
+          opened_at: string | null
+          provider_message_id: string | null
+          push_token_id: string | null
+          retry_count: number
+          run_id: string
+          sent_at: string | null
+          status: Database["public"]["Enums"]["notification_dispatch_item_status"]
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          clicked_at?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          driver_id: string
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          opened_at?: string | null
+          provider_message_id?: string | null
+          push_token_id?: string | null
+          retry_count?: number
+          run_id: string
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["notification_dispatch_item_status"]
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          clicked_at?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          driver_id?: string
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          opened_at?: string | null
+          provider_message_id?: string | null
+          push_token_id?: string | null
+          retry_count?: number
+          run_id?: string
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["notification_dispatch_item_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_dispatch_items_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "notification_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_dispatch_items_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_dispatch_items_push_token_id_fkey"
+            columns: ["push_token_id"]
+            isOneToOne: false
+            referencedRelation: "driver_push_tokens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_dispatch_items_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "notification_dispatch_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_dispatch_runs: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          error_summary: string | null
+          failed_count: number
+          finished_at: string | null
+          id: string
+          idempotency_key: string
+          provider: string
+          scheduled_for: string | null
+          sent_count: number
+          snapshot_id: string | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["notification_campaign_status"]
+          total_count: number
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          error_summary?: string | null
+          failed_count?: number
+          finished_at?: string | null
+          id?: string
+          idempotency_key: string
+          provider?: string
+          scheduled_for?: string | null
+          sent_count?: number
+          snapshot_id?: string | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["notification_campaign_status"]
+          total_count?: number
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          error_summary?: string | null
+          failed_count?: number
+          finished_at?: string | null
+          id?: string
+          idempotency_key?: string
+          provider?: string
+          scheduled_for?: string | null
+          sent_count?: number
+          snapshot_id?: string | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["notification_campaign_status"]
+          total_count?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_dispatch_runs_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "notification_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_dispatch_runs_snapshot_id_fkey"
+            columns: ["snapshot_id"]
+            isOneToOne: false
+            referencedRelation: "notification_audience_snapshots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_events: {
+        Row: {
+          campaign_id: string | null
+          created_at: string
+          dispatch_item_id: string | null
+          driver_id: string | null
+          event_type: Database["public"]["Enums"]["notification_event_type"]
+          id: string
+          metadata: Json
+          occurred_at: string
+          provider: string
+          provider_event_id: string | null
+          run_id: string | null
+        }
+        Insert: {
+          campaign_id?: string | null
+          created_at?: string
+          dispatch_item_id?: string | null
+          driver_id?: string | null
+          event_type: Database["public"]["Enums"]["notification_event_type"]
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          provider?: string
+          provider_event_id?: string | null
+          run_id?: string | null
+        }
+        Update: {
+          campaign_id?: string | null
+          created_at?: string
+          dispatch_item_id?: string | null
+          driver_id?: string | null
+          event_type?: Database["public"]["Enums"]["notification_event_type"]
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          provider?: string
+          provider_event_id?: string | null
+          run_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_events_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "notification_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_events_dispatch_item_id_fkey"
+            columns: ["dispatch_item_id"]
+            isOneToOne: false
+            referencedRelation: "notification_dispatch_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_events_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_events_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "notification_dispatch_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_remote_config: {
+        Row: {
+          category_throttles: Json
+          emergency_gate_enabled: boolean
+          global_enabled: boolean
+          id: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          category_throttles?: Json
+          emergency_gate_enabled?: boolean
+          global_enabled?: boolean
+          id?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          category_throttles?: Json
+          emergency_gate_enabled?: boolean
+          global_enabled?: boolean
+          id?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      notification_templates: {
+        Row: {
+          action_params: Json
+          action_type: Database["public"]["Enums"]["notification_action_type"]
+          body_template: string
+          category: Database["public"]["Enums"]["notification_category"]
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_archived: boolean
+          name: string
+          payload_version: number
+          priority: Database["public"]["Enums"]["notification_priority"]
+          title_template: string
+          updated_at: string
+          variable_schema: Json
+        }
+        Insert: {
+          action_params?: Json
+          action_type?: Database["public"]["Enums"]["notification_action_type"]
+          body_template: string
+          category?: Database["public"]["Enums"]["notification_category"]
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_archived?: boolean
+          name: string
+          payload_version?: number
+          priority?: Database["public"]["Enums"]["notification_priority"]
+          title_template: string
+          updated_at?: string
+          variable_schema?: Json
+        }
+        Update: {
+          action_params?: Json
+          action_type?: Database["public"]["Enums"]["notification_action_type"]
+          body_template?: string
+          category?: Database["public"]["Enums"]["notification_category"]
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_archived?: boolean
+          name?: string
+          payload_version?: number
+          priority?: Database["public"]["Enums"]["notification_priority"]
+          title_template?: string
+          updated_at?: string
+          variable_schema?: Json
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           body: string | null
@@ -1959,6 +2910,57 @@ export type Database = {
           logo_url?: string | null
           name?: string
           slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      payout_runs: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          paid_at: string | null
+          paid_by: string | null
+          period_end: string
+          period_start: string
+          status: Database["public"]["Enums"]["payout_run_status"]
+          total_drivers: number
+          total_payable_kwd: number
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          paid_at?: string | null
+          paid_by?: string | null
+          period_end: string
+          period_start: string
+          status?: Database["public"]["Enums"]["payout_run_status"]
+          total_drivers?: number
+          total_payable_kwd?: number
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          paid_at?: string | null
+          paid_by?: string | null
+          period_end?: string
+          period_start?: string
+          status?: Database["public"]["Enums"]["payout_run_status"]
+          total_drivers?: number
+          total_payable_kwd?: number
           updated_at?: string
         }
         Relationships: []
@@ -2699,8 +3701,17 @@ export type Database = {
         Returns: Json
       }
       allocate_driver_code: { Args: never; Returns: string }
+      approve_payout_run: { Args: { p_run_id: string }; Returns: undefined }
       archive_driver_intake: { Args: { p_intake_id: string }; Returns: Json }
       claim_super_admin: { Args: { p_user_id: string }; Returns: boolean }
+      compile_notification_audience: {
+        Args: {
+          p_campaign_id: string
+          p_exclusion_spec?: Json
+          p_target_spec: Json
+        }
+        Returns: string
+      }
       compute_incentive_amount: {
         Args: { p_eligible_count: number; p_rule_id: string }
         Returns: number
@@ -2715,6 +3726,10 @@ export type Database = {
       }
       delivery_matches_rules: {
         Args: { p_delivery_id: string; p_on_date?: string }
+        Returns: boolean
+      }
+      delivery_rule_matches_driver: {
+        Args: { p_driver_id: string; p_rule_id: string }
         Returns: boolean
       }
       driver_app_lookup_by_passcode: {
@@ -2755,7 +3770,12 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      driver_get_attendance: {
+        Args: { p_month: number; p_year: number }
+        Returns: Json
+      }
       driver_get_delivery_proximity_context: { Args: never; Returns: Json }
+      driver_get_extra_earnings: { Args: never; Returns: Json }
       driver_get_home_dashboard: { Args: never; Returns: Json }
       driver_has_active_restaurant: {
         Args: { p_driver_id: string }
@@ -2787,11 +3807,31 @@ export type Database = {
         Args: { p_is_on_duty: boolean; p_is_online: boolean }
         Returns: Json
       }
+      driver_update_avatar: { Args: { p_object_key: string }; Returns: Json }
+      estimate_notification_audience: {
+        Args: { p_exclusion_spec?: Json; p_target_spec: Json }
+        Returns: number
+      }
+      finalize_attendance_stale_sessions: { Args: never; Returns: number }
       generate_driver_app_passcode: { Args: never; Returns: string }
+      generate_payout_run: {
+        Args: {
+          p_driver_ids?: string[]
+          p_notes?: string
+          p_period_end: string
+          p_period_start: string
+        }
+        Returns: string
+      }
       get_driver_earnings_detail: {
         Args: { p_driver_id: string; p_earn_date: string }
         Returns: Json
       }
+      get_earnings_overview: {
+        Args: { p_end_date: string; p_filters?: Json; p_start_date: string }
+        Returns: Json
+      }
+      get_payout_run_detail: { Args: { p_run_id: string }; Returns: Json }
       incentive_rule_matches_driver: {
         Args: { p_driver_id: string; p_rule_id: string }
         Returns: boolean
@@ -2807,26 +3847,34 @@ export type Database = {
         Args: { p_driver_id?: string; p_end_date: string; p_start_date: string }
         Returns: Json
       }
+      list_earnings_grouped: {
+        Args: {
+          p_end_date: string
+          p_filters?: Json
+          p_group_by: string
+          p_start_date: string
+        }
+        Returns: Json
+      }
       mark_driver_intake_linked: {
         Args: { p_phone: string; p_profile_id: string }
         Returns: boolean
       }
+      mark_payout_run_paid: {
+        Args: { p_paid_at?: string; p_reference?: string; p_run_id: string }
+        Returns: undefined
+      }
       next_restaurant_code: { Args: never; Returns: string }
       normalize_external_order_id: { Args: { p_raw: string }; Returns: string }
       preview_driver_earnings: { Args: { p_earn_date: string }; Returns: Json }
-      recalculate_driver_earnings:
-        | {
-            Args: { p_driver_id: string; p_earn_date: string }
-            Returns: undefined
-          }
-        | {
-            Args: {
-              p_approved_by?: string
-              p_driver_id: string
-              p_earn_date: string
-            }
-            Returns: undefined
-          }
+      recalculate_driver_earnings: {
+        Args: {
+          p_approved_by?: string
+          p_driver_id: string
+          p_earn_date: string
+        }
+        Returns: undefined
+      }
       recalculate_earnings_for_date: {
         Args: { p_earn_date: string }
         Returns: number
@@ -2837,6 +3885,16 @@ export type Database = {
       }
       reconcile_delivery_verification: {
         Args: { p_verification_id: string }
+        Returns: undefined
+      }
+      record_notification_client_event: {
+        Args: {
+          p_campaign_id: string
+          p_dispatch_item_id: string
+          p_event_at?: string
+          p_event_type: string
+          p_metadata?: Json
+        }
         Returns: undefined
       }
       regenerate_driver_app_passcode: {
@@ -2855,11 +3913,7 @@ export type Database = {
         Returns: Json
       }
       set_driver_blocked: {
-        Args: {
-          p_blocked: boolean
-          p_driver_id: string
-          p_reason?: string
-        }
+        Args: { p_blocked: boolean; p_driver_id: string; p_reason?: string }
         Returns: Json
       }
       sync_driver_wallet_earning_credit: {
@@ -2868,6 +3922,10 @@ export type Database = {
           p_driver_id: string
           p_earn_date: string
         }
+        Returns: undefined
+      }
+      void_payout_run: {
+        Args: { p_reason?: string; p_run_id: string }
         Returns: undefined
       }
     }
@@ -2906,6 +3964,48 @@ export type Database = {
       incentive_reward_mode: "fixed" | "per_delivery"
       incentive_target_mode: "single" | "tiered"
       message_sender: "driver" | "staff"
+      notification_action_type:
+        | "open_screen"
+        | "open_module"
+        | "open_record"
+        | "open_workflow"
+        | "open_url"
+        | "custom_payload"
+        | "silent_update_trigger"
+      notification_automation_status: "draft" | "active" | "paused" | "archived"
+      notification_automation_trigger:
+        | "inactivity"
+        | "attendance_approved"
+        | "salary_processed"
+        | "document_expiry"
+        | "low_performance"
+        | "incentive_unlocked"
+        | "shift_reminder"
+        | "missed_submission"
+        | "schedule"
+      notification_campaign_status:
+        | "draft"
+        | "pending_approval"
+        | "scheduled"
+        | "queued"
+        | "processing"
+        | "sent"
+        | "delivered"
+        | "opened"
+        | "clicked"
+        | "failed"
+        | "cancelled"
+        | "expired"
+      notification_category:
+        | "incentive"
+        | "reminder"
+        | "compliance"
+        | "attendance"
+        | "salary"
+        | "emergency"
+        | "announcement"
+        | "operations"
+        | "system_alert"
       notification_click_action:
         | "hygiene_task"
         | "home"
@@ -2913,9 +4013,29 @@ export type Database = {
         | "vehicle"
         | "profile"
         | "custom_link"
+      notification_dispatch_item_status:
+        | "pending"
+        | "processing"
+        | "sent"
+        | "delivered"
+        | "opened"
+        | "clicked"
+        | "failed"
+        | "skipped"
+      notification_event_type:
+        | "queued"
+        | "sent"
+        | "delivered"
+        | "opened"
+        | "clicked"
+        | "failed"
+        | "cancelled"
+        | "expired"
+      notification_priority: "low" | "normal" | "high" | "critical"
       notification_status: "draft" | "scheduled" | "sent"
       offer_status: "draft" | "active" | "ended"
       offer_type: "daily" | "weekly" | "monthly"
+      payout_run_status: "draft" | "approved" | "paid" | "voided"
       project_type: "group" | "rent"
       request_status: "pending" | "approved" | "rejected"
       request_type: "loan" | "leave" | "fuel" | "complaint" | "document"
@@ -3103,6 +4223,52 @@ export const Constants = {
       incentive_reward_mode: ["fixed", "per_delivery"],
       incentive_target_mode: ["single", "tiered"],
       message_sender: ["driver", "staff"],
+      notification_action_type: [
+        "open_screen",
+        "open_module",
+        "open_record",
+        "open_workflow",
+        "open_url",
+        "custom_payload",
+        "silent_update_trigger",
+      ],
+      notification_automation_status: ["draft", "active", "paused", "archived"],
+      notification_automation_trigger: [
+        "inactivity",
+        "attendance_approved",
+        "salary_processed",
+        "document_expiry",
+        "low_performance",
+        "incentive_unlocked",
+        "shift_reminder",
+        "missed_submission",
+        "schedule",
+      ],
+      notification_campaign_status: [
+        "draft",
+        "pending_approval",
+        "scheduled",
+        "queued",
+        "processing",
+        "sent",
+        "delivered",
+        "opened",
+        "clicked",
+        "failed",
+        "cancelled",
+        "expired",
+      ],
+      notification_category: [
+        "incentive",
+        "reminder",
+        "compliance",
+        "attendance",
+        "salary",
+        "emergency",
+        "announcement",
+        "operations",
+        "system_alert",
+      ],
       notification_click_action: [
         "hygiene_task",
         "home",
@@ -3111,9 +4277,31 @@ export const Constants = {
         "profile",
         "custom_link",
       ],
+      notification_dispatch_item_status: [
+        "pending",
+        "processing",
+        "sent",
+        "delivered",
+        "opened",
+        "clicked",
+        "failed",
+        "skipped",
+      ],
+      notification_event_type: [
+        "queued",
+        "sent",
+        "delivered",
+        "opened",
+        "clicked",
+        "failed",
+        "cancelled",
+        "expired",
+      ],
+      notification_priority: ["low", "normal", "high", "critical"],
       notification_status: ["draft", "scheduled", "sent"],
       offer_status: ["draft", "active", "ended"],
       offer_type: ["daily", "weekly", "monthly"],
+      payout_run_status: ["draft", "approved", "paid", "voided"],
       project_type: ["group", "rent"],
       request_status: ["pending", "approved", "rejected"],
       request_type: ["loan", "leave", "fuel", "complaint", "document"],

@@ -38,6 +38,10 @@ yarn-error.log*
 .env*
 !.env.example
 
+# firebase secrets (client config templates live under docs/firebase/)
+/config/firebase/service-account.json
+/config/firebase/*.pem
+
 # vercel
 .vercel
 

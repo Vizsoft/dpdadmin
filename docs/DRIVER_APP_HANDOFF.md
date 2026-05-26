@@ -324,11 +324,26 @@ Admin dispatch sends FCM with notification title/body plus a flat string `data` 
   "action_params": "{\"screen\":\"home\",\"delivery_id\":\"optional-uuid\"}",
   "category": "incentive | reminder | compliance | attendance | salary | emergency | announcement | operations | system_alert",
   "priority": "low | normal | high | critical",
-  "deep_link": "optional musallam://..."
+  "deep_link": "optional musallam://...",
+  "image_url": "optional HTTPS URL for rich push thumbnail (7-day signed URL at send time)",
+  "media": "[{\"role\":\"banner|image\",\"type\":\"image\",\"object_key\":\"notifications/assets/...\"}]"
 }
 ```
 
-Parse `action_params` as JSON on the client. Unknown keys must be ignored for forward compatibility.
+Parse `action_params` and `media` as JSON on the client. Unknown keys must be ignored for forward compatibility.
+
+**Images / banners**
+
+| Role | Admin UI | Driver app |
+|------|----------|------------|
+| `banner` | Wide hero on notification detail | Fetch signed read URL after open |
+| `image` | Push tray thumbnail | Used in FCM `image_url`; falls back to `banner` if omitted |
+
+To load banner/image inside the app (private R2 storage), call:
+
+`GET /api/driver-app/notification-media?campaignId={uuid}&role=banner|image`
+
+Requires rider session. Returns `{ readUrl, objectKey, role }`. Only allowed when the driver has a row in `notification_dispatch_items` for that campaign.
 
 ### Lifecycle states
 
@@ -364,6 +379,26 @@ Upsert into `driver_push_tokens` on login/token refresh:
 | `is_active` | `true` |
 
 Deactivate stale tokens when FCM returns invalid-registration.
+
+### Firebase client bootstrap
+
+Project: **Musallam Delivery** (`musallam-delivery-kw`)
+
+| Platform | Package / bundle | Firebase app ID |
+|----------|------------------|-----------------|
+| Android | `kw.musallam.delivery` | `1:942102607123:android:2b709642cb7ab7a48096e6` |
+| iOS | `kw.musallam.delivery` | `1:942102607123:ios:442ef4381a6480f48096e6` |
+
+**Option A — native config files:** copy from admin repo `docs/firebase/google-services.json` (Android) and `GoogleService-Info.plist` (iOS).
+
+**Option B — runtime fetch from admin:**
+
+```
+GET https://dpdadmin.vercel.app/api/driver-app/firebase-config?platform=android
+GET https://dpdadmin.vercel.app/api/driver-app/firebase-config?platform=ios
+```
+
+Response includes `config.projectId`, `config.appId`, `config.apiKey`, `config.messagingSenderId`, plus `serverConfigured` (admin FCM credentials present).
 
 ### Deep links
 

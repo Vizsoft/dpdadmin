@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 /**
  * Push env vars from .env.local to Vercel (production + preview + development).
+ * WARNING: this currently applies identical values to all Vercel environments.
+ * Do not run for split test/prod setups unless you intentionally want that.
  * Usage: node scripts/push-vercel-env.mjs
  */
 

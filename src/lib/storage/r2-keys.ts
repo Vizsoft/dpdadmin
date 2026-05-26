@@ -1,6 +1,11 @@
 import type { DriverDocumentType } from "@/features/drivers/types";
 
-const ALLOWED_PREFIXES = ["drivers/", "partners/", "restaurants/"] as const;
+const ALLOWED_PREFIXES = [
+  "drivers/",
+  "partners/",
+  "restaurants/",
+  "notifications/",
+] as const;
 
 export function isAllowedStorageKey(key: string): boolean {
   const normalized = key.trim().replace(/^\/+/, "");
@@ -16,8 +21,19 @@ export function isR2ObjectKey(value: string | null | undefined): boolean {
     v.startsWith("drivers/") ||
     v.startsWith("driver-avatars/") ||
     v.startsWith("partners/") ||
-    v.startsWith("restaurants/")
+    v.startsWith("restaurants/") ||
+    v.startsWith("notifications/")
   );
+}
+
+export function buildNotificationMediaKey(assetId: string, ext: string): string {
+  return `notifications/assets/${assetId}.${ext}`;
+}
+
+export function isNotificationMediaObjectKey(key: string): boolean {
+  const normalized = key.trim().replace(/^\/+/, "");
+  if (normalized.includes("..")) return false;
+  return normalized.startsWith("notifications/assets/");
 }
 
 export function buildRestaurantLogoKey(restaurantId: string, ext: string): string {

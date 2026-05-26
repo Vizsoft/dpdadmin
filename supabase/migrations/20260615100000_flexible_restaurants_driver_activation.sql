@@ -43,7 +43,6 @@ AS $$
     FROM public.driver_restaurants dr
     JOIN public.restaurants r ON r.id = dr.restaurant_id
     WHERE dr.driver_id = p_driver_id
-      AND r.status = 'published'
       AND r.is_active = true
   );
 $$;
