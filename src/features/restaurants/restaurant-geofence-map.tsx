@@ -329,11 +329,11 @@ export function RestaurantGeofenceMap({
     dm.addListener("overlaycomplete", (e) => {
       const overlay = e.overlay;
       dm.setDrawingMode(null);
-      overlay.setMap(null);
 
       if (e.type === google.maps.drawing.OverlayType.CIRCLE) {
         const feature = featureFromCircle(overlay as GoogleCircleInstance);
         if (feature) {
+          overlay.setMap(null);
           onAddGeofenceRef.current({
             kind: drawKindRef.current,
             zone_type: "circle",
@@ -341,10 +341,13 @@ export function RestaurantGeofenceMap({
             name: null,
             color: defaultGeofenceColor(drawKindRef.current),
           });
+        } else {
+          overlay.setMap(null);
         }
       } else if (e.type === google.maps.drawing.OverlayType.POLYGON) {
         const feature = featureFromPolygon(overlay as GooglePolygonInstance);
         if (feature) {
+          overlay.setMap(null);
           onAddGeofenceRef.current({
             kind: drawKindRef.current,
             zone_type: "polygon",
@@ -352,6 +355,8 @@ export function RestaurantGeofenceMap({
             name: null,
             color: defaultGeofenceColor(drawKindRef.current),
           });
+        } else {
+          overlay.setMap(null);
         }
       }
     });
@@ -373,6 +378,11 @@ export function RestaurantGeofenceMap({
     onToolChange("draw");
     setupDrawingManager();
   }, [clearDraftOverlay, onToolChange, setupDrawingManager]);
+
+  const handleDeleteSelectedRef = useRef(handleDeleteSelected);
+  const handleClearDraftRef = useRef(handleClearDraft);
+  handleDeleteSelectedRef.current = handleDeleteSelected;
+  handleClearDraftRef.current = handleClearDraft;
 
   useEffect(() => {
     let cancelled = false;
@@ -441,8 +451,8 @@ export function RestaurantGeofenceMap({
             const layer = geofenceLayersRef.current.get(id);
             layer?.setDraggable(enabled);
           },
-          deleteSelected: handleDeleteSelected,
-          clearDraft: handleClearDraft,
+          deleteSelected: () => handleDeleteSelectedRef.current(),
+          clearDraft: () => handleClearDraftRef.current(),
         }),
       );
       setMapAdapter(createMapAdapter(map, google));
@@ -451,6 +461,7 @@ export function RestaurantGeofenceMap({
 
     return () => {
       cancelled = true;
+      setMapState("loading");
       if (drawingManagerRef.current) {
         drawingManagerRef.current.setMap(null);
         drawingManagerRef.current = null;
@@ -465,8 +476,8 @@ export function RestaurantGeofenceMap({
       mapRef.current = null;
       googleRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount once
-  }, [handleClearDraft, handleDeleteSelected, onMapReady]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount once; handlers via refs
+  }, [onMapReady, clearDraftOverlay, clearGeofenceLayers, syncMarker]);
 
   useEffect(() => {
     const google = googleRef.current;
@@ -550,11 +561,16 @@ export function RestaurantGeofenceMap({
       }
     }
 
-    if (hasPoint && geofences.length === 0 && location) {
+    if (!hasPoint) return;
+
+    if (geofences.length === 0 && location) {
       map.setCenter({ lat: location.lat, lng: location.lng });
       map.setZoom(16);
+      return;
     }
-  }, [location, geofences.length, mapState]);
+
+    map.fitBounds(bounds, 48);
+  }, [location, geofences, mapState]);
 
   if (mapState === "unavailable") {
     const failure = getGoogleMapsLoadFailure();
