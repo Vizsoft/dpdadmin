@@ -126,6 +126,12 @@ function RestaurantFormBody({
     statusDraft: t("statusDraft"),
     statusPublished: t("statusPublished"),
     statusArchived: t("statusArchived"),
+    coordinatesSection: t("fields.coordinates"),
+    coordinatesLatitude: t("fields.latitude"),
+    coordinatesLongitude: t("fields.longitude"),
+    coordinatesHint: t("hints.coordinates"),
+    coordinatesInvalidLatitude: t("hints.invalidLatitude"),
+    coordinatesInvalidLongitude: t("hints.invalidLongitude"),
   };
 
   const handleLocationChange = (next: RestaurantLocation | null) => {
@@ -265,6 +271,7 @@ function RestaurantFormBody({
             externalMerchantId={externalMerchantId}
             mapLink={mapLink}
             status={status}
+            location={location}
             partners={partners}
             zones={zones}
             partnersLoading={partnersLoading}
@@ -275,6 +282,7 @@ function RestaurantFormBody({
             onExternalMerchantIdChange={setExternalMerchantId}
             onMapLinkChange={setMapLink}
             onStatusChange={setStatus}
+            onLocationChange={handleLocationChange}
           />
           {!partnersLoading && partners.length === 0 ? (
             <p className="text-[11px] text-muted-foreground">

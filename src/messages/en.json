@@ -1061,6 +1061,7 @@
         "location": "Location",
         "latitude": "Latitude",
         "longitude": "Longitude",
+        "coordinates": "Coordinates",
         "status": "Status"
       },
       "placeholders": {
@@ -1076,6 +1077,9 @@
         "mapLink": "Optional — paste a Google Maps or Apple Maps share link.",
         "pickLocation": "Search for a place or click the map to pin the restaurant. Coordinates are saved automatically.",
         "mapAutoFilled": "Auto-filled from pin — you can edit.",
+        "coordinates": "Type or paste \"lat, lng\" (e.g. 29.375900, 47.977400). A Google Maps link works too — the map will jump to the spot.",
+        "invalidLatitude": "Latitude must be between -90 and 90.",
+        "invalidLongitude": "Longitude must be between -180 and 180.",
         "googleKeyMissing": "Set NEXT_PUBLIC_GOOGLE_MAPS_API_KEY on Vercel (and in .env.local), then redeploy.",
         "googleMapsAuthFailed": "Google Maps blocked this site (referrer not allowed for this API key).",
         "googleMapsReferrerFix": "In Google Cloud → Credentials → your Maps key → Website restrictions, use https://dpdadmin.vercel.app/* and http://localhost:3000/* (not only the root URL). Enable Maps JavaScript API and Places API. Ensure Vercel uses the same key.",

@@ -12,6 +12,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { partnerSearchOptions, zoneSearchOptions } from "@/lib/search-options";
+import { RestaurantCoordinateInputs } from "./restaurant-coordinate-inputs";
+import type { RestaurantLocation } from "./restaurant-location-utils";
 import { RESTAURANT_STATUSES, type RestaurantStatus } from "./restaurant-status";
 import type { RestaurantPartnerOption, RestaurantZoneOption } from "./types";
 
@@ -34,6 +36,12 @@ type FieldLabels = {
   statusDraft: string;
   statusPublished: string;
   statusArchived: string;
+  coordinatesSection: string;
+  coordinatesLatitude: string;
+  coordinatesLongitude: string;
+  coordinatesHint: string;
+  coordinatesInvalidLatitude: string;
+  coordinatesInvalidLongitude: string;
 };
 
 function statusLabel(t: FieldLabels, status: RestaurantStatus) {
@@ -55,6 +63,7 @@ export function RestaurantFormFields({
   externalMerchantId,
   mapLink,
   status,
+  location,
   partners,
   zones,
   partnersLoading,
@@ -65,6 +74,7 @@ export function RestaurantFormFields({
   onExternalMerchantIdChange,
   onMapLinkChange,
   onStatusChange,
+  onLocationChange,
 }: {
   labels: FieldLabels;
   partnerId: string;
@@ -73,6 +83,7 @@ export function RestaurantFormFields({
   externalMerchantId: string;
   mapLink: string;
   status: RestaurantStatus;
+  location: RestaurantLocation | null;
   partners: RestaurantPartnerOption[];
   zones: RestaurantZoneOption[];
   partnersLoading: boolean;
@@ -83,6 +94,7 @@ export function RestaurantFormFields({
   onExternalMerchantIdChange: (value: string) => void;
   onMapLinkChange: (value: string) => void;
   onStatusChange: (value: RestaurantStatus) => void;
+  onLocationChange: (next: RestaurantLocation | null) => void;
 }) {
   const partnerSelectItems = useMemo(
     () => [
@@ -175,6 +187,19 @@ export function RestaurantFormFields({
           </p>
         ) : null}
       </div>
+
+      <RestaurantCoordinateInputs
+        location={location}
+        onLocationChange={onLocationChange}
+        labels={{
+          section: labels.coordinatesSection,
+          latitude: labels.coordinatesLatitude,
+          longitude: labels.coordinatesLongitude,
+          hint: labels.coordinatesHint,
+          invalidLatitude: labels.coordinatesInvalidLatitude,
+          invalidLongitude: labels.coordinatesInvalidLongitude,
+        }}
+      />
 
       <div className="space-y-1.5">
         <Label>{labels.status}</Label>

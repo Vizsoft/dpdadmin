@@ -1063,6 +1063,7 @@
         "location": "الموقع",
         "latitude": "خط العرض",
         "longitude": "خط الطول",
+        "coordinates": "الإحداثيات",
         "status": "الحالة"
       },
       "placeholders": {
@@ -1078,6 +1079,9 @@
         "mapLink": "اختياري — الصق رابط مشاركة من Google Maps أو Apple Maps.",
         "pickLocation": "ابحث عن مكان أو انقر على الخريطة لتثبيت المطعم. يتم حفظ الإحداثيات تلقائياً.",
         "mapAutoFilled": "يُملأ تلقائياً من التثبيت — يمكنك التعديل.",
+        "coordinates": "اكتب أو الصق \"خط العرض، خط الطول\" (مثل 29.375900, 47.977400). يمكنك أيضاً لصق رابط خرائط Google — ستنتقل الخريطة فوراً إلى الموقع.",
+        "invalidLatitude": "يجب أن يكون خط العرض بين -90 و 90.",
+        "invalidLongitude": "يجب أن يكون خط الطول بين -180 و 180.",
         "googleKeyMissing": "اضبط NEXT_PUBLIC_GOOGLE_MAPS_API_KEY على Vercel (وفي .env.local) ثم أعد النشر.",
         "googleMapsAuthFailed": "Google Maps رفض هذا الموقع (المرجع غير مسموح لهذا المفتاح).",
         "googleMapsReferrerFix": "في Google Cloud → Credentials → مفتاح Maps → قيود المواقع، أضف https://dpdadmin.vercel.app/* و http://localhost:3000/*. فعّل Maps JavaScript API و Places API. تأكد أن Vercel يستخدم نفس المفتاح.",
