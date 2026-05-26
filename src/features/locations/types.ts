@@ -46,6 +46,13 @@ export type DriverLocationEvent = {
   recordedAt: string;
 };
 
+export type RestaurantMapMarker = {
+  id: string;
+  lat: number;
+  lng: number;
+  title?: string;
+};
+
 export type DriverLocationMapMarker = {
   id: string;
   lat: number;

@@ -8,6 +8,15 @@ export type { RestaurantStatus };
 
 export type RestaurantGeofenceKind = "inclusion" | "exclusion";
 
+export type RestaurantListStats = {
+  active_deliveries: number;
+  deliveries_total: number;
+  deliveries_verified: number;
+  deliveries_cancelled: number;
+  has_coordinates: boolean;
+  geofence_count: number;
+};
+
 export type RestaurantRow = {
   id: string;
   partner_id: string | null;
@@ -25,6 +34,51 @@ export type RestaurantRow = {
   is_active: boolean;
   driver_count: number;
   created_at: string;
+} & RestaurantListStats;
+
+export type RestaurantDeliveryStats = {
+  active_deliveries: number;
+  deliveries_total: number;
+  deliveries_verified: number;
+  deliveries_cancelled: number;
+  cancelled_today: number;
+};
+
+export type RestaurantDetailModel = RestaurantRow & {
+  geofence_count: number;
+  has_coordinates: boolean;
+  delivery_stats: RestaurantDeliveryStats;
+};
+
+export type RestaurantDriverLinkStatus = "linked" | "intake";
+
+export type RestaurantAssignedDriver = {
+  id: string;
+  driver_id: string | null;
+  intake_id: string | null;
+  name: string;
+  driver_code: string;
+  phone: string | null;
+  link_status: RestaurantDriverLinkStatus;
+  is_on_duty: boolean;
+};
+
+export type RestaurantActivityKind =
+  | "pickup"
+  | "in_transit"
+  | "delivered"
+  | "cancelled";
+
+export type RestaurantActivityEvent = {
+  at: string;
+  kind: RestaurantActivityKind;
+  delivery_id: string;
+  short_id: string;
+  driver_name: string;
+  driver_code: string;
+  external_order_id: string | null;
+  status: import("@/features/deliveries/types").DeliveryStatus;
+  cancel_reason?: string | null;
 };
 
 export type RestaurantPartnerOption = {

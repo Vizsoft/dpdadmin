@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { SearchSelect } from "@/components/ui/search-select";
 import { ToggleChip } from "@/components/app/toggle-chip";
 import { DriverLocationsMap } from "@/features/locations/driver-locations-map";
+import { fetchDriverAssignedRestaurantPins } from "@/features/locations/locations-actions";
 import { fetchDriversForAdmin } from "@/features/drivers/drivers-actions";
 import { queryKeys } from "@/lib/query/query-keys";
 import { driverSearchOptions } from "@/lib/search-options";
@@ -229,6 +230,23 @@ export function LiveTrackingHistoryView({
     [driverId, driversMeta],
   );
 
+  const { data: historyRestaurantPins = [] } = useQuery({
+    queryKey: ["live-tracking", "history-restaurant-pins", driverId],
+    enabled: Boolean(driverId),
+    queryFn: () => fetchDriverAssignedRestaurantPins(driverId),
+  });
+
+  const historyRestaurantMarkers = useMemo(
+    () =>
+      historyRestaurantPins.map((pin) => ({
+        id: pin.id,
+        lat: pin.latitude,
+        lng: pin.longitude,
+        title: pin.name,
+      })),
+    [historyRestaurantPins],
+  );
+
   const quickRange = useMemo(() => {
     if (date === kuwaitToday()) return "today";
     if (date === kuwaitDateShift(1)) return "yesterday";
@@ -331,8 +349,9 @@ export function LiveTrackingHistoryView({
                 <DriverLocationsMap
                   markers={markers}
                   path={path}
+                  restaurantMarkers={historyRestaurantMarkers}
                   mapHeightClass="h-full min-h-0"
-                  fitToMarkers={path.length > 0}
+                  fitToMarkers={path.length > 0 || historyRestaurantMarkers.length > 0}
                   className="h-full rounded-none border-0"
                   frameless
                 />
@@ -345,6 +364,7 @@ export function LiveTrackingHistoryView({
                         zoneName={selectedDriverMeta.zone_name}
                         isOnDuty={selectedDriverMeta.is_on_duty}
                         dateLabel={formatDateLabel(date, locale)}
+                        avatarUrl={selectedDriverMeta.avatar_display_url}
                       />
                     </div>
                   </div>

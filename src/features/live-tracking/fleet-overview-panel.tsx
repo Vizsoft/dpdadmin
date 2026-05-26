@@ -36,6 +36,7 @@ export function FleetOverviewPanel({
   partnerOptions,
   activeTab,
   onTabChange,
+  avatarByDriverId,
   className,
 }: {
   totalDrivers: number;
@@ -51,6 +52,7 @@ export function FleetOverviewPanel({
   partnerOptions: Array<{ id: string; label: string }>;
   activeTab: TrackingViewTab;
   onTabChange: (tab: TrackingViewTab) => void;
+  avatarByDriverId?: Map<string, string | null>;
   className?: string;
 }) {
   const t = useTranslations("pages.liveTracking");
@@ -349,7 +351,12 @@ export function FleetOverviewPanel({
             <div className="border-b border-slate-200 bg-slate-50/50 px-3 py-2 text-xs text-slate-500 dark:border-slate-700/70 dark:bg-slate-900/40 dark:text-slate-400">
               {t("trackedCount", { count: drivers.length })}
             </div>
-            <LiveDriverList drivers={drivers} selectedId={selectedDriverId} onSelect={onSelectDriver} />
+            <LiveDriverList
+              drivers={drivers}
+              selectedId={selectedDriverId}
+              onSelect={onSelectDriver}
+              avatarByDriverId={avatarByDriverId}
+            />
           </div>
         </div>
       </div>

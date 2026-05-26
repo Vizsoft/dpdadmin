@@ -7,6 +7,7 @@ import { DriverLocationsMap } from "@/features/locations/driver-locations-map";
 import { useDriverLocationsRealtime } from "@/features/locations/use-driver-locations-realtime";
 import { fetchDriversForAdmin } from "@/features/drivers/drivers-actions";
 import { fetchRecentDeliveriesForDriver } from "@/features/deliveries/deliveries-actions";
+import { fetchDriverAssignedRestaurantPins } from "@/features/locations/locations-actions";
 import { fetchZones } from "@/features/zones/use-zones";
 import { normalizeZoneColor } from "@/features/zones/zone-colors";
 import { queryKeys } from "@/lib/query/query-keys";
@@ -120,6 +121,7 @@ export function LiveTrackingLiveView({
         intakeId: row.id,
         phone: row.phone ?? null,
         detailHref: `/drivers/${row.id}?tab=location`,
+        avatarUrl: row.avatar_display_url ?? null,
       });
     }
     return map;
@@ -161,6 +163,33 @@ export function LiveTrackingLiveView({
 
   const selectedMeta = selectedDriver ? profileMeta.get(selectedDriver.driverId) : undefined;
   const selectedIntakeId = selectedMeta?.intakeId ?? null;
+
+  const avatarByDriverId = useMemo(() => {
+    const map = new Map<string, string | null>();
+    for (const row of driversMeta) {
+      if (row.linked_profile_id) {
+        map.set(row.linked_profile_id, row.avatar_display_url ?? null);
+      }
+    }
+    return map;
+  }, [driversMeta]);
+
+  const { data: selectedRestaurantPins = [] } = useQuery({
+    queryKey: ["live-tracking", "restaurant-pins", selectedId],
+    enabled: Boolean(selectedId),
+    queryFn: () => fetchDriverAssignedRestaurantPins(selectedId!),
+  });
+
+  const restaurantMapMarkers = useMemo(
+    () =>
+      selectedRestaurantPins.map((pin) => ({
+        id: pin.id,
+        lat: pin.latitude,
+        lng: pin.longitude,
+        title: pin.name,
+      })),
+    [selectedRestaurantPins],
+  );
 
   const { data: selectedRecentOrders = [] } = useQuery({
     queryKey: ["live-tracking", "recent-deliveries", selectedIntakeId],
@@ -267,6 +296,7 @@ export function LiveTrackingLiveView({
           drivers={filtered}
           selectedDriverId={selectedId}
           onSelectDriver={setSelectedId}
+          avatarByDriverId={avatarByDriverId}
           filters={filters}
           onChange={setFilters}
           zoneOptions={zoneFilterOptions}
@@ -295,6 +325,7 @@ export function LiveTrackingLiveView({
         >
           <DriverLocationsMap
             markers={mapMarkers}
+            restaurantMarkers={restaurantMapMarkers}
             geofenceOverlays={geofenceOverlays}
             fitToMarkers={filtered.length > 0}
             focusMarkerId={selectedId}
@@ -343,6 +374,7 @@ export function LiveTrackingLiveView({
                   driver={selectedDriver}
                   meta={selectedMeta}
                   recentOrders={selectedRecentOrders}
+                  restaurantPins={selectedRestaurantPins}
                   variant="stacked"
                   onClose={() => setSelectedId(null)}
                 />

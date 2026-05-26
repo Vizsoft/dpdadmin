@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Loader2, Users } from "lucide-react";
+import { Loader2, UserPlus, Users } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
@@ -13,6 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Pill, StatusDot } from "@/components/ui/metric-tile";
+import { Button } from "@/components/ui/button";
 import { formatZoneArea, zoneAreaSqKm } from "@/lib/geo/zone-area";
 import { cn } from "@/lib/utils";
 import type { GeofenceKind, ZoneRow } from "./types";
@@ -47,6 +48,8 @@ export function ZoneListPanel({
   onKindFilterChange,
   onSelect,
   onEdit,
+  onAssignDrivers,
+  canAssignDrivers = false,
 }: {
   zones: ZoneRow[];
   chips: Array<{ id: "all" | GeofenceKind; label: string }>;
@@ -56,6 +59,8 @@ export function ZoneListPanel({
   onKindFilterChange: (value: "all" | GeofenceKind) => void;
   onSelect: (id: string) => void;
   onEdit: (zone: ZoneRow) => void;
+  onAssignDrivers?: (zone: ZoneRow) => void;
+  canAssignDrivers?: boolean;
 }) {
   const t = useTranslations("pages.zones");
   const locale = useLocale();
@@ -223,8 +228,20 @@ export function ZoneListPanel({
                           {t(`geofence.status.${zone.status}`)}
                         </Pill>
                       </TableCell>
-                      <TableCell className="text-end">
+                      <TableCell className="text-end" onClick={(e) => e.stopPropagation()}>
                         <span className="inline-flex items-center justify-end gap-1 tabular-nums text-sm font-medium text-slate-800 dark:text-slate-100">
+                          {canAssignDrivers && onAssignDrivers ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-sm"
+                              className="h-7 w-7 shrink-0 cursor-pointer"
+                              onClick={() => onAssignDrivers(zone)}
+                              aria-label={t("assignDrivers")}
+                            >
+                              <UserPlus className="h-3.5 w-3.5" />
+                            </Button>
+                          ) : null}
                           <Users className="h-3.5 w-3.5 text-slate-400" aria-hidden />
                           {zone.driver_count}
                         </span>

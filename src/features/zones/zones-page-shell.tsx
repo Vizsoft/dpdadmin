@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { queryKeys } from "@/lib/query/query-keys";
 import { useRealtimeInvalidator } from "@/lib/realtime/use-realtime-invalidator";
 import { useZonesList } from "./use-zones";
+import { DriverAssignSheet } from "@/features/drivers/driver-assign-sheet";
 import { ZoneGeofencesSummary, zoneMatchesKindFilter } from "./zone-geofences-summary";
 import { ZoneListPanel } from "./zone-list-panel";
 import { ZoneMapPanel } from "./zone-map-panel";
@@ -52,11 +53,13 @@ function ZonesPageContent() {
   const router = useRouter();
   const { can } = useAuth();
   const canManage = can("zones.manage");
+  const canAssignDrivers = can("drivers.manage");
 
   const { data: zones = [], isLoading } = useZonesList();
   const [kindFilter, setKindFilter] = useState<"all" | GeofenceKind>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [assignZone, setAssignZone] = useState<ZoneRow | null>(null);
 
   // Live refresh: re-fetch the zone list whenever zones, their geofence
   // settings, or driver-to-zone assignments change. Covers the driver-count
@@ -180,6 +183,8 @@ function ZonesPageContent() {
               onKindFilterChange={setKindFilter}
               onSelect={setSelectedId}
               onEdit={handleEdit}
+              canAssignDrivers={canAssignDrivers}
+              onAssignDrivers={setAssignZone}
             />
           </div>
         </aside>
@@ -191,6 +196,16 @@ function ZonesPageContent() {
           className="h-full min-h-0"
         />
       </div>
+      {assignZone ? (
+        <DriverAssignSheet
+          open={Boolean(assignZone)}
+          onOpenChange={(open) => !open && setAssignZone(null)}
+          mode="zone"
+          entityId={assignZone.id}
+          entityName={assignZone.name}
+          defaultZoneId={assignZone.id}
+        />
+      ) : null}
     </AppPage>
   );
 }

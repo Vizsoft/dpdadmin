@@ -10,6 +10,7 @@ export type LiveDriverMeta = {
   intakeId: string | null;
   phone: string | null;
   detailHref: string | null;
+  avatarUrl: string | null;
 };
 
 export type LiveTrackingEnrichedDriver = DriverLiveLocation & {

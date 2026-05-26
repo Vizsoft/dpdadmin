@@ -5,30 +5,23 @@ import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import {
   Download,
-  Filter,
   Loader2,
   Pencil,
   Plus,
   RefreshCw,
   Search,
+  Users,
   X,
 } from "lucide-react";
 import { TABLE_HEAD_CLASS } from "@/components/app/constants";
 import { AppListCard } from "@/components/app/app-list-card";
 import { AppEmptyState } from "@/components/app/app-empty-state";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { TabBar } from "@/components/dashboard/tab-bar";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { CardContent } from "@/components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { SearchSelect } from "@/components/ui/search-select";
 import {
   Table,
   TableBody,
@@ -38,15 +31,18 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useAuth } from "@/contexts/auth-context";
-import { canManageRestaurants } from "@/lib/auth/permissions";
+import { canManageRestaurants, hasPermissionInSet } from "@/lib/auth/permissions";
 import { useHasMounted } from "@/hooks/use-has-mounted";
 import { cn } from "@/lib/utils";
 import { useRestaurantsList } from "./use-restaurants";
+import { DriverAssignSheet } from "@/features/drivers/driver-assign-sheet";
 import type { RestaurantRow, RestaurantStatus } from "./types";
 
 type StatusFilter = "all" | RestaurantStatus;
+type HasDriversFilter = "all" | "yes" | "no";
+type HasLocationFilter = "all" | "yes" | "no";
 
-function exportRestaurantsCsv(rows: RestaurantRow[]) {
+function exportRestaurantsCsv(rows: RestaurantRow[], t: (key: string) => string) {
   const header = [
     "id",
     "name",
@@ -55,6 +51,12 @@ function exportRestaurantsCsv(rows: RestaurantRow[]) {
     "zone_name",
     "status",
     "driver_count",
+    "active_deliveries",
+    "deliveries_total",
+    "deliveries_verified",
+    "deliveries_cancelled",
+    "has_coordinates",
+    "geofence_count",
     "created_at",
   ];
   const escape = (v: string | number | boolean | null) => {
@@ -68,10 +70,16 @@ function exportRestaurantsCsv(rows: RestaurantRow[]) {
         r.id,
         r.name,
         r.partner_name,
-        r.zone_name,
         r.external_merchant_id,
+        r.zone_name,
         r.status,
         r.driver_count,
+        r.active_deliveries,
+        r.deliveries_total,
+        r.deliveries_verified,
+        r.deliveries_cancelled,
+        r.has_coordinates ? t("exportYes") : t("exportNo"),
+        r.geofence_count,
         r.created_at,
       ]
         .map(escape)
@@ -115,13 +123,76 @@ function RestaurantsPageContent() {
   const t = useTranslations("pages.restaurants");
   const { permissions, isSuperAdmin } = useAuth();
   const canManage = canManageRestaurants(new Set(permissions), isSuperAdmin);
+  const canAssignDrivers = hasPermissionInSet(
+    new Set(permissions),
+    "drivers.manage",
+    isSuperAdmin,
+  );
 
   const { data: restaurants = [], isLoading, isError, refetch } = useRestaurantsList();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [partnerFilter, setPartnerFilter] = useState("all");
+  const [zoneFilter, setZoneFilter] = useState("all");
+  const [hasDriversFilter, setHasDriversFilter] = useState<HasDriversFilter>("all");
+  const [hasLocationFilter, setHasLocationFilter] = useState<HasLocationFilter>("all");
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [assignRestaurant, setAssignRestaurant] = useState<RestaurantRow | null>(null);
 
-  const hasActiveFilters = statusFilter !== "all";
+  const partnerSelectItems = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const r of restaurants) {
+      if (r.partner_id && r.partner_name !== "—") {
+        seen.set(r.partner_id, r.partner_name);
+      }
+    }
+    return [
+      { value: "all", label: t("filterPartnerAll") },
+      ...[...seen.entries()]
+        .sort((a, b) => a[1].localeCompare(b[1]))
+        .map(([value, label]) => ({ value, label })),
+    ];
+  }, [restaurants, t]);
+
+  const zoneSelectItems = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const r of restaurants) {
+      if (r.zone_id && r.zone_name !== "—") {
+        seen.set(r.zone_id, r.zone_name);
+      }
+    }
+    return [
+      { value: "all", label: t("filterZoneAll") },
+      ...[...seen.entries()]
+        .sort((a, b) => a[1].localeCompare(b[1]))
+        .map(([value, label]) => ({ value, label })),
+    ];
+  }, [restaurants, t]);
+
+  const hasDriversSelectItems = useMemo(
+    () => [
+      { value: "all", label: t("filterHasDriversAll") },
+      { value: "yes", label: t("filterHasDriversYes") },
+      { value: "no", label: t("filterHasDriversNo") },
+    ],
+    [t],
+  );
+
+  const hasLocationSelectItems = useMemo(
+    () => [
+      { value: "all", label: t("filterHasLocation") },
+      { value: "yes", label: t("filterHasLocationYes") },
+      { value: "no", label: t("filterHasLocationNo") },
+    ],
+    [t],
+  );
+
+  const hasActiveFilters =
+    statusFilter !== "all" ||
+    partnerFilter !== "all" ||
+    zoneFilter !== "all" ||
+    hasDriversFilter !== "all" ||
+    hasLocationFilter !== "all";
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -137,9 +208,23 @@ function RestaurantsPageContent() {
         return false;
       }
       if (statusFilter !== "all" && r.status !== statusFilter) return false;
+      if (partnerFilter !== "all" && r.partner_id !== partnerFilter) return false;
+      if (zoneFilter !== "all" && r.zone_id !== zoneFilter) return false;
+      if (hasDriversFilter === "yes" && r.driver_count === 0) return false;
+      if (hasDriversFilter === "no" && r.driver_count > 0) return false;
+      if (hasLocationFilter === "yes" && !r.has_coordinates) return false;
+      if (hasLocationFilter === "no" && r.has_coordinates) return false;
       return true;
     });
-  }, [restaurants, search, statusFilter]);
+  }, [
+    restaurants,
+    search,
+    statusFilter,
+    partnerFilter,
+    zoneFilter,
+    hasDriversFilter,
+    hasLocationFilter,
+  ]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -154,8 +239,20 @@ function RestaurantsPageContent() {
     router.push("/restaurants/new");
   };
 
+  const handleRowClick = (row: RestaurantRow) => {
+    router.push(`/restaurants/${row.id}`);
+  };
+
   const handleEdit = (row: RestaurantRow) => {
     router.push(`/restaurants/${row.id}/edit`);
+  };
+
+  const clearAllFilters = () => {
+    setStatusFilter("all");
+    setPartnerFilter("all");
+    setZoneFilter("all");
+    setHasDriversFilter("all");
+    setHasLocationFilter("all");
   };
 
   const statusFilterLabel = (value: StatusFilter) => {
@@ -191,6 +288,13 @@ function RestaurantsPageContent() {
     !isLoading && restaurants.length > 0 && visible.length === 0;
   const showEmptyAll = !isLoading && restaurants.length === 0;
 
+  const statusTabs = [
+    { id: "all", label: t("filterStatusAll") },
+    { id: "draft", label: t("filterDraft") },
+    { id: "published", label: t("filterPublished") },
+    { id: "archived", label: t("filterArchived") },
+  ];
+
   return (
     <>
       <AppListCard
@@ -216,7 +320,7 @@ function RestaurantsPageContent() {
               variant="outline"
               size="sm"
               className="h-9 cursor-pointer rounded-lg"
-              onClick={() => exportRestaurantsCsv(visible)}
+              onClick={() => exportRestaurantsCsv(visible, t)}
               disabled={visible.length === 0}
             >
               <Download className="me-2 h-3.5 w-3.5" />
@@ -236,97 +340,174 @@ function RestaurantsPageContent() {
           </div>
         }
         toolbar={
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="relative min-w-0 flex-1">
-              <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={t("searchPlaceholder")}
-                className="h-9 rounded-lg bg-background ps-9 pe-9"
-                aria-label={t("searchPlaceholder")}
-              />
-              {search ? (
-                <button
-                  type="button"
-                  onClick={() => setSearch("")}
-                  className="absolute end-2 top-1/2 -translate-y-1/2 cursor-pointer rounded p-1 text-muted-foreground hover:bg-muted"
-                  aria-label={t("clearSearch")}
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              ) : null}
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  className={cn(
-                    buttonVariants({ variant: "outline", size: "sm" }),
-                    "h-9 shrink-0 cursor-pointer rounded-lg",
-                  )}
-                >
-                  <Filter className="me-2 h-3.5 w-3.5" />
-                  {t("filter")}
-                  {hasActiveFilters ? (
-                    <Badge
-                      variant="secondary"
-                      className="ms-2 h-5 min-w-5 rounded-full px-1.5 text-[10px]"
-                    >
-                      1
-                    </Badge>
-                  ) : null}
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuLabel>{t("filterStatus")}</DropdownMenuLabel>
-                  <DropdownMenuRadioGroup
-                    value={statusFilter}
-                    onValueChange={(v) =>
-                      setStatusFilter((v as StatusFilter) ?? "all")
-                    }
-                  >
-                    <DropdownMenuRadioItem value="all">
-                      {t("filterStatusAll")}
-                    </DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem value="draft">
-                      {t("filterDraft")}
-                    </DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem value="published">
-                      {t("filterPublished")}
-                    </DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem value="archived">
-                      {t("filterArchived")}
-                    </DropdownMenuRadioItem>
-                  </DropdownMenuRadioGroup>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <div
-                className="hidden h-6 w-px shrink-0 bg-border sm:block"
-                aria-hidden
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+              <TabBar
+                items={statusTabs}
+                activeId={statusFilter}
+                onSelect={(id) => setStatusFilter(id as StatusFilter)}
+                className="border-b-0"
               />
               <p className="shrink-0 text-sm tabular-nums text-muted-foreground">
                 {countLabel}
               </p>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="relative min-w-0 flex-1">
+                <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder={t("searchPlaceholder")}
+                  className="h-9 rounded-lg bg-background ps-9 pe-9"
+                  aria-label={t("searchPlaceholder")}
+                />
+                {search ? (
+                  <button
+                    type="button"
+                    onClick={() => setSearch("")}
+                    className="absolute end-2 top-1/2 -translate-y-1/2 cursor-pointer rounded p-1 text-muted-foreground hover:bg-muted"
+                    aria-label={t("clearSearch")}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                ) : null}
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <SearchSelect
+                  items={partnerSelectItems}
+                  value={partnerFilter}
+                  onChange={(v) => setPartnerFilter(v ?? "all")}
+                  placeholder={t("filterPartner")}
+                  searchPlaceholder={t("filterPartner")}
+                  defaultLimit={8}
+                  recentsKey="restaurants-partner-filter"
+                  className="w-full min-w-[140px] sm:w-[160px]"
+                  clearable={false}
+                />
+                <SearchSelect
+                  items={zoneSelectItems}
+                  value={zoneFilter}
+                  onChange={(v) => setZoneFilter(v ?? "all")}
+                  placeholder={t("filterZone")}
+                  searchPlaceholder={t("filterZone")}
+                  defaultLimit={8}
+                  recentsKey="restaurants-zone-filter"
+                  className="w-full min-w-[140px] sm:w-[160px]"
+                  clearable={false}
+                />
+                <SearchSelect
+                  items={hasDriversSelectItems}
+                  value={hasDriversFilter}
+                  onChange={(v) =>
+                    setHasDriversFilter((v as HasDriversFilter) ?? "all")
+                  }
+                  placeholder={t("filterHasDrivers")}
+                  searchPlaceholder={t("filterHasDrivers")}
+                  defaultLimit={8}
+                  recentsKey="restaurants-has-drivers-filter"
+                  className="w-full min-w-[140px] sm:w-[160px]"
+                  clearable={false}
+                />
+                <SearchSelect
+                  items={hasLocationSelectItems}
+                  value={hasLocationFilter}
+                  onChange={(v) =>
+                    setHasLocationFilter((v as HasLocationFilter) ?? "all")
+                  }
+                  placeholder={t("filterHasLocation")}
+                  searchPlaceholder={t("filterHasLocation")}
+                  defaultLimit={8}
+                  recentsKey="restaurants-has-location-filter"
+                  className="w-full min-w-[140px] sm:w-[160px]"
+                  clearable={false}
+                />
+              </div>
             </div>
           </div>
         }
         filterChips={
           hasActiveFilters ? (
             <>
-              <Badge variant="secondary" className="gap-1 rounded-lg pe-1">
-                {t("filterStatus")}: {statusFilterLabel(statusFilter)}
-                <button
-                  type="button"
-                  className="cursor-pointer rounded p-0.5 hover:bg-muted"
-                  onClick={() => setStatusFilter("all")}
-                  aria-label={t("clearFilters")}
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
+              {statusFilter !== "all" ? (
+                <Badge variant="secondary" className="gap-1 rounded-lg pe-1">
+                  {t("filterStatus")}: {statusFilterLabel(statusFilter)}
+                  <button
+                    type="button"
+                    className="cursor-pointer rounded p-0.5 hover:bg-muted"
+                    onClick={() => setStatusFilter("all")}
+                    aria-label={t("clearFilters")}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ) : null}
+              {partnerFilter !== "all" ? (
+                <Badge variant="secondary" className="gap-1 rounded-lg pe-1">
+                  {t("filterPartner")}:{" "}
+                  {partnerSelectItems.find((i) => i.value === partnerFilter)?.label}
+                  <button
+                    type="button"
+                    className="cursor-pointer rounded p-0.5 hover:bg-muted"
+                    onClick={() => setPartnerFilter("all")}
+                    aria-label={t("clearFilters")}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ) : null}
+              {zoneFilter !== "all" ? (
+                <Badge variant="secondary" className="gap-1 rounded-lg pe-1">
+                  {t("filterZone")}:{" "}
+                  {zoneSelectItems.find((i) => i.value === zoneFilter)?.label}
+                  <button
+                    type="button"
+                    className="cursor-pointer rounded p-0.5 hover:bg-muted"
+                    onClick={() => setZoneFilter("all")}
+                    aria-label={t("clearFilters")}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ) : null}
+              {hasDriversFilter !== "all" ? (
+                <Badge variant="secondary" className="gap-1 rounded-lg pe-1">
+                  {t("filterHasDrivers")}:{" "}
+                  {
+                    hasDriversSelectItems.find((i) => i.value === hasDriversFilter)
+                      ?.label
+                  }
+                  <button
+                    type="button"
+                    className="cursor-pointer rounded p-0.5 hover:bg-muted"
+                    onClick={() => setHasDriversFilter("all")}
+                    aria-label={t("clearFilters")}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ) : null}
+              {hasLocationFilter !== "all" ? (
+                <Badge variant="secondary" className="gap-1 rounded-lg pe-1">
+                  {t("filterHasLocation")}:{" "}
+                  {
+                    hasLocationSelectItems.find((i) => i.value === hasLocationFilter)
+                      ?.label
+                  }
+                  <button
+                    type="button"
+                    className="cursor-pointer rounded p-0.5 hover:bg-muted"
+                    onClick={() => setHasLocationFilter("all")}
+                    aria-label={t("clearFilters")}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ) : null}
               <button
                 type="button"
                 className="cursor-pointer text-xs text-primary hover:underline"
-                onClick={() => setStatusFilter("all")}
+                onClick={clearAllFilters}
               >
                 {t("clearFilters")}
               </button>
@@ -384,11 +565,14 @@ function RestaurantsPageContent() {
                   </TableHead>
                   <TableHead className={TABLE_HEAD_CLASS}>{t("colStatus")}</TableHead>
                   <TableHead className={TABLE_HEAD_CLASS}>{t("colDrivers")}</TableHead>
+                  <TableHead className={cn("hidden xl:table-cell", TABLE_HEAD_CLASS)}>
+                    {t("colActiveDeliveries")}
+                  </TableHead>
                   <TableHead className={cn("hidden sm:table-cell", TABLE_HEAD_CLASS)}>
                     {t("colCreated")}
                   </TableHead>
-                  {canManage ? (
-                    <TableHead className={cn("w-12 text-end", TABLE_HEAD_CLASS)}>
+                  {canManage || canAssignDrivers ? (
+                    <TableHead className={cn("w-20 text-end", TABLE_HEAD_CLASS)}>
                       {t("colActions")}
                     </TableHead>
                   ) : null}
@@ -398,7 +582,7 @@ function RestaurantsPageContent() {
                 {showEmptySearch ? (
                   <TableRow className="hover:bg-transparent">
                     <TableCell
-                      colSpan={canManage ? 8 : 7}
+                      colSpan={canManage || canAssignDrivers ? 9 : 8}
                       className="border-t border-border py-12"
                     >
                       <AppEmptyState
@@ -411,17 +595,14 @@ function RestaurantsPageContent() {
                   visible.map((row) => (
                     <TableRow
                       key={row.id}
-                      role={canManage ? "button" : undefined}
-                      tabIndex={canManage ? 0 : undefined}
-                      className={cn(
-                        "hover:bg-muted/40",
-                        canManage && "cursor-pointer",
-                      )}
-                      onClick={() => canManage && handleEdit(row)}
+                      role="button"
+                      tabIndex={0}
+                      className="cursor-pointer hover:bg-muted/40"
+                      onClick={() => handleRowClick(row)}
                       onKeyDown={(e) => {
-                        if (canManage && (e.key === "Enter" || e.key === " ")) {
+                        if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
-                          handleEdit(row);
+                          handleRowClick(row);
                         }
                       }}
                     >
@@ -470,24 +651,46 @@ function RestaurantsPageContent() {
                       <TableCell className="text-sm text-muted-foreground">
                         {t("driversCount", { count: row.driver_count })}
                       </TableCell>
+                      <TableCell className="hidden text-sm tabular-nums text-muted-foreground xl:table-cell">
+                        {row.active_deliveries}
+                      </TableCell>
                       <TableCell className="hidden text-sm text-muted-foreground sm:table-cell">
                         {formatCreatedAt(row.created_at, locale)}
                       </TableCell>
-                      {canManage ? (
+                      {canManage || canAssignDrivers ? (
                         <TableCell className="text-end">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-sm"
-                            className="shrink-0 cursor-pointer"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEdit(row);
-                            }}
-                            aria-label={t("editRestaurant")}
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
+                          <div className="flex items-center justify-end gap-0.5">
+                            {canAssignDrivers ? (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon-sm"
+                                className="shrink-0 cursor-pointer"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setAssignRestaurant(row);
+                                }}
+                                aria-label={t("assignDrivers")}
+                              >
+                                <Users className="h-3.5 w-3.5" />
+                              </Button>
+                            ) : null}
+                            {canManage ? (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon-sm"
+                                className="shrink-0 cursor-pointer"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEdit(row);
+                                }}
+                                aria-label={t("editRestaurant")}
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                            ) : null}
+                          </div>
                         </TableCell>
                       ) : null}
                     </TableRow>
@@ -498,6 +701,16 @@ function RestaurantsPageContent() {
           </CardContent>
         )}
       </AppListCard>
+      {assignRestaurant ? (
+        <DriverAssignSheet
+          open={Boolean(assignRestaurant)}
+          onOpenChange={(open) => !open && setAssignRestaurant(null)}
+          mode="restaurant"
+          entityId={assignRestaurant.id}
+          entityName={assignRestaurant.name}
+          defaultZoneId={assignRestaurant.zone_id}
+        />
+      ) : null}
     </>
   );
 }

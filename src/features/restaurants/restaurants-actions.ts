@@ -6,7 +6,13 @@ import { getSessionUser } from "@/lib/auth/get-session";
 import {
   canManageRestaurants,
   canViewRestaurants,
+  hasPermissionInSet,
 } from "@/lib/auth/permissions";
+import {
+  mapDeliveryDbRowsToListRows,
+  type DeliveryDbRowForList,
+} from "@/features/deliveries/map-delivery-list-row";
+import type { DeliveryListRow, DeliveryStatus } from "@/features/deliveries/types";
 import {
   applyRestaurantLogoFromForm,
   deleteRestaurantLogoFiles,
@@ -23,6 +29,9 @@ import {
 } from "@/lib/geo/zone-geometry";
 import type { Json } from "@/types/database";
 import type {
+  RestaurantActivityEvent,
+  RestaurantAssignedDriver,
+  RestaurantDetailModel,
   RestaurantGeofence,
   RestaurantGeofenceInput,
   RestaurantGeofenceKind,
@@ -32,6 +41,12 @@ import type {
   RestaurantRow,
   RestaurantZoneOption,
 } from "./types";
+import {
+  buildActivityLogFromDeliveries,
+  computeDeliveryStats,
+  isDeliveryForRestaurant,
+  type ScopedDeliveryRow,
+} from "./restaurant-delivery-scope";
 
 type PgLikeError = {
   code?: string | null;
@@ -67,6 +82,317 @@ function isMissingRelationError(error: { code?: string; message?: string } | nul
   if (error.code === "PGRST205" || error.code === "42P01") return true;
   const msg = error.message ?? "";
   return msg.includes("driver_intake_restaurants") || msg.includes("driver_restaurants");
+}
+
+async function requireDeliveriesView() {
+  const session = await getSessionUser();
+  if (
+    !session ||
+    !hasPermissionInSet(session.permissions, "deliveries.view", session.isSuperAdmin)
+  ) {
+    throw new Error("not_authorized");
+  }
+  return session;
+}
+
+const DELIVERY_LIST_SELECT =
+  "id, driver_id, partner_id, restaurant_id, zone_id, external_order_id, order_proof_url, status, rejection_reason, delivered_at, delivered_lat, delivered_lng, pickup_at, pickup_lat, pickup_lng, pickup_proof_url, cancelled_at, cancel_lat, cancel_lng, cancel_reason, cancel_proof_url, created_at, drivers(driver_code, profiles(full_name, phone)), partners(name, logo_url), zones(name)";
+
+async function fetchAssignedDriverIdsForRestaurant(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  restaurantId: string,
+): Promise<Set<string>> {
+  const { data, error } = await supabase
+    .from("driver_restaurants")
+    .select("driver_id")
+    .eq("restaurant_id", restaurantId);
+  if (error && !isMissingRelationError(error)) {
+    logPgError("assigned_drivers", error);
+  }
+  return new Set((data ?? []).map((row) => row.driver_id));
+}
+
+async function fetchScopedDeliveryRows(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  restaurantId: string,
+  restaurantPartnerId: string | null,
+  assignedDriverIds: ReadonlySet<string>,
+): Promise<ScopedDeliveryRow[]> {
+  const [{ data: direct, error: directErr }, { data: indirect, error: indirectErr }] =
+    await Promise.all([
+      supabase
+        .from("deliveries")
+        .select(
+          "id, driver_id, partner_id, restaurant_id, status, external_order_id, pickup_at, delivered_at, cancelled_at, cancel_reason, created_at, drivers(driver_code, profiles(full_name, phone))",
+        )
+        .eq("restaurant_id", restaurantId),
+      assignedDriverIds.size > 0 && restaurantPartnerId
+        ? supabase
+            .from("deliveries")
+            .select(
+              "id, driver_id, partner_id, restaurant_id, status, external_order_id, pickup_at, delivered_at, cancelled_at, cancel_reason, created_at, drivers(driver_code, profiles(full_name, phone))",
+            )
+            .is("restaurant_id", null)
+            .in("driver_id", [...assignedDriverIds])
+            .eq("partner_id", restaurantPartnerId)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+
+  if (directErr) logPgError("scoped_deliveries_direct", directErr);
+  if (indirectErr) logPgError("scoped_deliveries_indirect", indirectErr);
+
+  type ScopedDeliveryDbRow = {
+    id: string;
+    driver_id: string;
+    partner_id: string | null;
+    restaurant_id: string | null;
+    status: string;
+    external_order_id: string | null;
+    pickup_at: string | null;
+    delivered_at: string | null;
+    cancelled_at: string | null;
+    cancel_reason: string | null;
+    created_at: string;
+    drivers:
+      | {
+          driver_code: string;
+          profiles:
+            | { full_name: string | null; phone: string | null }
+            | { full_name: string | null; phone: string | null }[]
+            | null;
+        }
+      | {
+          driver_code: string;
+          profiles:
+            | { full_name: string | null; phone: string | null }
+            | { full_name: string | null; phone: string | null }[]
+            | null;
+        }[]
+      | null;
+  };
+
+  const merged = [
+    ...((direct ?? []) as unknown as ScopedDeliveryDbRow[]),
+    ...((indirect ?? []) as unknown as ScopedDeliveryDbRow[]),
+  ];
+
+  const byId = new Map<string, ScopedDeliveryRow>();
+  for (const row of merged) {
+    if (byId.has(row.id)) continue;
+    const driverRel = Array.isArray(row.drivers) ? row.drivers[0] : row.drivers;
+    const profileRel = driverRel?.profiles;
+    const profile = Array.isArray(profileRel) ? profileRel[0] : profileRel;
+    byId.set(row.id, {
+      id: row.id,
+      driver_id: row.driver_id,
+      partner_id: row.partner_id,
+      restaurant_id: row.restaurant_id,
+      status: row.status as DeliveryStatus,
+      external_order_id: row.external_order_id,
+      pickup_at: row.pickup_at,
+      delivered_at: row.delivered_at,
+      cancelled_at: row.cancelled_at,
+      cancel_reason: row.cancel_reason,
+      created_at: row.created_at,
+      driver_name: profile?.full_name ?? undefined,
+      driver_code: driverRel?.driver_code ?? undefined,
+    });
+  }
+
+  return [...byId.values()].filter((d) =>
+    isDeliveryForRestaurant(d, restaurantId, restaurantPartnerId, assignedDriverIds),
+  );
+}
+
+async function fetchRestaurantListAggregates(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  restaurantIds: string[],
+  restaurants: Array<{
+    id: string;
+    partner_id: string | null;
+    latitude: number | null;
+    longitude: number | null;
+  }>,
+): Promise<
+  Map<
+    string,
+    Pick<
+      RestaurantRow,
+      | "active_deliveries"
+      | "deliveries_total"
+      | "deliveries_verified"
+      | "deliveries_cancelled"
+      | "has_coordinates"
+      | "geofence_count"
+    >
+  >
+> {
+  const result = new Map<
+    string,
+    Pick<
+      RestaurantRow,
+      | "active_deliveries"
+      | "deliveries_total"
+      | "deliveries_verified"
+      | "deliveries_cancelled"
+      | "has_coordinates"
+      | "geofence_count"
+    >
+  >();
+
+  for (const r of restaurants) {
+    result.set(r.id, {
+      active_deliveries: 0,
+      deliveries_total: 0,
+      deliveries_verified: 0,
+      deliveries_cancelled: 0,
+      has_coordinates: hasValidCoordinates(
+        r.latitude != null ? Number(r.latitude) : null,
+        r.longitude != null ? Number(r.longitude) : null,
+      ),
+      geofence_count: 0,
+    });
+  }
+
+  if (restaurantIds.length === 0) return result;
+
+  const partnerByRestaurant = new Map(
+    restaurants.map((r) => [r.id, r.partner_id]),
+  );
+
+  const [{ data: geofences, error: geofenceErr }, { data: driverLinks, error: driverErr }, { data: deliveries, error: deliveryErr }] =
+    await Promise.all([
+      supabase
+        .from("restaurant_geofences")
+        .select("restaurant_id")
+        .in("restaurant_id", restaurantIds),
+      supabase
+        .from("driver_restaurants")
+        .select("restaurant_id, driver_id")
+        .in("restaurant_id", restaurantIds),
+      supabase
+        .from("deliveries")
+        .select("id, restaurant_id, driver_id, partner_id, status"),
+    ]);
+
+  if (geofenceErr) logPgError("list_geofence_counts", geofenceErr);
+  if (driverErr && !isMissingRelationError(driverErr)) {
+    logPgError("list_driver_links", driverErr);
+  }
+  if (deliveryErr) logPgError("list_delivery_stats", deliveryErr);
+
+  const geofenceCounts = new Map<string, number>();
+  for (const row of geofences ?? []) {
+    geofenceCounts.set(row.restaurant_id, (geofenceCounts.get(row.restaurant_id) ?? 0) + 1);
+  }
+
+  const driversByRestaurant = new Map<string, Set<string>>();
+  for (const row of driverLinks ?? []) {
+    const set = driversByRestaurant.get(row.restaurant_id) ?? new Set();
+    set.add(row.driver_id);
+    driversByRestaurant.set(row.restaurant_id, set);
+  }
+
+  const statsByRestaurant = new Map<string, ScopedDeliveryRow[]>();
+  for (const restaurantId of restaurantIds) {
+    statsByRestaurant.set(restaurantId, []);
+  }
+
+  for (const d of deliveries ?? []) {
+    const status = d.status as DeliveryStatus;
+    const scoped: ScopedDeliveryRow = {
+      id: d.id,
+      driver_id: d.driver_id,
+      partner_id: d.partner_id,
+      restaurant_id: d.restaurant_id,
+      status,
+      external_order_id: null,
+      pickup_at: null,
+      delivered_at: null,
+      cancelled_at: null,
+      cancel_reason: null,
+      created_at: "",
+    };
+
+    if (d.restaurant_id && statsByRestaurant.has(d.restaurant_id)) {
+      statsByRestaurant.get(d.restaurant_id)!.push(scoped);
+      continue;
+    }
+
+    if (d.restaurant_id != null) continue;
+
+    for (const restaurantId of restaurantIds) {
+      const partnerId = partnerByRestaurant.get(restaurantId) ?? null;
+      const assigned = driversByRestaurant.get(restaurantId) ?? new Set();
+      if (isDeliveryForRestaurant(scoped, restaurantId, partnerId, assigned)) {
+        statsByRestaurant.get(restaurantId)!.push(scoped);
+      }
+    }
+  }
+
+  for (const restaurantId of restaurantIds) {
+    const base = result.get(restaurantId)!;
+    const stats = computeDeliveryStats(statsByRestaurant.get(restaurantId) ?? []);
+    result.set(restaurantId, {
+      ...base,
+      active_deliveries: stats.active_deliveries,
+      deliveries_total: stats.deliveries_total,
+      deliveries_verified: stats.deliveries_verified,
+      deliveries_cancelled: stats.deliveries_cancelled,
+      geofence_count: geofenceCounts.get(restaurantId) ?? 0,
+    });
+  }
+
+  return result;
+}
+
+async function mapRestaurantBaseRow(
+  row: {
+    id: string;
+    partner_id: string | null;
+    zone_id: string | null;
+    name: string;
+    logo_url: string | null;
+    external_merchant_id: string | null;
+    map_link: string | null;
+    latitude: number | null;
+    longitude: number | null;
+    status: RestaurantRow["status"];
+    is_active: boolean;
+    created_at: string;
+  },
+  partnerMap: Map<string, string>,
+  zoneMap: Map<string, string>,
+  driverCount: number,
+  aggregates: Pick<
+    RestaurantRow,
+    | "active_deliveries"
+    | "deliveries_total"
+    | "deliveries_verified"
+    | "deliveries_cancelled"
+    | "has_coordinates"
+    | "geofence_count"
+  >,
+): Promise<RestaurantRow> {
+  return {
+    id: row.id,
+    partner_id: row.partner_id,
+    partner_name: row.partner_id ? (partnerMap.get(row.partner_id) ?? "—") : "—",
+    zone_id: row.zone_id,
+    zone_name: row.zone_id ? (zoneMap.get(row.zone_id) ?? "—") : "—",
+    name: row.name,
+    logo_url: row.logo_url,
+    logo_display_url: null,
+    external_merchant_id: row.external_merchant_id,
+    map_link: row.map_link,
+    latitude: row.latitude != null ? Number(row.latitude) : null,
+    longitude: row.longitude != null ? Number(row.longitude) : null,
+    status: row.status,
+    is_active: row.is_active,
+    driver_count: driverCount,
+    created_at: row.created_at,
+    ...aggregates,
+  };
 }
 
 async function requireRestaurantsView() {
@@ -169,23 +495,40 @@ export async function fetchRestaurantsForAdmin(): Promise<RestaurantRow[]> {
     }
   }
 
-  const rows = (restaurants ?? []).map((row) => ({
-    id: row.id,
-    partner_id: row.partner_id,
-    partner_name: row.partner_id ? (partnerMap.get(row.partner_id) ?? "—") : "—",
-    zone_id: row.zone_id,
-    zone_name: row.zone_id ? (zoneMap.get(row.zone_id) ?? "—") : "—",
-    name: row.name,
-    logo_url: row.logo_url,
-    external_merchant_id: row.external_merchant_id,
-    map_link: row.map_link,
-    latitude: row.latitude != null ? Number(row.latitude) : null,
-    longitude: row.longitude != null ? Number(row.longitude) : null,
-    status: row.status,
-    is_active: row.is_active,
-    driver_count: driverCounts.get(row.id) ?? 0,
-    created_at: row.created_at,
-  }));
+  const listAggregates = await fetchRestaurantListAggregates(
+    supabase,
+    ids,
+    (restaurants ?? []).map((r) => ({
+      id: r.id,
+      partner_id: r.partner_id,
+      latitude: r.latitude != null ? Number(r.latitude) : null,
+      longitude: r.longitude != null ? Number(r.longitude) : null,
+    })),
+  );
+
+  const rows = await Promise.all(
+    (restaurants ?? []).map(async (row) => {
+      const aggregates =
+        listAggregates.get(row.id) ?? {
+          active_deliveries: 0,
+          deliveries_total: 0,
+          deliveries_verified: 0,
+          deliveries_cancelled: 0,
+          has_coordinates: hasValidCoordinates(
+            row.latitude != null ? Number(row.latitude) : null,
+            row.longitude != null ? Number(row.longitude) : null,
+          ),
+          geofence_count: 0,
+        };
+      return mapRestaurantBaseRow(
+        row,
+        partnerMap,
+        zoneMap,
+        driverCounts.get(row.id) ?? 0,
+        aggregates,
+      );
+    }),
+  );
 
   try {
     return await resolveRestaurantLogoUrls(rows);
@@ -282,6 +625,278 @@ export async function fetchRestaurantGeofences(
 
   if (error) throw error;
   return (data ?? []).map(mapGeofenceRow);
+}
+
+export async function fetchRestaurantDetail(
+  restaurantId: string,
+): Promise<RestaurantDetailModel | null> {
+  await requireRestaurantsView();
+  if (!restaurantId) return null;
+  void logAdminRead("restaurants", "fetchRestaurantDetail", { restaurantId });
+
+  const supabase = await createClient();
+  const { data: row, error } = await supabase
+    .from("restaurants")
+    .select(
+      "id, partner_id, zone_id, name, logo_url, external_merchant_id, map_link, latitude, longitude, status, is_active, created_at",
+    )
+    .eq("id", restaurantId)
+    .maybeSingle();
+
+  if (error) {
+    logPgError("detail", error);
+    throw error;
+  }
+  if (!row) return null;
+
+  const [{ data: partners }, { data: zones }] = await Promise.all([
+    row.partner_id
+      ? supabase.from("partners").select("id, name").eq("id", row.partner_id)
+      : Promise.resolve({ data: [] }),
+    row.zone_id
+      ? supabase.from("zones").select("id, name, code").eq("id", row.zone_id)
+      : Promise.resolve({ data: [] }),
+  ]);
+
+  const partnerMap = new Map((partners ?? []).map((p) => [p.id, p.name]));
+  const zoneMap = new Map(
+    (zones ?? []).map((z) => [z.id, `${z.name} (${z.code})`]),
+  );
+
+  let driverCount = 0;
+  const [{ data: intakeLinks }, { data: driverLinks }] = await Promise.all([
+    supabase
+      .from("driver_intake_restaurants")
+      .select("restaurant_id, intake_id")
+      .eq("restaurant_id", restaurantId),
+    supabase
+      .from("driver_restaurants")
+      .select("restaurant_id, driver_id")
+      .eq("restaurant_id", restaurantId),
+  ]);
+  const seen = new Set<string>();
+  for (const link of intakeLinks ?? []) seen.add(`intake:${link.intake_id}`);
+  for (const link of driverLinks ?? []) seen.add(`driver:${link.driver_id}`);
+  driverCount = seen.size;
+
+  const aggregates = (
+    await fetchRestaurantListAggregates(supabase, [restaurantId], [
+      {
+        id: restaurantId,
+        partner_id: row.partner_id,
+        latitude: row.latitude != null ? Number(row.latitude) : null,
+        longitude: row.longitude != null ? Number(row.longitude) : null,
+      },
+    ])
+  ).get(restaurantId)!;
+
+  const assignedDriverIds = await fetchAssignedDriverIdsForRestaurant(
+    supabase,
+    restaurantId,
+  );
+  const scopedDeliveries = await fetchScopedDeliveryRows(
+    supabase,
+    restaurantId,
+    row.partner_id,
+    assignedDriverIds,
+  );
+  const deliveryStats = computeDeliveryStats(scopedDeliveries);
+
+  const base = await mapRestaurantBaseRow(
+    row,
+    partnerMap,
+    zoneMap,
+    driverCount,
+    aggregates,
+  );
+
+  const [withLogo] = await resolveRestaurantLogoUrls([base]);
+
+  return {
+    ...withLogo,
+    geofence_count: aggregates.geofence_count,
+    has_coordinates: aggregates.has_coordinates,
+    delivery_stats: deliveryStats,
+  };
+}
+
+export async function fetchRestaurantAssignedDrivers(
+  restaurantId: string,
+): Promise<RestaurantAssignedDriver[]> {
+  await requireRestaurantsView();
+  if (!restaurantId) return [];
+
+  const supabase = await createClient();
+  const [{ data: linkedRows, error: linkedErr }, { data: intakeRows, error: intakeErr }] =
+    await Promise.all([
+      supabase
+        .from("driver_restaurants")
+        .select(
+          "driver_id, drivers(id, driver_code, is_on_duty, profiles(full_name, phone))",
+        )
+        .eq("restaurant_id", restaurantId),
+      supabase
+        .from("driver_intake_restaurants")
+        .select(
+          "intake_id, driver_intakes(id, full_name, phone, driver_code, linked, linked_profile_id)",
+        )
+        .eq("restaurant_id", restaurantId),
+    ]);
+
+  if (linkedErr && !isMissingRelationError(linkedErr)) {
+    logPgError("assigned_linked", linkedErr);
+  }
+  if (intakeErr && !isMissingRelationError(intakeErr)) {
+    logPgError("assigned_intake", intakeErr);
+  }
+
+  const results: RestaurantAssignedDriver[] = [];
+
+  for (const row of linkedRows ?? []) {
+    const driverRel = Array.isArray(row.drivers) ? row.drivers[0] : row.drivers;
+    if (!driverRel) continue;
+    const profileRel = driverRel.profiles;
+    const profile = Array.isArray(profileRel) ? profileRel[0] : profileRel;
+    results.push({
+      id: `linked:${row.driver_id}`,
+      driver_id: row.driver_id,
+      intake_id: null,
+      name: profile?.full_name ?? "—",
+      driver_code: driverRel.driver_code ?? "—",
+      phone: profile?.phone ?? null,
+      link_status: "linked",
+      is_on_duty: driverRel.is_on_duty ?? false,
+    });
+  }
+
+  for (const row of intakeRows ?? []) {
+    const intake = Array.isArray(row.driver_intakes)
+      ? row.driver_intakes[0]
+      : row.driver_intakes;
+    if (!intake || intake.linked) continue;
+    results.push({
+      id: `intake:${row.intake_id}`,
+      driver_id: null,
+      intake_id: row.intake_id,
+      name: intake.full_name ?? "—",
+      driver_code: intake.driver_code ?? "—",
+      phone: intake.phone ?? null,
+      link_status: "intake",
+      is_on_duty: false,
+    });
+  }
+
+  return results.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export type RestaurantDeliveriesFilter = {
+  status?: DeliveryStatus | "all" | "active";
+};
+
+export async function fetchRestaurantDeliveries(
+  restaurantId: string,
+  opts: RestaurantDeliveriesFilter = {},
+): Promise<DeliveryListRow[]> {
+  await requireDeliveriesView();
+  if (!restaurantId) return [];
+  void logAdminRead("restaurants", "fetchRestaurantDeliveries", { restaurantId });
+
+  const supabase = await createClient();
+  const { data: restaurant, error: restaurantErr } = await supabase
+    .from("restaurants")
+    .select("partner_id")
+    .eq("id", restaurantId)
+    .maybeSingle();
+  if (restaurantErr) throw restaurantErr;
+  if (!restaurant) return [];
+
+  const assignedDriverIds = await fetchAssignedDriverIdsForRestaurant(
+    supabase,
+    restaurantId,
+  );
+
+  const [{ data: direct, error: directErr }, { data: indirect, error: indirectErr }] =
+    await Promise.all([
+      supabase.from("deliveries").select(DELIVERY_LIST_SELECT).eq("restaurant_id", restaurantId),
+      assignedDriverIds.size > 0 && restaurant.partner_id
+        ? supabase
+            .from("deliveries")
+            .select(DELIVERY_LIST_SELECT)
+            .is("restaurant_id", null)
+            .in("driver_id", [...assignedDriverIds])
+            .eq("partner_id", restaurant.partner_id)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+
+  if (directErr) throw directErr;
+  if (indirectErr) throw indirectErr;
+
+  const byId = new Map<string, DeliveryDbRowForList>();
+  for (const row of [
+    ...((direct ?? []) as unknown as DeliveryDbRowForList[]),
+    ...((indirect ?? []) as unknown as DeliveryDbRowForList[]),
+  ]) {
+    if (!byId.has(row.id)) {
+      byId.set(row.id, row);
+    }
+  }
+
+  let rows = [...byId.values()].filter((d) =>
+    isDeliveryForRestaurant(
+      {
+        driver_id: d.driver_id,
+        partner_id: d.partner_id,
+        restaurant_id: d.restaurant_id ?? null,
+      },
+      restaurantId,
+      restaurant.partner_id,
+      assignedDriverIds,
+    ),
+  );
+
+  if (opts.status && opts.status !== "all") {
+    if (opts.status === "active") {
+      rows = rows.filter((r) => r.status === "in_transit");
+    } else {
+      rows = rows.filter((r) => r.status === opts.status);
+    }
+  }
+
+  rows.sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+  );
+
+  return mapDeliveryDbRowsToListRows(rows);
+}
+
+export async function fetchRestaurantActivityLog(
+  restaurantId: string,
+  limit = 100,
+): Promise<RestaurantActivityEvent[]> {
+  await requireDeliveriesView();
+  if (!restaurantId) return [];
+
+  const supabase = await createClient();
+  const { data: restaurant, error: restaurantErr } = await supabase
+    .from("restaurants")
+    .select("partner_id")
+    .eq("id", restaurantId)
+    .maybeSingle();
+  if (restaurantErr) throw restaurantErr;
+  if (!restaurant) return [];
+
+  const assignedDriverIds = await fetchAssignedDriverIdsForRestaurant(
+    supabase,
+    restaurantId,
+  );
+  const scoped = await fetchScopedDeliveryRows(
+    supabase,
+    restaurantId,
+    restaurant.partner_id,
+    assignedDriverIds,
+  );
+
+  return buildActivityLogFromDeliveries(scoped, limit);
 }
 
 export async function saveRestaurantGeofences(

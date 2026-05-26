@@ -86,6 +86,40 @@ export type DriverRemoteDocument = {
   source: "driver" | "intake";
 };
 
+export type DriverAssignMutationResult = {
+  error?: string;
+  success?: boolean;
+  warning?: "driver_has_active_delivery";
+};
+
+export type AssignDriverRow = {
+  driver_id: string;
+  intake_id: string | null;
+  name: string;
+  driver_code: string;
+  phone: string | null;
+  avatar_url: string | null;
+  is_on_duty: boolean;
+  zone_id: string | null;
+  zone_name: string | null;
+  partner_id: string | null;
+  partner_name: string | null;
+  restaurant_ids: string[];
+  restaurant_names: string[];
+  latitude: number | null;
+  longitude: number | null;
+  last_seen_at: string | null;
+  has_in_transit_delivery: boolean;
+};
+
+export type DriverRestaurantPin = {
+  id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  map_link: string | null;
+};
+
 export type DriverListRow = {
   id: string;
   driver_code: string;
@@ -107,6 +141,8 @@ export type DriverListRow = {
   today_deliveries: number;
   app_passcode: string | null;
   archived_at: string | null;
+  avatar_url: string | null;
+  avatar_display_url: string | null;
 };
 
 export type DriverDetailModel = {

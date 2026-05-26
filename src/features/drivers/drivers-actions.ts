@@ -413,6 +413,7 @@ type IntakeListRow = {
   workflow_status: DriverWorkflowStatus;
   linked: boolean;
   archived_at: string | null;
+  avatar_url: string | null;
   partners:
     | { name: string; logo_url: string | null }
     | { name: string; logo_url: string | null }[]
@@ -480,6 +481,7 @@ export async function fetchDriversForAdmin(options?: {
       phone,
       driver_code,
       employee_id,
+      avatar_url,
       partner_id,
       zone_id,
       linked_profile_id,
@@ -559,6 +561,7 @@ export async function fetchDriversForAdmin(options?: {
   }
 
   const partnerLogoCache = new Map<string, string | null>();
+  const avatarCache = new Map<string, string | null>();
 
   return Promise.all(
     rows.map(async (row) => {
@@ -588,6 +591,17 @@ export async function fetchDriversForAdmin(options?: {
         linkedDriver?.status,
       );
 
+      const avatarKey = row.avatar_url?.trim() ?? "";
+      let avatar_display_url: string | null = null;
+      if (avatarKey) {
+        if (avatarCache.has(avatarKey)) {
+          avatar_display_url = avatarCache.get(avatarKey) ?? null;
+        } else {
+          avatar_display_url = await resolveDriverAvatarUrl(avatarKey);
+          avatarCache.set(avatarKey, avatar_display_url);
+        }
+      }
+
       return {
         id: row.id,
         driver_code: row.driver_code,
@@ -614,6 +628,8 @@ export async function fetchDriversForAdmin(options?: {
         app_passcode:
           account_status === "active" ? (linkedDriver?.app_passcode ?? null) : null,
         archived_at: row.archived_at,
+        avatar_url: row.avatar_url,
+        avatar_display_url,
       };
     }),
   );

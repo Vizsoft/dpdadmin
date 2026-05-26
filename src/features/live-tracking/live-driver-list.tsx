@@ -3,7 +3,9 @@
 import { useTranslations } from "next-intl";
 import { StatusPill } from "@/components/dashboard/status-pill";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { avatarTintFromName } from "@/features/drivers/form/driver-form-primitives";
 import {
   formatBatteryPct,
   formatSpeedMps,
@@ -29,10 +31,12 @@ export function LiveDriverList({
   drivers,
   selectedId,
   onSelect,
+  avatarByDriverId,
 }: {
   drivers: DriverLiveLocation[];
   selectedId: string | null;
   onSelect: (driverId: string) => void;
+  avatarByDriverId?: Map<string, string | null>;
 }) {
   const t = useTranslations("pages.liveTracking");
 
@@ -59,12 +63,24 @@ export function LiveDriverList({
             )}
           >
             <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold">{loc.driverName}</p>
-                <p className="font-mono text-xs text-muted-foreground">#{loc.driverCode}</p>
-                {loc.restaurantName ? (
-                  <p className="truncate text-xs text-muted-foreground">{loc.restaurantName}</p>
-                ) : null}
+              <div className="flex min-w-0 items-start gap-2.5">
+                <Avatar className="h-9 w-9 shrink-0">
+                  {avatarByDriverId?.get(loc.driverId) ? (
+                    <AvatarImage src={avatarByDriverId.get(loc.driverId)!} alt="" />
+                  ) : null}
+                  <AvatarFallback
+                    className={cn("text-[10px] font-semibold", avatarTintFromName(loc.driverName))}
+                  >
+                    {loc.driverName.slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold">{loc.driverName}</p>
+                  <p className="font-mono text-xs text-muted-foreground">#{loc.driverCode}</p>
+                  {loc.restaurantName ? (
+                    <p className="truncate text-xs text-muted-foreground">{loc.restaurantName}</p>
+                  ) : null}
+                </div>
               </div>
               <StatusPill variant={pinVariant(loc.pinStatus)} dot>
                 {trackingLabel(t, loc.trackingStatus)}

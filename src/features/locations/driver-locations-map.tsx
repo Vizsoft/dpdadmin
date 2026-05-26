@@ -17,7 +17,11 @@ import {
 } from "@/features/locations/geofence-map-overlays";
 import { cn } from "@/lib/utils";
 import { createFleetMarkerIcon } from "./fleet-marker-icon";
-import type { DriverLocationMapMarker, DriverLocationMapPath } from "./types";
+import type {
+  DriverLocationMapMarker,
+  DriverLocationMapPath,
+  RestaurantMapMarker,
+} from "./types";
 import { createDriverPulseOverlay } from "./driver-marker-pulse-overlay";
 import {
   buildHeatmapPoints,
@@ -28,6 +32,7 @@ import { createZoneLabelOverlay } from "./zone-label-overlay";
 
 export function DriverLocationsMap({
   markers,
+  restaurantMarkers = [],
   path,
   className,
   mapHeightClass = "h-[220px]",
@@ -47,6 +52,7 @@ export function DriverLocationsMap({
   children,
 }: {
   markers: DriverLocationMapMarker[];
+  restaurantMarkers?: RestaurantMapMarker[];
   path?: DriverLocationMapPath;
   className?: string;
   mapHeightClass?: string;
@@ -73,6 +79,7 @@ export function DriverLocationsMap({
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<import("@/lib/google-maps/load").GoogleMapInstance | null>(null);
   const markerRefs = useRef<import("@/lib/google-maps/load").GoogleMarkerInstance[]>([]);
+  const restaurantMarkerRefs = useRef<import("@/lib/google-maps/load").GoogleMarkerInstance[]>([]);
   const geofenceRefs = useRef<
     Array<{ setMap: (map: import("@/lib/google-maps/load").GoogleMapInstance | null) => void }>
   >([]);
@@ -132,6 +139,7 @@ export function DriverLocationsMap({
           if (markers.length > 0 || (path?.length ?? 0) > 0) {
             const bounds = new google.maps.LatLngBounds();
             for (const pin of markers) bounds.extend({ lat: pin.lat, lng: pin.lng });
+            for (const pin of restaurantMarkers) bounds.extend({ lat: pin.lat, lng: pin.lng });
             for (const pt of path ?? []) bounds.extend(pt);
             current.fitBounds(bounds, initialFitPadding);
           }
@@ -158,6 +166,8 @@ export function DriverLocationsMap({
       mapClickListenerRef.current = null;
       for (const m of markerRefs.current) m.setMap(null);
       markerRefs.current = [];
+      for (const m of restaurantMarkerRefs.current) m.setMap(null);
+      restaurantMarkerRefs.current = [];
       for (const g of geofenceRefs.current) g.setMap(null);
       geofenceRefs.current = [];
       for (const label of geofenceLabelRefs.current) label.setMap(null);
@@ -195,10 +205,30 @@ export function DriverLocationsMap({
 
       for (const m of markerRefs.current) m.setMap(null);
       markerRefs.current = [];
+      for (const m of restaurantMarkerRefs.current) m.setMap(null);
+      restaurantMarkerRefs.current = [];
       for (const pulse of pulseRefs.current) pulse.setMap(null);
       pulseRefs.current = [];
 
       const MarkerCtor = google.maps.Marker;
+
+      for (const pin of restaurantMarkers) {
+        const marker = new MarkerCtor({
+          position: { lat: pin.lat, lng: pin.lng },
+          map: mapRef.current,
+          title: pin.title,
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 10,
+            fillColor: "#16a34a",
+            fillOpacity: 1,
+            strokeColor: "#ffffff",
+            strokeWeight: 2,
+          },
+          zIndex: 500,
+        });
+        restaurantMarkerRefs.current.push(marker);
+      }
 
       for (const pin of markers) {
         const marker = new MarkerCtor({
@@ -299,6 +329,7 @@ export function DriverLocationsMap({
       ) {
         const bounds = new google.maps.LatLngBounds();
         for (const pin of markers) bounds.extend({ lat: pin.lat, lng: pin.lng });
+        for (const pin of restaurantMarkers) bounds.extend({ lat: pin.lat, lng: pin.lng });
         for (const pt of path ?? []) bounds.extend(pt);
         mapRef.current.fitBounds(bounds, initialFitPadding);
         hasInitialFitRef.current = true;
@@ -362,6 +393,7 @@ export function DriverLocationsMap({
     });
   }, [
     markers,
+    restaurantMarkers,
     path,
     mapState,
     fitToMarkers,

@@ -10,6 +10,11 @@ export const queryKeys = {
     all: () => ["drivers"] as const,
     list: (filters: Record<string, unknown> = {}) => ["drivers", "list", filters] as const,
     detail: (id: string) => ["drivers", "detail", id] as const,
+    assignRestaurant: (restaurantId: string) =>
+      ["drivers", "assign", "restaurant", restaurantId] as const,
+    assignZone: (zoneId: string) => ["drivers", "assign", "zone", zoneId] as const,
+    assignPreview: (driverId: string) => ["drivers", "assign", "preview", driverId] as const,
+    assignSearch: (query: string) => ["drivers", "assign", "search", query] as const,
     documents: (intakeId: string, profileId: string | null) =>
       ["drivers", "documents", intakeId, profileId] as const,
   },
@@ -28,6 +33,11 @@ export const queryKeys = {
   restaurants: {
     all: () => ["restaurants"] as const,
     list: () => ["restaurants", "list"] as const,
+    detail: (id: string) => ["restaurants", "detail", id] as const,
+    assignedDrivers: (id: string) => ["restaurants", "assigned-drivers", id] as const,
+    deliveries: (id: string, filters: Record<string, unknown> = {}) =>
+      ["restaurants", "deliveries", id, filters] as const,
+    activity: (id: string) => ["restaurants", "activity", id] as const,
     partnerOptions: () => ["restaurants", "partner-options"] as const,
     zoneOptions: () => ["restaurants", "zone-options"] as const,
   },

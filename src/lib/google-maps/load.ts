@@ -187,6 +187,9 @@ export type GoogleMapsApi = {
     }) => GoogleCircleInstance;
     LatLngBounds: new () => GoogleLatLngBounds;
     LatLng: new (lat: number, lng: number) => GoogleMapLatLng;
+    SymbolPath: {
+      CIRCLE: number;
+    };
     TrafficLayer: new () => GoogleOverlayLayer;
     TransitLayer: new () => GoogleOverlayLayer;
     BicyclingLayer: new () => GoogleOverlayLayer;

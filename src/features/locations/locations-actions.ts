@@ -334,3 +334,52 @@ export async function fetchTrackedDriverCount(): Promise<number> {
   if (error) throw new Error(error.message);
   return count ?? 0;
 }
+
+export async function fetchDriverAssignedRestaurantPins(
+  driverId: string,
+): Promise<
+  Array<{
+    id: string;
+    name: string;
+    latitude: number;
+    longitude: number;
+    map_link: string | null;
+  }>
+> {
+  await requireDriversView();
+  if (!driverId) return [];
+
+  const supabase = await createClient();
+  const { data: links, error: linkErr } = await supabase
+    .from("driver_restaurants")
+    .select("restaurant_id")
+    .eq("driver_id", driverId);
+  if (linkErr) throw linkErr;
+
+  const ids = (links ?? []).map((l) => l.restaurant_id);
+  if (ids.length === 0) return [];
+
+  const { data: restaurants, error } = await supabase
+    .from("restaurants")
+    .select("id, name, latitude, longitude, map_link, status, is_active")
+    .in("id", ids)
+    .eq("status", "published")
+    .eq("is_active", true);
+  if (error) throw error;
+
+  return (restaurants ?? [])
+    .filter(
+      (r) =>
+        r.latitude != null &&
+        r.longitude != null &&
+        Number.isFinite(Number(r.latitude)) &&
+        Number.isFinite(Number(r.longitude)),
+    )
+    .map((r) => ({
+      id: r.id,
+      name: r.name,
+      latitude: Number(r.latitude),
+      longitude: Number(r.longitude),
+      map_link: r.map_link,
+    }));
+}
