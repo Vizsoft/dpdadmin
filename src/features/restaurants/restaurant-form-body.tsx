@@ -27,10 +27,10 @@ import type { ZoneMapTool } from "@/features/zones/zone-form-map-toolbar";
 import {
   deleteRestaurant,
   fetchRestaurantGeofences,
-  isRestaurantErrorKey,
   saveRestaurant,
   saveRestaurantGeofences,
 } from "./restaurants-actions";
+import { isRestaurantErrorKey } from "./restaurant-errors";
 import { draftGeofencesToInput } from "./restaurant-geofence-utils";
 import { RestaurantFormFields } from "./restaurant-form-fields";
 import { RestaurantGeofenceList } from "./restaurant-geofence-list";

@@ -67,3 +67,18 @@ export type RestaurantGeofenceInput = {
   name?: string | null;
   color?: string;
 };
+
+export type RestaurantMutationResult = {
+  error?: string;
+  errorDetail?: string;
+  success?: boolean;
+  id?: string;
+  logoUrl?: string | null;
+  logoWarning?: string;
+  geofenceError?: string;
+};
+
+export type RestaurantGeofenceMutationResult = {
+  error?: string;
+  success?: boolean;
+};

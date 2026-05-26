@@ -18,11 +18,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { queryKeys } from "@/lib/query/query-keys";
-import {
-  deleteRestaurant,
-  isRestaurantErrorKey,
-  saveRestaurant,
-} from "./restaurants-actions";
+import { deleteRestaurant, saveRestaurant } from "./restaurants-actions";
+import { isRestaurantErrorKey } from "./restaurant-errors";
 import { RestaurantFormFields } from "./restaurant-form-fields";
 import { RestaurantLocationPicker } from "./restaurant-location-picker";
 import {

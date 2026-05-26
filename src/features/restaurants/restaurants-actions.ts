@@ -7,7 +7,6 @@ import {
   canManageRestaurants,
   canViewRestaurants,
 } from "@/lib/auth/permissions";
-import { isRestaurantErrorKey, type RestaurantErrorKey } from "./restaurant-errors";
 import {
   applyRestaurantLogoFromForm,
   deleteRestaurantLogoFiles,
@@ -25,29 +24,14 @@ import {
 import type { Json } from "@/types/database";
 import type {
   RestaurantGeofence,
-  RestaurantGeofenceKind,
   RestaurantGeofenceInput,
+  RestaurantGeofenceKind,
+  RestaurantGeofenceMutationResult,
+  RestaurantMutationResult,
   RestaurantPartnerOption,
   RestaurantRow,
   RestaurantZoneOption,
 } from "./types";
-
-export type RestaurantMutationResult = {
-  error?: RestaurantErrorKey | string;
-  errorDetail?: string;
-  success?: boolean;
-  id?: string;
-  logoUrl?: string | null;
-  logoWarning?: RestaurantErrorKey | string;
-  geofenceError?: string;
-};
-
-export type RestaurantGeofenceMutationResult = {
-  error?: string;
-  success?: boolean;
-};
-
-export type { RestaurantGeofenceInput };
 
 type PgLikeError = {
   code?: string | null;
@@ -503,5 +487,3 @@ export async function deleteRestaurant(id: string): Promise<RestaurantMutationRe
   });
   return { success: true };
 }
-
-export { isRestaurantErrorKey };
