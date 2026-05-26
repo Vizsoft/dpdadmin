@@ -40,6 +40,8 @@ import {
 } from "@/components/ui/table";
 import { useHasMounted } from "@/hooks/use-has-mounted";
 import { cn } from "@/lib/utils";
+import { queryKeys } from "@/lib/query/query-keys";
+import { useRealtimeInvalidator } from "@/lib/realtime/use-realtime-invalidator";
 import { useDeliveriesList, type DeliveriesTabFilter } from "./use-deliveries";
 import { DeliveryDetailSheet } from "./delivery-detail-sheet";
 import type { DeliveryListRow, DeliveryStatus } from "./types";
@@ -140,6 +142,15 @@ function DeliveriesPageSkeleton() {
 function DeliveriesPageContent() {
   const t = useTranslations("pages.deliveries");
   const { data: deliveries = [], isLoading, refetch } = useDeliveriesList();
+
+  // Live refresh: re-fetch the list whenever a delivery row changes in Postgres
+  // (insert/update/delete). Keeps the table in sync without a manual refresh
+  // when riders or other admins act on deliveries.
+  useRealtimeInvalidator({
+    channel: "admin-deliveries-list",
+    tables: [{ table: "deliveries" }],
+    invalidateKeys: [queryKeys.deliveries.all(), queryKeys.verifications.all()],
+  });
 
   const [search, setSearch] = useState("");
   const [tabFilter, setTabFilter] = useState<DeliveriesTabFilter>("all");

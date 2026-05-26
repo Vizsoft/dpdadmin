@@ -10,6 +10,7 @@ import { fetchRecentDeliveriesForDriver } from "@/features/deliveries/deliveries
 import { fetchZones } from "@/features/zones/use-zones";
 import { normalizeZoneColor } from "@/features/zones/zone-colors";
 import { queryKeys } from "@/lib/query/query-keys";
+import { useRealtimeInvalidator } from "@/lib/realtime/use-realtime-invalidator";
 import {
   DEFAULT_LIVE_TRACKING_FILTERS,
   matchesLiveTrackingFilters,
@@ -85,6 +86,24 @@ export function LiveTrackingLiveView({
   const { data: zones = [] } = useQuery({
     queryKey: queryKeys.zones.list(),
     queryFn: fetchZones,
+  });
+
+  // Live driver positions arrive via useDriverLocationsRealtime above. The
+  // driver meta (names, zone/partner assignments) and the zone overlays come
+  // from regular Supabase queries, so subscribe to their tables here so the
+  // map auto-updates when a driver/intake is approved or a zone is edited.
+  useRealtimeInvalidator({
+    channel: "admin-live-tracking-meta",
+    tables: [
+      { table: "drivers" },
+      { table: "driver_intakes" },
+      { table: "zones" },
+      { table: "zone_geofence_settings" },
+    ],
+    invalidateKeys: [
+      queryKeys.drivers.all(),
+      queryKeys.zones.all(),
+    ],
   });
 
   const profileMeta = useMemo(() => {

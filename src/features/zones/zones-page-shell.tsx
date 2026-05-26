@@ -17,6 +17,8 @@ import {
 import { useAuth } from "@/contexts/auth-context";
 import { LAYOUT } from "@/components/app/layout-spacing";
 import { cn } from "@/lib/utils";
+import { queryKeys } from "@/lib/query/query-keys";
+import { useRealtimeInvalidator } from "@/lib/realtime/use-realtime-invalidator";
 import { useZonesList } from "./use-zones";
 import { ZoneGeofencesSummary, zoneMatchesKindFilter } from "./zone-geofences-summary";
 import { ZoneListPanel } from "./zone-list-panel";
@@ -55,6 +57,19 @@ function ZonesPageContent() {
   const [kindFilter, setKindFilter] = useState<"all" | GeofenceKind>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+
+  // Live refresh: re-fetch the zone list whenever zones, their geofence
+  // settings, or driver-to-zone assignments change. Covers the driver-count
+  // badges in the list as well as the geofence overlays drawn on the map.
+  useRealtimeInvalidator({
+    channel: "admin-zones-list",
+    tables: [
+      { table: "zones" },
+      { table: "zone_geofence_settings" },
+      { table: "drivers" },
+    ],
+    invalidateKeys: [queryKeys.zones.all()],
+  });
 
   const effectiveSelectedId = useMemo(() => {
     if (!selectedId) return null;
