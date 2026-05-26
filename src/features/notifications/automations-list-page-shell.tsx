@@ -20,6 +20,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useAuth } from "@/contexts/auth-context";
+import { NotificationsTabBar } from "./notifications-tab-bar";
 import { useNotificationAutomations } from "./use-notifications";
 
 function automationStatusVariant(
@@ -59,6 +60,7 @@ export function AutomationsListPageShell() {
           ) : null
         }
       />
+      <NotificationsTabBar />
       <AppListCard title={t("navAutomations")}>
         <CardContent className="p-0">
           {isLoading ? (

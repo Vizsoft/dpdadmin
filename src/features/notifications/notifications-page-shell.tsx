@@ -2,18 +2,7 @@
 
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
-import {
-  BarChart3,
-  Bell,
-  Copy,
-  History,
-  Loader2,
-  Plus,
-  RefreshCw,
-  Send,
-  Sparkles,
-  Workflow,
-} from "lucide-react";
+import { Bell, Copy, Loader2, Plus, RefreshCw, Send } from "lucide-react";
 import { TABLE_HEAD_CLASS } from "@/components/app/constants";
 import { AppListCard } from "@/components/app/app-list-card";
 import { AppPage } from "@/components/app/app-page";
@@ -33,6 +22,7 @@ import {
 } from "@/components/ui/table";
 import { useAuth } from "@/contexts/auth-context";
 import { cloneNotificationCampaign } from "./notifications-actions";
+import { NotificationsTabBar } from "./notifications-tab-bar";
 import { useNotificationCampaigns, useNotificationDashboard } from "./use-notifications";
 import type { NotificationCampaignStatus } from "./types";
 
@@ -71,16 +61,6 @@ export function NotificationsPageShell() {
   const { data: kpis, isLoading: kpisLoading, refetch: refetchKpis } = useNotificationDashboard();
   const { data: campaigns, isLoading, refetch } = useNotificationCampaigns({});
 
-  const quickLinks = [
-    ...(canManage
-      ? [{ href: "/notifications/new", label: t("navCreate"), icon: Plus }]
-      : []),
-    { href: "/notifications/history", label: t("navHistory"), icon: History },
-    { href: "/notifications/templates", label: t("navTemplates"), icon: Sparkles },
-    { href: "/notifications/automations", label: t("navAutomations"), icon: Workflow },
-    { href: "/notifications/analytics", label: t("navAnalytics"), icon: BarChart3 },
-  ];
-
   return (
     <AppPage>
       <AppPageHeader
@@ -95,6 +75,8 @@ export function NotificationsPageShell() {
           ) : null
         }
       />
+
+      <NotificationsTabBar />
 
       <KpiGrid
         items={[
@@ -120,19 +102,6 @@ export function NotificationsPageShell() {
           },
         ]}
       />
-
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
-        {quickLinks.map((link) => (
-          <Link
-            key={link.href}
-            href={`/${locale}${link.href}`}
-            className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium shadow-sm transition hover:border-primary/30 hover:bg-primary/5"
-          >
-            <link.icon className="size-4 text-primary" />
-            {link.label}
-          </Link>
-        ))}
-      </div>
 
       <AppListCard
         title={t("recentCampaigns")}

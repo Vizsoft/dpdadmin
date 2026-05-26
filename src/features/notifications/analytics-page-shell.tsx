@@ -20,6 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { NotificationsTabBar } from "./notifications-tab-bar";
 import { useNotificationAnalyticsDaily, useNotificationDashboard } from "./use-notifications";
 
 export function AnalyticsPageShell() {
@@ -52,6 +53,8 @@ export function AnalyticsPageShell() {
           { label: t("navAnalytics") },
         ]}
       />
+
+      <NotificationsTabBar />
 
       <KpiGrid
         items={[

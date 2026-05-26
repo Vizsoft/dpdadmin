@@ -89,6 +89,11 @@ export function parseNotificationMedia(value: unknown): NotificationMediaItem[] 
   });
 }
 
+export function contentTypeFromNotificationObjectKey(objectKey: string): string {
+  const ext = objectKey.split(".").pop()?.toLowerCase() ?? "";
+  return EXTENSION_MIME[ext] ?? "image/jpeg";
+}
+
 export function pickNotificationMediaByRole(
   media: unknown,
   role: NotificationMediaRole,

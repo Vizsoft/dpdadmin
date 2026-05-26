@@ -3,6 +3,7 @@ import { withCors } from "@/lib/http/cors";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireDriverFromRequest } from "@/lib/storage/driver-upload-auth";
 import {
+  contentTypeFromNotificationObjectKey,
   parseNotificationMedia,
   pickNotificationMediaByRole,
   resolveNotificationMediaReadUrl,
@@ -63,7 +64,7 @@ async function handler(request: Request): Promise<Response> {
     role: mediaItem.role,
     objectKey: mediaItem.object_key,
     readUrl,
-    contentType: "image/jpeg",
+    contentType: contentTypeFromNotificationObjectKey(mediaItem.object_key),
   });
 }
 

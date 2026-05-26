@@ -19,6 +19,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useAuth } from "@/contexts/auth-context";
+import { NotificationsTabBar } from "./notifications-tab-bar";
 import { useNotificationTemplates } from "./use-notifications";
 
 export function TemplatesListPageShell() {
@@ -49,6 +50,7 @@ export function TemplatesListPageShell() {
           ) : null
         }
       />
+      <NotificationsTabBar />
       <AppListCard title={t("navTemplates")}>
         <CardContent className="p-0">
           {isLoading ? (

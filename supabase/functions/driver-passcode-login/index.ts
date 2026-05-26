@@ -39,17 +39,19 @@ Deno.serve(async (req) => {
     return json({ error: "server_misconfigured" }, 500);
   }
 
-  let driverCode: string;
+  let loginId: string;
   let passcode: string;
   try {
     const body = await req.json();
-    driverCode = String(body?.driver_code ?? "").trim();
+    loginId = String(
+      body?.employee_id ?? body?.driver_code ?? "",
+    ).trim();
     passcode = String(body?.passcode ?? "").trim();
   } catch {
     return json({ error: "invalid_credentials" }, 401);
   }
 
-  if (!driverCode || !passcode) {
+  if (!loginId || !passcode) {
     return json({ error: "invalid_credentials" }, 401);
   }
 
@@ -59,7 +61,7 @@ Deno.serve(async (req) => {
 
   const { data: lookupRaw, error: lookupError } = await admin.rpc(
     "driver_app_lookup_by_passcode",
-    { p_driver_code: driverCode, p_passcode: passcode },
+    { p_driver_code: loginId, p_passcode: passcode },
   );
 
   if (lookupError) {
@@ -129,6 +131,6 @@ Deno.serve(async (req) => {
     access_token: session.access_token,
     refresh_token: session.refresh_token,
     user_id: userId,
-    driver_code: lookup.driver_code ?? driverCode,
+    driver_code: lookup.driver_code ?? loginId,
   });
 });

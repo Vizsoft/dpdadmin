@@ -159,8 +159,9 @@ function parseRestaurantNames(raw: string | null): string[] {
 
 export async function resolveDriverImportPreview(
   rows: DriverImportMappedRow[],
-): Promise<DriverImportPreviewRow[]> {
-  await requireDriversManager();
+): Promise<DriverImportPreviewRow[] | { error: "not_authorized" }> {
+  const auth = await requireDriversManager();
+  if (auth.error) return { error: auth.error };
   const supabase = await createClient();
 
   const [{ data: partners }, { data: zones }, { data: vehicles }, { data: restaurants }, { data: intakes }] =

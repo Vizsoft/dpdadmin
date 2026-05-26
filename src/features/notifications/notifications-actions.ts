@@ -1413,7 +1413,7 @@ export async function createNotificationTemplate(input: {
 export async function runNotificationWorkerNow(
   _limit?: number,
 ): Promise<
-  | { processed: number; sent: number; failed: number; provider: string }
+  | { processed: number; failed: number; provider: string }
   | { error: NotificationActionError }
 > {
   const session = await requireNotificationsSend();
@@ -1421,7 +1421,6 @@ export async function runNotificationWorkerNow(
   const result = await processDueNotificationCampaigns();
   return {
     processed: result.processed,
-    sent: result.processed,
     failed: result.errors.length,
     provider: "firebase_fcm",
   };

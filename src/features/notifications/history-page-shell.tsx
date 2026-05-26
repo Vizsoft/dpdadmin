@@ -16,6 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { NotificationsTabBar } from "@/features/notifications/notifications-tab-bar";
 import { useNotificationCampaigns } from "@/features/notifications/use-notifications";
 
 export function NotificationHistoryPageShell() {
@@ -33,6 +34,7 @@ export function NotificationHistoryPageShell() {
           { label: t("navHistory") },
         ]}
       />
+      <NotificationsTabBar />
       <AppListCard title={t("navHistory")}>
         <CardContent className="p-0">
           {isLoading ? (

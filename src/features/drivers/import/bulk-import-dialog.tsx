@@ -116,6 +116,10 @@ export function DriverBulkImportDialog({
     startTransition(async () => {
       try {
         const result = await resolvePreview.mutateAsync(mapped);
+        if (result && typeof result === "object" && "error" in result) {
+          toast.error(t("previewFailed"));
+          return;
+        }
         setPreview(result);
         setStep("preview");
       } catch {

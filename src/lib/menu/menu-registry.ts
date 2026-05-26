@@ -147,7 +147,7 @@ export const MENU_REGISTRY: MenuRegistryItem[] = [
     defaultIcon: "Package",
     href: "/deliveries",
     defaultGroup: "Operations",
-    defaultOrder: 3,
+    defaultOrder: 4,
     permission: "deliveries.view",
   },
   {
@@ -156,7 +156,7 @@ export const MENU_REGISTRY: MenuRegistryItem[] = [
     defaultIcon: "ClipboardCheck",
     href: "/dpd-verification",
     defaultGroup: "Operations",
-    defaultOrder: 3.5,
+    defaultOrder: 5,
     permission: "verifications.view",
   },
   {
@@ -174,7 +174,7 @@ export const MENU_REGISTRY: MenuRegistryItem[] = [
     defaultIcon: "ClipboardCheck",
     href: "/attendance",
     defaultGroup: "Operations",
-    defaultOrder: 4,
+    defaultOrder: 7,
     permission: "attendance.view",
   },
   {
@@ -210,7 +210,7 @@ export const MENU_REGISTRY: MenuRegistryItem[] = [
     defaultIcon: "ListTree",
     href: "/delivery-rules",
     defaultGroup: "Operations",
-    defaultOrder: 75,
+    defaultOrder: 9,
     permission: "earnings.view",
   },
   {
@@ -219,7 +219,7 @@ export const MENU_REGISTRY: MenuRegistryItem[] = [
     defaultIcon: "Wallet",
     href: "/incentive-rules",
     defaultGroup: "Operations",
-    defaultOrder: 76,
+    defaultOrder: 10,
     permission: "earnings.view",
   },
   {
@@ -228,7 +228,7 @@ export const MENU_REGISTRY: MenuRegistryItem[] = [
     defaultIcon: "ToggleLeft",
     href: "/earnings-calculation",
     defaultGroup: "Operations",
-    defaultOrder: 77,
+    defaultOrder: 11,
     permission: "earnings.view",
   },
   {
@@ -237,7 +237,7 @@ export const MENU_REGISTRY: MenuRegistryItem[] = [
     defaultIcon: "Wallet",
     href: "/payouts",
     defaultGroup: "Operations",
-    defaultOrder: 78,
+    defaultOrder: 12,
     permission: "earnings.view",
   },
   {
@@ -245,8 +245,8 @@ export const MENU_REGISTRY: MenuRegistryItem[] = [
     defaultLabel: "Notifications",
     defaultIcon: "Bell",
     href: "/notifications",
-    defaultGroup: "operations",
-    defaultOrder: 9,
+    defaultGroup: "Operations",
+    defaultOrder: 8,
     permission: "notifications.view",
   },
   {
@@ -353,8 +353,8 @@ export const MENU_REGISTRY: MenuRegistryItem[] = [
     defaultLabel: "Zones",
     defaultIcon: "MapPin",
     href: "/zones",
-    defaultGroup: "Unorganised",
-    defaultOrder: 0,
+    defaultGroup: "Operations",
+    defaultOrder: 6,
     permission: "zones.view",
   },
 ];
