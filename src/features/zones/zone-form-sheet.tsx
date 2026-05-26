@@ -67,6 +67,12 @@ import {
 } from "./zone-form-map-controls";
 import { ZoneFormGeofenceList } from "./zone-form-geofence-list";
 
+const DEFAULT_CIRCLE_RADIUS_METERS = 1000;
+
+function clampCircleRadiusMeters(radius: number) {
+  return Math.min(MAX_RADIUS_METERS, Math.max(MIN_RADIUS_METERS, radius));
+}
+
 const DESCRIPTION_MAX = 150;
 
 function zoneErrorToast(
@@ -233,6 +239,9 @@ export function ZoneFormBody({
   ) => {
     setGeometry(geo);
     setZoneType(type);
+    if (geo) {
+      setActiveTool("edit");
+    }
     if (geo && type === "circle" && geo.properties?.radiusMeters) {
       setRadiusInput(String(Math.round(geo.properties.radiusMeters)));
     }
@@ -242,9 +251,15 @@ export function ZoneFormBody({
     const adapter = mapAdapterRef.current;
     if (!adapter) return;
     if (activeTool === "draw") {
-      adapter.setEditing?.(true);
-      adapter.setDragging?.(false);
-      adapter.setDrawMode?.(zoneType);
+      if (geometry) {
+        adapter.setDrawMode?.(null);
+        adapter.setEditing?.(true);
+        adapter.setDragging?.(false);
+      } else {
+        adapter.setDrawMode?.(zoneType);
+        adapter.setEditing?.(false);
+        adapter.setDragging?.(false);
+      }
     } else if (activeTool === "edit") {
       adapter.setDrawMode?.(null);
       adapter.setDragging?.(false);
@@ -260,7 +275,7 @@ export function ZoneFormBody({
       adapter.clearDraft?.();
       setActiveTool("draw");
     }
-  }, [activeTool, zoneType]);
+  }, [activeTool, zoneType, geometry]);
 
   const handleSave = () => {
     if (!geometry) {
@@ -428,6 +443,7 @@ export function ZoneFormBody({
               setZoneType(next);
               setGeometry(null);
               setActiveTool("draw");
+              mapAdapterRef.current?.clearDraft?.();
               mapAdapterRef.current?.setDrawMode?.(next);
             }}
           />
@@ -611,6 +627,9 @@ export function ZoneFormBody({
             draftColor={color}
             draftGeometry={geometry}
             draftZoneType={zoneType}
+            draftCircleRadiusMeters={clampCircleRadiusMeters(
+              Number.parseFloat(radiusInput) || DEFAULT_CIRCLE_RADIUS_METERS,
+            )}
             onDraftGeometryChange={handleGeometryChange}
             onMapReady={handleMapReady}
             className="zones-google-map h-full w-full"

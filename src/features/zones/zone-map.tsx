@@ -43,6 +43,7 @@ export type ZoneMapProps = {
   excludeZoneId?: string | null;
   draftGeometry?: ZoneGeoFeature | null;
   draftZoneType?: ZoneGeometryType;
+  draftCircleRadiusMeters?: number;
   draftColor?: string;
   onDraftGeometryChange?: (
     geometry: ZoneGeoFeature | null,

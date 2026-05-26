@@ -19,6 +19,9 @@ import {
 } from "@/lib/google-maps/load";
 import {
   zoneMapBoundsFromShape,
+  buildCircleFeature,
+  MAX_RADIUS_METERS,
+  MIN_RADIUS_METERS,
   type ZoneGeoFeature,
   type ZoneGeometryType,
 } from "@/lib/geo/zone-geometry";
@@ -44,7 +47,6 @@ import {
   bindCircleEditListeners,
   bindPolygonEditListeners,
   circleFromZoneFeature,
-  featureFromCircle,
   featureFromPolygon,
   googlePathOptions,
   polygonFromFeature,
@@ -53,6 +55,12 @@ import { cn } from "@/lib/utils";
 import { defaultGeofenceColor } from "./restaurant-geofence-colors";
 
 export type RestaurantMapMode = "pin" | "draw";
+
+const DEFAULT_CIRCLE_RADIUS_METERS = 1000;
+
+function clampCircleRadiusMeters(radius: number) {
+  return Math.min(MAX_RADIUS_METERS, Math.max(MIN_RADIUS_METERS, radius));
+}
 
 function tupleToLatLng(center: [number, number]) {
   return { lat: center[0], lng: center[1] };
@@ -155,6 +163,7 @@ export function RestaurantGeofenceMap({
   const drawingManagerRef = useRef<
     import("@/lib/google-maps/load").GoogleDrawingManagerInstance | null
   >(null);
+  const activeToolRef = useRef(activeTool);
   const onLocationChangeRef = useRef(onLocationChange);
   const onGeofenceChangeRef = useRef(onGeofenceChange);
   const onAddGeofenceRef = useRef(onAddGeofence);
@@ -178,6 +187,7 @@ export function RestaurantGeofenceMap({
   zoneTypeRef.current = zoneType;
   mapModeRef.current = mapMode;
   selectedGeofenceIdRef.current = selectedGeofenceId;
+  activeToolRef.current = activeTool;
 
   const clearGeofenceLayers = useCallback(() => {
     for (const layer of geofenceLayersRef.current.values()) {
@@ -317,10 +327,8 @@ export function RestaurantGeofenceMap({
       map,
       drawingControl: false,
       drawingMode:
-        activeTool === "draw"
-          ? zoneTypeRef.current === "circle"
-            ? google.maps.drawing.OverlayType.CIRCLE
-            : google.maps.drawing.OverlayType.POLYGON
+        activeTool === "draw" && zoneTypeRef.current === "polygon"
+          ? google.maps.drawing.OverlayType.POLYGON
           : null,
       polygonOptions: { ...pathOpts, editable: true, draggable: true },
       circleOptions: { ...pathOpts, editable: true, draggable: true },
@@ -330,21 +338,7 @@ export function RestaurantGeofenceMap({
       const overlay = e.overlay;
       dm.setDrawingMode(null);
 
-      if (e.type === google.maps.drawing.OverlayType.CIRCLE) {
-        const feature = featureFromCircle(overlay as GoogleCircleInstance);
-        if (feature) {
-          overlay.setMap(null);
-          onAddGeofenceRef.current({
-            kind: drawKindRef.current,
-            zone_type: "circle",
-            geometry: feature,
-            name: null,
-            color: defaultGeofenceColor(drawKindRef.current),
-          });
-        } else {
-          overlay.setMap(null);
-        }
-      } else if (e.type === google.maps.drawing.OverlayType.POLYGON) {
+      if (e.type === google.maps.drawing.OverlayType.POLYGON) {
         const feature = featureFromPolygon(overlay as GooglePolygonInstance);
         if (feature) {
           overlay.setMap(null);
@@ -411,17 +405,39 @@ export function RestaurantGeofenceMap({
         streetViewControl: false,
         fullscreenControl: false,
         clickableIcons: false,
+        gestureHandling: "greedy",
       });
       mapRef.current = map;
 
       google.maps.event.addListener(map, "click", (e) => {
-        if (mapModeRef.current !== "pin") return;
         const latLng = e.latLng;
         if (!latLng) return;
-        onLocationChangeRef.current({
-          lat: latLng.lat(),
-          lng: latLng.lng(),
-        });
+
+        if (mapModeRef.current === "pin") {
+          onLocationChangeRef.current({
+            lat: latLng.lat(),
+            lng: latLng.lng(),
+          });
+          return;
+        }
+
+        if (
+          mapModeRef.current === "draw" &&
+          activeToolRef.current === "draw" &&
+          zoneTypeRef.current === "circle"
+        ) {
+          const feature = buildCircleFeature(
+            [latLng.lat(), latLng.lng()],
+            clampCircleRadiusMeters(DEFAULT_CIRCLE_RADIUS_METERS),
+          );
+          onAddGeofenceRef.current({
+            kind: drawKindRef.current,
+            zone_type: "circle",
+            geometry: feature,
+            name: null,
+            color: defaultGeofenceColor(drawKindRef.current),
+          });
+        }
       });
 
       syncMarker(google, map, location);
@@ -433,10 +449,12 @@ export function RestaurantGeofenceMap({
               drawingManagerRef.current.setDrawingMode(null);
               return;
             }
+            if (mode === "circle") {
+              drawingManagerRef.current.setDrawingMode(null);
+              return;
+            }
             drawingManagerRef.current.setDrawingMode(
-              mode === "circle"
-                ? google.maps.drawing.OverlayType.CIRCLE
-                : google.maps.drawing.OverlayType.POLYGON,
+              google.maps.drawing.OverlayType.POLYGON,
             );
           },
           setEditing(enabled) {

@@ -131,6 +131,7 @@ export type GoogleMapsApi = {
         streetViewControl?: boolean;
         fullscreenControl?: boolean;
         clickableIcons?: boolean;
+        gestureHandling?: "cooperative" | "greedy" | "none" | "auto";
         mapTypeId?: string;
         styles?: GoogleMapStyleRule[];
       },

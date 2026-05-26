@@ -13,6 +13,9 @@ import {
   type GooglePolygonInstance,
 } from "@/lib/google-maps/load";
 import {
+  buildCircleFeature,
+  MAX_RADIUS_METERS,
+  MIN_RADIUS_METERS,
   zoneMapBoundsFromShape,
   type ZoneGeoFeature,
   type ZoneGeometryType,
@@ -41,7 +44,6 @@ import {
   bindCircleEditListeners,
   bindPolygonEditListeners,
   circleFromZoneFeature,
-  featureFromCircle,
   featureFromPolygon,
   googlePathOptions,
   polygonFromFeature,
@@ -49,6 +51,12 @@ import {
 
 function tupleToLatLng(center: [number, number]) {
   return { lat: center[0], lng: center[1] };
+}
+
+const DEFAULT_CIRCLE_RADIUS_METERS = 1000;
+
+function clampCircleRadiusMeters(radius: number) {
+  return Math.min(MAX_RADIUS_METERS, Math.max(MIN_RADIUS_METERS, radius));
 }
 
 function createMapAdapter(
@@ -103,6 +111,7 @@ export function ZoneMapGoogleInner({
   excludeZoneId = null,
   draftGeometry = null,
   draftZoneType = "polygon",
+  draftCircleRadiusMeters = DEFAULT_CIRCLE_RADIUS_METERS,
   draftColor,
   onDraftGeometryChange,
   onMapReady,
@@ -115,6 +124,7 @@ export function ZoneMapGoogleInner({
   excludeZoneId?: string | null;
   draftGeometry?: ZoneGeoFeature | null;
   draftZoneType?: ZoneGeometryType;
+  draftCircleRadiusMeters?: number;
   draftColor?: string;
   onDraftGeometryChange?: (
     geometry: ZoneGeoFeature | null,
@@ -141,8 +151,12 @@ export function ZoneMapGoogleInner({
   const drawingManagerRef = useRef<
     import("@/lib/google-maps/load").GoogleDrawingManagerInstance | null
   >(null);
+  const circleClickListenerRef = useRef<{ remove: () => void } | null>(null);
   const onDraftChangeRef = useRef(onDraftGeometryChange);
   const drawModeRef = useRef(drawMode);
+  const draftCircleRadiusRef = useRef(
+    clampCircleRadiusMeters(draftCircleRadiusMeters),
+  );
   const draftColorRef = useRef(normalizeZoneColor(draftColor));
   const [mapState, setMapState] = useState<"loading" | "ready" | "unavailable">(
     "loading",
@@ -155,7 +169,13 @@ export function ZoneMapGoogleInner({
 
   onDraftChangeRef.current = onDraftGeometryChange;
   drawModeRef.current = drawMode;
+  draftCircleRadiusRef.current = clampCircleRadiusMeters(draftCircleRadiusMeters);
   draftColorRef.current = normalizeZoneColor(draftColor);
+
+  const clearCircleClickListener = useCallback(() => {
+    circleClickListenerRef.current?.remove();
+    circleClickListenerRef.current = null;
+  }, []);
 
   const referenceZones = useMemo(() => {
     if (!drawMode) return [];
@@ -376,6 +396,48 @@ export function ZoneMapGoogleInner({
     [clearDraftOverlay],
   );
 
+  const placeCircleAt = useCallback(
+    (lat: number, lng: number) => {
+      const feature = buildCircleFeature(
+        [lat, lng],
+        clampCircleRadiusMeters(draftCircleRadiusRef.current),
+      );
+      attachDraftFromGeometry(feature, "circle", true);
+      onDraftChangeRef.current?.(feature, "circle");
+      if (drawingManagerRef.current) {
+        drawingManagerRef.current.setDrawingMode(null);
+      }
+      clearCircleClickListener();
+    },
+    [attachDraftFromGeometry, clearCircleClickListener],
+  );
+
+  const syncCircleClickPlacement = useCallback(() => {
+    const map = mapRef.current;
+    const google = googleRef.current;
+    if (!map || !google || mapState !== "ready") return;
+
+    clearCircleClickListener();
+
+    const shouldListen =
+      Boolean(drawModeRef.current) &&
+      drawModeRef.current === "circle" &&
+      !draftOverlayRef.current &&
+      !draftGeometry;
+
+    if (!shouldListen) return;
+
+    circleClickListenerRef.current = map.addListener(
+      "click",
+      ((e: { latLng?: { lat: () => number; lng: () => number } | null }) => {
+        if (drawModeRef.current !== "circle" || draftOverlayRef.current) return;
+        const latLng = e.latLng;
+        if (!latLng) return;
+        placeCircleAt(latLng.lat(), latLng.lng());
+      }) as () => void,
+    );
+  }, [mapState, draftGeometry, clearCircleClickListener, placeCircleAt]);
+
   const setupDrawingManager = useCallback(() => {
     const map = mapRef.current;
     const google = googleRef.current;
@@ -388,15 +450,14 @@ export function ZoneMapGoogleInner({
 
     const color = draftColorRef.current;
     const pathOpts = googlePathOptions(color, { fillOpacity: 0.35, weight: 3 });
+    const usePolygonDraw = drawMode === "polygon" && !draftGeometry;
 
     const dm = new google.maps.drawing.DrawingManager({
       map,
       drawingControl: false,
-      drawingMode: draftGeometry
-        ? null
-        : drawMode === "circle"
-          ? google.maps.drawing.OverlayType.CIRCLE
-          : google.maps.drawing.OverlayType.POLYGON,
+      drawingMode: usePolygonDraw
+        ? google.maps.drawing.OverlayType.POLYGON
+        : null,
       polygonOptions: { ...pathOpts, editable: true, draggable: true },
       circleOptions: { ...pathOpts, editable: true, draggable: true },
     });
@@ -405,19 +466,7 @@ export function ZoneMapGoogleInner({
       const overlay = e.overlay;
       dm.setDrawingMode(null);
 
-      if (e.type === google.maps.drawing.OverlayType.CIRCLE) {
-        const circle = overlay as GoogleCircleInstance;
-        circle.setEditable(true);
-        const feature = featureFromCircle(circle);
-        if (feature) {
-          clearDraftOverlay();
-          draftOverlayRef.current = circle;
-          bindCircleEditListeners(circle, (g, t) =>
-            onDraftChangeRef.current?.(g, t),
-          );
-          onDraftChangeRef.current?.(feature, "circle");
-        }
-      } else if (e.type === google.maps.drawing.OverlayType.POLYGON) {
+      if (e.type === google.maps.drawing.OverlayType.POLYGON) {
         const polygon = overlay as GooglePolygonInstance;
         polygon.setEditable(true);
         const feature = featureFromPolygon(polygon);
@@ -433,31 +482,31 @@ export function ZoneMapGoogleInner({
     });
 
     drawingManagerRef.current = dm;
-  }, [drawMode, draftGeometry, clearDraftOverlay]);
+    syncCircleClickPlacement();
+  }, [drawMode, draftGeometry, clearDraftOverlay, syncCircleClickPlacement]);
 
   const handleClearShape = useCallback(() => {
     clearDraftOverlay();
     if (drawingManagerRef.current && googleRef.current) {
       const mode = drawModeRef.current;
-      drawingManagerRef.current.setDrawingMode(
-        mode === "circle"
-          ? googleRef.current.maps.drawing.OverlayType.CIRCLE
-          : googleRef.current.maps.drawing.OverlayType.POLYGON,
-      );
+      if (mode === "polygon") {
+        drawingManagerRef.current.setDrawingMode(
+          googleRef.current.maps.drawing.OverlayType.POLYGON,
+        );
+      } else {
+        drawingManagerRef.current.setDrawingMode(null);
+      }
+      syncCircleClickPlacement();
     }
     onDraftChangeRef.current?.(
       null,
       drawModeRef.current === "circle" ? "circle" : "polygon",
     );
-  }, [clearDraftOverlay]);
+  }, [clearDraftOverlay, syncCircleClickPlacement]);
 
   const handleDeleteShape = useCallback(() => {
-    clearDraftOverlay();
-    onDraftChangeRef.current?.(
-      null,
-      drawModeRef.current === "circle" ? "circle" : "polygon",
-    );
-  }, [clearDraftOverlay]);
+    handleClearShape();
+  }, [handleClearShape]);
 
   useEffect(() => {
     let cancelled = false;
@@ -481,21 +530,27 @@ export function ZoneMapGoogleInner({
         streetViewControl: false,
         fullscreenControl: false,
         clickableIcons: false,
+        gestureHandling: "greedy",
       });
       mapRef.current = map;
       onMapReady?.(
         createMapAdapter(map, google, {
           setDrawMode(mode) {
             if (!drawingManagerRef.current) return;
-            if (!mode) {
+            if (!mode || draftOverlayRef.current) {
               drawingManagerRef.current.setDrawingMode(null);
+              syncCircleClickPlacement();
+              return;
+            }
+            if (mode === "circle") {
+              drawingManagerRef.current.setDrawingMode(null);
+              syncCircleClickPlacement();
               return;
             }
             drawingManagerRef.current.setDrawingMode(
-              mode === "circle"
-                ? google.maps.drawing.OverlayType.CIRCLE
-                : google.maps.drawing.OverlayType.POLYGON,
+              google.maps.drawing.OverlayType.POLYGON,
             );
+            clearCircleClickListener();
           },
           setEditing(enabled) {
             if (!draftOverlayRef.current) return;
@@ -518,6 +573,7 @@ export function ZoneMapGoogleInner({
 
     return () => {
       cancelled = true;
+      clearCircleClickListener();
       if (drawingManagerRef.current) {
         drawingManagerRef.current.setMap(null);
         drawingManagerRef.current = null;
@@ -577,6 +633,28 @@ export function ZoneMapGoogleInner({
     if (mapState !== "ready" || drawMode) return;
     syncZoneLabels();
   }, [mapState, drawMode, mapPrefs.showLabels, zones, syncZoneLabels]);
+
+  useEffect(() => {
+    if (mapState !== "ready" || draftZoneType !== "circle" || !draftGeometry) return;
+    const center = draftGeometry.geometry;
+    if (center.type !== "Point") return;
+    const [lng, lat] = center.coordinates;
+    const nextRadius = clampCircleRadiusMeters(draftCircleRadiusMeters);
+    const currentRadius = draftGeometry.properties?.radiusMeters ?? 0;
+    if (Math.abs(currentRadius - nextRadius) < 1) return;
+    attachDraftFromGeometry(
+      buildCircleFeature([lat, lng], nextRadius),
+      "circle",
+      true,
+    );
+    onDraftChangeRef.current?.(buildCircleFeature([lat, lng], nextRadius), "circle");
+  }, [
+    draftCircleRadiusMeters,
+    draftGeometry,
+    draftZoneType,
+    mapState,
+    attachDraftFromGeometry,
+  ]);
 
   useEffect(() => {
     if (!draftOverlayRef.current || mapState !== "ready") return;
