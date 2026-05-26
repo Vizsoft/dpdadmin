@@ -4,6 +4,7 @@ import { logAdminRead } from "@/lib/audit/log-admin-activity";
 import { getSessionUser } from "@/lib/auth/get-session";
 import { hasPermissionInSet } from "@/lib/auth/permissions";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import {
   enrichLiveLocation,
   parseTrackingStatus,
@@ -223,23 +224,84 @@ export async function fetchLocationEventByDeliveryId(
     throw new Error("not_authorized");
   }
 
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const admin = createAdminClient() as unknown as {
+    from: (table: string) => {
+      select: (columns: string) => Record<string, unknown>;
+    };
+  };
+
+  const byDeliveryQuery = admin
     .from("driver_location_events")
     .select(
-      "id, driver_id, latitude, longitude, speed_mps, accuracy_meters, battery_pct, tracking_status, zone_status, delivery_id, recorded_at",
-    )
+      "id, driver_id, latitude, longitude, speed_mps, accuracy_meters, battery_pct, heading_deg, altitude_m, network_type, charging_state, is_mocked, location_provider, active_delivery_id, tracking_status, zone_status, delivery_id, recorded_at",
+    ) as {
+    eq: (
+      column: string,
+      value: string,
+    ) => {
+      order: (
+        column: string,
+        options: { ascending: boolean },
+      ) => {
+        limit: (count: number) => {
+          maybeSingle: () => Promise<{
+            data: Record<string, unknown> | null;
+            error: { message: string } | null;
+          }>;
+        };
+      };
+    };
+  };
+
+  const { data: byDelivery, error: err1 } = await byDeliveryQuery
     .eq("delivery_id", deliveryId)
     .order("recorded_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  if (error) {
-    throw new Error(error.message);
+  if (err1) throw new Error(err1.message);
+  if (byDelivery) {
+    return mapLocationEventRow(byDelivery as unknown as Parameters<typeof mapLocationEventRow>[0]);
   }
 
-  if (!data) return null;
+  const byActiveQuery = admin
+    .from("driver_location_events")
+    .select(
+      "id, driver_id, latitude, longitude, speed_mps, accuracy_meters, battery_pct, heading_deg, altitude_m, network_type, charging_state, is_mocked, location_provider, active_delivery_id, tracking_status, zone_status, delivery_id, recorded_at",
+    ) as typeof byDeliveryQuery;
 
+  const { data: byActive, error: err2 } = await byActiveQuery
+    .eq("active_delivery_id", deliveryId)
+    .order("recorded_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (err2) throw new Error(err2.message);
+  if (!byActive) return null;
+
+  return mapLocationEventRow(byActive as unknown as Parameters<typeof mapLocationEventRow>[0]);
+}
+
+function mapLocationEventRow(data: {
+  id: string;
+  driver_id: string;
+  latitude: number | string;
+  longitude: number | string;
+  speed_mps: number | string | null;
+  accuracy_meters: number | string | null;
+  battery_pct: number | null;
+  heading_deg: number | string | null;
+  altitude_m: number | string | null;
+  network_type: string | null;
+  charging_state: string | null;
+  is_mocked: boolean | null;
+  location_provider: string | null;
+  active_delivery_id: string | null;
+  tracking_status: string | null;
+  zone_status: string | null;
+  delivery_id: string | null;
+  recorded_at: string;
+}): DriverLocationEvent {
   return {
     id: data.id,
     driverId: data.driver_id,
@@ -248,7 +310,14 @@ export async function fetchLocationEventByDeliveryId(
     speedMps: data.speed_mps != null ? Number(data.speed_mps) : null,
     accuracyMeters: data.accuracy_meters != null ? Number(data.accuracy_meters) : null,
     batteryPct: data.battery_pct,
-    trackingStatus: parseTrackingStatus(data.tracking_status),
+    headingDeg: data.heading_deg != null ? Number(data.heading_deg) : null,
+    altitudeM: data.altitude_m != null ? Number(data.altitude_m) : null,
+    networkType: data.network_type,
+    chargingState: data.charging_state,
+    isMocked: data.is_mocked,
+    locationProvider: data.location_provider,
+    activeDeliveryId: data.active_delivery_id,
+    trackingStatus: parseTrackingStatus(data.tracking_status ?? "idle"),
     zoneStatus: parseZoneStatus(data.zone_status),
     deliveryId: data.delivery_id,
     recordedAt: data.recorded_at,

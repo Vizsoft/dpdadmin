@@ -9,10 +9,16 @@ import {
   updateDeliveryStatus,
   verifyDelivery,
 } from "./deliveries-actions";
-import type { DeliveryStatus } from "./types";
+import type { ReviewableDeliveryStatus } from "./types";
 import type { DeliveryListRow } from "./types";
 
-export type DeliveriesTabFilter = "all" | "pending" | "verified" | "rejected";
+export type DeliveriesTabFilter =
+  | "all"
+  | "active"
+  | "pending"
+  | "verified"
+  | "rejected"
+  | "cancelled";
 
 export async function fetchDeliveriesList(): Promise<DeliveryListRow[]> {
   return fetchDeliveriesForAdmin();
@@ -57,7 +63,7 @@ export function useUpdateDeliveryStatus() {
       rejectionReason,
     }: {
       deliveryId: string;
-      status: DeliveryStatus;
+      status: ReviewableDeliveryStatus;
       rejectionReason?: string;
     }) => updateDeliveryStatus(deliveryId, status, rejectionReason),
     onSuccess: () => {

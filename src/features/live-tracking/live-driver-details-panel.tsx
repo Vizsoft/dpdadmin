@@ -324,6 +324,10 @@ function deliveryStatusLabel(status: LiveRecentDelivery["status"]): string {
       return "Pending";
     case "rejected":
       return "Rejected";
+    case "in_transit":
+      return "In transit";
+    case "cancelled":
+      return "Cancelled";
     default:
       return "Under review";
   }
@@ -336,7 +340,10 @@ function deliveryStatusTone(status: LiveRecentDelivery["status"]): Tone {
     case "pending":
       return "amber";
     case "rejected":
+    case "cancelled":
       return "rose";
+    case "in_transit":
+      return "blue";
     default:
       return "blue";
   }

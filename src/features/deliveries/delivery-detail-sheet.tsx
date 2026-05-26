@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import {
   Download,
@@ -32,19 +33,25 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { StatusPill } from "@/components/dashboard/status-pill";
+import { TabBar } from "@/components/dashboard/tab-bar";
 import { cn } from "@/lib/utils";
 import { selectOptionsFrom } from "@/lib/select-items";
+import { useRealtimeInvalidator } from "@/lib/realtime/use-realtime-invalidator";
 import { DeliveryGpsAuditPanel } from "./delivery-gps-audit-panel";
-import { DeliveryLocationMap } from "./delivery-location-map";
+import {
+  DeliveryLocationMap,
+  deliveryMapPointsFromRow,
+} from "./delivery-location-map";
+import { fetchLiveDriverLocationForDelivery } from "./deliveries-actions";
+import {
+  cancelReasonMessageKey,
+  parseCancelReason,
+} from "./parse-cancel-reason";
 import { useDeleteDelivery, useUpdateDeliveryStatus } from "./use-deliveries";
-import type { DeliveryListRow, DeliveryStatus } from "./types";
+import type { DeliveryListRow, DeliveryMapPoint, DeliveryStatus } from "./types";
+import { REVIEWABLE_DELIVERY_STATUSES, type ReviewableDeliveryStatus } from "./types";
 
-const STATUS_OPTIONS: DeliveryStatus[] = [
-  "pending",
-  "verified",
-  "under_review",
-  "rejected",
-];
+type ProofTab = "pickup" | "delivered" | "cancelled";
 
 function deliveryStatusVariant(
   status: DeliveryStatus,
@@ -53,8 +60,10 @@ function deliveryStatusVariant(
     case "verified":
       return "success";
     case "rejected":
+    case "cancelled":
       return "danger";
     case "under_review":
+    case "in_transit":
       return "neutral";
     case "pending":
     default:
@@ -70,6 +79,10 @@ function statusMessageKey(status: DeliveryStatus) {
       return "statusRejected";
     case "under_review":
       return "statusUnderReview";
+    case "in_transit":
+      return "statusInTransit";
+    case "cancelled":
+      return "statusCancelled";
     case "pending":
     default:
       return "statusPending";
@@ -88,6 +101,11 @@ function formatDateTime(iso: string, locale?: string): string {
   }
 }
 
+function formatCoords(lat: number | null, lng: number | null): string {
+  if (lat == null || lng == null) return "—";
+  return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+}
+
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 border-b border-border py-2.5 last:border-b-0">
@@ -97,15 +115,22 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
   );
 }
 
-function DeliveryProofPanel({ delivery }: { delivery: DeliveryListRow }) {
+function DeliveryProofPanel({
+  proofUrl,
+  contentType,
+  objectKey,
+  sectionLabel,
+}: {
+  proofUrl: string | null;
+  contentType: string | null;
+  objectKey: string | null;
+  sectionLabel: string;
+}) {
   const t = useTranslations("pages.deliveries");
   const [imgError, setImgError] = useState(false);
 
-  const proofUrl = delivery.proof_display_url;
-  const contentType = delivery.proof_content_type ?? "";
-  const filename =
-    proofFilenameFromKey(delivery.order_proof_url) ?? t("proofImage");
-  const isImage = contentType.startsWith("image/") || (!contentType && proofUrl);
+  const filename = proofFilenameFromKey(objectKey) ?? t("proofImage");
+  const isImage = contentType?.startsWith("image/") || (!contentType && proofUrl);
   const isPdf = contentType === "application/pdf";
 
   if (!proofUrl) {
@@ -122,7 +147,7 @@ function DeliveryProofPanel({ delivery }: { delivery: DeliveryListRow }) {
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/20 px-4 py-2.5">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {t("sectionProof")}
+            {sectionLabel}
           </p>
           <p className="truncate font-mono text-xs text-foreground">{filename}</p>
         </div>
@@ -185,6 +210,15 @@ function DeliveryProofPanel({ delivery }: { delivery: DeliveryListRow }) {
   );
 }
 
+function defaultProofTab(delivery: DeliveryListRow): ProofTab {
+  if (delivery.cancel_proof_display_url) return "cancelled";
+  if (delivery.proof_display_url) return "delivered";
+  if (delivery.pickup_proof_display_url) return "pickup";
+  if (delivery.status === "cancelled") return "cancelled";
+  if (delivery.status === "in_transit") return "pickup";
+  return "delivered";
+}
+
 export function DeliveryDetailSheet({
   delivery,
   open,
@@ -207,40 +241,107 @@ export function DeliveryDetailSheet({
   const statusMutation = useUpdateDeliveryStatus();
   const deleteMutation = useDeleteDelivery();
 
-  const [statusDraft, setStatusDraft] = useState<DeliveryStatus>("pending");
+  const [statusDraft, setStatusDraft] = useState<ReviewableDeliveryStatus>("pending");
   const [rejectReason, setRejectReason] = useState("");
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [proofTab, setProofTab] = useState<ProofTab>("delivered");
+
+  const isInTransit = delivery?.status === "in_transit";
+
+  useRealtimeInvalidator({
+    channel: `admin-delivery-live-${delivery?.id ?? "none"}`,
+    tables: [
+      {
+        table: "driver_locations",
+        filter: delivery?.id ? `active_delivery_id=eq.${delivery.id}` : undefined,
+      },
+    ],
+    invalidateKeys: [["delivery-live-location", delivery?.id ?? ""]],
+    enabled: open && isInTransit && Boolean(delivery?.id),
+  });
+
+  const { data: liveLocation } = useQuery({
+    queryKey: ["delivery-live-location", delivery?.id],
+    queryFn: () =>
+      fetchLiveDriverLocationForDelivery(delivery!.id, delivery!.driver_id),
+    enabled: open && isInTransit && Boolean(delivery?.id),
+    refetchInterval: isInTransit ? 15_000 : false,
+  });
 
   useEffect(() => {
     if (!delivery || !open) return;
-    setStatusDraft(delivery.status);
+    const reviewable = REVIEWABLE_DELIVERY_STATUSES.includes(
+      delivery.status as ReviewableDeliveryStatus,
+    )
+      ? (delivery.status as ReviewableDeliveryStatus)
+      : "pending";
+    setStatusDraft(reviewable);
     setRejectReason(delivery.rejection_reason ?? "");
+    setProofTab(defaultProofTab(delivery));
   }, [delivery, open]);
 
   const statusSelectItems = useMemo(
     () =>
-      selectOptionsFrom(STATUS_OPTIONS, (status) => status, (status) =>
+      selectOptionsFrom(REVIEWABLE_DELIVERY_STATUSES, (status) => status, (status) =>
         t(statusMessageKey(status)),
       ),
     [t],
   );
 
+  const proofTabs = useMemo(() => {
+    if (!delivery) return [];
+    const tabs: Array<{ id: ProofTab; label: string; visible: boolean }> = [
+      {
+        id: "pickup",
+        label: t("pickupProof"),
+        visible: Boolean(delivery.pickup_proof_url || delivery.pickup_at),
+      },
+      {
+        id: "delivered",
+        label: t("sectionProof"),
+        visible: Boolean(
+          delivery.order_proof_url || delivery.delivered_at || delivery.status === "pending",
+        ),
+      },
+      {
+        id: "cancelled",
+        label: t("cancelProof"),
+        visible: Boolean(delivery.cancel_proof_url || delivery.cancelled_at),
+      },
+    ];
+    return tabs.filter((tab) => tab.visible);
+  }, [delivery, t]);
+
+  const mapPoints = useMemo((): DeliveryMapPoint[] => {
+    if (!delivery) return [];
+    const points = deliveryMapPointsFromRow(delivery);
+    if (isInTransit && liveLocation) {
+      points.push({
+        lat: liveLocation.latitude,
+        lng: liveLocation.longitude,
+        kind: "live",
+      });
+    }
+    return points;
+  }, [delivery, isInTransit, liveLocation]);
+
   if (!delivery) return null;
 
-  const statusLabel = t(
-    `status${delivery.status.charAt(0).toUpperCase() + delivery.status.slice(1)}` as "statusPending",
-  );
+  const parsedCancel = parseCancelReason(delivery.cancel_reason);
+  const isReadOnlyStatus =
+    delivery.status === "in_transit" || delivery.status === "cancelled";
+  const statusLabel = t(statusMessageKey(delivery.status));
   const isBusy = statusMutation.isPending || deleteMutation.isPending;
-  const hasCoords =
-    delivery.delivered_lat != null && delivery.delivered_lng != null;
 
   const statusUnchanged = statusDraft === delivery.status;
   const rejectReasonUnchanged =
     statusDraft !== "rejected" ||
     rejectReason.trim() === (delivery.rejection_reason ?? "").trim();
   const canSaveStatus =
-    !statusUnchanged ||
-    (statusDraft === "rejected" && !rejectReasonUnchanged);
+    canManage &&
+    !isReadOnlyStatus &&
+    (!statusUnchanged ||
+      (statusDraft === "rejected" && !rejectReasonUnchanged));
 
   const handleSaveStatus = async () => {
     if (!canManage) {
@@ -260,6 +361,8 @@ export function DeliveryDetailSheet({
       const msg =
         result.error === "reason_required"
           ? t("rejectReasonRequired")
+          : result.error === "invalid_status"
+            ? t("invalidStatusChange")
           : result.error === "not_authorized"
             ? t("noPermission")
             : t("statusChangeFailed");
@@ -292,6 +395,28 @@ export function DeliveryDetailSheet({
     onClose();
   };
 
+  const activeProof =
+    proofTab === "pickup"
+      ? {
+          url: delivery.pickup_proof_display_url,
+          type: delivery.pickup_proof_content_type,
+          key: delivery.pickup_proof_url,
+          label: t("pickupProof"),
+        }
+      : proofTab === "cancelled"
+        ? {
+            url: delivery.cancel_proof_display_url,
+            type: delivery.cancel_proof_content_type,
+            key: delivery.cancel_proof_url,
+            label: t("cancelProof"),
+          }
+        : {
+            url: delivery.proof_display_url,
+            type: delivery.proof_content_type,
+            key: delivery.order_proof_url,
+            label: t("sectionProof"),
+          };
+
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent
@@ -299,7 +424,6 @@ export function DeliveryDetailSheet({
         className="flex max-h-[min(92vh,900px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-5xl"
       >
         <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-          {/* Left: details */}
           <div className="order-2 flex min-h-0 w-full shrink-0 flex-col lg:order-1 lg:w-[min(420px,42%)] lg:max-w-[420px]">
             <DialogHeader className="shrink-0 border-b border-border px-6 py-4 pe-14">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -338,10 +462,6 @@ export function DeliveryDetailSheet({
                       }
                     />
                   ) : null}
-                  <DetailRow
-                    label={t("colDeliveredAt")}
-                    value={formatDateTime(delivery.delivered_at)}
-                  />
                   {delivery.rejection_reason ? (
                     <DetailRow
                       label={t("rejectionReason")}
@@ -354,6 +474,94 @@ export function DeliveryDetailSheet({
                   ) : null}
                 </dl>
               </section>
+
+              {delivery.pickup_at ? (
+                <section>
+                  <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    {t("sectionPickup")}
+                  </h4>
+                  <dl className="rounded-lg border border-border px-3">
+                    <DetailRow
+                      label={t("pickupAt")}
+                      value={formatDateTime(delivery.pickup_at)}
+                    />
+                    <DetailRow
+                      label={t("pickupCoords")}
+                      value={
+                        <span className="font-mono text-xs">
+                          {formatCoords(delivery.pickup_lat, delivery.pickup_lng)}
+                        </span>
+                      }
+                    />
+                  </dl>
+                </section>
+              ) : null}
+
+              {delivery.delivered_at ? (
+                <section>
+                  <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    {t("sectionDeliveryFinish")}
+                  </h4>
+                  <dl className="rounded-lg border border-border px-3">
+                    <DetailRow
+                      label={t("colDeliveredAt")}
+                      value={formatDateTime(delivery.delivered_at)}
+                    />
+                    <DetailRow
+                      label={t("deliveryCoords")}
+                      value={
+                        <span className="font-mono text-xs">
+                          {formatCoords(delivery.delivered_lat, delivery.delivered_lng)}
+                        </span>
+                      }
+                    />
+                  </dl>
+                </section>
+              ) : null}
+
+              {delivery.cancelled_at ? (
+                <section>
+                  <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    {t("sectionCancellation")}
+                  </h4>
+                  <dl className="rounded-lg border border-border px-3">
+                    <DetailRow
+                      label={t("cancelledAt")}
+                      value={formatDateTime(delivery.cancelled_at)}
+                    />
+                    <DetailRow
+                      label={t("cancelCoords")}
+                      value={
+                        <span className="font-mono text-xs">
+                          {formatCoords(delivery.cancel_lat, delivery.cancel_lng)}
+                        </span>
+                      }
+                    />
+                    {parsedCancel ? (
+                      <>
+                        <DetailRow
+                          label={t("cancelReasonLabel")}
+                          value={
+                            <StatusPill variant="danger">
+                              {t(cancelReasonMessageKey(parsedCancel.code))}
+                            </StatusPill>
+                          }
+                        />
+                        {parsedCancel.note ? (
+                          <DetailRow
+                            label={t("cancelReasonNote")}
+                            value={
+                              <span className="max-w-[200px] text-end text-sm">
+                                {parsedCancel.note}
+                              </span>
+                            }
+                          />
+                        ) : null}
+                      </>
+                    ) : null}
+                  </dl>
+                </section>
+              ) : null}
 
               <section>
                 <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -387,7 +595,7 @@ export function DeliveryDetailSheet({
                 </dl>
               </section>
 
-              {canManage ? (
+              {canManage && !isReadOnlyStatus ? (
                 <section className="space-y-3 rounded-lg border border-border bg-muted/20 p-3">
                   <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     {t("changeStatus")}
@@ -399,7 +607,9 @@ export function DeliveryDetailSheet({
                     <Select
                       items={statusSelectItems}
                       value={statusDraft}
-                      onValueChange={(v) => setStatusDraft(v as DeliveryStatus)}
+                      onValueChange={(v) =>
+                        setStatusDraft(v as ReviewableDeliveryStatus)
+                      }
                     >
                       <SelectTrigger
                         id="delivery-status-select"
@@ -408,8 +618,12 @@ export function DeliveryDetailSheet({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {STATUS_OPTIONS.map((status) => (
-                          <SelectItem key={status} value={status} label={t(statusMessageKey(status))}>
+                        {REVIEWABLE_DELIVERY_STATUSES.map((status) => (
+                          <SelectItem
+                            key={status}
+                            value={status}
+                            label={t(statusMessageKey(status))}
+                          >
                             {t(statusMessageKey(status))}
                           </SelectItem>
                         ))}
@@ -432,6 +646,10 @@ export function DeliveryDetailSheet({
                     </div>
                   ) : null}
                 </section>
+              ) : isReadOnlyStatus ? (
+                <p className="rounded-lg border border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+                  {t("readOnlyStatusHint")}
+                </p>
               ) : null}
             </div>
 
@@ -451,14 +669,14 @@ export function DeliveryDetailSheet({
                 ) : (
                   <span />
                 )}
-                {canManage ? (
+                {canManage && !isReadOnlyStatus ? (
                   <Button
                     type="button"
                     className="cursor-pointer rounded-lg"
                     onClick={() => void handleSaveStatus()}
                     disabled={
                       isBusy ||
-                      (statusUnchanged && rejectReasonUnchanged) ||
+                      !canSaveStatus ||
                       (statusDraft === "rejected" && !rejectReason.trim())
                     }
                   >
@@ -473,26 +691,41 @@ export function DeliveryDetailSheet({
             ) : null}
           </div>
 
-          {/* Right: proof dominant, audit + map below */}
           <div
             className={cn(
               "order-1 flex min-h-[45vh] min-w-0 flex-1 flex-col border-b border-border lg:order-2 lg:min-h-0 lg:border-b-0 lg:border-l",
             )}
           >
             <div className="flex min-h-0 flex-1 flex-col">
+              {proofTabs.length > 1 ? (
+                <div className="shrink-0 border-b border-border px-4 pt-3">
+                  <TabBar
+                    items={proofTabs.map((tab) => ({ id: tab.id, label: tab.label }))}
+                    activeId={proofTab}
+                    onSelect={(id) => setProofTab(id as ProofTab)}
+                    className="border-b-0"
+                  />
+                </div>
+              ) : null}
               <div className="flex min-h-[55%] flex-1 flex-col">
-                <DeliveryProofPanel delivery={delivery} />
+                <DeliveryProofPanel
+                  proofUrl={activeProof.url}
+                  contentType={activeProof.type}
+                  objectKey={activeProof.key}
+                  sectionLabel={activeProof.label}
+                />
               </div>
               <div className="grid shrink-0 gap-3 border-t border-border p-4 md:grid-cols-2">
                 <DeliveryGpsAuditPanel
                   deliveryId={delivery.id}
                   deliveredLat={delivery.delivered_lat}
                   deliveredLng={delivery.delivered_lng}
+                  cancelLat={delivery.cancel_lat}
+                  cancelLng={delivery.cancel_lng}
                 />
-                {hasCoords ? (
+                {mapPoints.length > 0 ? (
                   <DeliveryLocationMap
-                    lat={delivery.delivered_lat!}
-                    lng={delivery.delivered_lng!}
+                    points={mapPoints}
                     mapHeightClass="h-44 md:h-56"
                   />
                 ) : (
@@ -501,6 +734,13 @@ export function DeliveryDetailSheet({
                   </div>
                 )}
               </div>
+              {isInTransit && liveLocation ? (
+                <p className="border-t border-border px-4 py-2 text-[11px] text-muted-foreground">
+                  {t("liveLocationUpdated", {
+                    time: formatDateTime(liveLocation.lastSeenAt),
+                  })}
+                </p>
+              ) : null}
             </div>
           </div>
         </div>

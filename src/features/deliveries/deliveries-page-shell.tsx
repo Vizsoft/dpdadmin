@@ -44,6 +44,12 @@ import { queryKeys } from "@/lib/query/query-keys";
 import { useRealtimeInvalidator } from "@/lib/realtime/use-realtime-invalidator";
 import { useDeliveriesList, type DeliveriesTabFilter } from "./use-deliveries";
 import { DeliveryDetailSheet } from "./delivery-detail-sheet";
+import {
+  CANCEL_REASON_CODES,
+  parseCancelReason,
+  type CancelReasonCode,
+} from "./parse-cancel-reason";
+import { formatRelativeMinutesAgo } from "./delivery-sort-utils";
 import type { DeliveryListRow, DeliveryStatus } from "./types";
 
 function deliveryStatusVariant(
@@ -53,8 +59,10 @@ function deliveryStatusVariant(
     case "verified":
       return "success";
     case "rejected":
+    case "cancelled":
       return "danger";
     case "under_review":
+    case "in_transit":
       return "neutral";
     case "pending":
     default:
@@ -70,6 +78,10 @@ function statusMessageKey(status: DeliveryStatus) {
       return "statusRejected";
     case "under_review":
       return "statusUnderReview";
+    case "in_transit":
+      return "statusInTransit";
+    case "cancelled":
+      return "statusCancelled";
     case "pending":
     default:
       return "statusPending";
@@ -97,7 +109,11 @@ function exportDeliveriesCsv(rows: DeliveryListRow[]) {
     "zone",
     "status",
     "external_order_id",
+    "pickup_at",
     "delivered_at",
+    "cancelled_at",
+    "cancel_reason_code",
+    "cancel_reason_note",
   ];
   const escape = (v: string | number | boolean | null) => {
     const s = String(v ?? "");
@@ -105,8 +121,9 @@ function exportDeliveriesCsv(rows: DeliveryListRow[]) {
   };
   const lines = [
     header.join(","),
-    ...rows.map((r) =>
-      [
+    ...rows.map((r) => {
+      const parsed = parseCancelReason(r.cancel_reason);
+      return [
         r.short_id,
         r.driver_name,
         r.driver_code,
@@ -114,11 +131,15 @@ function exportDeliveriesCsv(rows: DeliveryListRow[]) {
         r.zone_name,
         r.status,
         r.external_order_id ?? "",
-        r.delivered_at,
+        r.pickup_at ?? "",
+        r.delivered_at ?? "",
+        r.cancelled_at ?? "",
+        parsed?.code ?? "",
+        parsed?.note ?? "",
       ]
         .map(escape)
-        .join(","),
-    ),
+        .join(",");
+    }),
   ];
   const blob = new Blob(["\uFEFF" + lines.join("\n")], {
     type: "text/csv;charset=utf-8",
@@ -156,6 +177,7 @@ function DeliveriesPageContent() {
   const [tabFilter, setTabFilter] = useState<DeliveriesTabFilter>("all");
   const [zoneFilter, setZoneFilter] = useState("all");
   const [partnerFilter, setPartnerFilter] = useState("all");
+  const [cancelReasonFilter, setCancelReasonFilter] = useState<"all" | CancelReasonCode>("all");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedDelivery, setSelectedDelivery] = useState<DeliveryListRow | null>(null);
 
@@ -195,9 +217,11 @@ function DeliveriesPageContent() {
 
   const tabFiltered = useMemo(() => {
     return deliveries.filter((d) => {
+      if (tabFilter === "active") return d.status === "in_transit";
       if (tabFilter === "pending") return d.status === "pending";
       if (tabFilter === "verified") return d.status === "verified";
       if (tabFilter === "rejected") return d.status === "rejected";
+      if (tabFilter === "cancelled") return d.status === "cancelled";
       return true;
     });
   }, [deliveries, tabFilter]);
@@ -207,6 +231,10 @@ function DeliveriesPageContent() {
     return tabFiltered.filter((d) => {
       if (zoneFilter !== "all" && d.zone_id !== zoneFilter) return false;
       if (partnerFilter !== "all" && d.partner_id !== partnerFilter) return false;
+      if (tabFilter === "cancelled" && cancelReasonFilter !== "all") {
+        const parsed = parseCancelReason(d.cancel_reason);
+        if (parsed?.code !== cancelReasonFilter) return false;
+      }
       if (!q) return true;
       return (
         d.driver_name.toLowerCase().includes(q) ||
@@ -215,22 +243,24 @@ function DeliveriesPageContent() {
         (d.external_order_id ?? "").toLowerCase().includes(q)
       );
     });
-  }, [tabFiltered, search, zoneFilter, partnerFilter]);
+  }, [tabFiltered, search, zoneFilter, partnerFilter, tabFilter, cancelReasonFilter]);
 
   const kpis = useMemo(() => {
     const total = deliveries.length;
     const verified = deliveries.filter((d) => d.status === "verified").length;
     const pending = deliveries.filter((d) => d.status === "pending").length;
     const rejected = deliveries.filter((d) => d.status === "rejected").length;
+    const active = deliveries.filter((d) => d.status === "in_transit").length;
 
     const todayStr = new Intl.DateTimeFormat("en-CA", {
       timeZone: "Asia/Kuwait",
     }).format(new Date());
-    const todayCount = deliveries.filter((d) => {
+    const cancelledToday = deliveries.filter((d) => {
+      if (d.status !== "cancelled" || !d.cancelled_at) return false;
       try {
         const dDate = new Intl.DateTimeFormat("en-CA", {
           timeZone: "Asia/Kuwait",
-        }).format(new Date(d.delivered_at));
+        }).format(new Date(d.cancelled_at));
         return dDate === todayStr;
       } catch {
         return false;
@@ -239,12 +269,42 @@ function DeliveriesPageContent() {
 
     return [
       { label: t("kpiTotal"), value: total },
+      { label: t("kpiActive"), value: active },
       { label: t("kpiVerified"), value: verified },
       { label: t("kpiPending"), value: pending },
       { label: t("kpiRejected"), value: rejected },
-      { label: t("kpiToday"), value: todayCount },
+      { label: t("kpiCancelled"), value: cancelledToday },
     ];
   }, [deliveries, t]);
+
+  const cancelReasonSelectItems = useMemo(
+    () => [
+      { value: "all", label: t("filterCancelReasonAll"), keywords: [t("filterCancelReasonAll")] },
+      ...CANCEL_REASON_CODES.map((code) => ({
+        value: code,
+        label: t(`cancelReason.${code}`),
+        keywords: [code, t(`cancelReason.${code}`)],
+      })),
+    ],
+    [t],
+  );
+
+  function formatWhenColumn(delivery: DeliveryListRow): string {
+    if (delivery.status === "in_transit" && delivery.pickup_at) {
+      const mins = formatRelativeMinutesAgo(delivery.pickup_at);
+      return t("pickedUpAgo", { minutes: mins });
+    }
+    if (delivery.status === "cancelled" && delivery.cancelled_at) {
+      return formatDateTime(delivery.cancelled_at);
+    }
+    if (delivery.delivered_at) {
+      return formatDateTime(delivery.delivered_at);
+    }
+    if (delivery.pickup_at) {
+      return formatDateTime(delivery.pickup_at);
+    }
+    return "—";
+  }
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -261,12 +321,17 @@ function DeliveriesPageContent() {
 
   const tabItems = [
     { id: "all" as const, label: t("tabAll") },
+    { id: "active" as const, label: t("tabActive") },
     { id: "pending" as const, label: t("tabPending") },
     { id: "verified" as const, label: t("tabVerified") },
     { id: "rejected" as const, label: t("tabRejected") },
+    { id: "cancelled" as const, label: t("tabCancelled") },
   ];
 
-  const hasActiveFilters = zoneFilter !== "all" || partnerFilter !== "all";
+  const hasActiveFilters =
+    zoneFilter !== "all" ||
+    partnerFilter !== "all" ||
+    (tabFilter === "cancelled" && cancelReasonFilter !== "all");
 
   return (
     <AppPage>
@@ -312,10 +377,28 @@ function DeliveriesPageContent() {
               <TabBar
                 items={tabItems}
                 activeId={tabFilter}
-                onSelect={(id) => setTabFilter(id as DeliveriesTabFilter)}
+                onSelect={(id) => {
+                  setTabFilter(id as DeliveriesTabFilter);
+                  if (id !== "cancelled") setCancelReasonFilter("all");
+                }}
                 className="border-b-0"
               />
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                {tabFilter === "cancelled" ? (
+                  <SearchSelect
+                    items={cancelReasonSelectItems}
+                    value={cancelReasonFilter}
+                    onChange={(v) =>
+                      setCancelReasonFilter((v as CancelReasonCode | "all") ?? "all")
+                    }
+                    placeholder={t("filterCancelReason")}
+                    searchPlaceholder={t("filterCancelReason")}
+                    defaultLimit={8}
+                    recentsKey="deliveries-cancel-reason-filter"
+                    className="w-full min-w-[140px] sm:w-[180px]"
+                    clearable={false}
+                  />
+                ) : null}
                 <SearchSelect
                   items={zoneSelectItems}
                   value={zoneFilter}
@@ -402,7 +485,7 @@ function DeliveriesPageContent() {
                     {t("colOrderId")}
                   </TableHead>
                   <TableHead className={cn("hidden sm:table-cell", TABLE_HEAD_CLASS)}>
-                    {t("colDeliveredAt")}
+                    {t("colWhen")}
                   </TableHead>
                   <TableHead className={cn("w-12 text-end", TABLE_HEAD_CLASS)}>
                     {t("colActions")}
@@ -429,7 +512,9 @@ function DeliveriesPageContent() {
                       <TableCell className="font-mono text-sm tabular-nums text-muted-foreground">
                         <span className="inline-flex items-center gap-1.5">
                           #{delivery.short_id}
-                          {delivery.order_proof_url ? (
+                          {delivery.order_proof_url ||
+                          delivery.pickup_proof_url ||
+                          delivery.cancel_proof_url ? (
                             <Camera
                               className="h-3.5 w-3.5 shrink-0 text-primary/70"
                               aria-label={t("hasProof")}
@@ -439,8 +524,16 @@ function DeliveriesPageContent() {
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col">
-                          <span className="text-sm font-medium text-foreground">
+                          <span className="inline-flex flex-wrap items-center gap-1.5 text-sm font-medium text-foreground">
                             {delivery.driver_name}
+                            {delivery.gps_is_mocked ? (
+                              <span
+                                className="rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] font-semibold text-destructive"
+                                title={t("mockGpsTooltip")}
+                              >
+                                {t("mockGpsBadge")}
+                              </span>
+                            ) : null}
                           </span>
                           <span className="text-xs text-muted-foreground">
                             #{delivery.driver_code}
@@ -480,7 +573,7 @@ function DeliveriesPageContent() {
                         {delivery.external_order_id ?? "—"}
                       </TableCell>
                       <TableCell className="hidden text-sm text-muted-foreground sm:table-cell">
-                        {formatDateTime(delivery.delivered_at)}
+                        {formatWhenColumn(delivery)}
                       </TableCell>
                       <TableCell className="text-end">
                         <DropdownMenu>

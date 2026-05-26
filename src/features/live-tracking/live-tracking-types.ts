@@ -20,7 +20,7 @@ export type LiveRecentDelivery = {
   id: string;
   driverId: string;
   shortId: string;
-  status: "pending" | "verified" | "rejected" | "under_review";
+  status: "pending" | "verified" | "rejected" | "under_review" | "in_transit" | "cancelled";
   partnerName: string;
-  deliveredAt: string;
+  deliveredAt: string | null;
 };

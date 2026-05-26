@@ -6,6 +6,7 @@ import { hasPermissionInSet } from "@/lib/auth/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchDeliveriesForAdmin } from "@/features/deliveries/deliveries-actions";
+import { deliveryActivityAt } from "@/features/deliveries/delivery-sort-utils";
 import { fetchDriversForAdmin } from "@/features/drivers/drivers-actions";
 import { fetchLiveDriverLocations } from "@/features/locations/locations-actions";
 import type { DeliveryListRow } from "@/features/deliveries/types";
@@ -266,8 +267,10 @@ function buildWorkforceQueue(
     .map((driver) => {
       const profileId = intakeToProfile.get(driver.id) ?? driver.id;
       const driverDeliveries = deliveriesByDriver.get(profileId) ?? [];
-      const sorted = [...driverDeliveries].sort((a, b) => b.delivered_at.localeCompare(a.delivered_at));
-      const lastDelivery = sorted[0]?.delivered_at ?? null;
+      const sorted = [...driverDeliveries].sort((a, b) =>
+        deliveryActivityAt(b).localeCompare(deliveryActivityAt(a)),
+      );
+      const lastDelivery = sorted[0] ? deliveryActivityAt(sorted[0]) : null;
       const hasUnderReview = driverDeliveries.some((d) => d.status === "under_review");
       const status = deriveWorkforceStatus(
         driver,
@@ -325,7 +328,9 @@ function buildDeliveryMetrics(
     avgLast7Days: Math.round(avgLast7Days * 10) / 10,
   };
 
-  const sorted = [...todayDeliveries].sort((a, b) => b.delivered_at.localeCompare(a.delivered_at));
+  const sorted = [...todayDeliveries].sort((a, b) =>
+    deliveryActivityAt(b).localeCompare(deliveryActivityAt(a)),
+  );
   const feed: DeliveryFeedItem[] = sorted.slice(0, 20).map((d) => {
     let messageKey: DeliveryFeedItem["messageKey"] = "submitted";
     let severity: DeliveryFeedItem["severity"] = "info";
@@ -344,7 +349,7 @@ function buildDeliveryMetrics(
     }
     return {
       id: d.id,
-      at: d.delivered_at,
+      at: deliveryActivityAt(d),
       driverName: d.driver_name,
       messageKey,
       detail: d.external_order_id ?? d.short_id,
@@ -507,10 +512,13 @@ export async function fetchDashboardSnapshot(locale = "en"): Promise<DashboardSn
     }
   }
 
-  const todayDeliveries = deliveries.filter(
-    (d) => d.delivered_at >= start && d.delivered_at <= end,
+  const todayDeliveries = deliveries.filter((d) => {
+    const at = deliveryActivityAt(d);
+    return at >= start && at <= end;
+  });
+  const weekDeliveries = deliveries.filter(
+    (d) => deliveryActivityAt(d) >= `${weekStart}T00:00:00+03:00`,
   );
-  const weekDeliveries = deliveries.filter((d) => d.delivered_at >= `${weekStart}T00:00:00+03:00`);
 
   const supabase = await createClient();
   const admin = createAdminClient();

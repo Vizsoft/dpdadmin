@@ -13,7 +13,9 @@ import type {
   DeliveryActionError,
   DeliveryListRow,
   DeliveryStatus,
+  ReviewableDeliveryStatus,
 } from "./types";
+import { sortDeliveriesByActivity } from "./delivery-sort-utils";
 
 type DeliveryMutationResult =
   | { ok: true }
@@ -286,9 +288,18 @@ type DeliveryDbRow = {
   order_proof_url: string | null;
   status: DeliveryStatus;
   rejection_reason: string | null;
-  delivered_at: string;
+  delivered_at: string | null;
   delivered_lat: number | null;
   delivered_lng: number | null;
+  pickup_at: string | null;
+  pickup_lat: number | null;
+  pickup_lng: number | null;
+  pickup_proof_url: string | null;
+  cancelled_at: string | null;
+  cancel_lat: number | null;
+  cancel_lng: number | null;
+  cancel_reason: string | null;
+  cancel_proof_url: string | null;
   created_at: string;
   drivers: {
     driver_code: string;
@@ -300,6 +311,106 @@ type DeliveryDbRow = {
   partners: { name: string; logo_url: string | null } | { name: string; logo_url: string | null }[] | null;
   zones: { name: string } | { name: string }[] | null;
 };
+
+type ProofResolved = { url: string; contentType: string | null } | null;
+
+async function resolveProofCached(
+  key: string,
+  cache: Map<string, ProofResolved>,
+): Promise<ProofResolved> {
+  if (!key) return null;
+  if (cache.has(key)) return cache.get(key) ?? null;
+  const resolved = await resolveOrderProofUrl(key);
+  const entry: ProofResolved = resolved
+    ? { url: resolved.url, contentType: resolved.contentType }
+    : null;
+  cache.set(key, entry);
+  return entry;
+}
+
+async function fetchGpsMockFlagsByDeliveryIds(
+  deliveryIds: string[],
+): Promise<Map<string, boolean>> {
+  const result = new Map<string, boolean>();
+  if (deliveryIds.length === 0) return result;
+
+  const admin = createAdminClient() as unknown as {
+    from: (table: string) => {
+      select: (columns: string) => Record<string, unknown>;
+    };
+  };
+
+  const byDeliveryIdQuery = admin
+    .from("driver_location_events")
+    .select("delivery_id, is_mocked, recorded_at") as {
+    in: (
+      column: string,
+      values: string[],
+    ) => {
+      order: (
+        column: string,
+        options: { ascending: boolean },
+      ) => Promise<{ data: unknown[] | null; error: { message: string } | null }>;
+    };
+  };
+
+  const { data: byDeliveryId, error: err1 } = await byDeliveryIdQuery
+    .in("delivery_id", deliveryIds)
+    .order("recorded_at", { ascending: false });
+
+  if (err1) {
+    console.error("[fetchDeliveriesForAdmin] gps mock by delivery_id failed", err1);
+  } else {
+    for (const row of (byDeliveryId ?? []) as unknown as Array<{
+      delivery_id: string | null;
+      is_mocked: boolean | null;
+    }>) {
+      if (!row.delivery_id || result.has(row.delivery_id)) continue;
+      if (row.is_mocked === true) result.set(row.delivery_id, true);
+      else if (!result.has(row.delivery_id)) result.set(row.delivery_id, false);
+    }
+  }
+
+  const missing = deliveryIds.filter((id) => !result.has(id));
+  if (missing.length > 0) {
+    const byActiveIdQuery = admin
+      .from("driver_location_events")
+      .select("active_delivery_id, is_mocked, recorded_at") as {
+      in: (
+        column: string,
+        values: string[],
+      ) => {
+        order: (
+          column: string,
+          options: { ascending: boolean },
+        ) => Promise<{ data: unknown[] | null; error: { message: string } | null }>;
+      };
+    };
+
+    const { data: byActiveId, error: err2 } = await byActiveIdQuery
+      .in("active_delivery_id", missing)
+      .order("recorded_at", { ascending: false });
+
+    if (err2) {
+      console.error("[fetchDeliveriesForAdmin] gps mock by active_delivery_id failed", err2);
+    } else {
+      for (const row of (byActiveId ?? []) as unknown as Array<{
+        active_delivery_id: string | null;
+        is_mocked: boolean | null;
+      }>) {
+        const id = row.active_delivery_id;
+        if (!id || result.has(id)) continue;
+        if (row.is_mocked === true) result.set(id, true);
+        else if (!result.has(id)) result.set(id, false);
+      }
+    }
+  }
+
+  for (const id of deliveryIds) {
+    if (!result.has(id)) result.set(id, false);
+  }
+  return result;
+}
 
 type RecentDeliveryDbRow = {
   id: string;
@@ -338,24 +449,32 @@ export async function fetchDeliveriesForAdmin(): Promise<DeliveryListRow[]> {
       delivered_at,
       delivered_lat,
       delivered_lng,
+      pickup_at,
+      pickup_lat,
+      pickup_lng,
+      pickup_proof_url,
+      cancelled_at,
+      cancel_lat,
+      cancel_lng,
+      cancel_reason,
+      cancel_proof_url,
       created_at,
       drivers (driver_code, profiles (full_name, phone)),
       partners (name, logo_url),
       zones (name)
     `,
     )
-    .order("delivered_at", { ascending: false });
+    .order("created_at", { ascending: false });
 
   if (error) throw error;
 
   const rows = (data ?? []) as unknown as DeliveryDbRow[];
+  const deliveryIds = rows.map((r) => r.id);
+  const mockFlags = await fetchGpsMockFlagsByDeliveryIds(deliveryIds);
   const partnerLogoCache = new Map<string, string | null>();
-  const proofCache = new Map<
-    string,
-    { url: string; contentType: string | null } | null
-  >();
+  const proofCache = new Map<string, ProofResolved>();
 
-  return Promise.all(
+  const mapped = await Promise.all(
     rows.map(async (row) => {
       const driverRel = Array.isArray(row.drivers) ? row.drivers[0] : row.drivers;
       const profileRel = driverRel?.profiles;
@@ -375,25 +494,16 @@ export async function fetchDeliveriesForAdmin(): Promise<DeliveryListRow[]> {
       }
 
       const proofKey = row.order_proof_url?.trim() ?? "";
-      let proof_display_url: string | null = null;
-      let proof_content_type: string | null = null;
+      const pickupProofKey = row.pickup_proof_url?.trim() ?? "";
+      const cancelProofKey = row.cancel_proof_url?.trim() ?? "";
 
-      if (proofKey) {
-        if (!proofCache.has(proofKey)) {
-          const resolved = await resolveOrderProofUrl(proofKey);
-          proofCache.set(
-            proofKey,
-            resolved
-              ? { url: resolved.url, contentType: resolved.contentType }
-              : null,
-          );
-        }
-        const cached = proofCache.get(proofKey);
-        if (cached) {
-          proof_display_url = cached.url;
-          proof_content_type = cached.contentType;
-        }
-      }
+      const deliveryProof = proofKey ? await resolveProofCached(proofKey, proofCache) : null;
+      const pickupProof = pickupProofKey
+        ? await resolveProofCached(pickupProofKey, proofCache)
+        : null;
+      const cancelProof = cancelProofKey
+        ? await resolveProofCached(cancelProofKey, proofCache)
+        : null;
 
       return {
         id: row.id,
@@ -410,16 +520,32 @@ export async function fetchDeliveriesForAdmin(): Promise<DeliveryListRow[]> {
         status: row.status,
         external_order_id: row.external_order_id,
         order_proof_url: row.order_proof_url,
-        proof_display_url,
-        proof_content_type,
+        proof_display_url: deliveryProof?.url ?? null,
+        proof_content_type: deliveryProof?.contentType ?? null,
+        pickup_at: row.pickup_at,
+        pickup_lat: parseCoord(row.pickup_lat),
+        pickup_lng: parseCoord(row.pickup_lng),
+        pickup_proof_url: row.pickup_proof_url,
+        pickup_proof_display_url: pickupProof?.url ?? null,
+        pickup_proof_content_type: pickupProof?.contentType ?? null,
+        cancelled_at: row.cancelled_at,
+        cancel_lat: parseCoord(row.cancel_lat),
+        cancel_lng: parseCoord(row.cancel_lng),
+        cancel_reason: row.cancel_reason,
+        cancel_proof_url: row.cancel_proof_url,
+        cancel_proof_display_url: cancelProof?.url ?? null,
+        cancel_proof_content_type: cancelProof?.contentType ?? null,
         rejection_reason: row.rejection_reason,
         delivered_at: row.delivered_at,
         delivered_lat: parseCoord(row.delivered_lat),
         delivered_lng: parseCoord(row.delivered_lng),
         created_at: row.created_at,
+        gps_is_mocked: mockFlags.get(row.id) ?? false,
       };
     }),
   );
+
+  return sortDeliveriesByActivity(mapped);
 }
 
 export async function fetchRecentDeliveriesForDriver(
@@ -463,7 +589,7 @@ export async function fetchRecentDeliveriesForDriver(
 
 export async function updateDeliveryStatus(
   deliveryId: string,
-  status: DeliveryStatus,
+  status: ReviewableDeliveryStatus,
   rejectionReason?: string,
 ): Promise<DeliveryMutationResult> {
   const session = await requireDeliveriesManage();
@@ -486,6 +612,13 @@ export async function updateDeliveryStatus(
       error: "update_failed",
       errorDetail: formatPgErrorDetail(fetchError),
     };
+  }
+
+  if (
+    (existing.status as DeliveryStatus) === "in_transit" ||
+    (existing.status as DeliveryStatus) === "cancelled"
+  ) {
+    return { error: "invalid_status" };
   }
 
   const updatePayload =
@@ -539,7 +672,7 @@ export async function updateDeliveryStatus(
   const affectsEarnings =
     existing.status === "verified" ||
     status === "verified";
-  if (affectsEarnings) {
+  if (affectsEarnings && existing.delivered_at) {
     await recalcEarningsForDelivery(
       supabase,
       existing.driver_id,
@@ -554,7 +687,7 @@ export async function updateDeliveryStatus(
     {
       id: existing.id,
       driver_id: existing.driver_id,
-      delivered_at: existing.delivered_at,
+      delivered_at: existing.delivered_at ?? new Date().toISOString(),
       partner_id: (existing as { partner_id: string | null }).partner_id ?? null,
       restaurant_id:
         resolvedRestaurantId ??
@@ -639,9 +772,73 @@ export async function deleteDelivery(
     },
   });
 
-  if (row.status === "verified") {
+  if (row.status === "verified" && row.delivered_at) {
     await recalcEarningsForDelivery(supabase, row.driver_id, row.delivered_at);
   }
 
   return { ok: true };
+}
+
+export type LiveDriverLocationForDelivery = {
+  latitude: number;
+  longitude: number;
+  lastSeenAt: string;
+  isMocked: boolean | null;
+  headingDeg: number | null;
+};
+
+export async function fetchLiveDriverLocationForDelivery(
+  deliveryId: string,
+  driverId: string,
+): Promise<LiveDriverLocationForDelivery | null> {
+  await requireDeliveriesView();
+  if (!deliveryId || !driverId) return null;
+
+  const supabase = createAdminClient() as unknown as {
+    from: (table: string) => {
+      select: (columns: string) => Record<string, unknown>;
+    };
+  };
+
+  const liveQuery = supabase
+    .from("driver_locations")
+    .select(
+      "latitude, longitude, last_seen_at, is_mocked, heading_deg, active_delivery_id",
+    ) as {
+    eq: (
+      column: string,
+      value: string,
+    ) => {
+      maybeSingle: () => Promise<{
+        data: Record<string, unknown> | null;
+        error: { message: string } | null;
+      }>;
+    };
+  };
+
+  const { data, error } = await liveQuery.eq("driver_id", driverId).maybeSingle();
+
+  if (error) throw error;
+  if (!data) return null;
+
+  const row = data as unknown as {
+    latitude: number | string;
+    longitude: number | string;
+    last_seen_at: string;
+    is_mocked: boolean | null;
+    heading_deg: number | string | null;
+    active_delivery_id: string | null;
+  };
+
+  if (row.active_delivery_id && row.active_delivery_id !== deliveryId) {
+    return null;
+  }
+
+  return {
+    latitude: Number(row.latitude),
+    longitude: Number(row.longitude),
+    lastSeenAt: row.last_seen_at,
+    isMocked: row.is_mocked,
+    headingDeg: row.heading_deg != null ? Number(row.heading_deg) : null,
+  };
 }

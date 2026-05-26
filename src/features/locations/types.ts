@@ -33,6 +33,13 @@ export type DriverLocationEvent = {
   speedMps: number | null;
   accuracyMeters: number | null;
   batteryPct: number | null;
+  headingDeg?: number | null;
+  altitudeM?: number | null;
+  networkType?: string | null;
+  chargingState?: string | null;
+  isMocked?: boolean | null;
+  locationProvider?: string | null;
+  activeDeliveryId?: string | null;
   trackingStatus: TrackingStatus;
   zoneStatus: ZoneStatus | null;
   deliveryId: string | null;

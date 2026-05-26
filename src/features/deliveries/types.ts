@@ -1,10 +1,26 @@
 export const DELIVERY_STATUSES = [
+  "in_transit",
   "pending",
   "verified",
-  "rejected",
   "under_review",
+  "rejected",
+  "cancelled",
 ] as const;
 export type DeliveryStatus = (typeof DELIVERY_STATUSES)[number];
+
+/** Statuses admins may set from the detail sheet. */
+export const REVIEWABLE_DELIVERY_STATUSES = [
+  "pending",
+  "verified",
+  "under_review",
+  "rejected",
+] as const;
+export type ReviewableDeliveryStatus = (typeof REVIEWABLE_DELIVERY_STATUSES)[number];
+
+export type DeliveryProofFields = {
+  proof_display_url: string | null;
+  proof_content_type: string | null;
+};
 
 export type DeliveryListRow = {
   id: string;
@@ -23,34 +39,29 @@ export type DeliveryListRow = {
   order_proof_url: string | null;
   proof_display_url: string | null;
   proof_content_type: string | null;
+  pickup_at: string | null;
+  pickup_lat: number | null;
+  pickup_lng: number | null;
+  pickup_proof_url: string | null;
+  pickup_proof_display_url: string | null;
+  pickup_proof_content_type: string | null;
+  cancelled_at: string | null;
+  cancel_lat: number | null;
+  cancel_lng: number | null;
+  cancel_reason: string | null;
+  cancel_proof_url: string | null;
+  cancel_proof_display_url: string | null;
+  cancel_proof_content_type: string | null;
   rejection_reason: string | null;
-  delivered_at: string;
+  delivered_at: string | null;
   delivered_lat: number | null;
   delivered_lng: number | null;
   created_at: string;
+  /** Latest GPS event for this delivery (mock flag for list badge). */
+  gps_is_mocked: boolean | null;
 };
 
-export type DeliveryDetailModel = {
-  id: string;
-  short_id: string;
-  status: DeliveryStatus;
-  external_order_id: string | null;
-  order_proof_url: string | null;
-  proof_display_url: string | null;
-  proof_content_type: string | null;
-  rejection_reason: string | null;
-  delivered_at: string;
-  delivered_lat: number | null;
-  delivered_lng: number | null;
-  created_at: string;
-  driver_id: string;
-  driver_name: string;
-  driver_code: string;
-  driver_phone: string;
-  partner_name: string;
-  partner_logo_url: string | null;
-  zone_name: string;
-};
+export type DeliveryDetailModel = DeliveryListRow;
 
 export type DeliveryActionError =
   | "not_authorized"
@@ -58,3 +69,11 @@ export type DeliveryActionError =
   | "reason_required"
   | "update_failed"
   | "delete_failed";
+
+export type DeliveryMapPointKind = "pickup" | "delivered" | "cancelled" | "live";
+
+export type DeliveryMapPoint = {
+  lat: number;
+  lng: number;
+  kind: DeliveryMapPointKind;
+};
