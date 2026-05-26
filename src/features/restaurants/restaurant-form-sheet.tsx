@@ -135,12 +135,12 @@ function RestaurantFormBody({
     }
   };
 
-  const invalidate = async () => {
-    await queryClient.invalidateQueries({ queryKey: queryKeys.restaurants.all() });
-    await queryClient.invalidateQueries({
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.restaurants.all() });
+    void queryClient.invalidateQueries({
       queryKey: [...queryKeys.drivers.all(), "form-options"],
     });
-    await queryClient.invalidateQueries({ queryKey: queryKeys.dpd.all() });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.dpd.all() });
   };
 
   const handleSave = () => {
@@ -180,7 +180,7 @@ function RestaurantFormBody({
         toast.warning(t(`errors.${result.logoWarning}`));
       }
       toast.success(isEdit ? t("restaurantUpdated") : t("restaurantCreated"));
-      await invalidate();
+      invalidate();
       onSaved();
       onClose();
     });
@@ -367,7 +367,7 @@ export function RestaurantFormSheet({
         throw new Error(result.error);
       }
       toast.success(t("restaurantDeleted"));
-      await queryClient.invalidateQueries({ queryKey: queryKeys.restaurants.all() });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.restaurants.all() });
       onDeleted();
       onOpenChange(false);
     });

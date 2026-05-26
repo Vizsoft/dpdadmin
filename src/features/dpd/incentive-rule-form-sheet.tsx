@@ -273,7 +273,7 @@ export function IncentiveRuleFormSheet({
         return;
       }
       toast.success(isEdit ? t("incentiveUpdated") : t("incentiveCreated"));
-      await queryClient.invalidateQueries({ queryKey: queryKeys.dpd.all() });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.dpd.all() });
       onOpenChange(false);
     });
   };

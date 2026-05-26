@@ -291,16 +291,8 @@ export async function createDriverIntake(
   const civilIdNormalized = normalizeCivilId(civilId);
   if (!civilIdNormalized) return { error: "invalid_civil_id" };
 
-  if (await phoneExists(phone)) return { error: "phone_exists" };
-
   const restaurantIds = parseRestaurantIds(formData);
   const supabase = await createClient();
-
-  const restaurantCheck = await validateRestaurantsPublished(
-    supabase,
-    restaurantIds,
-  );
-  if (restaurantCheck.error) return { error: restaurantCheck.error };
   const intakeId = crypto.randomUUID();
   const assetsIssued = buildAssetsMap(assetsEnabled, formData);
 
@@ -314,48 +306,57 @@ export async function createDriverIntake(
 
   const avatarFile = formData.get("avatar");
   const hasAvatarUpload = avatarFile instanceof File && avatarFile.size > 0;
+  const needsR2 = docsToUpload.length > 0 || hasAvatarUpload;
 
-  if ((docsToUpload.length > 0 || hasAvatarUpload) && !(await isR2Configured())) {
-    return { error: "r2_not_configured" };
-  }
+  const [phoneTaken, restaurantCheck, r2Configured] = await Promise.all([
+    phoneExists(phone),
+    validateRestaurantsPublished(supabase, restaurantIds),
+    needsR2 ? isR2Configured() : Promise.resolve(true),
+  ]);
 
-  for (const { docType, file } of docsToUpload) {
-    const upload = await uploadIntakeDocument(
-      intakeId,
-      docType,
-      file,
-      auth.session.id,
-    );
-    if (upload.error) {
-      try {
-        await deleteObjects(allIntakeDocumentKeys(intakeId));
-      } catch {
-        /* best-effort */
-      }
-      return { error: upload.error };
+  if (phoneTaken) return { error: "phone_exists" };
+  if (restaurantCheck.error) return { error: restaurantCheck.error };
+  if (needsR2 && !r2Configured) return { error: "r2_not_configured" };
+
+  const [docUploads, avatarUpload, codeResult] = await Promise.all([
+    Promise.all(
+      docsToUpload.map(({ docType, file }) =>
+        uploadIntakeDocument(intakeId, docType, file, auth.session.id),
+      ),
+    ),
+    hasAvatarUpload && avatarFile instanceof File
+      ? uploadIntakeAvatarFile(intakeId, avatarFile, auth.session.id)
+      : Promise.resolve<{ error?: string; path?: string }>({}),
+    supabase.rpc("allocate_driver_code"),
+  ]);
+
+  const docError = docUploads.find((r) => r.error)?.error;
+  if (docError || avatarUpload.error) {
+    try {
+      await deleteObjects([
+        ...allIntakeDocumentKeys(intakeId),
+        ...allIntakeAvatarKeys(intakeId),
+      ]);
+    } catch {
+      /* best-effort */
     }
+    return { error: docError ?? avatarUpload.error ?? "upload_failed" };
   }
 
-  let intakeAvatarKey: string | null = null;
-  if (hasAvatarUpload && avatarFile instanceof File) {
-    const upload = await uploadIntakeAvatarFile(intakeId, avatarFile, auth.session.id);
-    if (upload.error) {
-      try {
-        await deleteObjects([...allIntakeDocumentKeys(intakeId), ...allIntakeAvatarKeys(intakeId)]);
-      } catch {
-        /* best-effort */
-      }
-      return { error: upload.error };
+  const allocatedCode = codeResult.data;
+  if (codeResult.error || !allocatedCode || typeof allocatedCode !== "string") {
+    try {
+      await deleteObjects([
+        ...allIntakeDocumentKeys(intakeId),
+        ...allIntakeAvatarKeys(intakeId),
+      ]);
+    } catch {
+      /* best-effort */
     }
-    intakeAvatarKey = upload.path ?? null;
-  }
-
-  const { data: allocatedCode, error: allocateError } = await supabase.rpc(
-    "allocate_driver_code",
-  );
-  if (allocateError || !allocatedCode || typeof allocatedCode !== "string") {
     return { error: "save_failed" };
   }
+
+  const intakeAvatarKey = avatarUpload.path ?? null;
 
   const { data, error } = await supabase
     .from("driver_intakes")
@@ -704,25 +705,27 @@ export async function updateDriverIntake(
   const civilIdNormalized = normalizeCivilId(civilId);
   if (!civilIdNormalized) return { error: "invalid_civil_id" };
 
-  if (await phoneExists(phone, intakeId)) return { error: "phone_exists" };
-  if (hasAvatarUpload && !(await isR2Configured())) return { error: "r2_not_configured" };
-
   const supabase = await createClient();
-  const { data: existing } = await supabase
-    .from("driver_intakes")
-    .select("id, linked_profile_id, driver_code, avatar_url")
-    .eq("id", intakeId)
-    .is("archived_at", null)
-    .maybeSingle();
-
-  if (!existing) return { error: "save_failed" };
-
   const restaurantIds = parseRestaurantIds(formData);
-  const restaurantCheck = await validateRestaurantsPublished(
-    supabase,
-    restaurantIds,
-  );
+
+  const [phoneTaken, existingResp, restaurantCheck, r2Configured] = await Promise.all([
+    phoneExists(phone, intakeId),
+    supabase
+      .from("driver_intakes")
+      .select("id, linked_profile_id, driver_code, avatar_url")
+      .eq("id", intakeId)
+      .is("archived_at", null)
+      .maybeSingle(),
+    validateRestaurantsPublished(supabase, restaurantIds),
+    hasAvatarUpload ? isR2Configured() : Promise.resolve(true),
+  ]);
+
+  if (phoneTaken) return { error: "phone_exists" };
+  if (hasAvatarUpload && !r2Configured) return { error: "r2_not_configured" };
   if (restaurantCheck.error) return { error: restaurantCheck.error };
+
+  const existing = existingResp.data;
+  if (!existing) return { error: "save_failed" };
 
   if (existing.linked_profile_id) {
     const { data: linkedDriver } = await supabase
@@ -782,8 +785,6 @@ export async function updateDriverIntake(
 
   if (error) return { error: mapDriverDbError(error, "employee_id") };
 
-  await syncIntakeRestaurants(supabase, intakeId, restaurantIds);
-
   if (existing.linked_profile_id) {
     let profileAvatarPath: string | null | undefined;
     if (removeAvatar) {
@@ -798,33 +799,38 @@ export async function updateDriverIntake(
       profileAvatarPath = upload.path ?? null;
     }
 
-    await supabase
-      .from("profiles")
-      .update({
-        full_name: fullName,
-        phone,
-        ...(profileAvatarPath !== undefined ? { avatar_url: profileAvatarPath } : {}),
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", existing.linked_profile_id);
+    const linkedProfileId = existing.linked_profile_id;
+    const results = await Promise.all([
+      syncIntakeRestaurants(supabase, intakeId, restaurantIds),
+      supabase
+        .from("profiles")
+        .update({
+          full_name: fullName,
+          phone,
+          ...(profileAvatarPath !== undefined ? { avatar_url: profileAvatarPath } : {}),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", linkedProfileId),
+      supabase
+        .from("drivers")
+        .update({
+          partner_id: partnerId || null,
+          zone_id: zoneId || null,
+          vehicle_id: vehicleId || null,
+          civil_id: civilIdNormalized,
+          employee_id: employeeId,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", linkedProfileId),
+      syncDriverRestaurants(supabase, linkedProfileId, restaurantIds),
+    ]);
 
-    const { error: driverUpdateError } = await supabase
-      .from("drivers")
-      .update({
-        partner_id: partnerId || null,
-        zone_id: zoneId || null,
-        vehicle_id: vehicleId || null,
-        civil_id: civilIdNormalized,
-        employee_id: employeeId,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", existing.linked_profile_id);
-
-    if (driverUpdateError) {
-      return { error: mapDriverDbError(driverUpdateError, "employee_id") };
+    const driverUpdateResp = results[2];
+    if (driverUpdateResp.error) {
+      return { error: mapDriverDbError(driverUpdateResp.error, "employee_id") };
     }
-
-    await syncDriverRestaurants(supabase, existing.linked_profile_id, restaurantIds);
+  } else {
+    await syncIntakeRestaurants(supabase, intakeId, restaurantIds);
   }
 
   void logAdminMutation({

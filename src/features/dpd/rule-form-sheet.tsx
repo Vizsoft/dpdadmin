@@ -111,7 +111,7 @@ export function RuleFormSheet({
       }
       toast.success(isEdit ? t("deliveryRuleUpdated") : t("deliveryRuleCreated"));
 
-      await queryClient.invalidateQueries({ queryKey: queryKeys.dpd.all() });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.dpd.all() });
       onOpenChange(false);
     });
   };

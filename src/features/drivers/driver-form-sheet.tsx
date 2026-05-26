@@ -316,8 +316,8 @@ export function DriverFormSheet({
           return;
         }
         toast.success(tDetail("updated"));
-        await queryClient.invalidateQueries({ queryKey: queryKeys.drivers.all() });
-        await queryClient.invalidateQueries({
+        void queryClient.invalidateQueries({ queryKey: queryKeys.drivers.all() });
+        void queryClient.invalidateQueries({
           queryKey: queryKeys.drivers.detail(activeDriver.id),
         });
       } else {
@@ -335,7 +335,7 @@ export function DriverFormSheet({
         } else {
           toast.success(tNew("created"));
         }
-        await queryClient.invalidateQueries({ queryKey: queryKeys.drivers.all() });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.drivers.all() });
       }
 
       onSaved?.();
