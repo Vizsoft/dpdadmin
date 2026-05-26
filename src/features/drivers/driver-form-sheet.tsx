@@ -291,6 +291,7 @@ export function DriverFormSheet({
       formData.append("fullName", fullName);
       formData.append("phone", phone);
       formData.append("civilId", civilId);
+      formData.append("employeeId", employeeId);
       formData.append("partnerId", partnerId);
       formData.append("zoneId", zoneId);
       formData.append("workflowStatus", workflowStatus);
@@ -309,7 +310,6 @@ export function DriverFormSheet({
 
       if (isEdit && activeDriver && intakeId) {
         formData.append("intakeId", intakeId);
-        formData.append("employeeId", employeeId);
         const result = await updateDriverIntake(formData);
         if (result.error) {
           toast.error(driverErrorToast(tNew, result.error));
