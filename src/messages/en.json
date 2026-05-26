@@ -406,6 +406,8 @@
       "partnerActiveToday": "Active today",
       "partnerMissingAttendance": "Missing attendance",
       "partnerPendingVerification": "Pending verification",
+      "riders": "riders",
+      "understaffed": "Understaffed",
       "pinStatus": {
         "active": "Active",
         "idle": "Idle",

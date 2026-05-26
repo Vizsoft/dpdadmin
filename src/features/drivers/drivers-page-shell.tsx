@@ -268,19 +268,21 @@ function DriversPageContent() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
+    const qDigits = q.replace(/\D/g, "");
     return tabFiltered.filter((d) => {
       if (zoneFilter !== "all" && d.zone_id !== zoneFilter) return false;
       if (partnerFilter !== "all" && d.partner_id !== partnerFilter) return false;
       if (statusFilter !== "all" && d.account_status !== statusFilter) return false;
       if (!q) return true;
-      return (
+      const matchesText =
         d.full_name.toLowerCase().includes(q) ||
         d.driver_code.toLowerCase().includes(q) ||
         (d.employee_id?.toLowerCase().includes(q) ?? false) ||
-        d.phone.replace(/\D/g, "").includes(q.replace(/\D/g, "")) ||
         d.partner_name.toLowerCase().includes(q) ||
-        d.zone_name.toLowerCase().includes(q)
-      );
+        d.zone_name.toLowerCase().includes(q);
+      if (matchesText) return true;
+      if (qDigits && d.phone.replace(/\D/g, "").includes(qDigits)) return true;
+      return false;
     });
   }, [tabFiltered, search, zoneFilter, partnerFilter, statusFilter]);
 
