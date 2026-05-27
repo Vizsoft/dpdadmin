@@ -1,6 +1,10 @@
 "use server";
 
-import { logAdminMutation, logAdminRead } from "@/lib/audit/log-admin-activity";
+import {
+  logAdminActivity,
+  logAdminMutation,
+  logAdminRead,
+} from "@/lib/audit/log-admin-activity";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/auth/get-session";
 import { hasPermissionInSet } from "@/lib/auth/permissions";
@@ -26,6 +30,11 @@ import {
   syncIntakeAssetAssignments,
 } from "@/features/assets/assets-actions";
 import { parseCatalogItemIds } from "@/features/assets/asset-form-utils";
+import {
+  parseDriverDeviceOverview,
+  type DriverDeviceOverview,
+  type DriverMultiDeviceRecentRow,
+} from "./device-session-types";
 import {
   DOCUMENT_TYPES,
   type DriverAccountStatus,
@@ -1243,5 +1252,102 @@ export async function regenerateDriverPasscode(
   });
 
   return { success: true, passcode: payload.passcode };
+}
+
+export async function fetchDriverDeviceOverview(
+  driverId: string,
+  historyLimit = 20,
+): Promise<DriverDeviceOverview | null> {
+  await requireDriversView();
+  if (!driverId) return null;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_driver_device_overview", {
+    p_driver_id: driverId,
+    p_history_limit: historyLimit,
+  });
+
+  if (error) return null;
+
+  const overview = parseDriverDeviceOverview(data);
+  if (!overview) return null;
+
+  const overrideSessions = overview.history.filter(
+    (session) => session.revoked_reason === "override",
+  );
+  if (overrideSessions.length > 0) {
+    void logAdminActivity({
+      action: "read",
+      entityType: "driver",
+      entityId: driverId,
+      routeName: "driverDeviceOverrideReview",
+      context: {
+        override_count: overrideSessions.length,
+        override_sessions: overrideSessions.map((session) => ({
+          session_id: session.session_id,
+          device_id: session.device_id,
+          device_model: session.device_model,
+          device_manufacturer: session.device_manufacturer,
+          revoked_at: session.revoked_at,
+          flushed_at: session.flushed_at,
+        })),
+      },
+    });
+  }
+
+  void logAdminRead("driver_device_session", "fetchDriverDeviceOverview", {
+    driver_id: driverId,
+  });
+
+  return overview;
+}
+
+export type ForceSignOutDriverResult =
+  | { success: true }
+  | { error: "not_authorized" | "missing_fields" | "save_failed" };
+
+export async function forceSignOutDriver(
+  driverId: string,
+): Promise<ForceSignOutDriverResult> {
+  const auth = await requireDriversManager();
+  if (auth.error) return { error: auth.error };
+
+  if (!driverId) return { error: "missing_fields" };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_force_sign_out_driver", {
+    p_driver_id: driverId,
+  });
+
+  if (error) return { error: "save_failed" };
+
+  void logAdminMutation({
+    action: "update",
+    entityType: "driver",
+    entityId: driverId,
+    routeName: "forceSignOutDriver",
+    after: { active_device_cleared: true },
+  });
+
+  return { success: true };
+}
+
+export async function fetchDriversMultiDeviceRecent(
+  days = 7,
+): Promise<DriverMultiDeviceRecentRow[]> {
+  await requireDriversView();
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_drivers_multi_device_recent", {
+    p_days: days,
+  });
+
+  if (error || !data) return [];
+
+  return data.map((row) => ({
+    driver_id: row.driver_id,
+    device_count: Number(row.device_count),
+    latest_activity_at: row.latest_activity_at,
+  }));
 }
 

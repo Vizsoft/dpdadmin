@@ -239,6 +239,57 @@ export type Database = {
         }
         Relationships: []
       }
+      app_releases: {
+        Row: {
+          apk_object_key: string
+          apk_sha256: string
+          apk_size_bytes: number
+          channel: string
+          id: string
+          is_active: boolean
+          is_required: boolean
+          min_supported_version_code: number | null
+          platform: string
+          release_notes: string | null
+          released_at: string
+          released_by: string | null
+          version_code: number
+          version_name: string
+        }
+        Insert: {
+          apk_object_key: string
+          apk_sha256: string
+          apk_size_bytes: number
+          channel?: string
+          id?: string
+          is_active?: boolean
+          is_required?: boolean
+          min_supported_version_code?: number | null
+          platform?: string
+          release_notes?: string | null
+          released_at?: string
+          released_by?: string | null
+          version_code: number
+          version_name: string
+        }
+        Update: {
+          apk_object_key?: string
+          apk_sha256?: string
+          apk_size_bytes?: number
+          channel?: string
+          id?: string
+          is_active?: boolean
+          is_required?: boolean
+          min_supported_version_code?: number | null
+          platform?: string
+          release_notes?: string | null
+          released_at?: string
+          released_by?: string | null
+          version_code?: number
+          version_name?: string
+        }
+        Relationships: []
+      }
       app_settings: {
         Row: {
           app_name: string
@@ -1215,6 +1266,74 @@ export type Database = {
           },
         ]
       }
+      driver_device_sessions: {
+        Row: {
+          android_sdk_int: number | null
+          app_version_code: number | null
+          app_version_name: string | null
+          created_at: string
+          device_id: string
+          device_manufacturer: string | null
+          device_model: string | null
+          driver_id: string
+          first_seen_at: string
+          flush_deadline_at: string | null
+          flushed_at: string | null
+          id: string
+          last_seen_at: string
+          os_version: string | null
+          revoked_at: string | null
+          revoked_reason: string | null
+          updated_at: string
+        }
+        Insert: {
+          android_sdk_int?: number | null
+          app_version_code?: number | null
+          app_version_name?: string | null
+          created_at?: string
+          device_id: string
+          device_manufacturer?: string | null
+          device_model?: string | null
+          driver_id: string
+          first_seen_at?: string
+          flush_deadline_at?: string | null
+          flushed_at?: string | null
+          id?: string
+          last_seen_at?: string
+          os_version?: string | null
+          revoked_at?: string | null
+          revoked_reason?: string | null
+          updated_at?: string
+        }
+        Update: {
+          android_sdk_int?: number | null
+          app_version_code?: number | null
+          app_version_name?: string | null
+          created_at?: string
+          device_id?: string
+          device_manufacturer?: string | null
+          device_model?: string | null
+          driver_id?: string
+          first_seen_at?: string
+          flush_deadline_at?: string | null
+          flushed_at?: string | null
+          id?: string
+          last_seen_at?: string
+          os_version?: string | null
+          revoked_at?: string | null
+          revoked_reason?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_device_sessions_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       driver_documents: {
         Row: {
           created_at: string
@@ -1920,6 +2039,8 @@ export type Database = {
       }
       drivers: {
         Row: {
+          active_device_id: string | null
+          active_device_session_id: string | null
           app_passcode: string | null
           app_version_seen_at: string | null
           archived_at: string | null
@@ -1951,6 +2072,8 @@ export type Database = {
           zone_id: string | null
         }
         Insert: {
+          active_device_id?: string | null
+          active_device_session_id?: string | null
           app_passcode?: string | null
           app_version_seen_at?: string | null
           archived_at?: string | null
@@ -1982,6 +2105,8 @@ export type Database = {
           zone_id?: string | null
         }
         Update: {
+          active_device_id?: string | null
+          active_device_session_id?: string | null
           app_passcode?: string | null
           app_version_seen_at?: string | null
           archived_at?: string | null
@@ -4150,6 +4275,8 @@ export type Database = {
       _driver_assert_active_on_duty: {
         Args: { p_uid: string }
         Returns: {
+          active_device_id: string | null
+          active_device_session_id: string | null
           app_passcode: string | null
           app_version_seen_at: string | null
           archived_at: string | null
@@ -4186,6 +4313,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      _driver_assert_device_match: {
+        Args: { p_device_id: string; p_uid: string }
+        Returns: boolean
       }
       _driver_find_active_shift: {
         Args: { p_driver_id: string; p_now?: string }
@@ -4329,6 +4460,22 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_driver_device_overview: {
+        Args: { p_driver_id: string; p_history_limit?: number }
+        Returns: Json
+      }
+      admin_drivers_multi_device_recent: {
+        Args: { p_days?: number }
+        Returns: {
+          device_count: number
+          driver_id: string
+          latest_activity_at: string
+        }[]
+      }
+      admin_force_sign_out_driver: {
+        Args: { p_driver_id: string }
+        Returns: undefined
+      }
       admin_get_shift_adherence: {
         Args: { p_date: string; p_driver_id: string }
         Returns: Json
@@ -4389,89 +4536,172 @@ export type Database = {
         Args: { p_driver_code: string; p_passcode: string }
         Returns: Json
       }
-      driver_cancel_delivery: {
-        Args: {
-          p_cancel_lat?: number
-          p_cancel_lng?: number
-          p_cancel_proof_url?: string
-          p_cancel_reason?: string
-          p_delivery_id: string
-        }
-        Returns: {
-          cancel_lat: number | null
-          cancel_lng: number | null
-          cancel_proof_url: string | null
-          cancel_reason: string | null
-          cancelled_at: string | null
-          created_at: string
-          delivered_at: string | null
-          delivered_lat: number | null
-          delivered_lng: number | null
-          driver_id: string
-          external_order_id: string | null
-          id: string
-          order_proof_url: string | null
-          partner_id: string | null
-          pickup_at: string | null
-          pickup_lat: number | null
-          pickup_lng: number | null
-          pickup_proof_url: string | null
-          rejection_reason: string | null
-          restaurant_id: string | null
-          status: Database["public"]["Enums"]["delivery_status"]
-          updated_at: string
-          zone_id: string | null
-        }
-        SetofOptions: {
-          from: "*"
-          to: "deliveries"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
+      driver_cancel_delivery:
+        | {
+            Args: {
+              p_cancel_lat?: number
+              p_cancel_lng?: number
+              p_cancel_proof_url?: string
+              p_cancel_reason?: string
+              p_delivery_id: string
+            }
+            Returns: {
+              cancel_lat: number | null
+              cancel_lng: number | null
+              cancel_proof_url: string | null
+              cancel_reason: string | null
+              cancelled_at: string | null
+              created_at: string
+              delivered_at: string | null
+              delivered_lat: number | null
+              delivered_lng: number | null
+              driver_id: string
+              external_order_id: string | null
+              id: string
+              order_proof_url: string | null
+              partner_id: string | null
+              pickup_at: string | null
+              pickup_lat: number | null
+              pickup_lng: number | null
+              pickup_proof_url: string | null
+              rejection_reason: string | null
+              restaurant_id: string | null
+              status: Database["public"]["Enums"]["delivery_status"]
+              updated_at: string
+              zone_id: string | null
+            }
+            SetofOptions: {
+              from: "*"
+              to: "deliveries"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: {
+              p_cancel_lat?: number
+              p_cancel_lng?: number
+              p_cancel_proof_url?: string
+              p_cancel_reason?: string
+              p_delivery_id: string
+              p_device_id?: string
+            }
+            Returns: {
+              cancel_lat: number | null
+              cancel_lng: number | null
+              cancel_proof_url: string | null
+              cancel_reason: string | null
+              cancelled_at: string | null
+              created_at: string
+              delivered_at: string | null
+              delivered_lat: number | null
+              delivered_lng: number | null
+              driver_id: string
+              external_order_id: string | null
+              id: string
+              order_proof_url: string | null
+              partner_id: string | null
+              pickup_at: string | null
+              pickup_lat: number | null
+              pickup_lng: number | null
+              pickup_proof_url: string | null
+              rejection_reason: string | null
+              restaurant_id: string | null
+              status: Database["public"]["Enums"]["delivery_status"]
+              updated_at: string
+              zone_id: string | null
+            }
+            SetofOptions: {
+              from: "*"
+              to: "deliveries"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
       driver_check_order_id_available: {
         Args: { p_external_order_id: string }
         Returns: boolean
       }
-      driver_complete_delivery: {
-        Args: {
-          p_delivered_lat?: number
-          p_delivered_lng?: number
-          p_delivery_id: string
-          p_delivery_proof_url?: string
-        }
-        Returns: {
-          cancel_lat: number | null
-          cancel_lng: number | null
-          cancel_proof_url: string | null
-          cancel_reason: string | null
-          cancelled_at: string | null
-          created_at: string
-          delivered_at: string | null
-          delivered_lat: number | null
-          delivered_lng: number | null
-          driver_id: string
-          external_order_id: string | null
-          id: string
-          order_proof_url: string | null
-          partner_id: string | null
-          pickup_at: string | null
-          pickup_lat: number | null
-          pickup_lng: number | null
-          pickup_proof_url: string | null
-          rejection_reason: string | null
-          restaurant_id: string | null
-          status: Database["public"]["Enums"]["delivery_status"]
-          updated_at: string
-          zone_id: string | null
-        }
-        SetofOptions: {
-          from: "*"
-          to: "deliveries"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
+      driver_complete_delivery:
+        | {
+            Args: {
+              p_delivered_lat?: number
+              p_delivered_lng?: number
+              p_delivery_id: string
+              p_delivery_proof_url?: string
+            }
+            Returns: {
+              cancel_lat: number | null
+              cancel_lng: number | null
+              cancel_proof_url: string | null
+              cancel_reason: string | null
+              cancelled_at: string | null
+              created_at: string
+              delivered_at: string | null
+              delivered_lat: number | null
+              delivered_lng: number | null
+              driver_id: string
+              external_order_id: string | null
+              id: string
+              order_proof_url: string | null
+              partner_id: string | null
+              pickup_at: string | null
+              pickup_lat: number | null
+              pickup_lng: number | null
+              pickup_proof_url: string | null
+              rejection_reason: string | null
+              restaurant_id: string | null
+              status: Database["public"]["Enums"]["delivery_status"]
+              updated_at: string
+              zone_id: string | null
+            }
+            SetofOptions: {
+              from: "*"
+              to: "deliveries"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: {
+              p_delivered_lat?: number
+              p_delivered_lng?: number
+              p_delivery_id: string
+              p_delivery_proof_url?: string
+              p_device_id?: string
+            }
+            Returns: {
+              cancel_lat: number | null
+              cancel_lng: number | null
+              cancel_proof_url: string | null
+              cancel_reason: string | null
+              cancelled_at: string | null
+              created_at: string
+              delivered_at: string | null
+              delivered_lat: number | null
+              delivered_lng: number | null
+              driver_id: string
+              external_order_id: string | null
+              id: string
+              order_proof_url: string | null
+              partner_id: string | null
+              pickup_at: string | null
+              pickup_lat: number | null
+              pickup_lng: number | null
+              pickup_proof_url: string | null
+              rejection_reason: string | null
+              restaurant_id: string | null
+              status: Database["public"]["Enums"]["delivery_status"]
+              updated_at: string
+              zone_id: string | null
+            }
+            SetofOptions: {
+              from: "*"
+              to: "deliveries"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
       driver_create_delivery: {
         Args: {
           p_delivered_lat?: number
@@ -4511,44 +4741,93 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      driver_create_pickup: {
-        Args: {
-          p_external_order_id?: string
-          p_order_proof_url?: string
-          p_pickup_lat?: number
-          p_pickup_lng?: number
-        }
-        Returns: {
-          cancel_lat: number | null
-          cancel_lng: number | null
-          cancel_proof_url: string | null
-          cancel_reason: string | null
-          cancelled_at: string | null
-          created_at: string
-          delivered_at: string | null
-          delivered_lat: number | null
-          delivered_lng: number | null
-          driver_id: string
-          external_order_id: string | null
-          id: string
-          order_proof_url: string | null
-          partner_id: string | null
-          pickup_at: string | null
-          pickup_lat: number | null
-          pickup_lng: number | null
-          pickup_proof_url: string | null
-          rejection_reason: string | null
-          restaurant_id: string | null
-          status: Database["public"]["Enums"]["delivery_status"]
-          updated_at: string
-          zone_id: string | null
-        }
-        SetofOptions: {
-          from: "*"
-          to: "deliveries"
-          isOneToOne: true
-          isSetofReturn: false
-        }
+      driver_create_pickup:
+        | {
+            Args: {
+              p_external_order_id?: string
+              p_order_proof_url?: string
+              p_pickup_lat?: number
+              p_pickup_lng?: number
+            }
+            Returns: {
+              cancel_lat: number | null
+              cancel_lng: number | null
+              cancel_proof_url: string | null
+              cancel_reason: string | null
+              cancelled_at: string | null
+              created_at: string
+              delivered_at: string | null
+              delivered_lat: number | null
+              delivered_lng: number | null
+              driver_id: string
+              external_order_id: string | null
+              id: string
+              order_proof_url: string | null
+              partner_id: string | null
+              pickup_at: string | null
+              pickup_lat: number | null
+              pickup_lng: number | null
+              pickup_proof_url: string | null
+              rejection_reason: string | null
+              restaurant_id: string | null
+              status: Database["public"]["Enums"]["delivery_status"]
+              updated_at: string
+              zone_id: string | null
+            }
+            SetofOptions: {
+              from: "*"
+              to: "deliveries"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: {
+              p_device_id?: string
+              p_external_order_id?: string
+              p_order_proof_url?: string
+              p_pickup_lat?: number
+              p_pickup_lng?: number
+            }
+            Returns: {
+              cancel_lat: number | null
+              cancel_lng: number | null
+              cancel_proof_url: string | null
+              cancel_reason: string | null
+              cancelled_at: string | null
+              created_at: string
+              delivered_at: string | null
+              delivered_lat: number | null
+              delivered_lng: number | null
+              driver_id: string
+              external_order_id: string | null
+              id: string
+              order_proof_url: string | null
+              partner_id: string | null
+              pickup_at: string | null
+              pickup_lat: number | null
+              pickup_lng: number | null
+              pickup_proof_url: string | null
+              rejection_reason: string | null
+              restaurant_id: string | null
+              status: Database["public"]["Enums"]["delivery_status"]
+              updated_at: string
+              zone_id: string | null
+            }
+            SetofOptions: {
+              from: "*"
+              to: "deliveries"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+      driver_finalize_reconciliation: {
+        Args: { p_device_id: string }
+        Returns: undefined
+      }
+      driver_get_active_app_release: {
+        Args: { p_channel?: string; p_platform?: string }
+        Returns: Json
       }
       driver_get_active_pickup: {
         Args: never
@@ -4596,6 +4875,7 @@ export type Database = {
         Args: { p_driver_id: string }
         Returns: boolean
       }
+      driver_heartbeat: { Args: { p_device_id: string }; Returns: Json }
       driver_is_within_delivery_range: {
         Args: {
           p_driver_id: string
@@ -4623,40 +4903,30 @@ export type Database = {
         }
         Returns: undefined
       }
-      driver_report_location:
-        | {
-            Args: {
-              p_accuracy_meters?: number
-              p_battery_pct?: number
-              p_delivery_id?: string
-              p_force_history?: boolean
-              p_latitude: number
-              p_longitude: number
-              p_speed_mps?: number
-              p_tracking_status?: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_accuracy_meters?: number
-              p_active_delivery_id?: string
-              p_altitude_m?: number
-              p_battery_pct?: number
-              p_charging_state?: string
-              p_delivery_id?: string
-              p_force_history?: boolean
-              p_heading_deg?: number
-              p_is_mocked?: boolean
-              p_latitude: number
-              p_location_provider?: string
-              p_longitude: number
-              p_network_type?: string
-              p_speed_mps?: number
-              p_tracking_status?: string
-            }
-            Returns: Json
-          }
+      driver_release_device_session: {
+        Args: { p_device_id: string }
+        Returns: undefined
+      }
+      driver_report_location: {
+        Args: {
+          p_accuracy_meters?: number
+          p_active_delivery_id?: string
+          p_altitude_m?: number
+          p_battery_pct?: number
+          p_charging_state?: string
+          p_delivery_id?: string
+          p_force_history?: boolean
+          p_heading_deg?: number
+          p_is_mocked?: boolean
+          p_latitude: number
+          p_location_provider?: string
+          p_longitude: number
+          p_network_type?: string
+          p_speed_mps?: number
+          p_tracking_status?: string
+        }
+        Returns: Json
+      }
       driver_set_duty_state: {
         Args: { p_is_on_duty: boolean; p_is_online: boolean }
         Returns: Json

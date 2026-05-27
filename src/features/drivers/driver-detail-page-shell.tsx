@@ -25,6 +25,7 @@ import {
   Phone,
   RefreshCw,
   Shield,
+  Smartphone,
   Wallet,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -40,6 +41,7 @@ import { TrackingGlassCard } from "@/features/live-tracking/tracking-shell";
 import { DriverAccountStatusEditor } from "./driver-account-status-editor";
 import { DriverBlockEditor } from "./driver-block-editor";
 import { DriverDocumentsTab } from "./driver-documents-tab";
+import { DriverDevicesTab } from "./driver-devices-tab";
 import { DriverLocationTab } from "./driver-location-tab";
 import { DriverAttendanceTab } from "./driver-attendance-tab";
 import { DriverEditSheet } from "./driver-edit-sheet";
@@ -65,6 +67,7 @@ type DetailTabId =
   | "attendance"
   | "location"
   | "documents"
+  | "devices"
   | "assets"
   | "earnings"
   | "deductions"
@@ -237,8 +240,12 @@ function DriverDetailContent({ id }: { id: string }) {
   const isArchived = Boolean(driver?.archived_at);
 
   useEffect(() => {
-    if (searchParams.get("tab") === "location" && driver?.linked_profile_id) {
+    const tab = searchParams.get("tab");
+    if (tab === "location" && driver?.linked_profile_id) {
       setActiveTab("location");
+    }
+    if (tab === "devices") {
+      setActiveTab("devices");
     }
   }, [searchParams, driver?.linked_profile_id]);
 
@@ -255,6 +262,7 @@ function DriverDetailContent({ id }: { id: string }) {
       ? [{ id: "location" as const, label: t("tabLocation"), icon: MapPin }]
       : []),
     { id: "documents", label: t("tabDocuments"), icon: FileText },
+    { id: "devices", label: t("tabDevices"), icon: Smartphone },
     { id: "assets", label: t("tabAssets"), icon: Package },
     { id: "earnings", label: t("tabEarnings"), icon: Wallet },
     { id: "deductions", label: t("tabDeductions"), icon: Banknote },
@@ -383,6 +391,28 @@ function DriverDetailContent({ id }: { id: string }) {
           canManage={canManage}
           onEdit={() => setEditOpen(true)}
         />
+      );
+    }
+
+    if (activeTab === "devices" && driver.linked_profile_id) {
+      return (
+        <DriverDevicesTab
+          driverId={driver.linked_profile_id}
+          canManage={canManage}
+        />
+      );
+    }
+
+    if (activeTab === "devices") {
+      return (
+        <TrackingGlassCard className="border-slate-200 bg-white dark:border-slate-700/80 dark:bg-slate-900">
+          <div className="py-12">
+            <AppEmptyState
+              title={t("devicesNeedsLinkTitle")}
+              description={t("devicesNeedsLinkDescription")}
+            />
+          </div>
+        </TrackingGlassCard>
       );
     }
 

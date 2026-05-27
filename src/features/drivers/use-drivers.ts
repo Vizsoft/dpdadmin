@@ -5,8 +5,11 @@ import { queryKeys } from "@/lib/query/query-keys";
 import {
   archiveDriverIntake,
   fetchDriverDetail,
+  fetchDriverDeviceOverview,
   fetchDriverDocuments,
   fetchDriversForAdmin,
+  fetchDriversMultiDeviceRecent,
+  forceSignOutDriver,
   regenerateDriverPasscode,
 } from "./drivers-actions";
 import {
@@ -18,7 +21,7 @@ import type { DriverImportPreviewRow, DriverListRow } from "./types";
 
 export type { DriverImportPreviewRow };
 
-export type DriversTabFilter = "all" | "pending" | "on_duty" | "archived";
+export type DriversTabFilter = "all" | "pending" | "on_duty" | "archived" | "multi_device";
 
 export async function fetchDriversList(archived = false): Promise<DriverListRow[]> {
   return fetchDriversForAdmin({ archived });
@@ -108,5 +111,38 @@ export function useApplyDriverImportBatch() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.drivers.all() });
     },
+  });
+}
+
+export function useDriverDeviceOverview(driverId: string, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.drivers.devices(driverId),
+    queryFn: () => fetchDriverDeviceOverview(driverId),
+    enabled: enabled && Boolean(driverId),
+    staleTime: 30_000,
+  });
+}
+
+export function useForceSignOutDriver() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (driverId: string) => {
+      const result = await forceSignOutDriver(driverId);
+      if ("error" in result) throw new Error(result.error);
+      return result;
+    },
+    onSuccess: (_data, driverId) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.drivers.devices(driverId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.drivers.all() });
+    },
+  });
+}
+
+export function useDriversMultiDeviceRecent(days = 7, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.drivers.multiDeviceRecent(days),
+    queryFn: () => fetchDriversMultiDeviceRecent(days),
+    enabled,
+    staleTime: 120_000,
   });
 }

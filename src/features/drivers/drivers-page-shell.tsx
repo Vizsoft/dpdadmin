@@ -54,7 +54,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query/query-keys";
 import { fetchDriverDetail } from "./drivers-actions";
 import { useAuth } from "@/contexts/auth-context";
-import { useApproveDriverIntake, useDriversList, type DriversTabFilter } from "./use-drivers";
+import { useApproveDriverIntake, useDriversList, useDriversMultiDeviceRecent, type DriversTabFilter } from "./use-drivers";
 import { DriverBulkImportDialog } from "./import/bulk-import-dialog";
 import { isDriverErrorKey } from "./driver-errors";
 import {
@@ -170,6 +170,11 @@ function DriversPageContent() {
   const [tabFilter, setTabFilter] = useState<DriversTabFilter>("all");
   const listArchived = tabFilter === "archived";
   const { data: drivers = [], isLoading, refetch } = useDriversList(listArchived);
+  const { data: multiDeviceRows = [] } = useDriversMultiDeviceRecent(7, tabFilter === "multi_device");
+  const multiDeviceDriverIds = useMemo(
+    () => new Set(multiDeviceRows.map((row) => row.driver_id)),
+    [multiDeviceRows],
+  );
   const { data: formOptions } = useDriverFormOptions();
   const [search, setSearch] = useState("");
   const [zoneFilter, setZoneFilter] = useState("all");
@@ -262,9 +267,12 @@ function DriversPageContent() {
         );
       }
       if (tabFilter === "on_duty") return d.is_on_duty;
+      if (tabFilter === "multi_device") {
+        return Boolean(d.linked_profile_id && multiDeviceDriverIds.has(d.linked_profile_id));
+      }
       return true;
     });
-  }, [drivers, tabFilter]);
+  }, [drivers, tabFilter, multiDeviceDriverIds]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -362,6 +370,7 @@ function DriversPageContent() {
       { value: "all" as const, label: t("tabAll") },
       { value: "pending" as const, label: t("tabPendingVerification") },
       { value: "on_duty" as const, label: t("tabOnDuty") },
+      { value: "multi_device" as const, label: t("filterMultiDevice") },
       { value: "archived" as const, label: t("tabArchived") },
     ],
     [t],

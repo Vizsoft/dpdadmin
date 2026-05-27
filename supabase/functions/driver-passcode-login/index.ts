@@ -7,6 +7,8 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+const FLUSH_GRACE_MS = 5 * 60 * 1000;
+
 type LookupResult = {
   ok: boolean;
   user_id?: string;
@@ -15,11 +17,47 @@ type LookupResult = {
   reason?: string;
 };
 
+type DeviceMeta = {
+  model?: string | null;
+  manufacturer?: string | null;
+  os_version?: string | null;
+  android_sdk_int?: number | null;
+  app_version_name?: string | null;
+  app_version_code?: number | null;
+};
+
 function json(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+function parseDeviceMeta(raw: unknown): DeviceMeta {
+  if (!raw || typeof raw !== "object") return {};
+  const meta = raw as Record<string, unknown>;
+  const sdk = meta.android_sdk_int;
+  const versionCode = meta.app_version_code;
+  return {
+    model: typeof meta.model === "string" ? meta.model : null,
+    manufacturer: typeof meta.manufacturer === "string"
+      ? meta.manufacturer
+      : null,
+    os_version: typeof meta.os_version === "string" ? meta.os_version : null,
+    android_sdk_int: typeof sdk === "number"
+      ? sdk
+      : typeof sdk === "string" && sdk.trim() !== ""
+      ? Number.parseInt(sdk, 10)
+      : null,
+    app_version_name: typeof meta.app_version_name === "string"
+      ? meta.app_version_name
+      : null,
+    app_version_code: typeof versionCode === "number"
+      ? versionCode
+      : typeof versionCode === "string" && versionCode.trim() !== ""
+      ? Number.parseInt(versionCode, 10)
+      : null,
+  };
 }
 
 Deno.serve(async (req) => {
@@ -41,18 +79,28 @@ Deno.serve(async (req) => {
 
   let loginId: string;
   let passcode: string;
+  let deviceId: string;
+  let forceOverride = false;
+  let deviceMeta: DeviceMeta = {};
   try {
     const body = await req.json();
     loginId = String(
       body?.employee_id ?? body?.driver_code ?? "",
     ).trim();
     passcode = String(body?.passcode ?? "").trim();
+    deviceId = String(body?.device_id ?? "").trim();
+    forceOverride = body?.force_override === true;
+    deviceMeta = parseDeviceMeta(body?.device_meta);
   } catch {
     return json({ error: "invalid_credentials" }, 401);
   }
 
   if (!loginId || !passcode) {
     return json({ error: "invalid_credentials" }, 401);
+  }
+
+  if (!deviceId) {
+    return json({ error: "device_id_required" }, 400);
   }
 
   const admin = createClient(supabaseUrl, serviceRoleKey, {
@@ -87,15 +135,123 @@ Deno.serve(async (req) => {
       lookup?.error === "driver_not_active"
         ? "driver_not_active"
         : lookup?.error === "driver_archived"
-          ? "driver_archived"
-          : "invalid_credentials";
+        ? "driver_archived"
+        : "invalid_credentials";
     return json({ error: err }, 401);
   }
 
   const userId = lookup.user_id;
+  const nowIso = new Date().toISOString();
+  const flushDeadlineIso = new Date(Date.now() + FLUSH_GRACE_MS).toISOString();
 
-  const { data: userData, error: userError } =
-    await admin.auth.admin.getUserById(userId);
+  const { data: driverRow, error: driverError } = await admin
+    .from("drivers")
+    .select("active_device_id, active_device_session_id")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (driverError) {
+    console.error("driver lookup error", driverError.message);
+    return json({ error: "invalid_credentials" }, 401);
+  }
+
+  const activeDeviceId = driverRow?.active_device_id as string | null;
+
+  if (activeDeviceId && activeDeviceId !== deviceId && !forceOverride) {
+    const { data: activeSession } = await admin
+      .from("driver_device_sessions")
+      .select("device_model, device_manufacturer, last_seen_at")
+      .eq("driver_id", userId)
+      .eq("device_id", activeDeviceId)
+      .order("last_seen_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    return json(
+      {
+        error: "device_conflict",
+        active_device: {
+          device_id: activeDeviceId,
+          device_model: activeSession?.device_model ?? null,
+          device_manufacturer: activeSession?.device_manufacturer ?? null,
+          last_seen_at: activeSession?.last_seen_at ?? null,
+        },
+      },
+      409,
+    );
+  }
+
+  if (activeDeviceId && activeDeviceId !== deviceId && forceOverride) {
+    const { error: revokeError } = await admin
+      .from("driver_device_sessions")
+      .update({
+        revoked_at: nowIso,
+        revoked_reason: "override",
+        flush_deadline_at: flushDeadlineIso,
+        updated_at: nowIso,
+      })
+      .eq("driver_id", userId)
+      .eq("device_id", activeDeviceId)
+      .is("revoked_at", null);
+
+    if (revokeError) {
+      console.error("revoke active session error", revokeError.message);
+      return json({ error: "server_error" }, 500);
+    }
+  }
+
+  const { data: existingSession } = await admin
+    .from("driver_device_sessions")
+    .select("id, first_seen_at")
+    .eq("driver_id", userId)
+    .eq("device_id", deviceId)
+    .maybeSingle();
+
+  const sessionPayload = {
+    driver_id: userId,
+    device_id: deviceId,
+    device_model: deviceMeta.model,
+    device_manufacturer: deviceMeta.manufacturer,
+    os_version: deviceMeta.os_version,
+    android_sdk_int: deviceMeta.android_sdk_int,
+    app_version_name: deviceMeta.app_version_name,
+    app_version_code: deviceMeta.app_version_code,
+    first_seen_at: existingSession?.first_seen_at ?? nowIso,
+    last_seen_at: nowIso,
+    revoked_at: null,
+    revoked_reason: null,
+    flush_deadline_at: null,
+    flushed_at: null,
+    updated_at: nowIso,
+  };
+
+  const { data: sessionRow, error: sessionError } = await admin
+    .from("driver_device_sessions")
+    .upsert(sessionPayload, { onConflict: "driver_id,device_id" })
+    .select("id")
+    .single();
+
+  if (sessionError || !sessionRow?.id) {
+    console.error("session upsert error", sessionError?.message);
+    return json({ error: "server_error" }, 500);
+  }
+
+  const { error: driverUpdateError } = await admin
+    .from("drivers")
+    .update({
+      active_device_id: deviceId,
+      active_device_session_id: sessionRow.id,
+      updated_at: nowIso,
+    })
+    .eq("id", userId);
+
+  if (driverUpdateError) {
+    console.error("driver update error", driverUpdateError.message);
+    return json({ error: "server_error" }, 500);
+  }
+
+  const { data: userData, error: userError } = await admin.auth.admin
+    .getUserById(userId);
 
   if (userError || !userData?.user?.email) {
     console.error("getUserById error", userError?.message);
@@ -103,9 +259,25 @@ Deno.serve(async (req) => {
   }
 
   const email = userData.user.email;
+  const existingMetadata = userData.user.user_metadata ?? {};
 
-  const { data: linkData, error: linkError } =
-    await admin.auth.admin.generateLink({
+  const { error: metadataError } = await admin.auth.admin.updateUserById(
+    userId,
+    {
+      user_metadata: {
+        ...existingMetadata,
+        device_id: deviceId,
+      },
+    },
+  );
+
+  if (metadataError) {
+    console.error("updateUser metadata error", metadataError.message);
+    return json({ error: "server_error" }, 500);
+  }
+
+  const { data: linkData, error: linkError } = await admin.auth.admin
+    .generateLink({
       type: "magiclink",
       email,
     });
@@ -132,5 +304,6 @@ Deno.serve(async (req) => {
     refresh_token: session.refresh_token,
     user_id: userId,
     driver_code: lookup.driver_code ?? loginId,
+    device_id: deviceId,
   });
 });

@@ -10,6 +10,8 @@ export const queryKeys = {
     all: () => ["drivers"] as const,
     list: (filters: Record<string, unknown> = {}) => ["drivers", "list", filters] as const,
     detail: (id: string) => ["drivers", "detail", id] as const,
+    devices: (driverId: string) => ["drivers", "devices", driverId] as const,
+    multiDeviceRecent: (days: number) => ["drivers", "multi-device-recent", days] as const,
     assignRestaurant: (restaurantId: string) =>
       ["drivers", "assign", "restaurant", restaurantId] as const,
     assignZone: (zoneId: string) => ["drivers", "assign", "zone", zoneId] as const,
