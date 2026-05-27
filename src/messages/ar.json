@@ -64,6 +64,7 @@
     "accessRequests": "طلبات الوصول",
     "maintenance": "وضع الصيانة",
     "dataCleanup": "تنظيف البيانات",
+    "appReleases": "إصدارات التطبيق",
     "zones": "المناطق",
     "dpdVerification": "تحقق DPD",
     "activityLogs": "سجل النشاط"
@@ -870,6 +871,123 @@
         "file_too_large": "يجب أن تكون الصورة 2 ميجابايت أو أقل",
         "invalid_type": "استخدم PNG أو JPG أو WebP أو SVG",
         "upload_failed": "فشل رفع الصورة — تم حفظ الأصل بدونها"
+      }
+    },
+    "appReleases": {
+      "title": "إصدارات التطبيق",
+      "subtitle": "ارفع ملفات APK للأندرويد وتحكم في الإصدار الذي يتلقاه السائقون عند التشغيل.",
+      "refresh": "تحديث",
+      "upload": "رفع APK",
+      "listTitle": "إصدارات {channel}",
+      "emptyTitle": "لا توجد إصدارات بعد",
+      "emptyDescription": "ارفع APK لإنشاء أول إصدار لهذه القناة.",
+      "latestBadge": "الأحدث",
+      "versionCode": "الرمز {code}",
+      "tabs": {
+        "releases": "الإصدارات",
+        "adoption": "الاعتماد"
+      },
+      "channels": {
+        "production": "الإنتاج",
+        "beta": "تجريبي",
+        "internal": "داخلي"
+      },
+      "columns": {
+        "version": "الإصدار",
+        "released": "تاريخ الإصدار",
+        "size": "الحجم",
+        "sha256": "SHA256",
+        "required": "إلزامي",
+        "status": "الحالة",
+        "actions": "إجراءات"
+      },
+      "status": {
+        "active": "نشط",
+        "inactive": "غير نشط"
+      },
+      "actions": {
+        "activate": "تفعيل"
+      },
+      "toasts": {
+        "uploaded": "تم رفع APK",
+        "activated": "تم تفعيل الإصدار",
+        "markedRequired": "تم التعليم كتحديث إلزامي",
+        "markedOptional": "تم التعليم كتحديث اختياري",
+        "deleted": "تم حذف الإصدار"
+      },
+      "deleteDialog": {
+        "title": "حذف الإصدار",
+        "confirmText": "DELETE RELEASE {version}",
+        "warning": "يحذف هذا ملف APK من التخزين نهائياً. لا يمكن حذف الإصدارات النشطة."
+      },
+      "upload": {
+        "title": "رفع APK جديد",
+        "description": "ارفع رقم الإصدار في pubspec.yaml قبل البناء. استخدم نفس keystore الإصدار.",
+        "latestHint": "أحدث رمز إصدار في هذه القناة هو {code}. يجب أن يكون الرفع الجديد أعلى.",
+        "fields": {
+          "apk": "ملف APK",
+          "versionName": "اسم الإصدار",
+          "versionCode": "رمز الإصدار",
+          "channel": "القناة",
+          "minSupported": "أدنى رمز إصدار مدعوم",
+          "minSupportedPlaceholder": "اختياري",
+          "required": "تحديث إلزامي",
+          "releaseNotes": "ملاحظات الإصدار"
+        },
+        "cancel": "إلغاء",
+        "submit": "رفع",
+        "errors": {
+          "missingApk": "اختر ملف APK",
+          "versionCodeNotHigher": "يجب أن يكون رمز الإصدار أعلى من {code}"
+        }
+      },
+      "adoption": {
+        "title": "اعتماد الإصدارات",
+        "description": "إصدار التطبيق الذي يبلّغ عنه كل سائق نشط حالياً.",
+        "summary": "{total} سائق نشط · رمز الإصدار النشط: {active}",
+        "noneActive": "لا يوجد",
+        "emptyTitle": "لا توجد بيانات اعتماد بعد",
+        "emptyDescription": "يبلّغ السائقون عن إصداراتهم عند التحقق من التحديثات عند تشغيل التطبيق.",
+        "errorTitle": "تعذر تحميل الاعتماد",
+        "unknownVersion": "غير معروف / لم يُبلَّغ",
+        "activeRelease": "الإصدار النشط",
+        "unknownRelease": "بناء غير مدرج",
+        "neverReported": "لم يُبلَّغ",
+        "columns": {
+          "version": "الإصدار",
+          "drivers": "السائقون",
+          "percent": "النسبة",
+          "status": "الحالة"
+        },
+        "drilldown": {
+          "titleUnknown": "سائقون بدون إصدار مُبلَّغ",
+          "titleVersion": "سائقون على {version} ({code})",
+          "description": "{count} سائق",
+          "searchPlaceholder": "بحث عن سائق…",
+          "empty": "لا يوجد سائقون مطابقون.",
+          "pageOf": "صفحة {page} من {total}",
+          "columns": {
+            "driver": "السائق",
+            "partner": "الشريك",
+            "lastSeen": "آخر ظهور"
+          }
+        }
+      },
+      "errors": {
+        "not_authorized": "ليس لديك صلاحية إدارة إصدارات التطبيق",
+        "missing_apk": "اختر ملف APK",
+        "file_too_large": "يجب أن يكون APK 100 ميجابايت أو أقل",
+        "invalid_extension": "يجب أن يكون الملف .apk",
+        "invalid_content_type": "نوع محتوى APK غير صالح",
+        "missing_version_name": "اسم الإصدار مطلوب",
+        "invalid_version_code": "أدخل رمز إصدار صالحاً",
+        "invalid_min_supported_version_code": "أدخل أدنى رمز إصدار مدعوم صالحاً",
+        "version_code_not_higher": "يجب أن يكون رمز الإصدار أعلى من الأحدث في هذه القناة",
+        "version_code_exists": "رمز الإصدار موجود مسبقاً لهذه القناة",
+        "upload_failed": "فشل الرفع",
+        "not_found": "الإصدار غير موجود",
+        "cannot_delete_active": "عطّل الإصدار قبل الحذف",
+        "apk_not_found": "ملف APK غير موجود في التخزين"
       }
     },
     "driverDetail": {

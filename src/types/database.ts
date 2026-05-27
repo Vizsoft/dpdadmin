@@ -938,6 +938,44 @@ export type Database = {
           },
         ]
       }
+      driver_app_version_history: {
+        Row: {
+          changed_at: string
+          channel: string | null
+          driver_id: string
+          id: string
+          platform: string
+          version_code: number
+          version_name: string | null
+        }
+        Insert: {
+          changed_at?: string
+          channel?: string | null
+          driver_id: string
+          id?: string
+          platform: string
+          version_code: number
+          version_name?: string | null
+        }
+        Update: {
+          changed_at?: string
+          channel?: string | null
+          driver_id?: string
+          id?: string
+          platform?: string
+          version_code?: number
+          version_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_app_version_history_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       driver_assets: {
         Row: {
           asset: Database["public"]["Enums"]["asset_type"]
@@ -1883,6 +1921,7 @@ export type Database = {
       drivers: {
         Row: {
           app_passcode: string | null
+          app_version_seen_at: string | null
           archived_at: string | null
           avatar_object_key: string | null
           avatar_updated_at: string | null
@@ -1892,6 +1931,10 @@ export type Database = {
           blocked_reason: string | null
           civil_id: string | null
           created_at: string
+          current_app_channel: string | null
+          current_app_platform: string | null
+          current_app_version_code: number | null
+          current_app_version_name: string | null
           current_lat: number | null
           current_lng: number | null
           driver_code: string
@@ -1909,6 +1952,7 @@ export type Database = {
         }
         Insert: {
           app_passcode?: string | null
+          app_version_seen_at?: string | null
           archived_at?: string | null
           avatar_object_key?: string | null
           avatar_updated_at?: string | null
@@ -1918,6 +1962,10 @@ export type Database = {
           blocked_reason?: string | null
           civil_id?: string | null
           created_at?: string
+          current_app_channel?: string | null
+          current_app_platform?: string | null
+          current_app_version_code?: number | null
+          current_app_version_name?: string | null
           current_lat?: number | null
           current_lng?: number | null
           driver_code: string
@@ -1935,6 +1983,7 @@ export type Database = {
         }
         Update: {
           app_passcode?: string | null
+          app_version_seen_at?: string | null
           archived_at?: string | null
           avatar_object_key?: string | null
           avatar_updated_at?: string | null
@@ -1944,6 +1993,10 @@ export type Database = {
           blocked_reason?: string | null
           civil_id?: string | null
           created_at?: string
+          current_app_channel?: string | null
+          current_app_platform?: string | null
+          current_app_version_code?: number | null
+          current_app_version_name?: string | null
           current_lat?: number | null
           current_lng?: number | null
           driver_code?: string
@@ -4098,6 +4151,7 @@ export type Database = {
         Args: { p_uid: string }
         Returns: {
           app_passcode: string | null
+          app_version_seen_at: string | null
           archived_at: string | null
           avatar_object_key: string | null
           avatar_updated_at: string | null
@@ -4107,6 +4161,10 @@ export type Database = {
           blocked_reason: string | null
           civil_id: string | null
           created_at: string
+          current_app_channel: string | null
+          current_app_platform: string | null
+          current_app_version_code: number | null
+          current_app_version_name: string | null
           current_lat: number | null
           current_lng: number | null
           driver_code: string
@@ -4239,6 +4297,21 @@ export type Database = {
           p_zone_type: Database["public"]["Enums"]["zone_geometry_type"]
         }
         Returns: unknown
+      }
+      admin_app_release_adoption: {
+        Args: { p_channel?: string; p_platform?: string }
+        Returns: Json
+      }
+      admin_app_release_drivers: {
+        Args: {
+          p_channel?: string
+          p_limit?: number
+          p_offset?: number
+          p_platform?: string
+          p_search?: string
+          p_version_code?: number
+        }
+        Returns: Json
       }
       admin_approve_driver: {
         Args: { p_email: string; p_intake_id: string; p_user_id: string }
@@ -4541,6 +4614,15 @@ export type Database = {
         Returns: number
       }
       driver_notifications_unread_count: { Args: never; Returns: number }
+      driver_record_app_version: {
+        Args: {
+          p_channel?: string
+          p_platform?: string
+          p_version_code?: number
+          p_version_name?: string
+        }
+        Returns: undefined
+      }
       driver_report_location:
         | {
             Args: {

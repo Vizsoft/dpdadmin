@@ -134,6 +134,11 @@ export const PERMISSION_CATALOG: readonly PermissionCatalogEntry[] = [
     label: "Permanent data cleanup (super admin)",
     category: "admin",
   },
+  {
+    slug: "releases.manage",
+    label: "Manage Android app releases",
+    category: "admin",
+  },
 ] as const;
 
 export const CATALOG_SLUGS = PERMISSION_CATALOG.map((e) => e.slug);

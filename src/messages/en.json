@@ -64,6 +64,7 @@
     "accessRequests": "Access Requests",
     "maintenance": "Maintenance",
     "dataCleanup": "Data cleanup",
+    "appReleases": "App Releases",
     "zones": "Zones",
     "dpdVerification": "DPD Verification",
     "activityLogs": "Activity Logs"
@@ -881,6 +882,123 @@
         "file_too_large": "Image must be 2 MB or smaller",
         "invalid_type": "Use PNG, JPG, WebP, or SVG",
         "upload_failed": "Image upload failed — asset was saved without it"
+      }
+    },
+    "appReleases": {
+      "title": "App Releases",
+      "subtitle": "Upload Android APKs and control which version drivers receive on launch.",
+      "refresh": "Refresh",
+      "upload": "Upload APK",
+      "listTitle": "{channel} releases",
+      "emptyTitle": "No releases yet",
+      "emptyDescription": "Upload an APK to create the first release for this channel.",
+      "latestBadge": "Latest",
+      "versionCode": "code {code}",
+      "tabs": {
+        "releases": "Releases",
+        "adoption": "Adoption"
+      },
+      "channels": {
+        "production": "Production",
+        "beta": "Beta",
+        "internal": "Internal"
+      },
+      "columns": {
+        "version": "Version",
+        "released": "Released",
+        "size": "Size",
+        "sha256": "SHA256",
+        "required": "Required",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "actions": {
+        "activate": "Activate"
+      },
+      "toasts": {
+        "uploaded": "APK uploaded",
+        "activated": "Release activated",
+        "markedRequired": "Marked as required update",
+        "markedOptional": "Marked as optional update",
+        "deleted": "Release deleted"
+      },
+      "deleteDialog": {
+        "title": "Delete release",
+        "confirmText": "DELETE RELEASE {version}",
+        "warning": "This permanently removes the APK from storage. Active releases cannot be deleted."
+      },
+      "upload": {
+        "title": "Upload new APK",
+        "description": "Bump version in pubspec.yaml before building. Use the same release keystore.",
+        "latestHint": "Latest version code on this channel is {code}. New uploads must be higher.",
+        "fields": {
+          "apk": "APK file",
+          "versionName": "Version name",
+          "versionCode": "Version code",
+          "channel": "Channel",
+          "minSupported": "Minimum supported version code",
+          "minSupportedPlaceholder": "Optional",
+          "required": "Required update",
+          "releaseNotes": "Release notes"
+        },
+        "cancel": "Cancel",
+        "submit": "Upload",
+        "errors": {
+          "missingApk": "Choose an APK file",
+          "versionCodeNotHigher": "Version code must be higher than {code}"
+        }
+      },
+      "adoption": {
+        "title": "Version adoption",
+        "description": "Which app version each active driver is currently reporting.",
+        "summary": "{total} active drivers · active release code: {active}",
+        "noneActive": "none",
+        "emptyTitle": "No adoption data yet",
+        "emptyDescription": "Drivers report their version when checking for updates on app launch.",
+        "errorTitle": "Could not load adoption",
+        "unknownVersion": "Unknown / never reported",
+        "activeRelease": "Active release",
+        "unknownRelease": "Unlisted build",
+        "neverReported": "Never reported",
+        "columns": {
+          "version": "Version",
+          "drivers": "Drivers",
+          "percent": "Share",
+          "status": "Status"
+        },
+        "drilldown": {
+          "titleUnknown": "Drivers without a reported version",
+          "titleVersion": "Drivers on {version} ({code})",
+          "description": "{count} driver(s)",
+          "searchPlaceholder": "Search drivers…",
+          "empty": "No drivers match your search.",
+          "pageOf": "Page {page} of {total}",
+          "columns": {
+            "driver": "Driver",
+            "partner": "Partner",
+            "lastSeen": "Last seen"
+          }
+        }
+      },
+      "errors": {
+        "not_authorized": "You do not have permission to manage app releases",
+        "missing_apk": "Choose an APK file",
+        "file_too_large": "APK must be 100 MB or smaller",
+        "invalid_extension": "File must be an .apk",
+        "invalid_content_type": "Invalid APK content type",
+        "missing_version_name": "Version name is required",
+        "invalid_version_code": "Enter a valid version code",
+        "invalid_min_supported_version_code": "Enter a valid minimum supported version code",
+        "version_code_not_higher": "Version code must be higher than the latest on this channel",
+        "version_code_exists": "This version code already exists for the channel",
+        "upload_failed": "Upload failed",
+        "not_found": "Release not found",
+        "cannot_delete_active": "Deactivate the release before deleting",
+        "apk_not_found": "APK file not found in storage"
       }
     },
     "driverDetail": {

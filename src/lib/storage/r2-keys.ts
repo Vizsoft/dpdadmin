@@ -6,6 +6,7 @@ const ALLOWED_PREFIXES = [
   "restaurants/",
   "notifications/",
   "assets/",
+  "releases/",
 ] as const;
 
 export function isAllowedStorageKey(key: string): boolean {
@@ -24,8 +25,24 @@ export function isR2ObjectKey(value: string | null | undefined): boolean {
     v.startsWith("partners/") ||
     v.startsWith("restaurants/") ||
     v.startsWith("notifications/") ||
-    v.startsWith("assets/")
+    v.startsWith("assets/") ||
+    v.startsWith("releases/")
   );
+}
+
+export type AppReleaseChannel = "production" | "beta" | "internal";
+
+export function buildAppReleaseApkKey(
+  channel: AppReleaseChannel,
+  versionCode: number,
+): string {
+  return `releases/android/${channel}/musallam-${versionCode}.apk`;
+}
+
+export function isAppReleaseObjectKey(key: string): boolean {
+  const normalized = key.trim().replace(/^\/+/, "");
+  if (normalized.includes("..")) return false;
+  return normalized.startsWith("releases/android/");
 }
 
 export function buildNotificationMediaKey(assetId: string, ext: string): string {
