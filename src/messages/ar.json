@@ -821,11 +821,16 @@
       "fieldCode": "الرمز",
       "fieldDescription": "الوصف",
       "fieldIcon": "الأيقونة",
+      "fieldImage": "الصورة",
       "fieldTotalQuantity": "الكمية الإجمالية",
       "fieldReorderLevel": "مستوى إعادة الطلب",
       "fieldActive": "نشط",
       "nameHint": "الاسم المعروض في نماذج السائقين وصفحات التفاصيل.",
       "codeHint": "رمز فريد — يُولَّد تلقائياً من الاسم إذا تُرك فارغاً.",
+      "uploadImage": "رفع صورة",
+      "removeImage": "إزالة الصورة",
+      "imageHint": "PNG أو JPG أو WebP أو SVG. بحد أقصى 2 ميجابايت. تُعرض حيثما يظهر هذا الأصل.",
+      "iconFallbackHint": "تُستخدم أيقونة Lucide عند عدم رفع صورة مخصصة.",
       "cancel": "إلغاء",
       "saveChanges": "حفظ التغييرات",
       "createAsset": "إنشاء عنصر",
@@ -860,7 +865,10 @@
         "catalog_not_found": "الأصل غير موجود",
         "assignment_not_found": "التعيين غير موجود",
         "stock_below_assigned": "لا يمكن أن تكون الكمية الإجمالية أقل من المُسَلَّم",
-        "invalid_quantity": "أدخل تغييراً صالحاً للكمية"
+        "invalid_quantity": "أدخل تغييراً صالحاً للكمية",
+        "file_too_large": "يجب أن تكون الصورة 2 ميجابايت أو أقل",
+        "invalid_type": "استخدم PNG أو JPG أو WebP أو SVG",
+        "upload_failed": "فشل رفع الصورة — تم حفظ الأصل بدونها"
       }
     },
     "driverDetail": {

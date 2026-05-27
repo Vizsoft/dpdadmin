@@ -45,7 +45,7 @@ import { cn } from "@/lib/utils";
 import { AssetDetailSheet } from "./asset-detail-sheet";
 import { AssetFormSheet } from "./asset-form-sheet";
 import { AssetsKpiStrip } from "./assets-kpi-strip";
-import { resolveAssetIcon } from "./asset-icons";
+import { AssetCatalogIcon } from "./asset-catalog-icon";
 import { useAssetsCatalog } from "./use-assets";
 import type { AssetCatalogRow } from "./types";
 
@@ -382,9 +382,7 @@ function AssetsPageContent() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {visible.map((row) => {
-                      const Icon = resolveAssetIcon(row.icon_key);
-                      return (
+                    {visible.map((row) => (
                         <TableRow
                           key={row.id}
                           className="cursor-pointer"
@@ -392,8 +390,13 @@ function AssetsPageContent() {
                         >
                           <TableCell>
                             <div className="flex items-center gap-2">
-                              <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted">
-                                <Icon className="h-4 w-4" />
+                              <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted/40 p-1">
+                                <AssetCatalogIcon
+                                  iconKey={row.icon_key}
+                                  imageUrl={row.image_url}
+                                  imgClassName="h-full w-full"
+                                  iconClassName="h-4 w-4"
+                                />
                               </span>
                               <div>
                                 <p className="font-medium">{row.name}</p>
@@ -453,8 +456,7 @@ function AssetsPageContent() {
                             </div>
                           </TableCell>
                         </TableRow>
-                      );
-                    })}
+                    ))}
                   </TableBody>
                 </Table>
               </div>

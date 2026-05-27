@@ -3,7 +3,7 @@
 import { Activity, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { SegmentOption, ToggleChip } from "@/components/app/toggle-chip";
-import { resolveAssetIcon } from "@/features/assets/asset-icons";
+import { AssetCatalogIcon } from "@/features/assets/asset-catalog-icon";
 import type { DriverFormCatalogItem } from "@/features/assets/types";
 import type { DriverWorkflowStatus } from "../types";
 import { SectionHeading } from "./driver-form-primitives";
@@ -84,7 +84,6 @@ export function DriverFormOperationsCard({
         ) : (
           <div className="flex flex-wrap gap-1.5">
             {catalogItems.map((item) => {
-              const Icon = resolveAssetIcon(item.icon_key);
               const selected = selectedCatalogIds.has(item.id);
               const outOfStock = item.available_qty < 1 && !selected;
               return (
@@ -92,7 +91,14 @@ export function DriverFormOperationsCard({
                   key={item.id}
                   selected={selected}
                   disabled={disabled || outOfStock}
-                  icon={Icon}
+                  leading={
+                    <AssetCatalogIcon
+                      iconKey={item.icon_key}
+                      imageUrl={item.image_url}
+                      imgClassName="h-full w-full object-contain"
+                      iconClassName="h-3 w-3"
+                    />
+                  }
                   onClick={() => onToggleCatalogItem(item.id)}
                 >
                   {item.name} ({tNew("assetsAvailable", { count: item.available_qty })})

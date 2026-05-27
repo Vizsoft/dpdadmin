@@ -11,6 +11,7 @@ export function ToggleChip({
   onClick,
   disabled,
   icon: Icon,
+  leading,
   children,
   className,
   size = "sm",
@@ -19,6 +20,7 @@ export function ToggleChip({
   onClick: () => void;
   disabled?: boolean;
   icon?: LucideIcon;
+  leading?: ReactNode;
   children: ReactNode;
   className?: string;
   size?: "sm" | "md";
@@ -42,7 +44,11 @@ export function ToggleChip({
         className,
       )}
     >
-      {Icon ? (
+      {leading ? (
+        <span className="inline-flex h-3 w-3 shrink-0 items-center justify-center overflow-hidden rounded-sm">
+          {leading}
+        </span>
+      ) : Icon ? (
         <Icon
           className={cn("h-3 w-3 shrink-0", selected ? "text-emerald-900" : "opacity-50")}
           aria-hidden

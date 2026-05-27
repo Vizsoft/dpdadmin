@@ -9,6 +9,9 @@ export const ASSET_ERROR_KEYS = [
   "assignment_not_found",
   "stock_below_assigned",
   "invalid_quantity",
+  "file_too_large",
+  "invalid_type",
+  "upload_failed",
 ] as const;
 
 export type AssetErrorKey = (typeof ASSET_ERROR_KEYS)[number];

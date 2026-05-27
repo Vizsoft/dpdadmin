@@ -496,6 +496,7 @@ export type Database = {
           description: string | null
           icon_key: string
           id: string
+          image_url: string | null
           is_active: boolean
           name: string
           reorder_level: number
@@ -508,6 +509,7 @@ export type Database = {
           description?: string | null
           icon_key?: string
           id?: string
+          image_url?: string | null
           is_active?: boolean
           name: string
           reorder_level?: number
@@ -520,6 +522,7 @@ export type Database = {
           description?: string | null
           icon_key?: string
           id?: string
+          image_url?: string | null
           is_active?: boolean
           name?: string
           reorder_level?: number

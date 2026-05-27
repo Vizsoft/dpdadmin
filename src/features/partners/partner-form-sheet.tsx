@@ -106,7 +106,7 @@ function PartnerFormBody({
         <DialogTitle>{isEdit ? t("editPartnerTitle") : t("addPartnerTitle")}</DialogTitle>
       </DialogHeader>
 
-      <div className="space-y-4 overflow-y-auto px-6 py-4">
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
         <div className="space-y-1.5">
           <Label htmlFor="partner-name">{t("fieldTitle")}</Label>
           <Input
@@ -186,7 +186,7 @@ function PartnerFormBody({
         </div>
       </div>
 
-      <DialogFooter className="flex-row items-center justify-between gap-2 border-t border-border px-6 py-4">
+      <DialogFooter className="shrink-0 flex-row items-center justify-between gap-2 border-t border-border px-6 py-4">
         {isEdit && canManage ? (
           <Button
             type="button"
@@ -273,7 +273,7 @@ export function PartnerFormSheet({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="flex max-h-[90vh] max-w-md flex-col gap-0" showCloseButton>
+        <DialogContent className="flex max-h-[min(90vh,720px)] max-w-md flex-col gap-0 overflow-hidden p-0" showCloseButton>
           {open ? (
             <PartnerFormBody
               key={partner?.id ?? "new"}

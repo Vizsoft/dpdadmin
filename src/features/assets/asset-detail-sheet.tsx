@@ -26,7 +26,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { TABLE_HEAD_CLASS } from "@/components/app/constants";
-import { resolveAssetIcon } from "./asset-icons";
+import { AssetCatalogIcon } from "./asset-catalog-icon";
 import { isAssetErrorKey } from "./asset-errors";
 import {
   useAdjustAssetStock,
@@ -89,8 +89,6 @@ export function AssetDetailSheet({
   const display = detail ?? asset;
   if (!display) return null;
 
-  const Icon = resolveAssetIcon(display.icon_key);
-
   const handleReturn = (assignmentId: string) => {
     startTransition(async () => {
       const result = await returnMutation.mutateAsync(assignmentId);
@@ -128,11 +126,16 @@ export function AssetDetailSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="flex w-full flex-col sm:max-w-xl">
+      <SheetContent side="right" className="flex h-full w-full max-h-[100dvh] flex-col sm:max-w-xl">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
-              <Icon className="h-4 w-4" />
+            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted/40 p-1">
+              <AssetCatalogIcon
+                iconKey={display.icon_key}
+                imageUrl={display.image_url}
+                imgClassName="h-full w-full"
+                iconClassName="h-4 w-4"
+              />
             </span>
             {display.name}
           </SheetTitle>

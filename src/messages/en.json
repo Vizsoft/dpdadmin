@@ -832,11 +832,16 @@
       "fieldCode": "Code",
       "fieldDescription": "Description",
       "fieldIcon": "Icon",
+      "fieldImage": "Image",
       "fieldTotalQuantity": "Total quantity",
       "fieldReorderLevel": "Reorder level",
       "fieldActive": "Active",
       "nameHint": "Display name shown on driver forms and detail views.",
       "codeHint": "Unique slug — auto-generated from name if left blank.",
+      "uploadImage": "Upload image",
+      "removeImage": "Remove image",
+      "imageHint": "PNG, JPG, WebP, or SVG. Max 2 MB. Shown wherever this asset appears.",
+      "iconFallbackHint": "Lucide icon is used when no custom image is uploaded.",
       "cancel": "Cancel",
       "saveChanges": "Save changes",
       "createAsset": "Create item",
@@ -871,7 +876,10 @@
         "catalog_not_found": "Asset not found",
         "assignment_not_found": "Assignment not found",
         "stock_below_assigned": "Total quantity cannot be below assigned count",
-        "invalid_quantity": "Enter a valid quantity change"
+        "invalid_quantity": "Enter a valid quantity change",
+        "file_too_large": "Image must be 2 MB or smaller",
+        "invalid_type": "Use PNG, JPG, WebP, or SVG",
+        "upload_failed": "Image upload failed — asset was saved without it"
       }
     },
     "driverDetail": {

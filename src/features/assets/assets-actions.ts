@@ -14,6 +14,13 @@ import type {
   AssetMutationResult,
   DriverFormCatalogItem,
 } from "./types";
+import {
+  allAssetCatalogImageKeys,
+  buildAssetCatalogImageKey,
+} from "@/lib/storage/r2-keys";
+import { deleteObjects, putObject } from "@/lib/storage/r2-client";
+import { resolveAssetImageUrl } from "@/lib/storage/asset-image-url";
+import { resolvePartnerLogoMeta } from "@/features/partners/partner-logo";
 
 type DbClient = SupabaseClient<Database>;
 
@@ -46,6 +53,64 @@ function slugifyAssetCode(name: string): string {
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "")
     .slice(0, 48);
+}
+
+async function uploadAssetCatalogImageFile(
+  catalogItemId: string,
+  file: File,
+  uploadedBy: string,
+): Promise<{ error?: string; imageUrl?: string }> {
+  if (file.size === 0) return {};
+
+  const meta = resolvePartnerLogoMeta(file);
+  if (meta.error) return { error: meta.error };
+  const { ext, contentType } = meta;
+  if (!ext || !contentType) return { error: "invalid_type" };
+
+  const key = buildAssetCatalogImageKey(catalogItemId, ext);
+  const buffer = Buffer.from(await file.arrayBuffer());
+
+  try {
+    await putObject(key, buffer, contentType, {
+      uploadedBy,
+      entityType: "asset_catalog",
+      entityId: catalogItemId,
+      uploadedVia: "admin",
+    });
+  } catch {
+    return { error: "upload_failed" };
+  }
+
+  return { imageUrl: key };
+}
+
+async function withResolvedAssetImages(items: AssetCatalogRow[]): Promise<AssetCatalogRow[]> {
+  return Promise.all(
+    items.map(async (item) => ({
+      ...item,
+      image_url: await resolveAssetImageUrl(item.image_url),
+    })),
+  );
+}
+
+function parseAssetFormFields(formData: FormData) {
+  const name = String(formData.get("name") ?? "").trim();
+  const codeRaw = String(formData.get("code") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim();
+  const iconKey = String(formData.get("iconKey") ?? "Package").trim() || "Package";
+  const totalQuantity = parseInt(String(formData.get("totalQuantity") ?? "0"), 10);
+  const reorderLevel = parseInt(String(formData.get("reorderLevel") ?? "0"), 10);
+  const isActive = formData.get("isActive") !== "false";
+
+  return {
+    name,
+    code: (codeRaw || slugifyAssetCode(name)).toLowerCase(),
+    description,
+    iconKey,
+    totalQuantity: Number.isFinite(totalQuantity) ? Math.max(0, totalQuantity) : 0,
+    reorderLevel: Number.isFinite(reorderLevel) ? Math.max(0, reorderLevel) : 0,
+    isActive,
+  };
 }
 
 async function fetchAssignedQtyByCatalog(
@@ -105,6 +170,7 @@ function mapCatalogRow(
     code: row.code,
     description: row.description,
     icon_key: row.icon_key,
+    image_url: row.image_url ?? null,
     total_quantity: row.total_quantity,
     reorder_level: row.reorder_level,
     is_active: row.is_active,
@@ -139,8 +205,10 @@ export async function fetchAssetsCatalog(): Promise<{
     fetchHolderCountByCatalog(supabase, ids),
   ]);
 
-  const items = rows.map((row) =>
-    mapCatalogRow(row, assignedMap.get(row.id) ?? 0, holderMap.get(row.id) ?? 0),
+  const items = await withResolvedAssetImages(
+    rows.map((row) =>
+      mapCatalogRow(row, assignedMap.get(row.id) ?? 0, holderMap.get(row.id) ?? 0),
+    ),
   );
 
   const kpis: AssetCatalogKpis = {
@@ -276,44 +344,38 @@ export async function fetchAssetDetail(catalogItemId: string): Promise<AssetDeta
     assignedMap.get(catalogItemId) ?? 0,
     holderMap.get(catalogItemId) ?? 0,
   );
+  const [resolvedBase] = await withResolvedAssetImages([base]);
 
   const [active_assignments, recent_returns] = await Promise.all([
     hydrateAssignments(supabase, activeRows ?? []),
     hydrateAssignments(supabase, returnedRows ?? []),
   ]);
 
-  return { ...base, active_assignments, recent_returns };
+  return { ...resolvedBase, active_assignments, recent_returns };
 }
 
-export async function createAssetCatalogItem(input: {
-  name: string;
-  code?: string;
-  description?: string;
-  iconKey?: string;
-  totalQuantity: number;
-  reorderLevel: number;
-  isActive?: boolean;
-}): Promise<AssetMutationResult> {
+export async function createAssetCatalogItem(
+  formData: FormData,
+): Promise<AssetMutationResult> {
   const auth = await requireAssetsManage();
   if (auth.error) return { error: auth.error };
 
-  const name = input.name.trim();
-  if (!name) return { error: "missing_fields" };
+  const fields = parseAssetFormFields(formData);
+  if (!fields.name) return { error: "missing_fields" };
+  if (!/^[a-z0-9_]+$/.test(fields.code)) return { error: "invalid_code" };
 
-  const code = (input.code?.trim() || slugifyAssetCode(name)).toLowerCase();
-  if (!/^[a-z0-9_]+$/.test(code)) return { error: "invalid_code" };
-
+  const imageFile = formData.get("image");
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("asset_catalog")
     .insert({
-      name,
-      code,
-      description: input.description?.trim() || null,
-      icon_key: input.iconKey?.trim() || "Package",
-      total_quantity: Math.max(0, input.totalQuantity),
-      reorder_level: Math.max(0, input.reorderLevel),
-      is_active: input.isActive ?? true,
+      name: fields.name,
+      code: fields.code,
+      description: fields.description || null,
+      icon_key: fields.iconKey,
+      total_quantity: fields.totalQuantity,
+      reorder_level: fields.reorderLevel,
+      is_active: fields.isActive,
     })
     .select("id")
     .single();
@@ -323,55 +385,84 @@ export async function createAssetCatalogItem(input: {
     return { error: "save_failed" };
   }
 
+  let imageWarning: string | undefined;
+  if (imageFile instanceof File && imageFile.size > 0) {
+    const upload = await uploadAssetCatalogImageFile(data.id, imageFile, auth.session.id);
+    if (upload.error) {
+      imageWarning = upload.error;
+    } else if (upload.imageUrl) {
+      await supabase
+        .from("asset_catalog")
+        .update({ image_url: upload.imageUrl, updated_at: new Date().toISOString() })
+        .eq("id", data.id);
+    }
+  }
+
   void logAdminMutation({
     action: "create",
     entityType: "asset_catalog",
     entityId: data.id,
     routeName: "createAssetCatalogItem",
-    after: { name, code },
+    after: { name: fields.name, code: fields.code },
   });
 
-  return { success: true, id: data.id };
+  return { success: true, id: data.id, imageWarning };
 }
 
-export async function updateAssetCatalogItem(input: {
-  id: string;
-  name: string;
-  code?: string;
-  description?: string;
-  iconKey?: string;
-  totalQuantity: number;
-  reorderLevel: number;
-  isActive: boolean;
-}): Promise<AssetMutationResult> {
+export async function updateAssetCatalogItem(
+  formData: FormData,
+): Promise<AssetMutationResult> {
   const auth = await requireAssetsManage();
   if (auth.error) return { error: auth.error };
-  if (!input.id) return { error: "missing_fields" };
 
-  const name = input.name.trim();
-  if (!name) return { error: "missing_fields" };
+  const id = String(formData.get("id") ?? "").trim();
+  if (!id) return { error: "missing_fields" };
 
-  const code = (input.code?.trim() || slugifyAssetCode(name)).toLowerCase();
-  if (!/^[a-z0-9_]+$/.test(code)) return { error: "invalid_code" };
+  const fields = parseAssetFormFields(formData);
+  if (!fields.name) return { error: "missing_fields" };
+  if (!/^[a-z0-9_]+$/.test(fields.code)) return { error: "invalid_code" };
+
+  const imageFile = formData.get("image");
+  const removeImage = formData.get("removeImage") === "true";
 
   const supabase = await createClient();
-  const assignedMap = await fetchAssignedQtyByCatalog(supabase, [input.id]);
-  const assignedQty = assignedMap.get(input.id) ?? 0;
-  if (input.totalQuantity < assignedQty) return { error: "stock_below_assigned" };
+  const assignedMap = await fetchAssignedQtyByCatalog(supabase, [id]);
+  const assignedQty = assignedMap.get(id) ?? 0;
+  if (fields.totalQuantity < assignedQty) return { error: "stock_below_assigned" };
+
+  let imageUrl: string | null | undefined;
+  let imageWarning: string | undefined;
+
+  if (removeImage) {
+    imageUrl = null;
+    try {
+      await deleteObjects(allAssetCatalogImageKeys(id));
+    } catch {
+      /* best-effort */
+    }
+  } else if (imageFile instanceof File && imageFile.size > 0) {
+    const upload = await uploadAssetCatalogImageFile(id, imageFile, auth.session.id);
+    if (upload.error) {
+      imageWarning = upload.error;
+    } else {
+      imageUrl = upload.imageUrl ?? null;
+    }
+  }
 
   const { error } = await supabase
     .from("asset_catalog")
     .update({
-      name,
-      code,
-      description: input.description?.trim() || null,
-      icon_key: input.iconKey?.trim() || "Package",
-      total_quantity: Math.max(0, input.totalQuantity),
-      reorder_level: Math.max(0, input.reorderLevel),
-      is_active: input.isActive,
+      name: fields.name,
+      code: fields.code,
+      description: fields.description || null,
+      icon_key: fields.iconKey,
+      total_quantity: fields.totalQuantity,
+      reorder_level: fields.reorderLevel,
+      is_active: fields.isActive,
+      ...(imageUrl !== undefined ? { image_url: imageUrl } : {}),
       updated_at: new Date().toISOString(),
     })
-    .eq("id", input.id);
+    .eq("id", id);
 
   if (error) {
     if (error.code === "23505") return { error: "code_exists" };
@@ -381,12 +472,12 @@ export async function updateAssetCatalogItem(input: {
   void logAdminMutation({
     action: "update",
     entityType: "asset_catalog",
-    entityId: input.id,
+    entityId: id,
     routeName: "updateAssetCatalogItem",
-    after: { name, code, total_quantity: input.totalQuantity },
+    after: { name: fields.name, code: fields.code, total_quantity: fields.totalQuantity },
   });
 
-  return { success: true, id: input.id };
+  return { success: true, id, imageWarning };
 }
 
 export async function adjustAssetStock(input: {
@@ -527,22 +618,27 @@ export async function fetchAssetCatalogForDriverForm(
     selectedIds = new Set((current ?? []).map((r) => r.catalog_item_id));
   }
 
-  return (catalog ?? []).map((row) => {
-    const assigned_qty = assignedMap.get(row.id) ?? 0;
-    const available_qty = Math.max(0, row.total_quantity - assigned_qty);
-    const is_selected = selectedIds.has(row.id);
-    return {
-      id: row.id,
-      name: row.name,
-      code: row.code,
-      icon_key: row.icon_key,
-      total_quantity: row.total_quantity,
-      assigned_qty,
-      available_qty: is_selected ? available_qty + 1 : available_qty,
-      is_selected,
-      is_low_stock: available_qty <= row.reorder_level,
-    };
-  });
+  const items = await Promise.all(
+    (catalog ?? []).map(async (row) => {
+      const assigned_qty = assignedMap.get(row.id) ?? 0;
+      const available_qty = Math.max(0, row.total_quantity - assigned_qty);
+      const is_selected = selectedIds.has(row.id);
+      return {
+        id: row.id,
+        name: row.name,
+        code: row.code,
+        icon_key: row.icon_key,
+        image_url: await resolveAssetImageUrl(row.image_url),
+        total_quantity: row.total_quantity,
+        assigned_qty,
+        available_qty: is_selected ? available_qty + 1 : available_qty,
+        is_selected,
+        is_low_stock: available_qty <= row.reorder_level,
+      };
+    }),
+  );
+
+  return items;
 }
 
 export async function syncIntakeAssetAssignments(
@@ -634,6 +730,7 @@ export async function fetchDriverAssetAssignments(
     name: string;
     code: string;
     icon_key: string;
+    image_url: string | null;
     assigned_at: string;
   }>
 > {
@@ -643,7 +740,7 @@ export async function fetchDriverAssetAssignments(
   const supabase = await createClient();
   let query = supabase
     .from("asset_assignments")
-    .select("catalog_item_id, assigned_at, asset_catalog(name, code, icon_key)")
+    .select("catalog_item_id, assigned_at, asset_catalog(name, code, icon_key, image_url)")
     .eq("status", "assigned");
 
   if (driverId && intakeId) {
@@ -657,16 +754,19 @@ export async function fetchDriverAssetAssignments(
   const { data, error } = await query.order("assigned_at", { ascending: false });
   if (error) throw error;
 
-  return (data ?? []).map((row) => {
-    const catalog = Array.isArray(row.asset_catalog)
-      ? row.asset_catalog[0]
-      : row.asset_catalog;
-    return {
-      catalog_item_id: row.catalog_item_id,
-      name: catalog?.name ?? "—",
-      code: catalog?.code ?? "—",
-      icon_key: catalog?.icon_key ?? "Package",
-      assigned_at: row.assigned_at,
-    };
-  });
+  return Promise.all(
+    (data ?? []).map(async (row) => {
+      const catalog = Array.isArray(row.asset_catalog)
+        ? row.asset_catalog[0]
+        : row.asset_catalog;
+      return {
+        catalog_item_id: row.catalog_item_id,
+        name: catalog?.name ?? "—",
+        code: catalog?.code ?? "—",
+        icon_key: catalog?.icon_key ?? "Package",
+        image_url: await resolveAssetImageUrl(catalog?.image_url ?? null),
+        assigned_at: row.assigned_at,
+      };
+    }),
+  );
 }

@@ -150,6 +150,7 @@ export type DriverAssignedAsset = {
   name: string;
   code: string;
   icon_key: string;
+  image_url: string | null;
   assigned_at: string;
 };
 

@@ -137,7 +137,7 @@ export function DriverBlockEditor({
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="w-[min(480px,96vw)] gap-0 p-0">
+        <DialogContent className="flex max-h-[min(90vh,480px)] w-[min(480px,96vw)] flex-col gap-0 overflow-hidden p-0">
           <DialogHeader className="border-b border-border px-5 py-4">
             <DialogTitle className="text-base">{t("dialogTitle")}</DialogTitle>
             <DialogDescription>{t("dialogDescription")}</DialogDescription>

@@ -104,13 +104,13 @@ export function ThemeEditorDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[min(90vh,820px)] max-w-2xl flex-col gap-0 overflow-hidden p-0">
+        <DialogHeader className="shrink-0 border-b border-border px-6 py-4 pe-14">
           <DialogTitle>{t("editTitle")}</DialogTitle>
           <DialogDescription>{t("editSubtitle")}</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
           <div className="space-y-2">
             <Label htmlFor="themeName">{t("themeName")}</Label>
             <Input
@@ -155,7 +155,7 @@ export function ThemeEditorDialog({
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="shrink-0 border-t border-border px-6 py-4">
           <Button
             type="button"
             variant="outline"

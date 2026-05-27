@@ -5,6 +5,7 @@ const ALLOWED_PREFIXES = [
   "partners/",
   "restaurants/",
   "notifications/",
+  "assets/",
 ] as const;
 
 export function isAllowedStorageKey(key: string): boolean {
@@ -22,7 +23,8 @@ export function isR2ObjectKey(value: string | null | undefined): boolean {
     v.startsWith("driver-avatars/") ||
     v.startsWith("partners/") ||
     v.startsWith("restaurants/") ||
-    v.startsWith("notifications/")
+    v.startsWith("notifications/") ||
+    v.startsWith("assets/")
   );
 }
 
@@ -79,6 +81,16 @@ export function buildDriverAvatarKey(driverId: string, ext: string): string {
 
 export function buildPartnerLogoKey(partnerId: string, ext: string): string {
   return `partners/${partnerId}/logo.${ext}`;
+}
+
+export function buildAssetCatalogImageKey(catalogItemId: string, ext: string): string {
+  return `assets/catalog/${catalogItemId}/icon.${ext}`;
+}
+
+export function allAssetCatalogImageKeys(catalogItemId: string): string[] {
+  return ["png", "jpg", "jpeg", "webp", "svg"].map((ext) =>
+    buildAssetCatalogImageKey(catalogItemId, ext),
+  );
 }
 
 /** All possible intake document keys for rollback (unknown ext per doc). */

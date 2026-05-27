@@ -4,6 +4,7 @@ export type AssetCatalogRow = {
   code: string;
   description: string | null;
   icon_key: string;
+  image_url: string | null;
   total_quantity: number;
   reorder_level: number;
   is_active: boolean;
@@ -51,6 +52,7 @@ export type DriverFormCatalogItem = {
   name: string;
   code: string;
   icon_key: string;
+  image_url: string | null;
   total_quantity: number;
   assigned_qty: number;
   available_qty: number;
@@ -62,4 +64,5 @@ export type AssetMutationResult = {
   error?: string;
   success?: boolean;
   id?: string;
+  imageWarning?: string;
 };
