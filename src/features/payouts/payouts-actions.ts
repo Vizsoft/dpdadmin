@@ -59,7 +59,7 @@ export async function generatePayoutRun(input: {
   const { data, error } = await (supabase as any).rpc("generate_payout_run", {
     p_period_start: input.periodStart,
     p_period_end: input.periodEnd,
-    p_driver_ids: input.driverIds ?? null,
+    p_driver_ids: input.driverIds ?? undefined,
     p_notes: input.notes ?? null,
   });
   if (error) return { error: error.message ?? "save_failed" };

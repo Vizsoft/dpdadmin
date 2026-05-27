@@ -129,6 +129,11 @@ export const PERMISSION_CATALOG: readonly PermissionCatalogEntry[] = [
     label: "Manage roles and permissions",
     category: "admin",
   },
+  {
+    slug: "data.cleanup",
+    label: "Permanent data cleanup (super admin)",
+    category: "admin",
+  },
 ] as const;
 
 export const CATALOG_SLUGS = PERMISSION_CATALOG.map((e) => e.slug);

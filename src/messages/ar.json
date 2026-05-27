@@ -63,6 +63,7 @@
     "roles": "الأدوار والصلاحيات",
     "accessRequests": "طلبات الوصول",
     "maintenance": "وضع الصيانة",
+    "dataCleanup": "تنظيف البيانات",
     "zones": "المناطق",
     "dpdVerification": "تحقق DPD",
     "activityLogs": "سجل النشاط"
@@ -2785,6 +2786,64 @@
         "turnedOn": "تم تفعيل الصيانة",
         "turnedOff": "تم إيقاف الصيانة",
         "errors": { "saveFailed": "تعذر تحديث وضع الصيانة." }
+      },
+      "dataCleanup": {
+        "title": "تنظيف البيانات",
+        "subtitle": "حذف سجلات الاختبار نهائياً قبل الإطلاق. لا يمكن التراجع.",
+        "searchPlaceholder": "بحث…",
+        "archivedOnly": "طلبات مؤرشفة فقط",
+        "refresh": "تحديث",
+        "selectPage": "تحديد الكل في الصفحة",
+        "totalCount": "{count} إجمالاً",
+        "pageOf": "صفحة {page} من {total}",
+        "clearSelection": "مسح التحديد",
+        "empty": "لا توجد سجلات مطابقة.",
+        "selectedCount": "{count} محدد",
+        "preview": "معاينة",
+        "deleteSelected": "حذف المحدد",
+        "partialPurge": "تم حذف {deleted}. بعض الأخطاء: {errors}",
+        "purgeSuccess": "تم الحذف النهائي لـ {count} سجل.",
+        "orderBanner": {
+          "title": "ترتيب موصى به قبل الإطلاق",
+          "body": "1. التوصيلات → 2. السائقون → 3. المطاعم → 4. المناطق → 5. القواعد → 6. الأصول. قد يفشل حذف المناطق أو المطاعم إذا كانت هناك توصيلات أو سائقون مرتبطون."
+        },
+        "tabs": {
+          "deliveries": "التوصيلات",
+          "drivers": "السائقون والطلبات",
+          "restaurants": "المطاعم",
+          "zones": "المناطق",
+          "delivery_rules": "قواعد التوصيل",
+          "incentive_rules": "قواعد الحوافز",
+          "assets": "الأصول"
+        },
+        "confirmPhrases": {
+          "drivers": "DELETE {count} DRIVERS",
+          "zones": "DELETE {count} ZONES",
+          "restaurants": "DELETE {count} RESTAURANTS",
+          "deliveryRules": "DELETE {count} DELIVERY RULES",
+          "incentiveRules": "DELETE {count} INCENTIVE RULES",
+          "assets": "DELETE {count} ASSETS",
+          "deliveries": "DELETE {count} DELIVERIES"
+        },
+        "preview": {
+          "title": "معاينة الحذف",
+          "description": "تقدير الصفوف المرتبطة وملفات التخزين لكل عنصر.",
+          "blocked": "محظور",
+          "noRelatedRows": "لا صفوف مرتبطة",
+          "storageKeys": "~{count} ملف(ات) تخزين",
+          "blockersWarning": "بعض العناصر لديها عوائق. أزل التبعيات أو استبعدها من التحديد.",
+          "close": "إغلاق"
+        },
+        "deleteDialog": {
+          "title": "حذف نهائي",
+          "itemName": "{count} سجل(ات)",
+          "warning": "يحذف هذا الصفوف وملفات التخزين ومستخدمي Auth المرتبطين (للسائقين) نهائياً. لا تراجع."
+        },
+        "errors": {
+          "nothingSelected": "حدد سجلاً واحداً على الأقل.",
+          "previewFailed": "تعذرت المعاينة.",
+          "purgeFailed": "فشل الحذف."
+        }
       },
       "storage": {
         "title": "تخزين Cloudflare R2",

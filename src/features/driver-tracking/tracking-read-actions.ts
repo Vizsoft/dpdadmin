@@ -47,7 +47,7 @@ async function fetchAdherenceMap(
   const { data, error } = await supabase.rpc("admin_list_shift_adherence", {
     p_from: fromDate,
     p_to: toDate,
-    p_driver_ids: driverIds && driverIds.length > 0 ? driverIds : null,
+    p_driver_ids: driverIds && driverIds.length > 0 ? driverIds : undefined,
   });
   if (error) throw error;
 

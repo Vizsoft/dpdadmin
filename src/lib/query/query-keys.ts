@@ -120,6 +120,15 @@ export const queryKeys = {
     list: (startDate: string, endDate: string) => ["payouts", "list", startDate, endDate] as const,
     detail: (id: string) => ["payouts", "detail", id] as const,
   },
+  dataCleanup: {
+    all: () => ["data-cleanup"] as const,
+    candidates: (
+      tab: string,
+      search: string,
+      page: number,
+      archivedOnly: boolean,
+    ) => ["data-cleanup", "candidates", tab, search, page, archivedOnly] as const,
+  },
   notifications: {
     all: () => ["notifications"] as const,
     dashboard: () => ["notifications", "dashboard"] as const,

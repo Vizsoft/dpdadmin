@@ -4093,6 +4093,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _admin_purge_require_super_admin: { Args: never; Returns: undefined }
       _driver_assert_active_on_duty: {
         Args: { p_uid: string }
         Returns: {
@@ -4163,6 +4164,41 @@ export type Database = {
         }
         Returns: boolean
       }
+      _driver_shift_adherence: {
+        Args: { p_date: string; p_driver_id: string }
+        Returns: Json
+      }
+      _driver_shift_end_at: {
+        Args: {
+          p_row: Database["public"]["Tables"]["driver_daily_shifts"]["Row"]
+        }
+        Returns: string
+      }
+      _driver_shift_row_for_adherence: {
+        Args: { p_date: string; p_driver_id: string; p_now?: string }
+        Returns: {
+          created_at: string
+          driver_id: string
+          id: string
+          session1_end: string
+          session1_end_day_offset: number
+          session1_start: string
+          session2_end: string | null
+          session2_end_day_offset: number
+          session2_start: string | null
+          session2_start_day_offset: number
+          shift_date: string
+          shift_type: string
+          submitted_at: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "driver_daily_shifts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       _haversine_meters: {
         Args: { p_lat1: number; p_lat2: number; p_lng1: number; p_lng2: number }
         Returns: number
@@ -4225,17 +4261,25 @@ export type Database = {
         Returns: Json
       }
       admin_list_shift_adherence: {
-        Args: {
-          p_driver_ids?: string[] | null
-          p_from: string
-          p_to: string
-        }
+        Args: { p_driver_ids?: string[]; p_from: string; p_to: string }
         Returns: {
           attendance_date: string
           driver_id: string
           shift_adherence: Json
         }[]
       }
+      admin_preview_purge: {
+        Args: { p_entity_type: string; p_ids: string[] }
+        Returns: Json
+      }
+      admin_purge_asset_catalog: { Args: { p_ids: string[] }; Returns: Json }
+      admin_purge_deliveries: { Args: { p_ids: string[] }; Returns: Json }
+      admin_purge_delivery_rules: { Args: { p_ids: string[] }; Returns: Json }
+      admin_purge_drivers: { Args: { p_ids: string[] }; Returns: Json }
+      admin_purge_incentive_rules: { Args: { p_ids: string[] }; Returns: Json }
+      admin_purge_intakes: { Args: { p_ids: string[] }; Returns: Json }
+      admin_purge_restaurants: { Args: { p_ids: string[] }; Returns: Json }
+      admin_purge_zones: { Args: { p_ids: string[] }; Returns: Json }
       allocate_driver_code: { Args: never; Returns: string }
       approve_payout_run: { Args: { p_run_id: string }; Returns: undefined }
       archive_driver_intake: { Args: { p_intake_id: string }; Returns: Json }

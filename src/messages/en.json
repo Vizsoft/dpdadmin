@@ -63,6 +63,7 @@
     "roles": "Roles & Permissions",
     "accessRequests": "Access Requests",
     "maintenance": "Maintenance",
+    "dataCleanup": "Data cleanup",
     "zones": "Zones",
     "dpdVerification": "DPD Verification",
     "activityLogs": "Activity Logs"
@@ -2803,6 +2804,64 @@
         "turnedOff": "Maintenance mode disabled",
         "errors": {
           "saveFailed": "Could not update maintenance mode."
+        }
+      },
+      "dataCleanup": {
+        "title": "Data cleanup",
+        "subtitle": "Permanently delete test records before go-live. This cannot be undone.",
+        "searchPlaceholder": "Search…",
+        "archivedOnly": "Archived intakes only",
+        "refresh": "Refresh",
+        "selectPage": "Select all on page",
+        "totalCount": "{count} total",
+        "pageOf": "Page {page} of {total}",
+        "clearSelection": "Clear selection",
+        "empty": "No records match your search.",
+        "selectedCount": "{count} selected",
+        "preview": "Preview",
+        "deleteSelected": "Delete selected",
+        "partialPurge": "Deleted {deleted} item(s). Some errors: {errors}",
+        "purgeSuccess": "Permanently deleted {count} item(s).",
+        "orderBanner": {
+          "title": "Recommended go-live order",
+          "body": "1. Deliveries → 2. Drivers → 3. Restaurants → 4. Zones → 5. Rules → 6. Assets. Deleting zones or restaurants may fail while deliveries or drivers still reference them."
+        },
+        "tabs": {
+          "deliveries": "Deliveries",
+          "drivers": "Drivers & intakes",
+          "restaurants": "Restaurants",
+          "zones": "Zones",
+          "delivery_rules": "Delivery rules",
+          "incentive_rules": "Incentive rules",
+          "assets": "Assets"
+        },
+        "confirmPhrases": {
+          "drivers": "DELETE {count} DRIVERS",
+          "zones": "DELETE {count} ZONES",
+          "restaurants": "DELETE {count} RESTAURANTS",
+          "deliveryRules": "DELETE {count} DELIVERY RULES",
+          "incentiveRules": "DELETE {count} INCENTIVE RULES",
+          "assets": "DELETE {count} ASSETS",
+          "deliveries": "DELETE {count} DELIVERIES"
+        },
+        "preview": {
+          "title": "Purge preview",
+          "description": "Estimated related rows and storage objects per selection.",
+          "blocked": "Blocked",
+          "noRelatedRows": "No related rows counted",
+          "storageKeys": "~{count} storage object(s)",
+          "blockersWarning": "Some selections have blockers. Fix dependencies or remove them from the selection before deleting.",
+          "close": "Close"
+        },
+        "deleteDialog": {
+          "title": "Permanent delete",
+          "itemName": "{count} record(s)",
+          "warning": "This permanently removes database rows, storage files, and linked Auth users (for drivers). There is no undo."
+        },
+        "errors": {
+          "nothingSelected": "Select at least one record.",
+          "previewFailed": "Could not load preview.",
+          "purgeFailed": "Purge failed."
         }
       },
       "storage": {

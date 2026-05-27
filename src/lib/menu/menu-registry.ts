@@ -27,6 +27,7 @@ import {
   ScrollText,
   Radar,
   Timer,
+  Trash2,
   type LucideIcon,
 } from "lucide-react";
 import type { Permission } from "@/lib/auth/permissions";
@@ -72,6 +73,7 @@ export const ICON_MAP: Record<string, LucideIcon> = {
   ScrollText,
   Radar,
   Timer,
+  Trash2,
 };
 
 export const ICON_NAMES = Object.keys(ICON_MAP);
@@ -353,6 +355,16 @@ export const MENU_REGISTRY: MenuRegistryItem[] = [
     superAdminOnly: true,
   },
   {
+    id: "data-cleanup",
+    defaultLabel: "Data cleanup",
+    defaultIcon: "Trash2",
+    href: "/settings/data-cleanup",
+    defaultGroup: "Settings",
+    defaultOrder: 6.5,
+    permission: "data.cleanup",
+    superAdminOnly: true,
+  },
+  {
     id: "menu-editor",
     defaultLabel: "Menu Editor",
     defaultIcon: "ListTree",
@@ -420,6 +432,7 @@ export const APP_NAV_KEY_BY_ID: Record<string, string> = {
   roles: "roles",
   "access-requests": "accessRequests",
   maintenance: "maintenance",
+  "data-cleanup": "dataCleanup",
   "menu-editor": "menuEditor",
   languages: "languages",
   "activity-logs": "activityLogs",

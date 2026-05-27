@@ -221,7 +221,7 @@ export async function fetchAttendanceLive(): Promise<{
     {
       p_from: today,
       p_to: today,
-      p_driver_ids: driverIds.length > 0 ? driverIds : null,
+      p_driver_ids: driverIds.length > 0 ? driverIds : undefined,
     },
   );
   if (adherenceError) throw adherenceError;
