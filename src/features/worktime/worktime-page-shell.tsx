@@ -13,6 +13,12 @@ import { AttendanceCorrectionSheet } from "@/features/attendance/attendance-corr
 import { TrackingTableToolbar } from "@/features/driver-tracking/table-toolbar";
 import { downloadCsv } from "@/features/driver-tracking/csv-export";
 import { addDays, formatDurationSeconds, kuwaitToday } from "@/features/driver-tracking/kuwait-time";
+import type { WorktimeListRow } from "@/features/driver-tracking/tracking-read-actions";
+import {
+  formatKuwaitTime,
+  formatScheduledShiftRange,
+  formatVsScheduled,
+} from "@/features/driver-tracking/shift-adherence-display";
 import { Link } from "@/i18n/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { useDriverFormOptions } from "@/features/drivers/use-driver-form-options";
@@ -48,13 +54,27 @@ import {
 } from "./worktime-list-utils";
 import type { AttendanceListRow } from "@/features/attendance/types";
 
-function formatIsoTime(iso: string | null): string {
-  if (!iso) return "—";
-  return new Intl.DateTimeFormat(undefined, {
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "Asia/Kuwait",
-  }).format(new Date(iso));
+function actualInIso(row: WorktimeListRow): string | null {
+  return row.shift_adherence?.actual_in_at ?? row.first_online_at ?? row.check_in_at;
+}
+
+function actualOutIso(row: WorktimeListRow): string | null {
+  return row.shift_adherence?.actual_out_at ?? row.check_out_at;
+}
+
+function scheduledShiftLabel(row: WorktimeListRow): string {
+  if (row.shift_adherence) {
+    return formatScheduledShiftRange(
+      row.shift_adherence.scheduled_start_at,
+      row.shift_adherence.scheduled_end_at,
+    );
+  }
+  if (row.session1_label) {
+    return row.session2_label
+      ? `${row.session1_label} / ${row.session2_label}`
+      : row.session1_label;
+  }
+  return "—";
 }
 
 export function WorktimePageShell() {
@@ -214,6 +234,11 @@ export function WorktimePageShell() {
                 <TableRow>
                   <TableHead className={TABLE_HEAD_CLASS}>{t("colDriver")}</TableHead>
                   <TableHead className={TABLE_HEAD_CLASS}>{t("colDate")}</TableHead>
+                  <TableHead className={TABLE_HEAD_CLASS}>{t("colScheduledShift")}</TableHead>
+                  <TableHead className={TABLE_HEAD_CLASS}>{t("colActualIn")}</TableHead>
+                  <TableHead className={TABLE_HEAD_CLASS}>{t("colActualOut")}</TableHead>
+                  <TableHead className={TABLE_HEAD_CLASS}>{t("colLate")}</TableHead>
+                  <TableHead className={TABLE_HEAD_CLASS}>{t("colEarlyOut")}</TableHead>
                   <TableHead className={TABLE_HEAD_CLASS} title={t("sourceLog")}>
                     {t("colCheckIn")}
                   </TableHead>
@@ -224,6 +249,8 @@ export function WorktimePageShell() {
                   <TableHead className={TABLE_HEAD_CLASS} title={t("sourceApp")}>
                     {t("colOnline")}
                   </TableHead>
+                  <TableHead className={TABLE_HEAD_CLASS}>{t("colScheduledDuration")}</TableHead>
+                  <TableHead className={TABLE_HEAD_CLASS}>{t("colVsScheduled")}</TableHead>
                   <TableHead className={TABLE_HEAD_CLASS} title={t("sourceGps")}>
                     {t("colIdleMoving")}
                   </TableHead>
@@ -240,8 +267,31 @@ export function WorktimePageShell() {
                       <div className="text-muted-foreground text-xs">{row.driver_code}</div>
                     </TableCell>
                     <TableCell>{row.attendance_date}</TableCell>
-                    <TableCell>{formatIsoTime(row.check_in_at)}</TableCell>
-                    <TableCell>{formatIsoTime(row.check_out_at)}</TableCell>
+                    <TableCell className="whitespace-nowrap text-xs">
+                      {scheduledShiftLabel(row)}
+                    </TableCell>
+                    <TableCell>{formatKuwaitTime(actualInIso(row))}</TableCell>
+                    <TableCell>{formatKuwaitTime(actualOutIso(row))}</TableCell>
+                    <TableCell>
+                      {row.shift_adherence && row.shift_adherence.minutes_late > 0 ? (
+                        <span className="font-medium text-amber-700 dark:text-amber-300">
+                          {row.shift_adherence.minutes_late}
+                        </span>
+                      ) : (
+                        row.shift_adherence ? "0" : "—"
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {row.shift_adherence && row.shift_adherence.minutes_early_out > 0 ? (
+                        <span className="font-medium text-amber-700 dark:text-amber-300">
+                          {row.shift_adherence.minutes_early_out}
+                        </span>
+                      ) : (
+                        row.shift_adherence ? "0" : "—"
+                      )}
+                    </TableCell>
+                    <TableCell>{formatKuwaitTime(row.check_in_at)}</TableCell>
+                    <TableCell>{formatKuwaitTime(row.check_out_at)}</TableCell>
                     <TableCell>
                       {row.log_duration_seconds != null
                         ? formatDurationSeconds(row.log_duration_seconds)
@@ -254,6 +304,19 @@ export function WorktimePageShell() {
                           ({row.session_count})
                         </span>
                       ) : null}
+                    </TableCell>
+                    <TableCell>
+                      {row.shift_adherence
+                        ? formatDurationSeconds(row.shift_adherence.scheduled_seconds)
+                        : "—"}
+                    </TableCell>
+                    <TableCell>
+                      {row.shift_adherence
+                        ? formatVsScheduled(
+                            row.online_seconds,
+                            row.shift_adherence.scheduled_seconds,
+                          )
+                        : "—"}
                     </TableCell>
                     <TableCell title={t("sourceGps")}>
                       {row.idle_minutes != null || row.moving_minutes != null
@@ -327,6 +390,8 @@ export function WorktimePageShell() {
                                 is_exception: false,
                                 app_attendance_status: row.attendance_status,
                                 online_seconds_today: row.online_seconds,
+                                shift_adherence: row.shift_adherence,
+                                scheduled_shift_label: scheduledShiftLabel(row),
                               })
                             }
                           >

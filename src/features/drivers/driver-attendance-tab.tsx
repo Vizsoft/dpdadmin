@@ -13,6 +13,12 @@ import {
   fetchDriverTodayTrackingSummary,
 } from "@/features/driver-tracking/tracking-read-actions";
 import { formatDurationSeconds, kuwaitToday } from "@/features/driver-tracking/kuwait-time";
+import {
+  adherenceTooltip,
+  formatKuwaitTime,
+  formatScheduledShiftRange,
+  formatVsScheduled,
+} from "@/features/driver-tracking/shift-adherence-display";
 export function DriverAttendanceTab({ driverId }: { driverId: string }) {
   const t = useTranslations("pages.driverDetail");
   const today = kuwaitToday();
@@ -37,6 +43,7 @@ export function DriverAttendanceTab({ driverId }: { driverId: string }) {
 
   const wt = summary?.worktime;
   const shift = summary?.shift;
+  const adherence = summary?.shift_adherence ?? wt?.shift_adherence ?? null;
 
   return (
     <div className="space-y-3">
@@ -96,6 +103,59 @@ export function DriverAttendanceTab({ driverId }: { driverId: string }) {
                 : "—"}
             </dd>
           </div>
+          <div>
+            <dt className="text-muted-foreground">{t("attendanceShiftStatus")}</dt>
+            <dd>
+              {shift
+                ? shift.is_active
+                  ? t("attendanceShiftActive")
+                  : shift.is_expired
+                    ? t("attendanceShiftExpired")
+                    : t("attendanceShiftScheduled")
+                : "—"}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">{t("attendanceScheduled")}</dt>
+            <dd>
+              {adherence
+                ? formatScheduledShiftRange(
+                    adherence.scheduled_start_at,
+                    adherence.scheduled_end_at,
+                  )
+                : "—"}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">{t("attendanceActualIn")}</dt>
+            <dd>
+              {formatKuwaitTime(
+                adherence?.actual_in_at ?? wt?.first_online_at ?? wt?.check_in_at ?? null,
+              )}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">{t("attendanceActualOut")}</dt>
+            <dd>
+              {formatKuwaitTime(adherence?.actual_out_at ?? wt?.check_out_at ?? null)}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">{t("attendanceLate")}</dt>
+            <dd>{adherence ? `${adherence.minutes_late} min` : "—"}</dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">{t("attendanceEarlyOut")}</dt>
+            <dd>{adherence ? `${adherence.minutes_early_out} min` : "—"}</dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">{t("attendanceVsScheduled")}</dt>
+            <dd>
+              {adherence && wt
+                ? formatVsScheduled(wt.online_seconds, adherence.scheduled_seconds)
+                : "—"}
+            </dd>
+          </div>
         </dl>
         )}
         <div className="mt-4 flex flex-wrap gap-2">
@@ -134,10 +194,16 @@ export function DriverAttendanceTab({ driverId }: { driverId: string }) {
           <p className="text-sm text-muted-foreground">{t("attendanceMonthEmpty")}</p>
         ) : (
           <div className="grid grid-cols-7 gap-1 sm:grid-cols-10">
-            {monthRows.map((row) => (
+            {monthRows.map((row) => {
+              const tipParts = [`${row.attendance_date}: ${row.status}`];
+              if (row.shift_adherence) {
+                tipParts.push(adherenceTooltip(row.shift_adherence));
+                tipParts.push(formatDurationSeconds(row.online_seconds));
+              }
+              return (
               <div
                 key={row.attendance_date}
-                title={`${row.attendance_date}: ${row.status}`}
+                title={tipParts.join(" · ")}
                 className={`rounded px-1 py-2 text-center text-[10px] ${
                   row.status === "present"
                     ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40"
@@ -148,7 +214,8 @@ export function DriverAttendanceTab({ driverId }: { driverId: string }) {
               >
                 {row.attendance_date.slice(-2)}
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </TrackingGlassCard>

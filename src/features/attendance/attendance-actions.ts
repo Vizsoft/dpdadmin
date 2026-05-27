@@ -12,6 +12,8 @@ import type {
   AttendanceStatus,
   AttendanceTabFilter,
 } from "./types";
+import type { ShiftAdherence } from "@/features/driver-tracking/shift-adherence";
+import { parseShiftAdherence } from "@/features/driver-tracking/shift-adherence";
 
 const KUWAIT_TZ = "Asia/Kuwait";
 
@@ -85,6 +87,7 @@ function buildListRow(
   log: AttendanceLogRow | null,
   logDate: string,
   appAttendance?: { status: string; online_seconds: number } | null,
+  shiftAdherence: ShiftAdherence | null = null,
 ): AttendanceListRow {
   const { name, phone } = relProfileName(driver.profiles);
   const status: AttendanceStatus = log?.status ?? "absent";
@@ -113,7 +116,21 @@ function buildListRow(
     is_exception: isException,
     app_attendance_status: appAttendance?.status ?? null,
     online_seconds_today: appAttendance?.online_seconds ?? null,
+    shift_adherence: shiftAdherence,
+    scheduled_shift_label: shiftAdherence
+      ? formatScheduledShiftLabel(shiftAdherence)
+      : null,
   };
+}
+
+function formatScheduledShiftLabel(adherence: ShiftAdherence): string {
+  const fmt = (iso: string) =>
+    new Intl.DateTimeFormat(undefined, {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: KUWAIT_TZ,
+    }).format(new Date(iso));
+  return `${fmt(adherence.scheduled_start_at)}–${fmt(adherence.scheduled_end_at)}`;
 }
 
 function computeKpis(rows: AttendanceListRow[]): AttendanceKpis {
@@ -198,6 +215,23 @@ export async function fetchAttendanceLive(): Promise<{
     .select("driver_id, status, online_seconds, last_online_at")
     .eq("attendance_date", today);
 
+  const driverIds = drivers.map((d) => d.id);
+  const { data: adherenceRows, error: adherenceError } = await supabase.rpc(
+    "admin_list_shift_adherence",
+    {
+      p_from: today,
+      p_to: today,
+      p_driver_ids: driverIds.length > 0 ? driverIds : null,
+    },
+  );
+  if (adherenceError) throw adherenceError;
+
+  const adherenceByDriver = new Map<string, ShiftAdherence>();
+  for (const row of adherenceRows ?? []) {
+    const parsed = parseShiftAdherence(row.shift_adherence);
+    if (parsed) adherenceByDriver.set(row.driver_id, parsed);
+  }
+
   const appByDriver = new Map(
     (appRows ?? []).map((a) => [
       a.driver_id,
@@ -207,7 +241,13 @@ export async function fetchAttendanceLive(): Promise<{
 
   const logByDriver = new Map(logs.map((l) => [l.driver_id, l]));
   const rows = drivers.map((d) =>
-    buildListRow(d, logByDriver.get(d.id) ?? null, today, appByDriver.get(d.id)),
+    buildListRow(
+      d,
+      logByDriver.get(d.id) ?? null,
+      today,
+      appByDriver.get(d.id),
+      adherenceByDriver.get(d.id) ?? null,
+    ),
   );
 
   return { rows, kpis: computeKpis(rows) };

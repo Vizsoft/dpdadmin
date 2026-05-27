@@ -47,6 +47,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useAuth } from "@/contexts/auth-context";
+import { formatDurationSeconds } from "@/features/driver-tracking/kuwait-time";
 import { selectOptions } from "@/lib/select-items";
 import { exportAttendanceCsv } from "./attendance-actions";
 import { AttendanceCorrectionSheet } from "./attendance-correction-sheet";
@@ -382,7 +383,13 @@ function AttendancePageContent() {
                   <TableHead className={TABLE_HEAD_CLASS}>{t("colCheckOut")}</TableHead>
                   <TableHead className={TABLE_HEAD_CLASS}>{t("colStatus")}</TableHead>
                   {tabFilter === "live" ? (
-                    <TableHead className={TABLE_HEAD_CLASS}>{t("colValidation")}</TableHead>
+                    <>
+                      <TableHead className={TABLE_HEAD_CLASS}>{t("colOnline")}</TableHead>
+                      <TableHead className={TABLE_HEAD_CLASS}>{t("colScheduledShift")}</TableHead>
+                      <TableHead className={TABLE_HEAD_CLASS}>{t("colLate")}</TableHead>
+                      <TableHead className={TABLE_HEAD_CLASS}>{t("colEarlyOut")}</TableHead>
+                      <TableHead className={TABLE_HEAD_CLASS}>{t("colValidation")}</TableHead>
+                    </>
                   ) : null}
                   <TableHead className={TABLE_HEAD_CLASS}>{t("colDistance")}</TableHead>
                   <TableHead className={`${TABLE_HEAD_CLASS} hidden sm:table-cell`}>
@@ -417,15 +424,39 @@ function AttendancePageContent() {
                       </StatusPill>
                     </TableCell>
                     {tabFilter === "live" ? (
-                      <TableCell className="text-sm text-muted-foreground">
-                        {row.app_attendance_status
-                          ? row.app_attendance_status === "present"
-                            ? t("validationPresent")
-                            : row.app_attendance_status === "online_unvalidated"
-                              ? t("validationUnvalidated")
-                              : row.app_attendance_status
-                          : "—"}
-                      </TableCell>
+                      <>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {row.online_seconds_today != null
+                            ? formatDurationSeconds(row.online_seconds_today)
+                            : "—"}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {row.scheduled_shift_label ?? "—"}
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {row.shift_adherence && row.shift_adherence.minutes_late > 0
+                            ? row.shift_adherence.minutes_late
+                            : row.shift_adherence
+                              ? "0"
+                              : "—"}
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {row.shift_adherence && row.shift_adherence.minutes_early_out > 0
+                            ? row.shift_adherence.minutes_early_out
+                            : row.shift_adherence
+                              ? "0"
+                              : "—"}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {row.app_attendance_status
+                            ? row.app_attendance_status === "present"
+                              ? t("validationPresent")
+                              : row.app_attendance_status === "online_unvalidated"
+                                ? t("validationUnvalidated")
+                                : row.app_attendance_status
+                            : "—"}
+                        </TableCell>
+                      </>
                     ) : null}
                     <TableCell className="text-sm text-muted-foreground">
                       {formatDistanceMeters(row.distance_meters)}

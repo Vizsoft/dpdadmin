@@ -1,3 +1,5 @@
+import type { ShiftAdherence } from "@/features/driver-tracking/shift-adherence";
+
 export const ATTENDANCE_STATUSES = [
   "present",
   "late",
@@ -27,6 +29,8 @@ export type AttendanceListRow = {
   is_exception: boolean;
   app_attendance_status: string | null;
   online_seconds_today: number | null;
+  shift_adherence: ShiftAdherence | null;
+  scheduled_shift_label: string | null;
 };
 
 export type AttendanceKpis = {

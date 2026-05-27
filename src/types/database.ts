@@ -4220,6 +4220,22 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_get_shift_adherence: {
+        Args: { p_date: string; p_driver_id: string }
+        Returns: Json
+      }
+      admin_list_shift_adherence: {
+        Args: {
+          p_driver_ids?: string[] | null
+          p_from: string
+          p_to: string
+        }
+        Returns: {
+          attendance_date: string
+          driver_id: string
+          shift_adherence: Json
+        }[]
+      }
       allocate_driver_code: { Args: never; Returns: string }
       approve_payout_run: { Args: { p_run_id: string }; Returns: undefined }
       archive_driver_intake: { Args: { p_intake_id: string }; Returns: Json }

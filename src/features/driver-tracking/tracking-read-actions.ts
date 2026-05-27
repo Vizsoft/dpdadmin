@@ -1,5 +1,7 @@
 "use server";
 
+export type { ShiftAdherence } from "./shift-adherence";
+
 import { logAdminRead } from "@/lib/audit/log-admin-activity";
 import { getSessionUser } from "@/lib/auth/get-session";
 import { hasPermissionInSet } from "@/lib/auth/permissions";
@@ -13,7 +15,17 @@ import {
   kuwaitToday,
   logDurationSeconds,
 } from "./kuwait-time";
-import { computeShiftFlags, formatSessionRange, type ShiftRow } from "./shift-flags";
+import {
+  adherenceMapKey,
+  parseShiftAdherence,
+  type ShiftAdherence,
+} from "./shift-adherence";
+import {
+  findActiveShiftRow,
+  formatSessionRange,
+  shiftRowToListFields,
+  type ShiftRow,
+} from "./shift-flags";
 
 async function requireAttendanceView() {
   const session = await getSessionUser();
@@ -24,6 +36,72 @@ async function requireAttendanceView() {
     throw new Error("not_authorized");
   }
   return session;
+}
+
+async function fetchAdherenceMap(
+  fromDate: string,
+  toDate: string,
+  driverIds?: string[],
+): Promise<Map<string, ShiftAdherence>> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_list_shift_adherence", {
+    p_from: fromDate,
+    p_to: toDate,
+    p_driver_ids: driverIds && driverIds.length > 0 ? driverIds : null,
+  });
+  if (error) throw error;
+
+  const map = new Map<string, ShiftAdherence>();
+  for (const row of data ?? []) {
+    const parsed = parseShiftAdherence(row.shift_adherence);
+    if (parsed) {
+      map.set(adherenceMapKey(row.driver_id, row.attendance_date), parsed);
+    }
+  }
+  return map;
+}
+
+async function fetchShiftAdherence(
+  driverId: string,
+  date: string,
+): Promise<ShiftAdherence | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_get_shift_adherence", {
+    p_driver_id: driverId,
+    p_date: date,
+  });
+  if (error) throw error;
+  return parseShiftAdherence(data);
+}
+
+function buildDriverShiftListRow(
+  row: ShiftRow,
+  driver: DriverMeta,
+  shiftAdherence: ShiftAdherence | null = null,
+  nowMs: number = Date.now(),
+): DriverShiftListRow {
+  const fields = shiftRowToListFields(row, nowMs);
+  return {
+    id: row.id,
+    driver_id: row.driver_id,
+    driver_code: driver.driver_code,
+    driver_name: driver.full_name,
+    driver_phone: driver.phone,
+    zone_name: driver.zone_name,
+    partner_name: driver.partner_name,
+    shift_date: row.shift_date,
+    shift_type: row.shift_type as "single" | "split",
+    session1_label: fields.session1_label,
+    session2_label: fields.session2_label,
+    is_within_window: fields.is_within_window,
+    is_locked: fields.is_locked,
+    is_active: fields.is_active,
+    is_expired: fields.is_expired,
+    shift_end_at: fields.shift_end_at,
+    is_on_duty: driver.is_on_duty,
+    submitted_at: row.submitted_at,
+    shift_adherence: shiftAdherence,
+  };
 }
 
 type DriverMeta = {
@@ -98,8 +176,12 @@ export type DriverShiftListRow = {
   session2_label: string | null;
   is_within_window: boolean;
   is_locked: boolean;
+  is_active: boolean;
+  is_expired: boolean;
+  shift_end_at: string;
   is_on_duty: boolean;
   submitted_at: string;
+  shift_adherence: ShiftAdherence | null;
 };
 
 export async function fetchDriverShiftsList(params: {
@@ -122,6 +204,7 @@ export async function fetchDriverShiftsList(params: {
   if (error) throw error;
 
   const meta = await fetchDriverMetaMap();
+  const adherenceMap = await fetchAdherenceMap(params.fromDate, params.toDate);
   const rows: DriverShiftListRow[] = [];
 
   for (const raw of data ?? []) {
@@ -133,38 +216,10 @@ export async function fetchDriverShiftsList(params: {
       continue;
     }
 
-    const flags = computeShiftFlags(row);
-    const session1 = formatSessionRange(
-      row.session1_start,
-      row.session1_end,
-      row.session1_end_day_offset,
-    );
-    const session2 =
-      row.shift_type === "split" && row.session2_start && row.session2_end
-        ? formatSessionRange(
-            row.session2_start,
-            row.session2_end,
-            row.session2_end_day_offset,
-          )
-        : null;
+    const adherence =
+      adherenceMap.get(adherenceMapKey(row.driver_id, row.shift_date)) ?? null;
 
-    rows.push({
-      id: row.id,
-      driver_id: row.driver_id,
-      driver_code: driver.driver_code,
-      driver_name: driver.full_name,
-      driver_phone: driver.phone,
-      zone_name: driver.zone_name,
-      partner_name: driver.partner_name,
-      shift_date: row.shift_date,
-      shift_type: row.shift_type as "single" | "split",
-      session1_label: session1,
-      session2_label: session2,
-      is_within_window: flags.isWithinWindow,
-      is_locked: flags.isLocked,
-      is_on_duty: driver.is_on_duty,
-      submitted_at: row.submitted_at,
-    });
+    rows.push(buildDriverShiftListRow(row, driver, adherence));
   }
 
   return rows;
@@ -192,6 +247,11 @@ export type WorktimeListRow = {
   validation_source: string | null;
   is_on_duty: boolean;
   log_id: string | null;
+  first_online_at: string | null;
+  shift_type: "single" | "split" | null;
+  session1_label: string | null;
+  session2_label: string | null;
+  shift_adherence: ShiftAdherence | null;
 };
 
 function displayOnlineSeconds(
@@ -223,7 +283,8 @@ export async function fetchWorktimeList(params: {
   const { from: rangeFrom } = kuwaitDayBounds(params.fromDate);
   const { to: rangeTo } = kuwaitDayBounds(params.toDate);
 
-  const [attendanceRes, logsRes, sessionsRes, eventsRes] = await Promise.all([
+  const [attendanceRes, logsRes, sessionsRes, eventsRes, shiftsRes, adherenceMap] =
+    await Promise.all([
     supabase
       .from("driver_attendance")
       .select("*")
@@ -253,12 +314,26 @@ export async function fetchWorktimeList(params: {
       .gte("recorded_at", rangeFrom)
       .lte("recorded_at", rangeTo)
       .order("recorded_at", { ascending: true }),
+    supabase
+      .from("driver_daily_shifts")
+      .select("*")
+      .gte("shift_date", params.fromDate)
+      .lte("shift_date", params.toDate)
+      .in("driver_id", driverIds),
+    fetchAdherenceMap(params.fromDate, params.toDate, driverIds),
   ]);
 
   if (attendanceRes.error) throw attendanceRes.error;
   if (logsRes.error) throw logsRes.error;
   if (sessionsRes.error) throw sessionsRes.error;
   if (eventsRes.error) throw eventsRes.error;
+  if (shiftsRes.error) throw shiftsRes.error;
+
+  const shiftByKey = new Map<string, ShiftRow>();
+  for (const raw of shiftsRes.data ?? []) {
+    const row = raw as ShiftRow;
+    shiftByKey.set(adherenceMapKey(row.driver_id, row.shift_date), row);
+  }
 
   const openSessionDrivers = new Set(
     (sessionsRes.data ?? []).filter((s) => s.is_online).map((s) => s.driver_id),
@@ -326,6 +401,9 @@ export async function fetchWorktimeList(params: {
     const log = logByKey.get(key);
     const events = eventsByKey.get(key) ?? [];
     const summary = computeHistorySummary(events);
+    const shiftRow = shiftByKey.get(key);
+    const shiftAdherence = adherenceMap.get(key) ?? null;
+    const shiftFields = shiftRow ? shiftRowToListFields(shiftRow) : null;
 
     rows.push({
       key,
@@ -357,6 +435,11 @@ export async function fetchWorktimeList(params: {
       validation_source: att?.validation_source ?? null,
       is_on_duty: driver.is_on_duty,
       log_id: log?.id ?? null,
+      first_online_at: att?.first_online_at ?? null,
+      shift_type: shiftRow ? (shiftRow.shift_type as "single" | "split") : null,
+      session1_label: shiftFields?.session1_label ?? null,
+      session2_label: shiftFields?.session2_label ?? null,
+      shift_adherence: shiftAdherence,
     });
   }
 
@@ -373,6 +456,7 @@ export async function fetchDriverAttendanceMonth(
     online_seconds: number;
     status: string;
     is_validated: boolean;
+    shift_adherence: ShiftAdherence | null;
   }[]
 > {
   await requireAttendanceView();
@@ -381,13 +465,16 @@ export async function fetchDriverAttendanceMonth(
   const lastDay = new Date(year, month, 0).getDate();
   const monthEnd = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
 
-  const { data, error } = await supabase
-    .from("driver_attendance")
-    .select("attendance_date, online_seconds, status, is_validated, last_online_at")
-    .eq("driver_id", driverId)
-    .gte("attendance_date", monthStart)
-    .lte("attendance_date", monthEnd)
-    .order("attendance_date", { ascending: true });
+  const [{ data, error }, adherenceMap] = await Promise.all([
+    supabase
+      .from("driver_attendance")
+      .select("attendance_date, online_seconds, status, is_validated, last_online_at")
+      .eq("driver_id", driverId)
+      .gte("attendance_date", monthStart)
+      .lte("attendance_date", monthEnd)
+      .order("attendance_date", { ascending: true }),
+    fetchAdherenceMap(monthStart, monthEnd, [driverId]),
+  ]);
 
   if (error) throw error;
 
@@ -409,6 +496,8 @@ export async function fetchDriverAttendanceMonth(
     ),
     status: row.status,
     is_validated: row.is_validated,
+    shift_adherence:
+      adherenceMap.get(adherenceMapKey(driverId, row.attendance_date)) ?? null,
   }));
 }
 
@@ -494,28 +583,34 @@ async function fetchSingleDriverMeta(driverId: string): Promise<DriverMeta | nul
 export async function fetchDriverTodayTrackingSummary(driverId: string): Promise<{
   shift: DriverShiftListRow | null;
   worktime: WorktimeListRow | null;
+  shift_adherence: ShiftAdherence | null;
 }> {
   await requireAttendanceView();
   const today = kuwaitToday();
   const supabase = await createClient();
   const { from: rangeFrom, to: rangeTo } = kuwaitDayBounds(today);
+  const yesterday = (() => {
+    const d = new Date(`${today}T12:00:00`);
+    d.setDate(d.getDate() - 1);
+    return d.toISOString().slice(0, 10);
+  })();
 
   const [
     driver,
-    shiftRes,
+    shiftsRes,
     attendanceRes,
     logRes,
     sessionsRes,
     eventsRes,
     openSessionRes,
+    shiftAdherence,
   ] = await Promise.all([
     fetchSingleDriverMeta(driverId),
     supabase
       .from("driver_daily_shifts")
       .select("*")
       .eq("driver_id", driverId)
-      .eq("shift_date", today)
-      .maybeSingle(),
+      .in("shift_date", [today, yesterday]),
     supabase
       .from("driver_attendance")
       .select("*")
@@ -551,50 +646,25 @@ export async function fetchDriverTodayTrackingSummary(driverId: string): Promise
       .eq("driver_id", driverId)
       .eq("is_online", true)
       .maybeSingle(),
+    fetchShiftAdherence(driverId, today),
   ]);
 
   if (sessionsRes.error) throw sessionsRes.error;
   if (eventsRes.error) throw eventsRes.error;
-  if (shiftRes.error) throw shiftRes.error;
+  if (shiftsRes.error) throw shiftsRes.error;
   if (attendanceRes.error) throw attendanceRes.error;
   if (logRes.error) throw logRes.error;
 
-  if (!driver) return { shift: null, worktime: null };
+  if (!driver) return { shift: null, worktime: null, shift_adherence: null };
+
+  const shiftRows = (shiftsRes.data ?? []) as ShiftRow[];
+  const activeShift = findActiveShiftRow(shiftRows, today);
+  const todayShift = shiftRows.find((r) => r.shift_date === today) ?? null;
+  const displayShiftRow = activeShift ?? todayShift;
 
   let shift: DriverShiftListRow | null = null;
-  if (shiftRes.data) {
-    const row = shiftRes.data as ShiftRow;
-    const flags = computeShiftFlags(row);
-    const session1 = formatSessionRange(
-      row.session1_start,
-      row.session1_end,
-      row.session1_end_day_offset,
-    );
-    const session2 =
-      row.shift_type === "split" && row.session2_start && row.session2_end
-        ? formatSessionRange(
-            row.session2_start,
-            row.session2_end,
-            row.session2_end_day_offset,
-          )
-        : null;
-    shift = {
-      id: row.id,
-      driver_id: row.driver_id,
-      driver_code: driver.driver_code,
-      driver_name: driver.full_name,
-      driver_phone: driver.phone,
-      zone_name: driver.zone_name,
-      partner_name: driver.partner_name,
-      shift_date: row.shift_date,
-      shift_type: row.shift_type as "single" | "split",
-      session1_label: session1,
-      session2_label: session2,
-      is_within_window: flags.isWithinWindow,
-      is_locked: flags.isLocked,
-      is_on_duty: driver.is_on_duty,
-      submitted_at: row.submitted_at,
-    };
+  if (displayShiftRow) {
+    shift = buildDriverShiftListRow(displayShiftRow, driver, shiftAdherence);
   }
 
   const att = attendanceRes.data;
@@ -653,8 +723,15 @@ export async function fetchDriverTodayTrackingSummary(driverId: string): Promise
           validation_source: att?.validation_source ?? null,
           is_on_duty: driver.is_on_duty,
           log_id: log?.id ?? null,
+          first_online_at: att?.first_online_at ?? null,
+          shift_type: displayShiftRow
+            ? (displayShiftRow.shift_type as "single" | "split")
+            : null,
+          session1_label: shift?.session1_label ?? null,
+          session2_label: shift?.session2_label ?? null,
+          shift_adherence: shiftAdherence,
         }
       : null;
 
-  return { shift, worktime };
+  return { shift, worktime, shift_adherence: shiftAdherence };
 }

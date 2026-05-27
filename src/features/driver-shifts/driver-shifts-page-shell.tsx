@@ -12,6 +12,7 @@ import { AttendancePill } from "@/features/drivers/driver-list-ui";
 import { TrackingTableToolbar } from "@/features/driver-tracking/table-toolbar";
 import { downloadCsv } from "@/features/driver-tracking/csv-export";
 import { addDays, kuwaitToday } from "@/features/driver-tracking/kuwait-time";
+import { formatKuwaitDateTime, formatKuwaitTime } from "@/features/driver-tracking/shift-adherence-display";
 import { Link } from "@/i18n/navigation";
 import { useDriverFormOptions } from "@/features/drivers/use-driver-form-options";
 import { partnerSearchOptions, zoneSearchOptions } from "@/lib/search-options";
@@ -226,6 +227,11 @@ export function DriverShiftsPageShell() {
                   <TableHead className={TABLE_HEAD_CLASS}>{t("colType")}</TableHead>
                   <TableHead className={TABLE_HEAD_CLASS}>{t("colSession1")}</TableHead>
                   <TableHead className={TABLE_HEAD_CLASS}>{t("colSession2")}</TableHead>
+                  <TableHead className={TABLE_HEAD_CLASS}>{t("colSubmittedAt")}</TableHead>
+                  <TableHead className={TABLE_HEAD_CLASS}>{t("colShiftEnds")}</TableHead>
+                  <TableHead className={TABLE_HEAD_CLASS}>{t("colShiftStatus")}</TableHead>
+                  <TableHead className={TABLE_HEAD_CLASS}>{t("colLate")}</TableHead>
+                  <TableHead className={TABLE_HEAD_CLASS}>{t("colEarlyOut")}</TableHead>
                   <TableHead className={TABLE_HEAD_CLASS}>{t("colInWindow")}</TableHead>
                   <TableHead className={TABLE_HEAD_CLASS}>{t("colLocked")}</TableHead>
                   <TableHead className={TABLE_HEAD_CLASS}>{t("colOnDuty")}</TableHead>
@@ -243,6 +249,35 @@ export function DriverShiftsPageShell() {
                     <TableCell>{row.shift_type}</TableCell>
                     <TableCell>{row.session1_label}</TableCell>
                     <TableCell>{row.session2_label ?? "—"}</TableCell>
+                    <TableCell className="whitespace-nowrap text-xs">
+                      {formatKuwaitDateTime(row.submitted_at)}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-xs">
+                      {formatKuwaitTime(row.shift_end_at)}
+                    </TableCell>
+                    <TableCell>
+                      <StatusPill variant={row.is_active ? "success" : row.is_expired ? "neutral" : "warning"}>
+                        {row.is_active
+                          ? t("shiftActive")
+                          : row.is_expired
+                            ? t("shiftExpired")
+                            : t("shiftScheduled")}
+                      </StatusPill>
+                    </TableCell>
+                    <TableCell>
+                      {row.shift_adherence && row.shift_adherence.minutes_late > 0
+                        ? row.shift_adherence.minutes_late
+                        : row.shift_adherence
+                          ? "0"
+                          : "—"}
+                    </TableCell>
+                    <TableCell>
+                      {row.shift_adherence && row.shift_adherence.minutes_early_out > 0
+                        ? row.shift_adherence.minutes_early_out
+                        : row.shift_adherence
+                          ? "0"
+                          : "—"}
+                    </TableCell>
                     <TableCell>
                       <StatusPill variant={row.is_within_window ? "success" : "neutral"}>
                         {row.is_within_window ? t("inWindowYes") : t("inWindowNo")}
