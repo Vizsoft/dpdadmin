@@ -30,6 +30,13 @@ export const queryKeys = {
     list: () => ["partners", "list"] as const,
     detail: (id: string) => ["partners", "detail", id] as const,
   },
+  assets: {
+    all: () => ["assets"] as const,
+    list: () => ["assets", "list"] as const,
+    detail: (id: string) => ["assets", "detail", id] as const,
+    catalogForDriver: (intakeId: string | null) =>
+      ["assets", "catalog-for-driver", intakeId ?? "new"] as const,
+  },
   restaurants: {
     all: () => ["restaurants"] as const,
     list: () => ["restaurants", "list"] as const,

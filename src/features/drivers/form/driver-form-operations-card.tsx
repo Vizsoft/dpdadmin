@@ -1,16 +1,11 @@
 "use client";
 
-import {
-  Activity,
-  HardHat,
-  Navigation,
-  Phone,
-  Shirt,
-  ShoppingBag,
-  Smartphone,
-} from "lucide-react";
+import { Activity, Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { SegmentOption, ToggleChip } from "@/components/app/toggle-chip";
-import { ASSET_TYPES, type DriverAssetType, type DriverWorkflowStatus } from "../types";
+import { resolveAssetIcon } from "@/features/assets/asset-icons";
+import type { DriverFormCatalogItem } from "@/features/assets/types";
+import type { DriverWorkflowStatus } from "../types";
 import { SectionHeading } from "./driver-form-primitives";
 
 const STATUS_OPTIONS: Array<{
@@ -22,29 +17,22 @@ const STATUS_OPTIONS: Array<{
   { id: "inactive", key: "inactive", workflow: "draft" },
 ];
 
-const ASSET_ICON_MAP: Record<DriverAssetType, typeof Navigation> = {
-  gps: Navigation,
-  sim: Smartphone,
-  phone: Phone,
-  delivery_bag: ShoppingBag,
-  helmet: HardHat,
-  uniform: Shirt,
-};
-
 export function DriverFormOperationsCard({
   workflowStatus,
   onWorkflowStatusChange,
-  assets,
-  onToggleAsset,
-  assetLabels,
+  catalogItems,
+  selectedCatalogIds,
+  onToggleCatalogItem,
   labels,
   disabled,
+  catalogLoading,
+  emptyCatalogHint,
 }: {
   workflowStatus: DriverWorkflowStatus;
   onWorkflowStatusChange: (status: DriverWorkflowStatus) => void;
-  assets: Record<DriverAssetType, boolean>;
-  onToggleAsset: (asset: DriverAssetType) => void;
-  assetLabels: Record<DriverAssetType, string>;
+  catalogItems: DriverFormCatalogItem[];
+  selectedCatalogIds: Set<string>;
+  onToggleCatalogItem: (catalogItemId: string) => void;
   labels: {
     section: string;
     status: string;
@@ -53,7 +41,10 @@ export function DriverFormOperationsCard({
     inactive: string;
   };
   disabled?: boolean;
+  catalogLoading?: boolean;
+  emptyCatalogHint?: string;
 }) {
+  const tNew = useTranslations("pages.driverNew");
   const activeStatus = workflowStatus === "approved" ? "active" : "inactive";
 
   return (
@@ -84,22 +75,32 @@ export function DriverFormOperationsCard({
 
       <div className="space-y-1.5">
         <p className="text-xs font-medium text-foreground">{labels.assets}</p>
-        <div className="flex flex-wrap gap-1.5">
-          {ASSET_TYPES.map((asset) => {
-            const Icon = ASSET_ICON_MAP[asset];
-            return (
-              <ToggleChip
-                key={asset}
-                selected={Boolean(assets[asset])}
-                disabled={disabled}
-                icon={Icon}
-                onClick={() => onToggleAsset(asset)}
-              >
-                {assetLabels[asset]}
-              </ToggleChip>
-            );
-          })}
-        </div>
+        {catalogLoading ? (
+          <div className="flex h-16 items-center justify-center">
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          </div>
+        ) : catalogItems.length === 0 ? (
+          <p className="text-[11px] text-muted-foreground">{emptyCatalogHint}</p>
+        ) : (
+          <div className="flex flex-wrap gap-1.5">
+            {catalogItems.map((item) => {
+              const Icon = resolveAssetIcon(item.icon_key);
+              const selected = selectedCatalogIds.has(item.id);
+              const outOfStock = item.available_qty < 1 && !selected;
+              return (
+                <ToggleChip
+                  key={item.id}
+                  selected={selected}
+                  disabled={disabled || outOfStock}
+                  icon={Icon}
+                  onClick={() => onToggleCatalogItem(item.id)}
+                >
+                  {item.name} ({tNew("assetsAvailable", { count: item.available_qty })})
+                </ToggleChip>
+              );
+            })}
+          </div>
+        )}
       </div>
     </section>
   );

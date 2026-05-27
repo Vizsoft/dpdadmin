@@ -145,6 +145,14 @@ export type DriverListRow = {
   avatar_display_url: string | null;
 };
 
+export type DriverAssignedAsset = {
+  catalog_item_id: string;
+  name: string;
+  code: string;
+  icon_key: string;
+  assigned_at: string;
+};
+
 export type DriverDetailModel = {
   id: string;
   /** Intake row id for edit/update; null when no intake record exists */
@@ -169,6 +177,7 @@ export type DriverDetailModel = {
   base_earnings_kwd: number | null;
   joined_at: string | null;
   assets_issued: Record<string, boolean>;
+  assigned_assets: DriverAssignedAsset[];
   restaurant_ids: string[];
   restaurant_names: string[];
   has_published_restaurant: boolean;

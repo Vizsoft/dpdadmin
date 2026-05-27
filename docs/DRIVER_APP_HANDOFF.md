@@ -63,7 +63,7 @@ For intakes still `linked = false` from before admin-first approval, the driver 
    - Create/update `profiles` (`role = 'rider'`, intake `full_name`, `phone`, `civil_id` if stored on profile).
    - Insert `drivers` (`id = auth.uid()`, `driver_code`, `partner_id`, `zone_id`) as needed for the app.
    - Copy R2 objects `drivers/intakes/{intakeId}/{doc_type}.{ext}` → `drivers/{driverId}/{doc_type}.{ext}` (S3 CopyObject, same private bucket).
-   - Insert `driver_documents` rows; create `driver_assets` from intake `assets_issued` jsonb.
+   - Insert `driver_documents` rows; sync `asset_assignments` from intake (catalog-based inventory; legacy `assets_issued` jsonb deprecated).
    - If intake has `vehicle_id`, set `vehicles.current_driver_id = auth.uid()`.
    - Set intake `linked = true`, `linked_profile_id = auth.uid()`, legacy `status = 'linked'`.
    - Or call RPC: `select mark_driver_intake_linked(p_phone, p_profile_id)`.

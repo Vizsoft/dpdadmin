@@ -19,6 +19,7 @@ export const DRIVER_ERROR_KEYS = [
   "missing_block_reason",
   "driver_not_found",
   "intake_already_linked",
+  "insufficient_stock",
   "save_failed",
 ] as const;
 

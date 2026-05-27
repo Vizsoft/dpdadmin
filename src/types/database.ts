@@ -251,6 +251,7 @@ export type Database = {
           driver_app_maintenance_mode: boolean
           driver_app_splash_url: string | null
           driver_app_title: string
+          feature_two_stage_delivery: boolean
           font_family: string
           id: number
           logo_type: string
@@ -273,6 +274,7 @@ export type Database = {
           driver_app_maintenance_mode?: boolean
           driver_app_splash_url?: string | null
           driver_app_title?: string
+          feature_two_stage_delivery?: boolean
           font_family?: string
           id?: number
           logo_type?: string
@@ -295,6 +297,7 @@ export type Database = {
           driver_app_maintenance_mode?: boolean
           driver_app_splash_url?: string | null
           driver_app_title?: string
+          feature_two_stage_delivery?: boolean
           font_family?: string
           id?: number
           logo_type?: string
@@ -419,6 +422,112 @@ export type Database = {
           },
         ]
       }
+      asset_assignments: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          catalog_item_id: string
+          created_at: string
+          driver_id: string | null
+          id: string
+          intake_id: string | null
+          notes: string | null
+          quantity: number
+          returned_at: string | null
+          status: Database["public"]["Enums"]["asset_assignment_status"]
+          updated_at: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          catalog_item_id: string
+          created_at?: string
+          driver_id?: string | null
+          id?: string
+          intake_id?: string | null
+          notes?: string | null
+          quantity?: number
+          returned_at?: string | null
+          status?: Database["public"]["Enums"]["asset_assignment_status"]
+          updated_at?: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          catalog_item_id?: string
+          created_at?: string
+          driver_id?: string | null
+          id?: string
+          intake_id?: string | null
+          notes?: string | null
+          quantity?: number
+          returned_at?: string | null
+          status?: Database["public"]["Enums"]["asset_assignment_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asset_assignments_catalog_item_id_fkey"
+            columns: ["catalog_item_id"]
+            isOneToOne: false
+            referencedRelation: "asset_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asset_assignments_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asset_assignments_intake_id_fkey"
+            columns: ["intake_id"]
+            isOneToOne: false
+            referencedRelation: "driver_intakes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      asset_catalog: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          icon_key: string
+          id: string
+          is_active: boolean
+          name: string
+          reorder_level: number
+          total_quantity: number
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          icon_key?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          reorder_level?: number
+          total_quantity?: number
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          icon_key?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          reorder_level?: number
+          total_quantity?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       attendance_logs: {
         Row: {
           admin_note: string | null
@@ -493,8 +602,13 @@ export type Database = {
       }
       deliveries: {
         Row: {
+          cancel_lat: number | null
+          cancel_lng: number | null
+          cancel_proof_url: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
           created_at: string
-          delivered_at: string
+          delivered_at: string | null
           delivered_lat: number | null
           delivered_lng: number | null
           driver_id: string
@@ -502,6 +616,10 @@ export type Database = {
           id: string
           order_proof_url: string | null
           partner_id: string | null
+          pickup_at: string | null
+          pickup_lat: number | null
+          pickup_lng: number | null
+          pickup_proof_url: string | null
           rejection_reason: string | null
           restaurant_id: string | null
           status: Database["public"]["Enums"]["delivery_status"]
@@ -509,8 +627,13 @@ export type Database = {
           zone_id: string | null
         }
         Insert: {
+          cancel_lat?: number | null
+          cancel_lng?: number | null
+          cancel_proof_url?: string | null
+          cancel_reason?: string | null
+          cancelled_at?: string | null
           created_at?: string
-          delivered_at?: string
+          delivered_at?: string | null
           delivered_lat?: number | null
           delivered_lng?: number | null
           driver_id: string
@@ -518,6 +641,10 @@ export type Database = {
           id?: string
           order_proof_url?: string | null
           partner_id?: string | null
+          pickup_at?: string | null
+          pickup_lat?: number | null
+          pickup_lng?: number | null
+          pickup_proof_url?: string | null
           rejection_reason?: string | null
           restaurant_id?: string | null
           status?: Database["public"]["Enums"]["delivery_status"]
@@ -525,8 +652,13 @@ export type Database = {
           zone_id?: string | null
         }
         Update: {
+          cancel_lat?: number | null
+          cancel_lng?: number | null
+          cancel_proof_url?: string | null
+          cancel_reason?: string | null
+          cancelled_at?: string | null
           created_at?: string
-          delivered_at?: string
+          delivered_at?: string | null
           delivered_lat?: number | null
           delivered_lng?: number | null
           driver_id?: string
@@ -534,6 +666,10 @@ export type Database = {
           id?: string
           order_proof_url?: string | null
           partner_id?: string | null
+          pickup_at?: string | null
+          pickup_lat?: number | null
+          pickup_lng?: number | null
+          pickup_proof_url?: string | null
           rejection_reason?: string | null
           restaurant_id?: string | null
           status?: Database["public"]["Enums"]["delivery_status"]
@@ -830,6 +966,77 @@ export type Database = {
             columns: ["driver_id"]
             isOneToOne: false
             referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      driver_assignment_events: {
+        Row: {
+          change_type: string
+          changed_by: string | null
+          context_entity_id: string | null
+          context_entity_type: string | null
+          created_at: string
+          driver_id: string
+          id: string
+          restaurant_ids_after: string[]
+          restaurant_ids_before: string[]
+          zone_id_after: string | null
+          zone_id_before: string | null
+        }
+        Insert: {
+          change_type: string
+          changed_by?: string | null
+          context_entity_id?: string | null
+          context_entity_type?: string | null
+          created_at?: string
+          driver_id: string
+          id?: string
+          restaurant_ids_after?: string[]
+          restaurant_ids_before?: string[]
+          zone_id_after?: string | null
+          zone_id_before?: string | null
+        }
+        Update: {
+          change_type?: string
+          changed_by?: string | null
+          context_entity_id?: string | null
+          context_entity_type?: string | null
+          created_at?: string
+          driver_id?: string
+          id?: string
+          restaurant_ids_after?: string[]
+          restaurant_ids_before?: string[]
+          zone_id_after?: string | null
+          zone_id_before?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_assignment_events_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "driver_assignment_events_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "driver_assignment_events_zone_id_after_fkey"
+            columns: ["zone_id_after"]
+            isOneToOne: false
+            referencedRelation: "zones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "driver_assignment_events_zone_id_before_fkey"
+            columns: ["zone_id_before"]
+            isOneToOne: false
+            referencedRelation: "zones"
             referencedColumns: ["id"]
           },
         ]
@@ -1252,12 +1459,19 @@ export type Database = {
       driver_location_events: {
         Row: {
           accuracy_meters: number | null
+          active_delivery_id: string | null
+          altitude_m: number | null
           battery_pct: number | null
+          charging_state: string | null
           delivery_id: string | null
           driver_id: string
+          heading_deg: number | null
           id: string
+          is_mocked: boolean | null
           latitude: number
+          location_provider: string | null
           longitude: number
+          network_type: string | null
           recorded_at: string
           speed_mps: number | null
           tracking_status: string
@@ -1265,12 +1479,19 @@ export type Database = {
         }
         Insert: {
           accuracy_meters?: number | null
+          active_delivery_id?: string | null
+          altitude_m?: number | null
           battery_pct?: number | null
+          charging_state?: string | null
           delivery_id?: string | null
           driver_id: string
+          heading_deg?: number | null
           id?: string
+          is_mocked?: boolean | null
           latitude: number
+          location_provider?: string | null
           longitude: number
+          network_type?: string | null
           recorded_at?: string
           speed_mps?: number | null
           tracking_status: string
@@ -1278,18 +1499,32 @@ export type Database = {
         }
         Update: {
           accuracy_meters?: number | null
+          active_delivery_id?: string | null
+          altitude_m?: number | null
           battery_pct?: number | null
+          charging_state?: string | null
           delivery_id?: string | null
           driver_id?: string
+          heading_deg?: number | null
           id?: string
+          is_mocked?: boolean | null
           latitude?: number
+          location_provider?: string | null
           longitude?: number
+          network_type?: string | null
           recorded_at?: string
           speed_mps?: number | null
           tracking_status?: string
           zone_status?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "driver_location_events_active_delivery_id_fkey"
+            columns: ["active_delivery_id"]
+            isOneToOne: false
+            referencedRelation: "deliveries"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "driver_location_events_delivery_id_fkey"
             columns: ["delivery_id"]
@@ -1309,13 +1544,19 @@ export type Database = {
       driver_locations: {
         Row: {
           accuracy_meters: number | null
+          active_delivery_id: string | null
+          altitude_m: number | null
           battery_pct: number | null
+          charging_state: string | null
           distance_today_meters: number
           driver_id: string
           heading_deg: number | null
+          is_mocked: boolean | null
           last_seen_at: string
           latitude: number
+          location_provider: string | null
           longitude: number
+          network_type: string | null
           speed_mps: number | null
           tracking_status: string
           updated_at: string
@@ -1323,13 +1564,19 @@ export type Database = {
         }
         Insert: {
           accuracy_meters?: number | null
+          active_delivery_id?: string | null
+          altitude_m?: number | null
           battery_pct?: number | null
+          charging_state?: string | null
           distance_today_meters?: number
           driver_id: string
           heading_deg?: number | null
+          is_mocked?: boolean | null
           last_seen_at?: string
           latitude: number
+          location_provider?: string | null
           longitude: number
+          network_type?: string | null
           speed_mps?: number | null
           tracking_status: string
           updated_at?: string
@@ -1337,19 +1584,32 @@ export type Database = {
         }
         Update: {
           accuracy_meters?: number | null
+          active_delivery_id?: string | null
+          altitude_m?: number | null
           battery_pct?: number | null
+          charging_state?: string | null
           distance_today_meters?: number
           driver_id?: string
           heading_deg?: number | null
+          is_mocked?: boolean | null
           last_seen_at?: string
           latitude?: number
+          location_provider?: string | null
           longitude?: number
+          network_type?: string | null
           speed_mps?: number | null
           tracking_status?: string
           updated_at?: string
           zone_status?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "driver_locations_active_delivery_id_fkey"
+            columns: ["active_delivery_id"]
+            isOneToOne: false
+            referencedRelation: "deliveries"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "driver_locations_driver_id_fkey"
             columns: ["driver_id"]
@@ -3830,6 +4090,41 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _driver_assert_active_on_duty: {
+        Args: { p_uid: string }
+        Returns: {
+          app_passcode: string | null
+          archived_at: string | null
+          avatar_object_key: string | null
+          avatar_updated_at: string | null
+          base_earnings_kwd: number | null
+          blocked_at: string | null
+          blocked_by: string | null
+          blocked_reason: string | null
+          civil_id: string | null
+          created_at: string
+          current_lat: number | null
+          current_lng: number | null
+          driver_code: string
+          employee_id: string
+          id: string
+          is_blocked: boolean
+          is_on_duty: boolean
+          joined_at: string | null
+          partner_id: string | null
+          restaurant_id: string | null
+          status: Database["public"]["Enums"]["driver_status"]
+          updated_at: string
+          vehicle_id: string | null
+          zone_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "drivers"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       _driver_find_active_shift: {
         Args: { p_driver_id: string; p_now?: string }
         Returns: {
@@ -3958,9 +4253,88 @@ export type Database = {
         Args: { p_driver_code: string; p_passcode: string }
         Returns: Json
       }
+      driver_cancel_delivery: {
+        Args: {
+          p_cancel_lat?: number
+          p_cancel_lng?: number
+          p_cancel_proof_url?: string
+          p_cancel_reason?: string
+          p_delivery_id: string
+        }
+        Returns: {
+          cancel_lat: number | null
+          cancel_lng: number | null
+          cancel_proof_url: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          created_at: string
+          delivered_at: string | null
+          delivered_lat: number | null
+          delivered_lng: number | null
+          driver_id: string
+          external_order_id: string | null
+          id: string
+          order_proof_url: string | null
+          partner_id: string | null
+          pickup_at: string | null
+          pickup_lat: number | null
+          pickup_lng: number | null
+          pickup_proof_url: string | null
+          rejection_reason: string | null
+          restaurant_id: string | null
+          status: Database["public"]["Enums"]["delivery_status"]
+          updated_at: string
+          zone_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "deliveries"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       driver_check_order_id_available: {
         Args: { p_external_order_id: string }
         Returns: boolean
+      }
+      driver_complete_delivery: {
+        Args: {
+          p_delivered_lat?: number
+          p_delivered_lng?: number
+          p_delivery_id: string
+          p_delivery_proof_url?: string
+        }
+        Returns: {
+          cancel_lat: number | null
+          cancel_lng: number | null
+          cancel_proof_url: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          created_at: string
+          delivered_at: string | null
+          delivered_lat: number | null
+          delivered_lng: number | null
+          driver_id: string
+          external_order_id: string | null
+          id: string
+          order_proof_url: string | null
+          partner_id: string | null
+          pickup_at: string | null
+          pickup_lat: number | null
+          pickup_lng: number | null
+          pickup_proof_url: string | null
+          rejection_reason: string | null
+          restaurant_id: string | null
+          status: Database["public"]["Enums"]["delivery_status"]
+          updated_at: string
+          zone_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "deliveries"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       driver_create_delivery: {
         Args: {
@@ -3970,8 +4344,13 @@ export type Database = {
           p_order_proof_url?: string
         }
         Returns: {
+          cancel_lat: number | null
+          cancel_lng: number | null
+          cancel_proof_url: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
           created_at: string
-          delivered_at: string
+          delivered_at: string | null
           delivered_lat: number | null
           delivered_lng: number | null
           driver_id: string
@@ -3979,6 +4358,83 @@ export type Database = {
           id: string
           order_proof_url: string | null
           partner_id: string | null
+          pickup_at: string | null
+          pickup_lat: number | null
+          pickup_lng: number | null
+          pickup_proof_url: string | null
+          rejection_reason: string | null
+          restaurant_id: string | null
+          status: Database["public"]["Enums"]["delivery_status"]
+          updated_at: string
+          zone_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "deliveries"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      driver_create_pickup: {
+        Args: {
+          p_external_order_id?: string
+          p_order_proof_url?: string
+          p_pickup_lat?: number
+          p_pickup_lng?: number
+        }
+        Returns: {
+          cancel_lat: number | null
+          cancel_lng: number | null
+          cancel_proof_url: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          created_at: string
+          delivered_at: string | null
+          delivered_lat: number | null
+          delivered_lng: number | null
+          driver_id: string
+          external_order_id: string | null
+          id: string
+          order_proof_url: string | null
+          partner_id: string | null
+          pickup_at: string | null
+          pickup_lat: number | null
+          pickup_lng: number | null
+          pickup_proof_url: string | null
+          rejection_reason: string | null
+          restaurant_id: string | null
+          status: Database["public"]["Enums"]["delivery_status"]
+          updated_at: string
+          zone_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "deliveries"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      driver_get_active_pickup: {
+        Args: never
+        Returns: {
+          cancel_lat: number | null
+          cancel_lng: number | null
+          cancel_proof_url: string | null
+          cancel_reason: string | null
+          cancelled_at: string | null
+          created_at: string
+          delivered_at: string | null
+          delivered_lat: number | null
+          delivered_lng: number | null
+          driver_id: string
+          external_order_id: string | null
+          id: string
+          order_proof_url: string | null
+          partner_id: string | null
+          pickup_at: string | null
+          pickup_lat: number | null
+          pickup_lng: number | null
+          pickup_proof_url: string | null
           rejection_reason: string | null
           restaurant_id: string | null
           status: Database["public"]["Enums"]["delivery_status"]
@@ -4022,19 +4478,40 @@ export type Database = {
         Returns: number
       }
       driver_notifications_unread_count: { Args: never; Returns: number }
-      driver_report_location: {
-        Args: {
-          p_accuracy_meters?: number
-          p_battery_pct?: number
-          p_delivery_id?: string
-          p_force_history?: boolean
-          p_latitude: number
-          p_longitude: number
-          p_speed_mps?: number
-          p_tracking_status?: string
-        }
-        Returns: Json
-      }
+      driver_report_location:
+        | {
+            Args: {
+              p_accuracy_meters?: number
+              p_battery_pct?: number
+              p_delivery_id?: string
+              p_force_history?: boolean
+              p_latitude: number
+              p_longitude: number
+              p_speed_mps?: number
+              p_tracking_status?: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_accuracy_meters?: number
+              p_active_delivery_id?: string
+              p_altitude_m?: number
+              p_battery_pct?: number
+              p_charging_state?: string
+              p_delivery_id?: string
+              p_force_history?: boolean
+              p_heading_deg?: number
+              p_is_mocked?: boolean
+              p_latitude: number
+              p_location_provider?: string
+              p_longitude: number
+              p_network_type?: string
+              p_speed_mps?: number
+              p_tracking_status?: string
+            }
+            Returns: Json
+          }
       driver_set_duty_state: {
         Args: { p_is_on_duty: boolean; p_is_online: boolean }
         Returns: Json
@@ -4175,6 +4652,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      sync_intake_asset_assignments_to_driver: {
+        Args: { p_driver_id: string; p_intake_id: string }
+        Returns: undefined
+      }
       void_payout_run: {
         Args: { p_reason?: string; p_run_id: string }
         Returns: undefined
@@ -4193,6 +4674,7 @@ export type Database = {
       admin_approval_status: "pending" | "approved" | "rejected"
       app_role: "rider" | "staff"
       appointment_status: "scheduled" | "completed" | "cancelled"
+      asset_assignment_status: "assigned" | "returned"
       asset_type:
         | "gps"
         | "sim"
@@ -4201,7 +4683,13 @@ export type Database = {
         | "helmet"
         | "uniform"
       attendance_status: "present" | "late" | "absent" | "on_leave"
-      delivery_status: "pending" | "verified" | "rejected" | "under_review"
+      delivery_status:
+        | "pending"
+        | "verified"
+        | "rejected"
+        | "under_review"
+        | "in_transit"
+        | "cancelled"
       delivery_verification_status: "pending" | "verified"
       document_type: "license" | "civil_id" | "work_permit" | "passport"
       driver_import_batch_status: "previewed" | "applied" | "failed"
@@ -4460,9 +4948,17 @@ export const Constants = {
       admin_approval_status: ["pending", "approved", "rejected"],
       app_role: ["rider", "staff"],
       appointment_status: ["scheduled", "completed", "cancelled"],
+      asset_assignment_status: ["assigned", "returned"],
       asset_type: ["gps", "sim", "phone", "delivery_bag", "helmet", "uniform"],
       attendance_status: ["present", "late", "absent", "on_leave"],
-      delivery_status: ["pending", "verified", "rejected", "under_review"],
+      delivery_status: [
+        "pending",
+        "verified",
+        "rejected",
+        "under_review",
+        "in_transit",
+        "cancelled",
+      ],
       delivery_verification_status: ["pending", "verified"],
       document_type: ["license", "civil_id", "work_permit", "passport"],
       driver_import_batch_status: ["previewed", "applied", "failed"],

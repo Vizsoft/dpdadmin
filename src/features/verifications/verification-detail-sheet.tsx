@@ -251,7 +251,7 @@ export function VerificationDetailSheet({
                             {d.status}
                           </StatusPill>
                           <span className="text-muted-foreground">
-                            {formatDateTime(d.delivered_at)}
+                            {d.delivered_at ? formatDateTime(d.delivered_at) : "—"}
                           </span>
                         </li>
                       ))}

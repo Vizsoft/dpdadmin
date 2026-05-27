@@ -137,6 +137,15 @@ export const MENU_REGISTRY: MenuRegistryItem[] = [
     permission: "partners.view",
   },
   {
+    id: "assets",
+    defaultLabel: "Assets",
+    defaultIcon: "Package",
+    href: "/assets",
+    defaultGroup: "Operations",
+    defaultOrder: 9,
+    permission: "assets.view",
+  },
+  {
     id: "restaurants",
     defaultLabel: "Restaurants",
     defaultIcon: "UtensilsCrossed",
@@ -387,6 +396,7 @@ export const APP_NAV_KEY_BY_ID: Record<string, string> = {
   drivers: "drivers",
   "live-tracking": "liveTracking",
   partners: "partners",
+  assets: "assets",
   restaurants: "restaurants",
   deliveries: "deliveries",
   "dpd-verification": "dpdVerification",

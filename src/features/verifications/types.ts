@@ -52,7 +52,7 @@ export type VerificationDeliveryRow = {
   id: string;
   short_id: string;
   status: string;
-  delivered_at: string;
+  delivered_at: string | null;
   external_order_id: string | null;
 };
 

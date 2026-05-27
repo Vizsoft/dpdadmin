@@ -1,0 +1,232 @@
+"use client";
+
+import { useEffect, useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
+import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { useAuth } from "@/contexts/auth-context";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ASSET_ICON_OPTIONS } from "./asset-icons";
+import { isAssetErrorKey } from "./asset-errors";
+import { useCreateAssetCatalogItem, useUpdateAssetCatalogItem } from "./use-assets";
+import type { AssetCatalogRow } from "./types";
+
+function assetErrorToast(
+  t: ReturnType<typeof useTranslations<"pages.assets">>,
+  error?: string,
+) {
+  if (error && isAssetErrorKey(error)) return t(`errors.${error}`);
+  return t("errors.save_failed");
+}
+
+export function AssetFormSheet({
+  asset,
+  open,
+  onOpenChange,
+  onSaved,
+}: {
+  asset: AssetCatalogRow | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSaved: () => void;
+}) {
+  const t = useTranslations("pages.assets");
+  const { can } = useAuth();
+  const canManage = can("assets.manage");
+  const isEdit = Boolean(asset);
+  const createMutation = useCreateAssetCatalogItem();
+  const updateMutation = useUpdateAssetCatalogItem();
+  const [isPending, startTransition] = useTransition();
+
+  const [name, setName] = useState("");
+  const [code, setCode] = useState("");
+  const [description, setDescription] = useState("");
+  const [iconKey, setIconKey] = useState("Package");
+  const [totalQuantity, setTotalQuantity] = useState("0");
+  const [reorderLevel, setReorderLevel] = useState("0");
+  const [isActive, setIsActive] = useState(true);
+
+  useEffect(() => {
+    if (!open) return;
+    setName(asset?.name ?? "");
+    setCode(asset?.code ?? "");
+    setDescription(asset?.description ?? "");
+    setIconKey(asset?.icon_key ?? "Package");
+    setTotalQuantity(String(asset?.total_quantity ?? 0));
+    setReorderLevel(String(asset?.reorder_level ?? 0));
+    setIsActive(asset?.is_active ?? true);
+  }, [open, asset]);
+
+  const handleSave = () => {
+    if (!canManage) return;
+    const total = parseInt(totalQuantity, 10);
+    const reorder = parseInt(reorderLevel, 10);
+    if (!name.trim() || !Number.isFinite(total) || !Number.isFinite(reorder)) {
+      toast.error(t("errors.missing_fields"));
+      return;
+    }
+
+    startTransition(async () => {
+      const payload = {
+        name: name.trim(),
+        code: code.trim() || undefined,
+        description: description.trim() || undefined,
+        iconKey,
+        totalQuantity: Math.max(0, total),
+        reorderLevel: Math.max(0, reorder),
+        isActive,
+      };
+
+      const result =
+        isEdit && asset
+          ? await updateMutation.mutateAsync({ id: asset.id, ...payload })
+          : await createMutation.mutateAsync(payload);
+
+      if (result.error) {
+        toast.error(assetErrorToast(t, result.error));
+        return;
+      }
+
+      toast.success(isEdit ? t("updated") : t("created"));
+      onOpenChange(false);
+      onSaved();
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{isEdit ? t("editAssetTitle") : t("addAssetTitle")}</DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="asset-name">{t("fieldName")}</Label>
+            <Input
+              id="asset-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              disabled={!canManage || isPending}
+            />
+            <p className="text-[11px] text-muted-foreground">{t("nameHint")}</p>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="asset-code">{t("fieldCode")}</Label>
+            <Input
+              id="asset-code"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              disabled={!canManage || isPending}
+              placeholder="gps"
+            />
+            <p className="text-[11px] text-muted-foreground">{t("codeHint")}</p>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="asset-description">{t("fieldDescription")}</Label>
+            <Textarea
+              id="asset-description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={2}
+              className="resize-none"
+              disabled={!canManage || isPending}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>{t("fieldIcon")}</Label>
+            <Select
+              value={iconKey}
+              onValueChange={(value) => setIconKey(value ?? "Package")}
+              disabled={!canManage || isPending}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {ASSET_ICON_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="asset-total">{t("fieldTotalQuantity")}</Label>
+              <Input
+                id="asset-total"
+                type="number"
+                min={0}
+                value={totalQuantity}
+                onChange={(e) => setTotalQuantity(e.target.value)}
+                disabled={!canManage || isPending}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="asset-reorder">{t("fieldReorderLevel")}</Label>
+              <Input
+                id="asset-reorder"
+                type="number"
+                min={0}
+                value={reorderLevel}
+                onChange={(e) => setReorderLevel(e.target.value)}
+                disabled={!canManage || isPending}
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+            <Label htmlFor="asset-active">{t("fieldActive")}</Label>
+            <Switch
+              id="asset-active"
+              checked={isActive}
+              onCheckedChange={setIsActive}
+              disabled={!canManage || isPending}
+            />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isPending}
+          >
+            {t("cancel")}
+          </Button>
+          {canManage ? (
+            <Button type="button" onClick={handleSave} disabled={isPending}>
+              {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {isEdit ? t("saveChanges") : t("createAsset")}
+            </Button>
+          ) : null}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

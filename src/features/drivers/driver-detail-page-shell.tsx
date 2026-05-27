@@ -46,7 +46,8 @@ import { DriverEditSheet } from "./driver-edit-sheet";
 import { avatarTintFromName } from "./form/driver-form-primitives";
 import { LinkedBadge, WorkflowStatusPill } from "./driver-workflow-ui";
 import { formatPhoneDisplay } from "./driver-phone";
-import { ASSET_TYPES, type DriverWorkflowStatus } from "./types";
+import { resolveAssetIcon } from "@/features/assets/asset-icons";
+import type { DriverWorkflowStatus } from "./types";
 import {
   AccountStatusPill,
   AttendancePill,
@@ -59,15 +60,6 @@ import {
   useRegenerateDriverPasscode,
 } from "./use-drivers";
 import { isDriverErrorKey } from "./driver-errors";
-
-const ASSET_ICONS = {
-  gps: MapPin,
-  sim: Phone,
-  phone: Phone,
-  delivery_bag: Package,
-  helmet: Shield,
-  uniform: ClipboardList,
-} as const;
 
 type DetailTabId =
   | "attendance"
@@ -395,45 +387,39 @@ function DriverDetailContent({ id }: { id: string }) {
     }
 
     if (activeTab === "assets") {
+      const assigned = driver.assigned_assets ?? [];
       return (
         <TrackingGlassCard className="border-slate-200 bg-white p-4 dark:border-slate-700/80 dark:bg-slate-900">
-          <p className="mb-3 text-sm font-semibold text-foreground">{t("assetsTitle")}</p>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-            {ASSET_TYPES.map((asset) => {
-              const issued = Boolean(driver.assets_issued[asset]);
-              const Icon = ASSET_ICONS[asset];
-              return (
-                <div
-                  key={asset}
-                  className={cn(
-                    "flex flex-col items-center gap-2 rounded-xl border px-3 py-4 text-center transition-colors",
-                    issued
-                      ? "border-emerald-200 bg-emerald-50/80 dark:border-emerald-900/50 dark:bg-emerald-950/30"
-                      : "border-border bg-muted/20",
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "inline-flex h-9 w-9 items-center justify-center rounded-lg",
-                      issued
-                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300"
-                        : "bg-muted text-muted-foreground",
-                    )}
-                  >
-                    <Icon className="h-4 w-4" />
-                  </span>
-                  <p className="text-[11px] font-medium text-foreground">
-                    {tNew(`assets.${asset}`)}
-                  </p>
-                  {issued ? (
-                    <Check className="h-4 w-4 text-emerald-600" aria-label={t("issued")} />
-                  ) : (
-                    <Minus className="h-4 w-4 text-muted-foreground" aria-label={t("notIssued")} />
-                  )}
-                </div>
-              );
-            })}
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <p className="text-sm font-semibold text-foreground">{t("assetsTitle")}</p>
+            <Link
+              href="/assets"
+              className="text-xs font-medium text-primary hover:underline"
+            >
+              {t("viewInventory")}
+            </Link>
           </div>
+          {assigned.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t("noAssetsAssigned")}</p>
+          ) : (
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+              {assigned.map((asset) => {
+                const Icon = resolveAssetIcon(asset.icon_key);
+                return (
+                  <div
+                    key={asset.catalog_item_id}
+                    className="flex flex-col items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/80 px-3 py-4 text-center dark:border-emerald-900/50 dark:bg-emerald-950/30"
+                  >
+                    <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
+                      <Icon className="h-4 w-4" />
+                    </span>
+                    <p className="text-[11px] font-medium text-foreground">{asset.name}</p>
+                    <Check className="h-4 w-4 text-emerald-600" aria-label={t("issued")} />
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </TrackingGlassCard>
       );
     }

@@ -22,9 +22,13 @@ import {
   uploadIntakeAvatarFile,
 } from "./driver-avatar-storage";
 import {
+  fetchDriverAssetAssignments,
+  syncIntakeAssetAssignments,
+} from "@/features/assets/assets-actions";
+import { parseCatalogItemIds } from "@/features/assets/asset-form-utils";
+import {
   DOCUMENT_TYPES,
   type DriverAccountStatus,
-  type DriverAssetType,
   type DriverDetailModel,
   type DriverDocumentType,
   type DriverListRow,
@@ -39,15 +43,6 @@ const ALLOWED_DOC_MIME = new Set([
   "image/jpeg",
   "image/webp",
 ]);
-
-const ASSET_TYPES: DriverAssetType[] = [
-  "gps",
-  "sim",
-  "phone",
-  "delivery_bag",
-  "helmet",
-  "uniform",
-];
 
 async function requireDriversManager() {
   const session = await getSessionUser();
@@ -88,17 +83,6 @@ export type DriverMutationResult = {
   id?: string;
   driver_code?: string;
 };
-
-function buildAssetsMap(
-  assetsEnabled: boolean,
-  raw: FormData,
-): Record<string, boolean> {
-  const map: Record<string, boolean> = {};
-  for (const asset of ASSET_TYPES) {
-    map[asset] = assetsEnabled && raw.get(`asset_${asset}`) === "true";
-  }
-  return map;
-}
 
 function parseRestaurantIds(formData: FormData): string[] {
   return [
@@ -274,12 +258,12 @@ export async function createDriverIntake(
   const partnerId = String(formData.get("partnerId") ?? "").trim();
   const zoneId = String(formData.get("zoneId") ?? "").trim();
   const vehicleId = String(formData.get("vehicleId") ?? "").trim();
-  const assetsEnabled = formData.get("assetsEnabled") === "true";
   const workflowStatusRaw = String(formData.get("workflowStatus") ?? "").trim();
   const workflowStatus: DriverWorkflowStatus =
     workflowStatusRaw === "approved" || workflowStatusRaw === "pending" || workflowStatusRaw === "draft"
       ? workflowStatusRaw
       : "draft";
+  const catalogItemIds = parseCatalogItemIds(formData);
 
   if (!fullName || !phoneRaw || !civilId || !employeeId) {
     return { error: "missing_fields" };
@@ -294,7 +278,6 @@ export async function createDriverIntake(
   const restaurantIds = parseRestaurantIds(formData);
   const supabase = await createClient();
   const intakeId = crypto.randomUUID();
-  const assetsIssued = buildAssetsMap(assetsEnabled, formData);
 
   const docsToUpload: { docType: DriverDocumentType; file: File }[] = [];
   for (const docType of DOCUMENT_TYPES) {
@@ -371,7 +354,6 @@ export async function createDriverIntake(
       zone_id: zoneId || null,
       vehicle_id: vehicleId || null,
       avatar_url: intakeAvatarKey,
-      assets_issued: assetsIssued,
       status: "awaiting_app_link",
       workflow_status: workflowStatus,
       linked: false,
@@ -389,6 +371,17 @@ export async function createDriverIntake(
   }
 
   await syncIntakeRestaurants(supabase, data.id, restaurantIds);
+
+  const assetSync = await syncIntakeAssetAssignments(
+    supabase,
+    data.id,
+    catalogItemIds,
+    auth.session.id,
+    null,
+  );
+  if (assetSync.error) {
+    return { error: assetSync.error };
+  }
 
   void logAdminMutation({
     action: "create",
@@ -701,7 +694,7 @@ export async function updateDriverIntake(
   const vehicleId = String(formData.get("vehicleId") ?? "").trim();
   const employeeIdRaw = String(formData.get("employeeId") ?? "");
   const employeeId = normalizeEmployeeId(employeeIdRaw);
-  const assetsEnabled = formData.get("assetsEnabled") === "true";
+  const catalogItemIds = parseCatalogItemIds(formData);
   const workflowStatus = String(formData.get("workflowStatus") ?? "").trim() as DriverWorkflowStatus;
   const avatarFile = formData.get("avatar");
   const hasAvatarUpload = avatarFile instanceof File && avatarFile.size > 0;
@@ -766,7 +759,6 @@ export async function updateDriverIntake(
     }
   }
 
-  const assetsIssued = buildAssetsMap(assetsEnabled, formData);
   let intakeAvatarPath = existing.avatar_url ?? null;
 
   if (removeAvatar) {
@@ -793,13 +785,23 @@ export async function updateDriverIntake(
       zone_id: zoneId || null,
       vehicle_id: vehicleId || null,
       avatar_url: intakeAvatarPath,
-      assets_issued: assetsIssued,
       workflow_status: workflowStatus,
       updated_at: new Date().toISOString(),
     })
     .eq("id", intakeId);
 
   if (error) return { error: mapDriverDbError(error, "employee_id") };
+
+  const assetSync = await syncIntakeAssetAssignments(
+    supabase,
+    intakeId,
+    catalogItemIds,
+    auth.session.id,
+    existing.linked_profile_id,
+  );
+  if (assetSync.error) {
+    return { error: assetSync.error };
+  }
 
   if (existing.linked_profile_id) {
     let profileAvatarPath: string | null | undefined;
@@ -956,10 +958,12 @@ export async function fetchDriverDetail(
       : null;
 
     const restaurant_ids = await fetchIntakeRestaurantIds(supabase, intake.id);
-    const [restaurant_names, has_published_restaurant, avatar_url] = await Promise.all([
+    const [restaurant_names, has_published_restaurant, avatar_url, assigned_assets] =
+      await Promise.all([
       loadRestaurantNames(supabase, restaurant_ids),
       hasPublishedActiveRestaurants(supabase, restaurant_ids),
       resolveDriverAvatarUrl(profile?.avatar_url ?? intake.avatar_url),
+      fetchDriverAssetAssignments(intake.id, linkedId),
     ]);
 
     return {
@@ -987,6 +991,7 @@ export async function fetchDriverDetail(
       base_earnings_kwd: null,
       joined_at: intake.created_at.slice(0, 10),
       assets_issued: parseAssetsIssued(intake.assets_issued),
+      assigned_assets,
       restaurant_ids,
       restaurant_names,
       has_published_restaurant,
@@ -1063,10 +1068,12 @@ export async function fetchDriverDetail(
   const restaurant_ids = intakeForDriver?.id
     ? await fetchIntakeRestaurantIds(supabase, intakeForDriver.id)
     : await fetchDriverRestaurantIds(supabase, id);
-  const [restaurant_names, has_published_restaurant, avatar_url] = await Promise.all([
+  const [restaurant_names, has_published_restaurant, avatar_url, assigned_assets] =
+    await Promise.all([
     loadRestaurantNames(supabase, restaurant_ids),
     hasPublishedActiveRestaurants(supabase, restaurant_ids),
     resolveDriverAvatarUrl(prof?.avatar_url ?? intakeForDriver?.avatar_url ?? null),
+    fetchDriverAssetAssignments(intakeForDriver?.id ?? null, id),
   ]);
 
   return {
@@ -1095,6 +1102,7 @@ export async function fetchDriverDetail(
     base_earnings_kwd: driverRow.base_earnings_kwd,
     joined_at: driverRow.joined_at,
     assets_issued: parseAssetsIssued(intakeForDriver?.assets_issued),
+    assigned_assets,
     restaurant_ids,
     restaurant_names,
     has_published_restaurant,

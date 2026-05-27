@@ -23,9 +23,7 @@ import {
 } from "./driver-form-validation";
 import { createDriverIntake, getDriverUploadStorageStatus, updateDriverIntake } from "./drivers-actions";
 import {
-  ASSET_TYPES,
   DOCUMENT_TYPES,
-  type DriverAssetType,
   type DriverDetailModel,
   type DriverDocumentType,
   type DriverRemoteDocument,
@@ -33,6 +31,7 @@ import {
 } from "./types";
 import { useDriverDocuments } from "./use-drivers";
 import { useDriverFormOptions } from "./use-driver-form-options";
+import { useDriverFormAssetCatalog } from "@/features/assets/use-assets";
 import { DriverFormAssignmentCard } from "./form/driver-form-assignment-card";
 import { DriverFormDocumentsGrid } from "./form/driver-form-documents-grid";
 import { DriverFormFooter } from "./form/driver-form-footer";
@@ -42,10 +41,6 @@ import { useDriverFormDraft } from "./form/use-driver-form-draft";
 import type { DriverErrorKey } from "./driver-errors";
 
 type DriverFormMode = "create" | "edit";
-
-function hasAnyAssetIssued(assets: Record<string, boolean>): boolean {
-  return ASSET_TYPES.some((asset) => Boolean(assets[asset]));
-}
 
 function driverErrorToast(
   t: ReturnType<typeof useTranslations<"pages.driverNew">>,
@@ -60,15 +55,6 @@ const EMPTY_DOCS: Record<DriverDocumentType, File | null> = {
   civil_id: null,
   work_permit: null,
   passport: null,
-};
-
-const EMPTY_ASSETS: Record<DriverAssetType, boolean> = {
-  gps: false,
-  sim: false,
-  phone: false,
-  delivery_bag: false,
-  helmet: false,
-  uniform: false,
 };
 
 export function DriverFormSheet({
@@ -101,6 +87,17 @@ export function DriverFormSheet({
     activeDriver?.linked_profile_id ?? null,
     open && isEdit && Boolean(intakeIdForDocs),
   );
+  const { data: assetCatalog = [], isLoading: assetCatalogLoading } = useDriverFormAssetCatalog(
+    isEdit ? intakeIdForDocs || null : null,
+    open,
+  );
+
+  useEffect(() => {
+    if (!open || assetCatalogLoading || !isEdit) return;
+    setSelectedCatalogIds(
+      new Set(assetCatalog.filter((item) => item.is_selected).map((item) => item.id)),
+    );
+  }, [open, isEdit, assetCatalogLoading, assetCatalog]);
 
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
@@ -111,15 +108,7 @@ export function DriverFormSheet({
   const [zoneId, setZoneId] = useState("");
   const [vehicleId, setVehicleId] = useState(NONE_VEHICLE);
   const [workflowStatus, setWorkflowStatus] = useState<DriverWorkflowStatus>("draft");
-  const [assets, setAssets] = useState<Record<DriverAssetType, boolean>>({
-    ...EMPTY_ASSETS,
-    gps: true,
-    sim: true,
-    phone: true,
-    delivery_bag: false,
-    helmet: false,
-    uniform: true,
-  });
+  const [selectedCatalogIds, setSelectedCatalogIds] = useState<Set<string>>(new Set());
   const [documents, setDocuments] = useState<Record<DriverDocumentType, File | null>>(
     EMPTY_DOCS,
   );
@@ -152,13 +141,6 @@ export function DriverFormSheet({
       setZoneId(activeDriver.zone_id ?? "");
       setVehicleId(activeDriver.vehicle_id ?? NONE_VEHICLE);
       setWorkflowStatus(activeDriver.workflow_status);
-      setAssets(() => {
-        const next = { ...EMPTY_ASSETS };
-        for (const asset of ASSET_TYPES) {
-          next[asset] = Boolean(activeDriver.assets_issued[asset]);
-        }
-        return next;
-      });
       setDocuments(EMPTY_DOCS);
       setRemoteDocuments({});
       setAvatarPreview(activeDriver.avatar_url ?? null);
@@ -174,15 +156,6 @@ export function DriverFormSheet({
       setZoneId("");
       setVehicleId(NONE_VEHICLE);
       setWorkflowStatus("draft");
-      setAssets({
-        ...EMPTY_ASSETS,
-        gps: true,
-        sim: true,
-        phone: true,
-        delivery_bag: false,
-        helmet: false,
-        uniform: true,
-      });
       setDocuments(EMPTY_DOCS);
       setRemoteDocuments({});
       setAvatarPreview(null);
@@ -298,9 +271,8 @@ export function DriverFormSheet({
       if (vehicleId && vehicleId !== NONE_VEHICLE) {
         formData.append("vehicleId", vehicleId);
       }
-      formData.append("assetsEnabled", hasAnyAssetIssued(assets) ? "true" : "false");
-      for (const asset of ASSET_TYPES) {
-        formData.append(`asset_${asset}`, assets[asset] ? "true" : "false");
+      for (const catalogItemId of selectedCatalogIds) {
+        formData.append("catalogItemIds", catalogItemId);
       }
       for (const rid of restaurantIds) {
         formData.append("restaurantIds", rid);
@@ -353,10 +325,10 @@ export function DriverFormSheet({
       vehicleId,
       restaurantIds,
       workflowStatus,
-      assets,
+      catalogItemIds: [...selectedCatalogIds],
     }),
     [
-      assets,
+      selectedCatalogIds,
       civilId,
       fullName,
       partnerId,
@@ -387,8 +359,8 @@ export function DriverFormSheet({
       setVehicleId(parsed.vehicleId ?? NONE_VEHICLE);
       setRestaurantIds(parsed.restaurantIds ?? []);
       setWorkflowStatus(parsed.workflowStatus ?? "draft");
-      if (parsed.assets) {
-        setAssets((prev) => ({ ...prev, ...parsed.assets }));
+      if (Array.isArray(parsed.catalogItemIds)) {
+        setSelectedCatalogIds(new Set(parsed.catalogItemIds.filter(Boolean)));
       }
     } catch {
       localStorage.removeItem("driver-form-draft");
@@ -502,18 +474,16 @@ export function DriverFormSheet({
               <DriverFormOperationsCard
                 workflowStatus={workflowStatus}
                 onWorkflowStatusChange={setWorkflowStatus}
-                assets={assets}
-                onToggleAsset={(asset) =>
-                  setAssets((prev) => ({ ...prev, [asset]: !prev[asset] }))
+                catalogItems={assetCatalog}
+                selectedCatalogIds={selectedCatalogIds}
+                onToggleCatalogItem={(catalogItemId) =>
+                  setSelectedCatalogIds((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(catalogItemId)) next.delete(catalogItemId);
+                    else next.add(catalogItemId);
+                    return next;
+                  })
                 }
-                assetLabels={{
-                  gps: tNew("assets.gps"),
-                  sim: tNew("assets.sim"),
-                  phone: tNew("assets.phone"),
-                  delivery_bag: tNew("assets.delivery_bag"),
-                  helmet: tNew("assets.helmet"),
-                  uniform: tNew("assets.uniform"),
-                }}
                 labels={{
                   section: tNew("sections.operations"),
                   status: tNew("sections.driverStatus"),
@@ -521,6 +491,8 @@ export function DriverFormSheet({
                   active: tNew("status.active"),
                   inactive: tNew("status.inactive"),
                 }}
+                catalogLoading={assetCatalogLoading}
+                emptyCatalogHint={tNew("assetsCatalogEmpty")}
                 disabled={isPending}
               />
             </div>
