@@ -888,7 +888,9 @@
       "title": "App Releases",
       "subtitle": "Upload Android APKs and control which version drivers receive on launch.",
       "refresh": "Refresh",
-      "upload": "Upload APK",
+      "uploadButton": "Upload APK",
+      "configureStorage": "Configure storage",
+      "configureStorageHint": "Apply Cloudflare R2 CORS so browser uploads work",
       "listTitle": "{channel} releases",
       "emptyTitle": "No releases yet",
       "emptyDescription": "Upload an APK to create the first release for this channel.",
@@ -924,7 +926,8 @@
         "activated": "Release activated",
         "markedRequired": "Marked as required update",
         "markedOptional": "Marked as optional update",
-        "deleted": "Release deleted"
+        "deleted": "Release deleted",
+        "corsConfigured": "Cloudflare R2 CORS applied — uploads should work now"
       },
       "deleteDialog": {
         "title": "Delete release",
@@ -947,6 +950,11 @@
         },
         "cancel": "Cancel",
         "submit": "Upload",
+        "progress": {
+          "hashing": "Preparing APK…",
+          "uploading": "Uploading APK… {percent}%",
+          "registering": "Saving release…"
+        },
         "errors": {
           "missingApk": "Choose an APK file",
           "versionCodeNotHigher": "Version code must be higher than {code}"
@@ -996,9 +1004,13 @@
         "version_code_not_higher": "Version code must be higher than the latest on this channel",
         "version_code_exists": "This version code already exists for the channel",
         "upload_failed": "Upload failed",
+        "r2_not_configured": "Cloudflare R2 storage is not configured",
+        "r2_cors_or_network": "Browser could not reach Cloudflare R2 — click Configure storage to apply CORS",
+        "r2_upload_rejected": "Cloudflare R2 rejected the upload",
+        "cors_apply_failed": "Could not apply CORS policy to R2 bucket",
+        "apk_not_found": "APK file not found in storage",
         "not_found": "Release not found",
-        "cannot_delete_active": "Deactivate the release before deleting",
-        "apk_not_found": "APK file not found in storage"
+        "cannot_delete_active": "Deactivate the release before deleting"
       }
     },
     "driverDetail": {

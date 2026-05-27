@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { withCors } from "@/lib/http/cors";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createBearerSupabaseClient } from "@/lib/supabase/bearer-client";
 import { requireDriverFromRequest } from "@/lib/storage/driver-upload-auth";
 import { resolveAppReleaseApkUrl } from "@/lib/storage/app-release-url";
 
@@ -18,6 +18,13 @@ type ActiveReleaseRow = {
 
 const VALID_CHANNELS = new Set(["production", "beta", "internal"]);
 
+function readBearerToken(request: Request): string | null {
+  const authHeader = request.headers.get("authorization");
+  if (!authHeader?.startsWith("Bearer ")) return null;
+  const token = authHeader.slice(7).trim();
+  return token || null;
+}
+
 async function handler(request: Request): Promise<Response> {
   if (request.method !== "GET") {
     return NextResponse.json({ error: "method_not_allowed" }, { status: 405 });
@@ -26,6 +33,11 @@ async function handler(request: Request): Promise<Response> {
   const auth = await requireDriverFromRequest(request);
   if ("error" in auth) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
+
+  const token = readBearerToken(request);
+  if (!token) {
+    return NextResponse.json({ error: "missing_token" }, { status: 401 });
   }
 
   const { searchParams } = new URL(request.url);
@@ -46,18 +58,21 @@ async function handler(request: Request): Promise<Response> {
       ? Number.parseInt(versionCodeRaw, 10)
       : NaN;
 
-  const admin = createAdminClient() as unknown as SupabaseClient;
+  const driverDb = createBearerSupabaseClient(token) as unknown as SupabaseClient;
 
   if (Number.isFinite(versionCode) && versionCode > 0) {
-    void admin.rpc("driver_record_app_version", {
+    const { error: recordError } = await driverDb.rpc("driver_record_app_version", {
       p_platform: platform,
       p_channel: channel,
       p_version_name: versionName,
       p_version_code: versionCode,
     });
+    if (recordError && process.env.NODE_ENV === "development") {
+      console.warn("driver_record_app_version", recordError.message);
+    }
   }
 
-  const { data, error } = await admin.rpc("driver_get_active_app_release", {
+  const { data, error } = await driverDb.rpc("driver_get_active_app_release", {
     p_platform: platform,
     p_channel: channel,
   });

@@ -24,6 +24,7 @@ import {
   Users,
   Wallet,
   Cloud,
+  Download,
   ScrollText,
   Radar,
   Timer,
@@ -74,6 +75,7 @@ export const ICON_MAP: Record<string, LucideIcon> = {
   Radar,
   Timer,
   Trash2,
+  Download,
 };
 
 export const ICON_NAMES = Object.keys(ICON_MAP);

@@ -7,6 +7,7 @@ import {
   Loader2,
   Plus,
   RefreshCw,
+  Settings as SettingsIcon,
   Trash2,
   Upload,
 } from "lucide-react";
@@ -29,6 +30,7 @@ import {
 } from "@/components/ui/select";
 import {
   Sheet,
+  SheetBody,
   SheetContent,
   SheetDescription,
   SheetFooter,
@@ -48,6 +50,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { getAppReleaseDownloadUrl } from "./app-releases-actions";
 import { AppReleasesAdoptionPanel } from "./app-releases-adoption-panel";
+import {
+  uploadAppReleaseWithProgress,
+  type AppReleaseUploadProgress,
+} from "./app-release-upload-client";
 import { useAppReleaseMutations, useAppReleasesList } from "./use-app-releases";
 import type { AppReleaseChannel, AppReleaseRow } from "./types";
 
@@ -65,9 +71,11 @@ export function AppReleasesPageShell() {
   const [channel, setChannel] = useState<AppReleaseChannel>("production");
   const [uploadOpen, setUploadOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<AppReleaseRow | null>(null);
+  const [isConfiguringCors, setIsConfiguringCors] = useState(false);
 
   const { data: items = [], isLoading, refetch, isFetching } = useAppReleasesList(channel);
-  const { activate, markRequired, remove, upload } = useAppReleaseMutations(channel);
+  const { activate, markRequired, remove } = useAppReleaseMutations(channel);
+  const channelLabel = t(`channels.${channel}`);
 
   const latestVersionCode = useMemo(
     () => (items.length > 0 ? Math.max(...items.map((row) => row.version_code)) : 0),
@@ -118,8 +126,36 @@ export function AppReleasesPageShell() {
     activate.isPending ||
     markRequired.isPending ||
     remove.isPending ||
-    upload.isPending ||
     isFetching;
+
+  const handleConfigureCors = async () => {
+    setIsConfiguringCors(true);
+    try {
+      const extraOrigins = typeof window !== "undefined" ? [window.location.origin] : [];
+      const response = await fetch("/api/admin/app-releases/setup-cors", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ origins: extraOrigins }),
+      });
+      const json = (await response.json()) as
+        | { ok: true; appliedOrigins: string[] }
+        | { ok: false; error: string; details?: string };
+      if (!response.ok || !json.ok) {
+        const message = !json.ok
+          ? t(`errors.${json.error}`, { defaultValue: json.error })
+          : t("errors.upload_failed");
+        const details = !json.ok && json.details ? ` — ${json.details}` : "";
+        toast.error(`${message}${details}`);
+        return;
+      }
+      toast.success(t("toasts.corsConfigured"));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "unknown";
+      toast.error(`${t("errors.upload_failed")} — ${message}`);
+    } finally {
+      setIsConfiguringCors(false);
+    }
+  };
 
   return (
     <AppPage>
@@ -151,9 +187,23 @@ export function AppReleasesPageShell() {
             <RefreshCw className="mr-2 h-4 w-4" />
             {t("refresh")}
           </Button>
+          <Button
+            variant="outline"
+            className="cursor-pointer rounded-lg"
+            onClick={() => void handleConfigureCors()}
+            disabled={isConfiguringCors}
+            title={t("configureStorageHint")}
+          >
+            {isConfiguringCors ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <SettingsIcon className="mr-2 h-4 w-4" />
+            )}
+            {t("configureStorage")}
+          </Button>
           <Button className="cursor-pointer rounded-lg" onClick={() => setUploadOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
-            {t("upload")}
+            {t("uploadButton")}
           </Button>
         </div>
       </div>
@@ -169,7 +219,7 @@ export function AppReleasesPageShell() {
         </TabsList>
 
         <TabsContent value="releases">
-          <AppListCard title={t("listTitle", { channel })}>
+          <AppListCard title={t("listTitle", { channel: channelLabel })}>
             {isLoading ? (
               <div className="flex h-40 items-center justify-center">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -279,21 +329,11 @@ export function AppReleasesPageShell() {
         channel={channel}
         latestVersionCode={latestVersionCode}
         onOpenChange={setUploadOpen}
-        onUpload={(formData) =>
-          upload.mutateAsync(formData).then(
-            () => {
-              toast.success(t("toasts.uploaded"));
-              setUploadOpen(false);
-            },
-            (error) => {
-              toast.error(
-                t(`errors.${error.message}`, { defaultValue: error.message }),
-              );
-              throw error;
-            },
-          )
-        }
-        isPending={upload.isPending}
+        onUploaded={() => {
+          toast.success(t("toasts.uploaded"));
+          setUploadOpen(false);
+          void refetch();
+        }}
       />
 
       <ConfirmDeleteDialog
@@ -321,15 +361,13 @@ function UploadReleaseSheet({
   channel,
   latestVersionCode,
   onOpenChange,
-  onUpload,
-  isPending,
+  onUploaded,
 }: {
   open: boolean;
   channel: AppReleaseChannel;
   latestVersionCode: number;
   onOpenChange: (open: boolean) => void;
-  onUpload: (formData: FormData) => Promise<void>;
-  isPending: boolean;
+  onUploaded: () => void;
 }) {
   const t = useTranslations("pages.appReleases");
   const tUpload = useTranslations("pages.appReleases.upload");
@@ -340,6 +378,10 @@ function UploadReleaseSheet({
   const [minSupported, setMinSupported] = useState("");
   const [releaseNotes, setReleaseNotes] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [isPending, setIsPending] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<AppReleaseUploadProgress | null>(
+    null,
+  );
 
   const parsedCode = parseInt(versionCode, 10);
   const codeTooLow =
@@ -358,7 +400,14 @@ function UploadReleaseSheet({
     setMinSupported("");
     setReleaseNotes("");
     setFile(null);
+    setUploadProgress(null);
   };
+
+  const progressLabel = uploadProgress
+    ? uploadProgress.phase === "uploading"
+      ? tUpload("progress.uploading", { percent: uploadProgress.percent })
+      : tUpload(`progress.${uploadProgress.phase}`)
+    : null;
 
   const handleSubmit = async () => {
     if (!file) {
@@ -366,20 +415,42 @@ function UploadReleaseSheet({
       return;
     }
 
-    const formData = new FormData();
-    formData.set("apk", file);
-    formData.set("versionName", versionName);
-    formData.set("versionCode", versionCode);
-    formData.set("channel", selectedChannel);
-    formData.set("isRequired", String(isRequired));
-    formData.set("minSupportedVersionCode", minSupported);
-    formData.set("releaseNotes", releaseNotes);
+    const controller = new AbortController();
+    setIsPending(true);
+    setUploadProgress({ phase: "hashing", percent: 0 });
 
     try {
-      await onUpload(formData);
+      const result = await uploadAppReleaseWithProgress(
+        {
+          file,
+          versionName,
+          versionCode,
+          channel: selectedChannel,
+          isRequired,
+          minSupported,
+          releaseNotes,
+        },
+        setUploadProgress,
+        controller.signal,
+      );
+
+      if (!result.ok) {
+        const message = t(`errors.${result.error}`, { defaultValue: result.error });
+        const details = "details" in result && result.details ? ` — ${result.details}` : "";
+        toast.error(`${message}${details}`);
+        return;
+      }
+
       reset();
-    } catch {
-      /* toast handled by parent */
+      onUploaded();
+    } catch (error) {
+      if (process.env.NODE_ENV === "development") {
+        console.error("app release upload failed", error);
+      }
+      toast.error(t("errors.upload_failed"));
+    } finally {
+      setIsPending(false);
+      setUploadProgress(null);
     }
   };
 
@@ -391,13 +462,13 @@ function UploadReleaseSheet({
         if (!next) reset();
       }}
     >
-      <SheetContent className="overflow-y-auto sm:max-w-lg">
+      <SheetContent className="flex h-full max-h-[100dvh] flex-col sm:max-w-lg">
         <SheetHeader>
           <SheetTitle>{tUpload("title")}</SheetTitle>
           <SheetDescription>{tUpload("description")}</SheetDescription>
         </SheetHeader>
 
-        <div className="space-y-4 py-4">
+        <SheetBody className="space-y-4">
           {latestVersionCode > 0 ? (
             <p className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
               {tUpload("latestHint", { code: latestVersionCode })}
@@ -465,24 +536,39 @@ function UploadReleaseSheet({
               onChange={(event) => setMinSupported(event.target.value)}
             />
           </div>
-          <div className="flex items-center gap-2">
+          <label htmlFor="is-required" className="flex cursor-pointer items-center gap-2">
             <Checkbox
               id="is-required"
               checked={isRequired}
               onCheckedChange={(checked) => setIsRequired(checked === true)}
             />
-            <Label htmlFor="is-required">{tUpload("fields.required")}</Label>
-          </div>
+            <span className="text-sm leading-none">{tUpload("fields.required")}</span>
+          </label>
           <div className="space-y-2">
             <Label htmlFor="release-notes">{tUpload("fields.releaseNotes")}</Label>
             <Textarea
               id="release-notes"
               rows={4}
+              className="resize-none"
               value={releaseNotes}
               onChange={(event) => setReleaseNotes(event.target.value)}
             />
           </div>
-        </div>
+          {isPending && uploadProgress ? (
+            <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">{progressLabel}</span>
+                <span className="font-medium tabular-nums">{uploadProgress.percent}%</span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-primary transition-[width] duration-200"
+                  style={{ width: `${uploadProgress.percent}%` }}
+                />
+              </div>
+            </div>
+          ) : null}
+        </SheetBody>
 
         <SheetFooter>
           <Button

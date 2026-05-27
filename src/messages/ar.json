@@ -877,7 +877,9 @@
       "title": "إصدارات التطبيق",
       "subtitle": "ارفع ملفات APK للأندرويد وتحكم في الإصدار الذي يتلقاه السائقون عند التشغيل.",
       "refresh": "تحديث",
-      "upload": "رفع APK",
+      "uploadButton": "رفع APK",
+      "configureStorage": "إعداد التخزين",
+      "configureStorageHint": "تطبيق CORS لـ Cloudflare R2 ليعمل الرفع من المتصفح",
       "listTitle": "إصدارات {channel}",
       "emptyTitle": "لا توجد إصدارات بعد",
       "emptyDescription": "ارفع APK لإنشاء أول إصدار لهذه القناة.",
@@ -913,7 +915,8 @@
         "activated": "تم تفعيل الإصدار",
         "markedRequired": "تم التعليم كتحديث إلزامي",
         "markedOptional": "تم التعليم كتحديث اختياري",
-        "deleted": "تم حذف الإصدار"
+        "deleted": "تم حذف الإصدار",
+        "corsConfigured": "تم تطبيق سياسة CORS لـ Cloudflare R2 — يجب أن يعمل الرفع الآن"
       },
       "deleteDialog": {
         "title": "حذف الإصدار",
@@ -936,6 +939,11 @@
         },
         "cancel": "إلغاء",
         "submit": "رفع",
+        "progress": {
+          "hashing": "جاري تجهيز APK…",
+          "uploading": "جاري رفع APK… {percent}%",
+          "registering": "جاري حفظ الإصدار…"
+        },
         "errors": {
           "missingApk": "اختر ملف APK",
           "versionCodeNotHigher": "يجب أن يكون رمز الإصدار أعلى من {code}"
@@ -985,6 +993,10 @@
         "version_code_not_higher": "يجب أن يكون رمز الإصدار أعلى من الأحدث في هذه القناة",
         "version_code_exists": "رمز الإصدار موجود مسبقاً لهذه القناة",
         "upload_failed": "فشل الرفع",
+        "r2_not_configured": "تخزين Cloudflare R2 غير مُعد",
+        "r2_cors_or_network": "تعذر على المتصفح الوصول إلى Cloudflare R2 — اضغط إعداد التخزين لتطبيق CORS",
+        "r2_upload_rejected": "رفض Cloudflare R2 الرفع",
+        "cors_apply_failed": "تعذر تطبيق سياسة CORS على حاوية R2",
         "not_found": "الإصدار غير موجود",
         "cannot_delete_active": "عطّل الإصدار قبل الحذف",
         "apk_not_found": "ملف APK غير موجود في التخزين"

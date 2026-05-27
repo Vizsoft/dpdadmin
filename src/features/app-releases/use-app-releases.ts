@@ -9,7 +9,6 @@ import {
   fetchAppReleaseDrivers,
   listAppReleases,
   markAppReleaseRequired,
-  uploadAppRelease,
 } from "./app-releases-actions";
 import type { AppReleaseChannel } from "./types";
 
@@ -91,14 +90,5 @@ export function useAppReleaseMutations(channel: AppReleaseChannel) {
     onSuccess: invalidate,
   });
 
-  const upload = useMutation({
-    mutationFn: async (formData: FormData) => {
-      const result = await uploadAppRelease(formData);
-      if (!result.ok) throw new Error(result.error);
-      return result.release;
-    },
-    onSuccess: invalidate,
-  });
-
-  return { activate, markRequired, remove, upload };
+  return { activate, markRequired, remove };
 }

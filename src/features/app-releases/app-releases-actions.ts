@@ -1,18 +1,20 @@
 "use server";
 
-import { createHash } from "crypto";
-
 import { logAdminMutation } from "@/lib/audit/log-admin-activity";
 import { getSessionUser } from "@/lib/auth/get-session";
 import { hasPermissionInSet } from "@/lib/auth/permissions";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient as createSessionSupabaseClient } from "@/lib/supabase/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   buildAppReleaseApkKey,
   type AppReleaseChannel,
 } from "@/lib/storage/r2-keys";
-import { deleteObjects, putObject } from "@/lib/storage/r2-client";
+import { deleteObjects, headObject } from "@/lib/storage/r2-client";
 import { resolveAppReleaseApkUrl } from "@/lib/storage/app-release-url";
+import {
+  parseAppReleaseMetadata,
+} from "./app-release-validation";
 import type {
   AppReleaseAdoptionQueryResult,
   AppReleaseAdoptionResult,
@@ -32,11 +34,6 @@ function releasesDb(): AppReleasesDb {
 }
 
 const MAX_APK_BYTES = 100 * 1024 * 1024;
-const APK_CONTENT_TYPES = new Set([
-  "application/vnd.android.package-archive",
-  "application/octet-stream",
-  "application/zip",
-]);
 
 async function requireReleasesManager() {
   const session = await getSessionUser();
@@ -49,10 +46,102 @@ async function requireReleasesManager() {
   return { session };
 }
 
-function parseChannel(value: FormDataEntryValue | null): AppReleaseChannel {
-  const channel = String(value ?? "production").trim() as AppReleaseChannel;
-  if (channel === "beta" || channel === "internal") return channel;
-  return "production";
+export async function registerAppReleaseRecord(
+  input: Record<string, unknown>,
+): Promise<AppReleaseMutationResult> {
+  const auth = await requireReleasesManager();
+  if (auth.error) return { ok: false, error: auth.error };
+  const { session } = auth;
+
+  const metadata = parseAppReleaseMetadata(input);
+  if (!metadata.ok) {
+    return { ok: false, error: metadata.error };
+  }
+
+  const objectKey = String(input.objectKey ?? "").trim();
+  const apkSha256 = String(input.apkSha256 ?? "").trim().toLowerCase();
+  const apkSizeBytes = Number(input.apkSizeBytes ?? 0);
+
+  if (!objectKey) {
+    return { ok: false, error: "upload_failed" };
+  }
+  if (!/^[a-f0-9]{64}$/.test(apkSha256)) {
+    return { ok: false, error: "upload_failed" };
+  }
+  if (!Number.isFinite(apkSizeBytes) || apkSizeBytes <= 0 || apkSizeBytes > MAX_APK_BYTES) {
+    return { ok: false, error: "file_too_large" };
+  }
+
+  const {
+    channel,
+    versionName,
+    versionCode,
+    minSupportedVersionCode,
+    releaseNotes,
+    isRequired,
+  } = metadata.data;
+
+  const expectedKey = buildAppReleaseApkKey(channel, versionCode);
+  if (objectKey !== expectedKey) {
+    return { ok: false, error: "upload_failed" };
+  }
+
+  const admin = releasesDb();
+
+  const { data: existingLatest } = await admin
+    .from("app_releases")
+    .select("version_code")
+    .eq("platform", "android")
+    .eq("channel", channel)
+    .order("version_code", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (existingLatest && versionCode <= Number(existingLatest.version_code)) {
+    return { ok: false, error: "version_code_not_higher" };
+  }
+
+  const head = await headObject(objectKey);
+  if (!head.exists) {
+    return { ok: false, error: "apk_not_found" };
+  }
+
+  const { data, error } = await admin
+    .from("app_releases")
+    .insert({
+      platform: "android",
+      channel,
+      version_name: versionName,
+      version_code: versionCode,
+      min_supported_version_code: minSupportedVersionCode,
+      apk_object_key: objectKey,
+      apk_size_bytes: apkSizeBytes,
+      apk_sha256: apkSha256,
+      release_notes: releaseNotes,
+      is_required: isRequired,
+      is_active: false,
+      released_by: session.id,
+    })
+    .select("*")
+    .single();
+
+  if (error) {
+    await deleteObjects([objectKey]).catch(() => undefined);
+    if (error.code === "23505") {
+      return { ok: false, error: "version_code_exists" };
+    }
+    return { ok: false, error: error.message };
+  }
+
+  void logAdminMutation({
+    action: "create",
+    entityType: "app_release",
+    entityId: String(data.id),
+    routeName: "registerAppReleaseRecord",
+    after: { version_name: versionName, version_code: versionCode, channel },
+  });
+
+  return { ok: true, release: mapRow(data as Record<string, unknown>) };
 }
 
 function mapRow(row: Record<string, unknown>): AppReleaseRow {
@@ -132,8 +221,8 @@ export async function fetchAppReleaseAdoption(
   const auth = await requireReleasesManager();
   if (auth.error) return { ok: false, error: auth.error };
 
-  const admin = releasesDb();
-  const { data, error } = await admin.rpc("admin_app_release_adoption", {
+  const sessionClient = await createSessionSupabaseClient();
+  const { data, error } = await sessionClient.rpc("admin_app_release_adoption", {
     p_platform: "android",
     p_channel: channel,
   });
@@ -169,9 +258,9 @@ export async function fetchAppReleaseDrivers(
   const auth = await requireReleasesManager();
   if (auth.error) return { ok: false, error: auth.error };
 
-  const admin = releasesDb();
+  const sessionClient = await createSessionSupabaseClient();
   const offset = Math.max(0, (page - 1) * pageSize);
-  const { data, error } = await admin.rpc("admin_app_release_drivers", {
+  const { data, error } = await sessionClient.rpc("admin_app_release_drivers", {
     p_platform: "android",
     p_channel: channel,
     p_version_code: versionCode ?? undefined,
@@ -197,124 +286,6 @@ export async function fetchAppReleaseDrivers(
   };
 
   return { ok: true, data: pageResult };
-}
-
-export async function uploadAppRelease(
-  formData: FormData,
-): Promise<AppReleaseMutationResult> {
-  const auth = await requireReleasesManager();
-  if (auth.error) return { ok: false, error: auth.error };
-  const { session } = auth;
-
-  const file = formData.get("apk");
-  if (!(file instanceof File) || file.size === 0) {
-    return { ok: false, error: "missing_apk" };
-  }
-  if (file.size > MAX_APK_BYTES) {
-    return { ok: false, error: "file_too_large" };
-  }
-
-  const filename = file.name.toLowerCase();
-  if (!filename.endsWith(".apk")) {
-    return { ok: false, error: "invalid_extension" };
-  }
-
-  const contentType = file.type || "application/vnd.android.package-archive";
-  if (!APK_CONTENT_TYPES.has(contentType)) {
-    return { ok: false, error: "invalid_content_type" };
-  }
-
-  const versionName = String(formData.get("versionName") ?? "").trim();
-  const versionCodeRaw = String(formData.get("versionCode") ?? "").trim();
-  const versionCode = parseInt(versionCodeRaw, 10);
-  const channel = parseChannel(formData.get("channel"));
-  const isRequired = formData.get("isRequired") === "true";
-  const minSupportedRaw = String(
-    formData.get("minSupportedVersionCode") ?? "",
-  ).trim();
-  const minSupportedVersionCode = minSupportedRaw
-    ? parseInt(minSupportedRaw, 10)
-    : null;
-  const releaseNotes = String(formData.get("releaseNotes") ?? "").trim() || null;
-
-  if (!versionName) {
-    return { ok: false, error: "missing_version_name" };
-  }
-  if (!Number.isFinite(versionCode) || versionCode <= 0) {
-    return { ok: false, error: "invalid_version_code" };
-  }
-  if (
-    minSupportedVersionCode != null &&
-    (!Number.isFinite(minSupportedVersionCode) || minSupportedVersionCode <= 0)
-  ) {
-    return { ok: false, error: "invalid_min_supported_version_code" };
-  }
-
-  const admin = releasesDb();
-  const { data: existing } = await admin
-    .from("app_releases")
-    .select("version_code")
-    .eq("platform", "android")
-    .eq("channel", channel)
-    .order("version_code", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (existing && versionCode <= Number(existing.version_code)) {
-    return { ok: false, error: "version_code_not_higher" };
-  }
-
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const apkSha256 = createHash("sha256").update(buffer).digest("hex");
-  const objectKey = buildAppReleaseApkKey(channel, versionCode);
-
-  try {
-    await putObject(objectKey, buffer, "application/vnd.android.package-archive", {
-      uploadedBy: session.id,
-      entityType: "app_release",
-      entityId: `${channel}:${versionCode}`,
-      uploadedVia: "admin",
-    });
-  } catch {
-    return { ok: false, error: "upload_failed" };
-  }
-
-  const { data, error } = await admin
-    .from("app_releases")
-    .insert({
-      platform: "android",
-      channel,
-      version_name: versionName,
-      version_code: versionCode,
-      min_supported_version_code: minSupportedVersionCode,
-      apk_object_key: objectKey,
-      apk_size_bytes: buffer.length,
-      apk_sha256: apkSha256,
-      release_notes: releaseNotes,
-      is_required: isRequired,
-      is_active: false,
-      released_by: session.id,
-    })
-    .select("*")
-    .single();
-
-  if (error) {
-    await deleteObjects([objectKey]).catch(() => undefined);
-    if (error.code === "23505") {
-      return { ok: false, error: "version_code_exists" };
-    }
-    return { ok: false, error: error.message };
-  }
-
-  void logAdminMutation({
-    action: "create",
-    entityType: "app_release",
-    entityId: String(data.id),
-    routeName: "uploadAppRelease",
-    after: { version_name: versionName, version_code: versionCode, channel },
-  });
-
-  return { ok: true, release: mapRow(data as Record<string, unknown>) };
 }
 
 export async function activateAppRelease(

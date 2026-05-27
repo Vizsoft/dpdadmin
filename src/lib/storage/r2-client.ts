@@ -5,6 +5,7 @@ import {
   GetObjectCommand,
   HeadBucketCommand,
   HeadObjectCommand,
+  PutBucketCorsCommand,
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
@@ -202,6 +203,23 @@ export async function getPresignedPutUrl(
   return getSignedUrl(s3, command, { expiresIn: expiresInSeconds });
 }
 
+export async function getUnsignedContentTypePutUrl(
+  key: string,
+  expiresInSeconds = DEFAULT_PUT_PRESIGN_SECONDS,
+): Promise<string> {
+  const s3 = await getR2Client();
+  const bucket = await getR2BucketName();
+  const command = new PutObjectCommand({
+    Bucket: bucket,
+    Key: key,
+  });
+  return getSignedUrl(s3, command, {
+    expiresIn: expiresInSeconds,
+    unhoistableHeaders: new Set<string>(),
+    signableHeaders: new Set(["host"]),
+  });
+}
+
 export async function deleteObject(key: string): Promise<void> {
   const s3 = await getR2Client();
   const bucket = await getR2BucketName();
@@ -257,6 +275,27 @@ export async function getPresignedGetUrl(
     Key: key,
   });
   return getSignedUrl(s3, command, { expiresIn: expiresInSeconds });
+}
+
+export async function applyBucketCors(allowedOrigins: string[]): Promise<void> {
+  const s3 = await getR2Client();
+  const bucket = await getR2BucketName();
+  await s3.send(
+    new PutBucketCorsCommand({
+      Bucket: bucket,
+      CORSConfiguration: {
+        CORSRules: [
+          {
+            AllowedOrigins: allowedOrigins,
+            AllowedMethods: ["GET", "PUT", "HEAD"],
+            AllowedHeaders: ["*"],
+            ExposeHeaders: ["ETag"],
+            MaxAgeSeconds: 3600,
+          },
+        ],
+      },
+    }),
+  );
 }
 
 export { invalidateR2ConfigCache };
