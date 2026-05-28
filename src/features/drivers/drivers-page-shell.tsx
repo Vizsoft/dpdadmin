@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { useRouter } from "@/i18n/navigation";
+import { useRouter, Link } from "@/i18n/navigation";
 import { useSearchParams } from "next/navigation";
 import {
   CheckCircle2,
@@ -52,6 +52,7 @@ import { cn } from "@/lib/utils";
 import { useDriverFormOptions } from "./use-driver-form-options";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query/query-keys";
+import { useRealtimeInvalidator } from "@/lib/realtime/use-realtime-invalidator";
 import { fetchDriverDetail } from "./drivers-actions";
 import { useAuth } from "@/contexts/auth-context";
 import { useApproveDriverIntake, useDriversList, useDriversMultiDeviceRecent, type DriversTabFilter } from "./use-drivers";
@@ -79,6 +80,15 @@ import {
   type DriverAccountStatus,
   type DriverListRow,
 } from "./types";
+
+function shouldIgnoreRowNavigation(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return Boolean(
+    target.closest(
+      'button, a, input, select, textarea, [role="checkbox"], [data-no-row-nav]',
+    ),
+  );
+}
 
 const SORT_I18N: Record<DriversSortKey, string> = {
   name_asc: "sortNameAsc",
@@ -176,6 +186,18 @@ function DriversPageContent() {
     [multiDeviceRows],
   );
   const { data: formOptions } = useDriverFormOptions();
+
+  useRealtimeInvalidator({
+    channel: "admin-drivers-list",
+    tables: [
+      { table: "drivers" },
+      { table: "driver_intakes" },
+      { table: "driver_restaurants" },
+      { table: "driver_intake_restaurants" },
+    ],
+    invalidateKeys: [queryKeys.drivers.all()],
+  });
+
   const [search, setSearch] = useState("");
   const [zoneFilter, setZoneFilter] = useState("all");
   const [partnerFilter, setPartnerFilter] = useState("all");
@@ -632,14 +654,17 @@ function DriversPageContent() {
                           "cursor-pointer hover:bg-muted/40",
                           selectedIds.has(driver.id) && "bg-muted/20",
                         )}
-                        onClick={() => router.push(`/drivers/${driver.id}`)}
+                        onClick={(event) => {
+                          if (shouldIgnoreRowNavigation(event.target)) return;
+                          router.push(`/drivers/${driver.id}`);
+                        }}
                         onMouseEnter={() => prefetchDriverDetail(driver.id)}
                         onFocus={() => prefetchDriverDetail(driver.id)}
                         onKeyDown={(event) => {
-                          if (event.key === "Enter" || event.key === " ") {
-                            event.preventDefault();
-                            router.push(`/drivers/${driver.id}`);
-                          }
+                          if (event.key !== "Enter" && event.key !== " ") return;
+                          if (shouldIgnoreRowNavigation(event.target)) return;
+                          event.preventDefault();
+                          router.push(`/drivers/${driver.id}`);
                         }}
                         tabIndex={0}
                         aria-label={t("viewDriver")}
@@ -659,9 +684,18 @@ function DriversPageContent() {
                           {driver.employee_id ?? "—"}
                         </TableCell>
                         <TableCell>
-                          <span className="truncate font-medium text-foreground">
-                            {driver.full_name}
-                          </span>
+                          <div className="min-w-0">
+                            <span className="truncate font-medium text-foreground">
+                              {driver.full_name}
+                            </span>
+                            <Link
+                              href={`/drivers/${driver.id}`}
+                              className="mt-0.5 block text-xs text-primary hover:underline"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {t("viewDriver")}
+                            </Link>
+                          </div>
                         </TableCell>
                         <TableCell className="hidden text-sm text-muted-foreground md:table-cell">
                           {formatPhoneInternational(driver.phone)}
@@ -700,7 +734,9 @@ function DriversPageContent() {
                         </TableCell>
                         <TableCell
                           className="hidden lg:table-cell"
+                          data-no-row-nav
                           onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => e.stopPropagation()}
                         >
                           <PasscodeCell passcode={driver.app_passcode} />
                         </TableCell>

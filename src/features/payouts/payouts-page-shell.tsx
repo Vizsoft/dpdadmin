@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 import { AppPage } from "@/components/app/app-page";
 import { AppPageHeader } from "@/components/app/app-page-header";
@@ -20,23 +20,20 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useAuth } from "@/contexts/auth-context";
+import {
+  defaultEndDate,
+  defaultStartDateMonthsAgo,
+} from "@/lib/date/kuwait-dates";
 import { NewPayoutRunDialog } from "./new-payout-run-dialog";
 import { usePayoutRuns } from "./use-payouts";
-
-function defaultEndDate() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function defaultStartDate() {
-  const d = new Date();
-  d.setMonth(d.getMonth() - 1);
-  return d.toISOString().slice(0, 10);
-}
 
 export function PayoutsPageShell() {
   const t = useTranslations("pages.payouts");
   const router = useRouter();
-  const [startDate, setStartDate] = useState(defaultStartDate);
+  const { can } = useAuth();
+  const canManage = can("earnings.manage");
+  const [startDate, setStartDate] = useState(defaultStartDateMonthsAgo);
   const [endDate, setEndDate] = useState(defaultEndDate);
   const [newRunOpen, setNewRunOpen] = useState(false);
   const runsQuery = usePayoutRuns(startDate, endDate);
@@ -53,7 +50,9 @@ export function PayoutsPageShell() {
         title={t("title")}
         description={t("subtitle")}
         actions={
-          <Button onClick={() => setNewRunOpen(true)}>{t("newRunTitle")}</Button>
+          canManage ? (
+            <Button onClick={() => setNewRunOpen(true)}>{t("newRunTitle")}</Button>
+          ) : null
         }
       />
 
@@ -130,7 +129,9 @@ export function PayoutsPageShell() {
         </div>
       </AppListCard>
 
-      <NewPayoutRunDialog open={newRunOpen} onOpenChange={setNewRunOpen} />
+      {canManage ? (
+        <NewPayoutRunDialog open={newRunOpen} onOpenChange={setNewRunOpen} />
+      ) : null}
     </AppPage>
   );
 }

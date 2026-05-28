@@ -36,6 +36,7 @@ import { StatusPill } from "@/components/dashboard/status-pill";
 import { TabBar } from "@/components/dashboard/tab-bar";
 import { cn } from "@/lib/utils";
 import { selectOptionsFrom } from "@/lib/select-items";
+import { queryKeys } from "@/lib/query/query-keys";
 import { useRealtimeInvalidator } from "@/lib/realtime/use-realtime-invalidator";
 import { DeliveryGpsAuditPanel } from "./delivery-gps-audit-panel";
 import {
@@ -256,12 +257,12 @@ export function DeliveryDetailSheet({
         filter: delivery?.id ? `active_delivery_id=eq.${delivery.id}` : undefined,
       },
     ],
-    invalidateKeys: [["delivery-live-location", delivery?.id ?? ""]],
+    invalidateKeys: [queryKeys.deliveries.deliveryLiveLocation(delivery?.id ?? "")],
     enabled: open && isInTransit && Boolean(delivery?.id),
   });
 
   const { data: liveLocation } = useQuery({
-    queryKey: ["delivery-live-location", delivery?.id],
+    queryKey: queryKeys.deliveries.deliveryLiveLocation(delivery?.id ?? ""),
     queryFn: () =>
       fetchLiveDriverLocationForDelivery(delivery!.id, delivery!.driver_id),
     enabled: open && isInTransit && Boolean(delivery?.id),

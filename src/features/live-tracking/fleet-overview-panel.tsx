@@ -45,7 +45,7 @@ export function FleetOverviewPanel({
   alertsCount: number;
   drivers: DriverLiveLocation[];
   selectedDriverId: string | null;
-  onSelectDriver: (driverId: string) => void;
+  onSelectDriver: (driverId: string | null) => void;
   filters: LiveTrackingFilterState;
   onChange: (next: LiveTrackingFilterState) => void;
   zoneOptions: Array<{ id: string; label: string }>;
@@ -95,7 +95,7 @@ export function FleetOverviewPanel({
       },
       {
         id: "sos",
-        label: t("metricSos"),
+        label: t("metricGpsAlerts"),
         value: alertsCount.toLocaleString(),
         tone: "rose" as const,
         icon: AlertTriangle,

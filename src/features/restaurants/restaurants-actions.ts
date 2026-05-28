@@ -469,7 +469,7 @@ export async function fetchRestaurantsForAdmin(): Promise<RestaurantRow[]> {
       await Promise.all([
         supabase
           .from("driver_intake_restaurants")
-          .select("restaurant_id, intake_id")
+          .select("restaurant_id, intake_id, driver_intakes(linked)")
           .in("restaurant_id", ids),
         supabase
           .from("driver_restaurants")
@@ -479,14 +479,17 @@ export async function fetchRestaurantsForAdmin(): Promise<RestaurantRow[]> {
 
     if (!isMissingRelationError(intakeErr) && !isMissingRelationError(driverErr)) {
       const seen = new Map<string, Set<string>>();
-      for (const row of intakeLinks ?? []) {
-        const set = seen.get(row.restaurant_id) ?? new Set();
-        set.add(`intake:${row.intake_id}`);
-        seen.set(row.restaurant_id, set);
-      }
       for (const row of driverLinks ?? []) {
         const set = seen.get(row.restaurant_id) ?? new Set();
         set.add(`driver:${row.driver_id}`);
+        seen.set(row.restaurant_id, set);
+      }
+      for (const row of intakeLinks ?? []) {
+        const intakeRel = row.driver_intakes;
+        const intake = Array.isArray(intakeRel) ? intakeRel[0] : intakeRel;
+        if (intake?.linked) continue;
+        const set = seen.get(row.restaurant_id) ?? new Set();
+        set.add(`intake:${row.intake_id}`);
         seen.set(row.restaurant_id, set);
       }
       for (const [restaurantId, set] of seen) {
@@ -667,7 +670,7 @@ export async function fetchRestaurantDetail(
   const [{ data: intakeLinks }, { data: driverLinks }] = await Promise.all([
     supabase
       .from("driver_intake_restaurants")
-      .select("restaurant_id, intake_id")
+      .select("restaurant_id, intake_id, driver_intakes(linked)")
       .eq("restaurant_id", restaurantId),
     supabase
       .from("driver_restaurants")
@@ -675,8 +678,13 @@ export async function fetchRestaurantDetail(
       .eq("restaurant_id", restaurantId),
   ]);
   const seen = new Set<string>();
-  for (const link of intakeLinks ?? []) seen.add(`intake:${link.intake_id}`);
   for (const link of driverLinks ?? []) seen.add(`driver:${link.driver_id}`);
+  for (const link of intakeLinks ?? []) {
+    const intakeRel = link.driver_intakes;
+    const intake = Array.isArray(intakeRel) ? intakeRel[0] : intakeRel;
+    if (intake?.linked) continue;
+    seen.add(`intake:${link.intake_id}`);
+  }
   driverCount = seen.size;
 
   const aggregates = (
@@ -751,6 +759,22 @@ export async function fetchRestaurantAssignedDrivers(
   }
 
   const results: RestaurantAssignedDriver[] = [];
+  const linkedDriverIds = (linkedRows ?? []).map((row) => row.driver_id);
+
+  const { data: intakeByProfile } =
+    linkedDriverIds.length > 0
+      ? await supabase
+          .from("driver_intakes")
+          .select("id, linked_profile_id")
+          .in("linked_profile_id", linkedDriverIds)
+          .is("archived_at", null)
+      : { data: [] as { id: string; linked_profile_id: string | null }[] };
+
+  const intakeIdByDriverId = new Map(
+    (intakeByProfile ?? [])
+      .filter((row) => row.linked_profile_id)
+      .map((row) => [row.linked_profile_id as string, row.id]),
+  );
 
   for (const row of linkedRows ?? []) {
     const driverRel = Array.isArray(row.drivers) ? row.drivers[0] : row.drivers;
@@ -760,7 +784,7 @@ export async function fetchRestaurantAssignedDrivers(
     results.push({
       id: `linked:${row.driver_id}`,
       driver_id: row.driver_id,
-      intake_id: null,
+      intake_id: intakeIdByDriverId.get(row.driver_id) ?? null,
       name: profile?.full_name ?? "—",
       driver_code: driverRel.driver_code ?? "—",
       phone: profile?.phone ?? null,

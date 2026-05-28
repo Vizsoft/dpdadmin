@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { useRouter } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -12,9 +12,24 @@ import { queryKeys } from "@/lib/query/query-keys";
 import { isRestaurantErrorKey } from "./restaurant-errors";
 import { RestaurantFormBody } from "./restaurant-form-body";
 import { deleteRestaurant } from "./restaurants-actions";
-import { useRestaurantsList } from "./use-restaurants";
+import { useRestaurantDetail } from "./use-restaurants";
 
 const RESTAURANT_FORM_HEIGHT = "h-[calc(100dvh-1.5rem)] min-h-[640px]";
+
+function RestaurantFormSkeleton() {
+  return (
+    <div
+      className={cn(
+        "flex animate-pulse flex-col gap-4 rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-900",
+        RESTAURANT_FORM_HEIGHT,
+      )}
+    >
+      <div className="h-8 w-48 rounded-md bg-muted" />
+      <div className="h-4 w-72 rounded-md bg-muted" />
+      <div className="min-h-0 flex-1 rounded-lg bg-muted/60" />
+    </div>
+  );
+}
 
 export function RestaurantFormPage({ restaurantId }: { restaurantId?: string }) {
   const t = useTranslations("pages.restaurants");
@@ -23,14 +38,8 @@ export function RestaurantFormPage({ restaurantId }: { restaurantId?: string }) 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [isPending, setIsPending] = useState(false);
 
-  const { data: restaurants = [] } = useRestaurantsList();
-  const restaurant = useMemo(
-    () =>
-      restaurantId
-        ? (restaurants.find((item) => item.id === restaurantId) ?? null)
-        : null,
-    [restaurantId, restaurants],
-  );
+  const detailQuery = useRestaurantDetail(restaurantId ?? "");
+  const restaurant = restaurantId ? (detailQuery.data ?? null) : null;
 
   const invalidateRestaurants = () => {
     void queryClient.invalidateQueries({ queryKey: queryKeys.restaurants.all() });
@@ -57,7 +66,15 @@ export function RestaurantFormPage({ restaurantId }: { restaurantId?: string }) 
     }
   };
 
-  if (restaurantId && !restaurant) {
+  if (restaurantId && detailQuery.isLoading) {
+    return (
+      <AppPage className="!space-y-0">
+        <RestaurantFormSkeleton />
+      </AppPage>
+    );
+  }
+
+  if (restaurantId && !detailQuery.isLoading && !restaurant) {
     return (
       <AppPage className="!space-y-0">
         <div

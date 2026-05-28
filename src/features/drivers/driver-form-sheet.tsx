@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { queryKeys } from "@/lib/query/query-keys";
+import { invalidateDriverCaches } from "./invalidate-driver-caches";
 import { isDriverErrorKey } from "./driver-errors";
 import {
   CIVIL_ID_DIGIT_COUNT,
@@ -288,9 +288,9 @@ export function DriverFormSheet({
           return;
         }
         toast.success(tDetail("updated"));
-        void queryClient.invalidateQueries({ queryKey: queryKeys.drivers.all() });
-        void queryClient.invalidateQueries({
-          queryKey: queryKeys.drivers.detail(activeDriver.id),
+        await invalidateDriverCaches(queryClient, {
+          intakeId: activeDriver.id,
+          profileId: activeDriver.linked_profile_id,
         });
       } else {
         for (const docType of DOCUMENT_TYPES) {
@@ -307,7 +307,7 @@ export function DriverFormSheet({
         } else {
           toast.success(tNew("created"));
         }
-        void queryClient.invalidateQueries({ queryKey: queryKeys.drivers.all() });
+        await invalidateDriverCaches(queryClient);
       }
 
       onSaved?.();
@@ -523,8 +523,9 @@ export function DriverFormSheet({
                   else delete updated[docType];
                   return updated;
                 });
-                void queryClient.invalidateQueries({
-                  queryKey: queryKeys.drivers.detail(activeDriver.id),
+                void invalidateDriverCaches(queryClient, {
+                  intakeId: activeDriver.id,
+                  profileId: activeDriver.linked_profile_id,
                 });
               }}
             />

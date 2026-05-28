@@ -3,6 +3,7 @@
 import { Fragment, useEffect, useMemo, useState, useTransition } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, ChevronRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { AppPage } from "@/components/app/app-page";
@@ -30,6 +31,11 @@ import type {
   DeliveryValidationResult,
 } from "@/features/dpd/types";
 import {
+  defaultEndDate,
+  defaultStartDate,
+} from "@/lib/date/kuwait-dates";
+import { queryKeys } from "@/lib/query/query-keys";
+import {
   runPreviewEarnings,
   runRecalculateEarnings,
   runRecalculateEarningsRange,
@@ -40,20 +46,21 @@ import { EarningsDetailDialog } from "./earnings-detail-dialog";
 
 type EarningsTab = "daily" | "driver" | "reports" | "tools";
 
-function defaultEndDate() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function defaultStartDate() {
-  const d = new Date();
-  d.setDate(d.getDate() - 7);
-  return d.toISOString().slice(0, 10);
-}
+type DriverGroupedRow = {
+  group_id: string;
+  group_name: string;
+  driver_code?: string;
+  delivery_count: number;
+  days_count?: number;
+  incentive_kwd: number;
+  net_kwd: number;
+};
 
 export function EarningsPageShell() {
   const t = useTranslations("pages.earnings");
   const toolsT = useTranslations("pages.earningsCalculation");
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const { can } = useAuth();
   const canManage = can("earnings.manage");
 
@@ -86,11 +93,18 @@ export function EarningsPageShell() {
   const [expandedDriverId, setExpandedDriverId] = useState<string | null>(null);
   const [isToolPending, startToolTransition] = useTransition();
 
+  const invalidateEarnings = () => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.earnings.all() });
+  };
+
   const dailyQuery = useEarningsDaily(startDate, endDate, selectedDriverId || null);
   const overviewQuery = useEarningsOverview(startDate, endDate, {
     driver_ids: selectedDriverId ? [selectedDriverId] : [],
   });
   const groupedQuery = useEarningsGrouped(startDate, endDate, groupBy, {
+    driver_ids: selectedDriverId ? [selectedDriverId] : [],
+  });
+  const driverGroupedQuery = useEarningsGrouped(startDate, endDate, "driver", {
     driver_ids: selectedDriverId ? [selectedDriverId] : [],
   });
 
@@ -107,6 +121,20 @@ export function EarningsPageShell() {
     });
   }, [rows, search]);
 
+  const driverRows = useMemo(() => {
+    const grouped = (driverGroupedQuery.data ?? []) as DriverGroupedRow[];
+    const q = search.trim().toLowerCase();
+    if (!q) return grouped;
+    return grouped.filter((row) => {
+      const code = row.driver_code ?? "";
+      return (
+        row.group_name.toLowerCase().includes(q) ||
+        code.toLowerCase().includes(q) ||
+        row.group_id.toLowerCase().includes(q)
+      );
+    });
+  }, [driverGroupedQuery.data, search]);
+
   const driverOptions = useMemo(
     () =>
       Array.from(
@@ -121,6 +149,17 @@ export function EarningsPageShell() {
     setDetailDriverId(row.driver_id);
     setDetailEarnDate(row.earn_date);
     setDetailLabel(`${row.driver_name} (${row.driver_code})`);
+    setDetailOpen(true);
+  };
+
+  const openDriverDetail = (row: DriverGroupedRow) => {
+    setDetailDriverId(row.group_id);
+    setDetailEarnDate(endDate);
+    setDetailLabel(
+      row.driver_code
+        ? `${row.group_name} (${row.driver_code})`
+        : row.group_name,
+    );
     setDetailOpen(true);
   };
 
@@ -145,6 +184,7 @@ export function EarningsPageShell() {
         return;
       }
       if ("count" in result) toast.success(toolsT("recalculateDone", { count: result.count }));
+      invalidateEarnings();
     });
   };
 
@@ -157,6 +197,7 @@ export function EarningsPageShell() {
         return;
       }
       if ("count" in result) toast.success(toolsT("recalculateRangeDone", { count: result.count }));
+      invalidateEarnings();
     });
   };
 
@@ -184,6 +225,7 @@ export function EarningsPageShell() {
               void dailyQuery.refetch();
               void overviewQuery.refetch();
               void groupedQuery.refetch();
+              void driverGroupedQuery.refetch();
             }}
             className="cursor-pointer rounded-lg"
           >
@@ -200,7 +242,7 @@ export function EarningsPageShell() {
             value: Number(kpis.total_payable_kwd ?? 0).toFixed(3),
           },
           {
-            label: t("kpiWalletApproved"),
+            label: t("colIncentive"),
             value: Number(kpis.total_incentive_kwd ?? 0).toFixed(3),
           },
           { label: t("colDeliveries"), value: Number(kpis.total_deliveries ?? 0) },
@@ -273,7 +315,7 @@ export function EarningsPageShell() {
             </div>
           </div>
 
-          {tab === "daily" || tab === "driver" ? (
+          {tab === "daily" ? (
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/30 hover:bg-muted/30">
@@ -282,7 +324,6 @@ export function EarningsPageShell() {
                   <TableHead className={TABLE_HEAD_CLASS}>{t("colDeliveries")}</TableHead>
                   <TableHead className={TABLE_HEAD_CLASS}>{t("colIncentive")}</TableHead>
                   <TableHead className={TABLE_HEAD_CLASS}>{t("colNet")}</TableHead>
-                  <TableHead className={TABLE_HEAD_CLASS}>Calculated</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -302,8 +343,45 @@ export function EarningsPageShell() {
                     <TableCell className="tabular-nums">{row.deliveries}</TableCell>
                     <TableCell className="tabular-nums">{row.incentive_kwd}</TableCell>
                     <TableCell className="tabular-nums font-medium">{row.net_kwd}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {(row as any).calculated_at ?? "—"}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : null}
+
+          {tab === "driver" ? (
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/30 hover:bg-muted/30">
+                  <TableHead className={TABLE_HEAD_CLASS}>{t("colDriver")}</TableHead>
+                  <TableHead className={TABLE_HEAD_CLASS}>{t("colDeliveries")}</TableHead>
+                  <TableHead className={TABLE_HEAD_CLASS}>{t("colIncentive")}</TableHead>
+                  <TableHead className={TABLE_HEAD_CLASS}>{t("colNet")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {driverRows.map((row) => (
+                  <TableRow
+                    key={row.group_id}
+                    className="cursor-pointer hover:bg-muted/40"
+                    onClick={() => openDriverDetail(row)}
+                  >
+                    <TableCell>
+                      <div>
+                        <p className="font-medium">{row.group_name}</p>
+                        {row.driver_code ? (
+                          <p className="font-mono text-xs text-muted-foreground">
+                            {row.driver_code}
+                          </p>
+                        ) : null}
+                      </div>
+                    </TableCell>
+                    <TableCell className="tabular-nums">{row.delivery_count}</TableCell>
+                    <TableCell className="tabular-nums">
+                      {Number(row.incentive_kwd).toFixed(3)}
+                    </TableCell>
+                    <TableCell className="tabular-nums font-medium">
+                      {Number(row.net_kwd).toFixed(3)}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -342,16 +420,16 @@ export function EarningsPageShell() {
                 </TableHeader>
                 <TableBody>
                   {(groupedQuery.data ?? []).map((row, idx) => (
-                    <TableRow key={`${String((row as any).group_id ?? idx)}-${idx}`}>
-                      <TableCell>{String((row as any).group_name ?? "—")}</TableCell>
+                    <TableRow key={`${String((row as Record<string, unknown>).group_id ?? idx)}-${idx}`}>
+                      <TableCell>{String((row as Record<string, unknown>).group_name ?? "—")}</TableCell>
                       <TableCell className="tabular-nums">
-                        {Number((row as any).delivery_count ?? 0)}
+                        {Number((row as Record<string, unknown>).delivery_count ?? 0)}
                       </TableCell>
                       <TableCell className="tabular-nums">
-                        {Number((row as any).incentive_kwd ?? 0).toFixed(3)}
+                        {Number((row as Record<string, unknown>).incentive_kwd ?? 0).toFixed(3)}
                       </TableCell>
                       <TableCell className="tabular-nums font-medium">
-                        {Number((row as any).net_kwd ?? 0).toFixed(3)}
+                        {Number((row as Record<string, unknown>).net_kwd ?? 0).toFixed(3)}
                       </TableCell>
                     </TableRow>
                   ))}

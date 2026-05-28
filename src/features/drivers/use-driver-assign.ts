@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query/query-keys";
+import { invalidateDriverCaches } from "./invalidate-driver-caches";
 import {
   assignDriverToRestaurant,
   assignDriverToZone,
@@ -44,17 +45,19 @@ export function useSearchDriversForAssign(query: string, enabled: boolean) {
   });
 }
 
-function invalidateAssignQueries(qc: ReturnType<typeof useQueryClient>) {
-  void qc.invalidateQueries({ queryKey: queryKeys.drivers.all() });
-  void qc.invalidateQueries({ queryKey: queryKeys.restaurants.all() });
-  void qc.invalidateQueries({ queryKey: queryKeys.zones.all() });
+async function invalidateAssignQueries(qc: ReturnType<typeof useQueryClient>) {
+  await invalidateDriverCaches(qc);
+  await qc.invalidateQueries({ queryKey: queryKeys.restaurants.all() });
+  await qc.invalidateQueries({ queryKey: queryKeys.zones.all() });
 }
 
 export function useAssignDriverToRestaurant() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: assignDriverToRestaurant,
-    onSuccess: () => invalidateAssignQueries(qc),
+    onSuccess: async () => {
+      await invalidateAssignQueries(qc);
+    },
   });
 }
 
@@ -62,7 +65,9 @@ export function useAssignDriverToZone() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: assignDriverToZone,
-    onSuccess: () => invalidateAssignQueries(qc),
+    onSuccess: async () => {
+      await invalidateAssignQueries(qc);
+    },
   });
 }
 
@@ -70,6 +75,8 @@ export function useUnassignDriverFromRestaurant() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: unassignDriverFromRestaurant,
-    onSuccess: () => invalidateAssignQueries(qc),
+    onSuccess: async () => {
+      await invalidateAssignQueries(qc);
+    },
   });
 }

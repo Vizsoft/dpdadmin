@@ -966,7 +966,10 @@ export async function fetchDriverDetail(
       ? `${vehicleRow.bike_id}${vehicleRow.reg_number ? ` · ${vehicleRow.reg_number}` : ""}`
       : null;
 
-    const restaurant_ids = await fetchIntakeRestaurantIds(supabase, intake.id);
+    const restaurant_ids =
+      linkedId != null
+        ? await fetchDriverRestaurantIds(supabase, linkedId)
+        : await fetchIntakeRestaurantIds(supabase, intake.id);
     const [restaurant_names, has_published_restaurant, avatar_url, assigned_assets] =
       await Promise.all([
       loadRestaurantNames(supabase, restaurant_ids),
@@ -1074,9 +1077,7 @@ export async function fetchDriverDetail(
     .eq("linked_profile_id", id)
     .maybeSingle();
 
-  const restaurant_ids = intakeForDriver?.id
-    ? await fetchIntakeRestaurantIds(supabase, intakeForDriver.id)
-    : await fetchDriverRestaurantIds(supabase, id);
+  const restaurant_ids = await fetchDriverRestaurantIds(supabase, id);
   const [restaurant_names, has_published_restaurant, avatar_url, assigned_assets] =
     await Promise.all([
     loadRestaurantNames(supabase, restaurant_ids),
@@ -1267,10 +1268,10 @@ export async function fetchDriverDeviceOverview(
     p_history_limit: historyLimit,
   });
 
-  if (error) return null;
+  if (error) throw error;
 
   const overview = parseDriverDeviceOverview(data);
-  if (!overview) return null;
+  if (!overview) throw new Error("invalid_device_overview");
 
   const overrideSessions = overview.history.filter(
     (session) => session.revoked_reason === "override",

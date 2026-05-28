@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Loader2, UserPlus, Users } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -67,7 +66,6 @@ export function ZoneListPanel({
   const scrollRef = useRef<HTMLDivElement>(null);
   const loadMoreRef = useRef<HTMLTableRowElement>(null);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
@@ -93,20 +91,6 @@ export function ZoneListPanel({
     observer.observe(target);
     return () => observer.disconnect();
   }, [hasMore, zones.length, visibleCount]);
-
-  const allVisibleSelected =
-    visibleZones.length > 0 && visibleZones.every((zone) => selectedRows.has(zone.id));
-
-  const toggleAllVisible = (checked: boolean) => {
-    setSelectedRows((prev) => {
-      const next = new Set(prev);
-      for (const zone of visibleZones) {
-        if (checked) next.add(zone.id);
-        else next.delete(zone.id);
-      }
-      return next;
-    });
-  };
 
   return (
     <aside className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
@@ -139,13 +123,6 @@ export function ZoneListPanel({
         <Table>
           <TableHeader className="sticky top-0 z-10 bg-white dark:bg-slate-900">
             <TableRow className="border-slate-200 dark:border-slate-700">
-              <TableHead className="w-8">
-                <Checkbox
-                  checked={allVisibleSelected}
-                  onCheckedChange={(checked) => toggleAllVisible(Boolean(checked))}
-                  aria-label={t("geofence.selectAll")}
-                />
-              </TableHead>
               <TableHead>{t("geofence.colName")}</TableHead>
               <TableHead>{t("geofence.colType")}</TableHead>
               <TableHead>{t("geofence.colArea")}</TableHead>
@@ -158,7 +135,7 @@ export function ZoneListPanel({
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={7} className="py-16 text-center">
+                <TableCell colSpan={6} className="py-16 text-center">
                   <Loader2 className="mx-auto h-5 w-5 animate-spin text-slate-400" />
                 </TableCell>
               </TableRow>
@@ -190,20 +167,6 @@ export function ZoneListPanel({
                       onDoubleClick={() => onEdit(zone)}
                       title={t("geofence.doubleClickToEdit")}
                     >
-                      <TableCell onClick={(event) => event.stopPropagation()}>
-                        <Checkbox
-                          checked={selectedRows.has(zone.id)}
-                          onCheckedChange={(checked) =>
-                            setSelectedRows((prev) => {
-                              const next = new Set(prev);
-                              if (checked) next.add(zone.id);
-                              else next.delete(zone.id);
-                              return next;
-                            })
-                          }
-                          aria-label={t("geofence.selectOne", { name: zone.name })}
-                        />
-                      </TableCell>
                       <TableCell>
                         <div className="inline-flex items-start gap-2">
                           <StatusDot tone={typeTone} className="mt-1" />
@@ -259,7 +222,7 @@ export function ZoneListPanel({
                 })}
                 {hasMore ? (
                   <TableRow ref={loadMoreRef} className="hover:bg-transparent">
-                    <TableCell colSpan={7} className="py-4 text-center">
+                    <TableCell colSpan={6} className="py-4 text-center">
                       <Loader2 className="mx-auto h-4 w-4 animate-spin text-slate-400" />
                     </TableCell>
                   </TableRow>

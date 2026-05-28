@@ -31,9 +31,9 @@ export function TrackingInsightsPanel({
 
     return [
       {
-        id: "delays",
+        id: "outOfZone",
         icon: Timer,
-        label: t("insightDelays"),
+        label: t("insightOutOfZone"),
         count: outOfZone,
         tone: "text-amber-600 dark:text-amber-400",
       },

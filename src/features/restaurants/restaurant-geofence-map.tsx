@@ -414,6 +414,7 @@ export function RestaurantGeofenceMap({
         if (!latLng) return;
 
         if (mapModeRef.current === "pin") {
+          onSelectGeofenceRef.current(null);
           onLocationChangeRef.current({
             lat: latLng.lat(),
             lng: latLng.lng(),
@@ -437,7 +438,10 @@ export function RestaurantGeofenceMap({
             name: null,
             color: defaultGeofenceColor(drawKindRef.current),
           });
+          return;
         }
+
+        onSelectGeofenceRef.current(null);
       });
 
       syncMarker(google, map, location);

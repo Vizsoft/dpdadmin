@@ -18,18 +18,20 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { StatusPill } from "@/components/dashboard/status-pill";
-import { queryKeys } from "@/lib/query/query-keys";
+import { invalidateDriverCaches } from "./invalidate-driver-caches";
 import { setDriverBlocked } from "./drivers-actions";
 import { isDriverErrorKey } from "./driver-errors";
 
 export function DriverBlockEditor({
   driverId,
+  intakeId,
   isBlocked,
   blockedReason,
   blockedAt,
   canManage,
 }: {
   driverId: string;
+  intakeId?: string | null;
   isBlocked: boolean;
   blockedReason: string | null;
   blockedAt: string | null;
@@ -61,7 +63,7 @@ export function DriverBlockEditor({
       }
       toast.success(t("blocked"));
       setDialogOpen(false);
-      await queryClient.invalidateQueries({ queryKey: queryKeys.drivers.all() });
+      await invalidateDriverCaches(queryClient, { intakeId, profileId: driverId });
     });
   };
 
@@ -76,7 +78,7 @@ export function DriverBlockEditor({
       }
       toast.success(t("unblocked"));
       setReason("");
-      await queryClient.invalidateQueries({ queryKey: queryKeys.drivers.all() });
+      await invalidateDriverCaches(queryClient, { intakeId, profileId: driverId });
     });
   };
 

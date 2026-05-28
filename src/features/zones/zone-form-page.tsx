@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useQueryClient } from "@tanstack/react-query";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import { AppPage } from "@/components/app/app-page";
@@ -32,7 +33,7 @@ export function ZoneFormPage({ zoneId }: { zoneId?: string }) {
   const queryClient = useQueryClient();
   const [deleteOpen, setDeleteOpen] = useState(false);
 
-  const { data: zones = [] } = useZonesList();
+  const { data: zones = [], isLoading } = useZonesList();
   const zone = useMemo(
     () => (zoneId ? zones.find((item) => item.id === zoneId) ?? null : null),
     [zoneId, zones],
@@ -54,6 +55,21 @@ export function ZoneFormPage({ zoneId }: { zoneId?: string }) {
     invalidateZones();
     router.push("/zones");
   };
+
+  if (zoneId && isLoading) {
+    return (
+      <AppPage className="!space-y-0">
+        <div
+          className={cn(
+            "flex items-center justify-center rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900",
+            ZONE_FORM_HEIGHT,
+          )}
+        >
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      </AppPage>
+    );
+  }
 
   if (zoneId && !zone) {
     return (

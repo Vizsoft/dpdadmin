@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { queryKeys } from "@/lib/query/query-keys";
+import { invalidateDriverCaches } from "./invalidate-driver-caches";
 import { selectOptionsFrom } from "@/lib/select-items";
 import { updateDriverAccountStatus } from "./drivers-actions";
 import { isDriverErrorKey } from "./driver-errors";
@@ -25,11 +25,13 @@ import {
 
 export function DriverAccountStatusEditor({
   driverId,
+  intakeId,
   status,
   hasPublishedRestaurant,
   canManage,
 }: {
   driverId: string;
+  intakeId?: string | null;
   status: DriverAccountStatus;
   hasPublishedRestaurant: boolean;
   canManage: boolean;
@@ -67,7 +69,7 @@ export function DriverAccountStatusEditor({
         return;
       }
       toast.success(t("updated"));
-      await queryClient.invalidateQueries({ queryKey: queryKeys.drivers.all() });
+      await invalidateDriverCaches(queryClient, { intakeId, profileId: driverId });
     });
   };
 

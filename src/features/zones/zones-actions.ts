@@ -148,6 +148,17 @@ export async function updateZone(input: {
   if (geometryError) return { error: geometryError };
 
   const supabase = await createClient();
+
+  const { data: existing, error: existingError } = await supabase
+    .from("zones")
+    .select("name, code, color, zone_type, geometry")
+    .eq("id", input.id)
+    .single();
+
+  if (existingError || !existing) {
+    return { error: mapZoneDbError(existingError ?? { message: "not_found" }) };
+  }
+
   const { error } = await supabase
     .from("zones")
     .update({
@@ -172,6 +183,17 @@ export async function updateZone(input: {
   try {
     await upsertZoneGeofenceSettings(supabase, input.id, geofence);
   } catch (settingsError) {
+    await supabase
+      .from("zones")
+      .update({
+        name: existing.name,
+        code: existing.code,
+        color: existing.color,
+        zone_type: existing.zone_type,
+        geometry: existing.geometry,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", input.id);
     return { error: mapZoneDbError(settingsError as { message: string }) };
   }
 

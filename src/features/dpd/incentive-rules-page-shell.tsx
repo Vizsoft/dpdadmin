@@ -1,8 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
-import { Loader2, Pencil, Plus } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import { AppPage } from "@/components/app/app-page";
 import { AppEmptyState } from "@/components/app/app-empty-state";
 import { AppListCard } from "@/components/app/app-list-card";
@@ -17,7 +20,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { queryKeys } from "@/lib/query/query-keys";
 import { cn } from "@/lib/utils";
+import { deleteIncentiveRule, isDpdErrorKey } from "./dpd-actions";
 import { DpdStatusBadge } from "./dpd-status-badge";
 import { IncentiveRuleFormSheet } from "./incentive-rule-form-sheet";
 import {
@@ -31,6 +36,8 @@ export function IncentiveRulesPageShell() {
   const t = useTranslations("pages.dpd");
   const { can } = useAuth();
   const canManage = can("earnings.manage");
+  const queryClient = useQueryClient();
+  const [isPending, startTransition] = useTransition();
 
   const { data: scopeOptions } = useDpdScopeOptions();
   const { data: incentiveRules, isLoading } = useIncentiveRules();
@@ -39,6 +46,23 @@ export function IncentiveRulesPageShell() {
     open: false,
     row: null,
   });
+  const [deleteTarget, setDeleteTarget] = useState<IncentiveRuleRow | null>(null);
+
+  const handleDelete = () => {
+    if (!deleteTarget) return;
+    startTransition(async () => {
+      const result = await deleteIncentiveRule(deleteTarget.id);
+      if (result.error) {
+        toast.error(
+          isDpdErrorKey(result.error) ? t(`errors.${result.error}`) : t("errors.delete_failed"),
+        );
+        throw new Error(result.error);
+      }
+      toast.success(t("incentiveRuleDeleted"));
+      void queryClient.invalidateQueries({ queryKey: queryKeys.dpd.incentiveRules() });
+      setDeleteTarget(null);
+    });
+  };
 
   return (
     <AppPage>
@@ -103,15 +127,28 @@ export function IncentiveRulesPageShell() {
                   </TableCell>
                   {canManage ? (
                     <TableCell className="text-end">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        className="cursor-pointer"
-                        onClick={() => setSheet({ open: true, row })}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center justify-end gap-0.5">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          className="cursor-pointer"
+                          onClick={() => setSheet({ open: true, row })}
+                          aria-label={t("editIncentiveRule")}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          className="cursor-pointer text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          onClick={() => setDeleteTarget(row)}
+                          aria-label={t("delete")}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   ) : null}
                 </TableRow>
@@ -127,6 +164,18 @@ export function IncentiveRulesPageShell() {
         open={sheet.open}
         onOpenChange={(open) => setSheet((s) => ({ ...s, open }))}
       />
+
+      {deleteTarget ? (
+        <ConfirmDeleteDialog
+          open={Boolean(deleteTarget)}
+          onOpenChange={(open) => !open && setDeleteTarget(null)}
+          itemTitle={t("deleteIncentiveRuleTitle")}
+          itemName={deleteTarget.name}
+          confirmText={deleteTarget.name}
+          onConfirm={handleDelete}
+          isPending={isPending}
+        />
+      ) : null}
     </AppPage>
   );
 }

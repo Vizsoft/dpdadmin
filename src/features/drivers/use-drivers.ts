@@ -17,6 +17,7 @@ import {
   approveDriverIntake,
   resolveDriverImportPreview,
 } from "./drivers-import-actions";
+import { invalidateDriverCaches } from "./invalidate-driver-caches";
 import type { DriverImportPreviewRow, DriverListRow } from "./types";
 
 export type { DriverImportPreviewRow };
@@ -39,7 +40,8 @@ export function useDriverDetail(id: string) {
     queryKey: queryKeys.drivers.detail(id),
     queryFn: () => fetchDriverDetail(id),
     enabled: Boolean(id),
-    staleTime: 60_000,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 }
 
@@ -59,13 +61,22 @@ export function useDriverDocuments(
 export function useRegenerateDriverPasscode() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (driverId: string) => {
+    mutationFn: async ({
+      driverId,
+      intakeId,
+    }: {
+      driverId: string;
+      intakeId?: string | null;
+    }) => {
       const result = await regenerateDriverPasscode(driverId);
       if ("error" in result) throw new Error(result.error);
       return result.passcode;
     },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.drivers.all() });
+    onSuccess: async (_passcode, { intakeId, driverId }) => {
+      await invalidateDriverCaches(queryClient, {
+        intakeId,
+        profileId: driverId,
+      });
     },
   });
 }
@@ -78,8 +89,8 @@ export function useArchiveDriverIntake() {
       if (result.error) throw new Error(result.error);
       return result;
     },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.drivers.all() });
+    onSuccess: async (_data, intakeId) => {
+      await invalidateDriverCaches(queryClient, { intakeId });
     },
   });
 }
@@ -92,8 +103,8 @@ export function useApproveDriverIntake() {
       if ("error" in result) throw new Error(result.error);
       return result;
     },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.drivers.all() });
+    onSuccess: async (_data, intakeId) => {
+      await invalidateDriverCaches(queryClient, { intakeId });
     },
   });
 }
@@ -108,8 +119,8 @@ export function useApplyDriverImportBatch() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: applyDriverImportBatch,
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.drivers.all() });
+    onSuccess: async () => {
+      await invalidateDriverCaches(queryClient);
     },
   });
 }
@@ -131,9 +142,12 @@ export function useForceSignOutDriver() {
       if ("error" in result) throw new Error(result.error);
       return result;
     },
-    onSuccess: (_data, driverId) => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.drivers.devices(driverId) });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.drivers.all() });
+    onSuccess: async (_data, driverId) => {
+      await invalidateDriverCaches(queryClient, { profileId: driverId });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.drivers.devices(driverId) });
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.drivers.multiDeviceRecent(7),
+      });
     },
   });
 }

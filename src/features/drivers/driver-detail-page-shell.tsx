@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { TabBar, type TabItem } from "@/components/dashboard/tab-bar";
+import { StatusPill } from "@/components/dashboard/status-pill";
 import { AppPage } from "@/components/app/app-page";
 import { AppEmptyState } from "@/components/app/app-empty-state";
 import { useAuth } from "@/contexts/auth-context";
@@ -62,6 +63,8 @@ import {
   useRegenerateDriverPasscode,
 } from "./use-drivers";
 import { isDriverErrorKey } from "./driver-errors";
+import { useRealtimeInvalidator } from "@/lib/realtime/use-realtime-invalidator";
+import { queryKeys } from "@/lib/query/query-keys";
 
 type DetailTabId =
   | "attendance"
@@ -110,11 +113,13 @@ function DetailSkeleton() {
 
 function PasscodeCard({
   driverId,
+  intakeId,
   passcode,
   isActive,
   canManage,
 }: {
   driverId: string;
+  intakeId?: string | null;
   passcode: string | null;
   isActive: boolean;
   canManage: boolean;
@@ -140,7 +145,7 @@ function PasscodeCard({
     if (!canManage) return;
     if (!window.confirm(t("regenerateConfirm"))) return;
     try {
-      await regenerate.mutateAsync(driverId);
+      await regenerate.mutateAsync({ driverId, intakeId });
       setRevealed(true);
       toast.success(t("regenerated"));
     } catch {
@@ -236,6 +241,18 @@ function DriverDetailContent({ id }: { id: string }) {
   const approveDriver = useApproveDriverIntake();
   const [activeTab, setActiveTab] = useState<DetailTabId>("assets");
   const [editOpen, setEditOpen] = useState(false);
+
+  useRealtimeInvalidator({
+    channel: `admin-driver-detail-${id}`,
+    tables: [
+      { table: "drivers" },
+      { table: "driver_intakes" },
+      { table: "driver_restaurants" },
+      { table: "driver_intake_restaurants" },
+    ],
+    invalidateKeys: [queryKeys.drivers.all(), queryKeys.drivers.detail(id)],
+    enabled: Boolean(id),
+  });
 
   const isArchived = Boolean(driver?.archived_at);
 
@@ -458,11 +475,13 @@ function DriverDetailContent({ id }: { id: string }) {
 
     return (
       <TrackingGlassCard className="border-slate-200 bg-white dark:border-slate-700/80 dark:bg-slate-900">
-        <div className="py-12">
-          <AppEmptyState
-            title={t("emptyTitle")}
-            description={t("emptyTabDescription")}
-          />
+        <div className="flex flex-col items-center gap-2 py-12">
+          <StatusPill variant="warning" dot={false}>
+            {t("comingSoon")}
+          </StatusPill>
+          <p className="max-w-md text-center text-sm text-muted-foreground">
+            {t("emptyTabDescription")}
+          </p>
         </div>
       </TrackingGlassCard>
     );
@@ -681,6 +700,7 @@ function DriverDetailContent({ id }: { id: string }) {
               <div className="px-4 py-4">
                 <DriverBlockEditor
                   driverId={driver.linked_profile_id}
+                  intakeId={driver.intake_id ?? driver.id}
                   isBlocked={driver.is_blocked}
                   blockedReason={driver.blocked_reason}
                   blockedAt={driver.blocked_at}
@@ -698,6 +718,7 @@ function DriverDetailContent({ id }: { id: string }) {
                 {driver.linked_profile_id ? (
                   <DriverAccountStatusEditor
                     driverId={driver.linked_profile_id}
+                    intakeId={driver.intake_id ?? driver.id}
                     status={driver.account_status}
                     hasPublishedRestaurant={driver.has_published_restaurant}
                     canManage={canManage}
@@ -710,7 +731,8 @@ function DriverDetailContent({ id }: { id: string }) {
           ) : null}
           {!isArchived ? (
             <PasscodeCard
-              driverId={driver.linked_profile_id ?? driver.intake_id ?? ""}
+              driverId={driver.linked_profile_id ?? ""}
+              intakeId={driver.intake_id ?? driver.id}
               passcode={driver.app_passcode}
               isActive={driver.account_status === "active"}
               canManage={canManage && Boolean(driver.linked_profile_id)}

@@ -107,11 +107,16 @@ export function parseDriverDeviceOverview(raw: unknown): DriverDeviceOverview | 
 export function resolveDeviceSessionStatus(
   session: Pick<
     DriverDeviceSessionRow,
-    "is_active" | "revoked_at" | "revoked_reason" | "flushed_at"
+    "is_active" | "revoked_at" | "revoked_reason" | "flushed_at" | "flush_deadline_at"
   >,
 ): DeviceSessionStatus {
   if (session.is_active && !session.revoked_at) return "active";
-  if (session.revoked_reason === "override" && !session.flushed_at) {
+  if (
+    session.revoked_reason === "override" &&
+    !session.flushed_at &&
+    session.flush_deadline_at &&
+    new Date(session.flush_deadline_at).getTime() > Date.now()
+  ) {
     return "override_pending";
   }
   if (session.revoked_reason === "admin_forced") return "admin_forced";

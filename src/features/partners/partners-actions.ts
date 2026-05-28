@@ -264,6 +264,14 @@ export async function deletePartner(id: string): Promise<PartnerMutationResult> 
   if (countError) return { error: mapPartnerDbError(countError) };
   if ((count ?? 0) > 0) return { error: "has_drivers" };
 
+  const { count: restaurantCount, error: restaurantCountError } = await supabase
+    .from("restaurants")
+    .select("id", { count: "exact", head: true })
+    .eq("partner_id", id);
+
+  if (restaurantCountError) return { error: mapPartnerDbError(restaurantCountError) };
+  if ((restaurantCount ?? 0) > 0) return { error: "has_restaurants" };
+
   const { error } = await supabase.from("partners").delete().eq("id", id);
   if (error) return { error: mapPartnerDbError(error) };
 

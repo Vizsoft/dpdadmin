@@ -21,6 +21,43 @@ async function requireDriversManage() {
   return { session };
 }
 
+async function syncIntakeRestaurants(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  intakeId: string,
+  restaurantIds: string[],
+) {
+  await supabase.from("driver_intake_restaurants").delete().eq("intake_id", intakeId);
+  if (restaurantIds.length === 0) return;
+  await supabase.from("driver_intake_restaurants").insert(
+    restaurantIds.map((restaurant_id) => ({ intake_id: intakeId, restaurant_id })),
+  );
+}
+
+async function resolveIntakeIdForDriver(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  driverId: string,
+): Promise<string | null> {
+  const { data } = await supabase
+    .from("driver_intakes")
+    .select("id")
+    .eq("linked_profile_id", driverId)
+    .is("archived_at", null)
+    .maybeSingle();
+  return data?.id ?? null;
+}
+
+async function syncLinkedDriverRestaurants(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  driverId: string,
+  restaurantIds: string[],
+) {
+  await syncDriverRestaurants(supabase, driverId, restaurantIds);
+  const intakeId = await resolveIntakeIdForDriver(supabase, driverId);
+  if (intakeId) {
+    await syncIntakeRestaurants(supabase, intakeId, restaurantIds);
+  }
+}
+
 async function fetchDriverRestaurantIds(
   supabase: Awaited<ReturnType<typeof createClient>>,
   driverId: string,
@@ -246,30 +283,15 @@ export async function fetchRestaurantAssignedDriversForAssign(
   if (!restaurantId) return [];
 
   const supabase = await createClient();
-  const [{ data: linkedRows, error: linkedErr }, { data: intakeRows, error: intakeErr }] =
-    await Promise.all([
-      supabase
-        .from("driver_restaurants")
-        .select("driver_id")
-        .eq("restaurant_id", restaurantId),
-      supabase
-        .from("driver_intake_restaurants")
-        .select("intake_id, driver_intakes(linked, linked_profile_id)")
-        .eq("restaurant_id", restaurantId),
-    ]);
+  const { data: linkedRows, error: linkedErr } = await supabase
+    .from("driver_restaurants")
+    .select("driver_id")
+    .eq("restaurant_id", restaurantId);
   if (linkedErr) throw linkedErr;
-  if (intakeErr) throw intakeErr;
 
-  const driverIds = new Set<string>();
-  for (const row of linkedRows ?? []) driverIds.add(row.driver_id);
-  for (const row of intakeRows ?? []) {
-    const intake = relOne(row.driver_intakes);
-    if (intake?.linked && intake.linked_profile_id) {
-      driverIds.add(intake.linked_profile_id);
-    }
-  }
+  const driverIds = [...new Set((linkedRows ?? []).map((row) => row.driver_id))];
 
-  const rows = await enrichAssignDriverRows(supabase, [...driverIds]);
+  const rows = await enrichAssignDriverRows(supabase, driverIds);
   return rows.sort((a, b) => a.name.localeCompare(b.name));
 }
 
@@ -392,7 +414,7 @@ export async function assignDriverToRestaurant(input: {
     zoneId !== undefined ? zoneId || null : restaurant.zone_id ?? beforeZoneId;
 
   if (replaceAll || !beforeRestaurantIds.includes(restaurantId)) {
-    await syncDriverRestaurants(supabase, driverId, nextRestaurantIds);
+    await syncLinkedDriverRestaurants(supabase, driverId, nextRestaurantIds);
   }
 
   if (nextZoneId !== beforeZoneId) {
@@ -531,12 +553,7 @@ export async function unassignDriverFromRestaurant(input: {
 
   const hasActive = await driverHasInTransitDelivery(supabase, driverId);
 
-  const { error: deleteErr } = await supabase
-    .from("driver_restaurants")
-    .delete()
-    .eq("driver_id", driverId)
-    .eq("restaurant_id", restaurantId);
-  if (deleteErr) return { error: "save_failed" };
+  await syncLinkedDriverRestaurants(supabase, driverId, nextRestaurantIds);
 
   await logAssignmentEvent(supabase, {
     driverId,

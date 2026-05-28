@@ -95,7 +95,7 @@ export function DriverRestaurantPicker({
               <Input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search restaurants..."
+                placeholder={t("placeholders.searchRestaurants")}
                 className="h-8 rounded-md"
               />
             </div>

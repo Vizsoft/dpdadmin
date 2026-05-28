@@ -734,7 +734,28 @@ No new RPC was added; the existing function's restaurant objects gained the `geo
 
 ---
 
-*Last synced: 2026-05-26 — [admin+app] Restaurant delivery geofences: `restaurant_geofences` table, full-page admin editor at `/restaurants/[id]/edit`, updated `driver_is_within_delivery_range` and `driver_get_delivery_proximity_context`.*
+---
+
+## Ops audit backend contract (2026-07-29)
+
+| RPC / table | Driver app expectation |
+|-------------|------------------------|
+| `driver_log_security_event(p_event_type, p_severity, p_context)` | Log security events. Accepts `p_event_type = 'zone_timeout_checkout'` with `p_severity = 'warning'`. Context JSON may include `mode` (`idle` \| `return_grace`), `window_seconds`, coordinates, `zone_status`, `outside_since`. Stored in `driver_security_events`. |
+| `driver_complete_delivery` / `driver_cancel_delivery` | **Idempotent retry**: if delivery already completed (`pending`/`verified`) or cancelled, returns the existing row instead of raising `invalid_delivery_status`. |
+| `driver_create_pickup` / complete / cancel | **Only** the overloads with `p_device_id` remain (pre-device overloads dropped). Always pass `p_device_id`. |
+| `driver_release_device_session` | Unchanged — clears active session only when `p_device_id` matches `drivers.active_device_id`. |
+| `driver_heartbeat` | Unchanged — `flush_grace_active: true` for ~5 min after device override (via `flush_deadline_at`). |
+| `driver_finalize_reconciliation` | Unchanged — accepts flushed rows during override grace. |
+| Weekly/monthly incentives | Accrue **once** on period end day (Kuwait week/month end) in `driver_earnings_daily.incentive_kwd`. |
+| `driver_has_active_restaurant` | Requires linked restaurant with `status = published` AND `is_active = true`. |
+
+Migration: `20260729100000_ops_audit_backend_fixes.sql`
+
+---
+
+*Last synced: 2026-07-29 — [admin+app] Ops audit: security events RPC, delivery idempotency, device-guard overload cleanup, published restaurant gate, period incentive accrual fix.*
+
+*Prior: 2026-05-26 — [admin+app] Restaurant delivery geofences: `restaurant_geofences` table, full-page admin editor at `/restaurants/[id]/edit`, updated `driver_is_within_delivery_range` and `driver_get_delivery_proximity_context`.*
 
 *Prior: 2026-06-23 — [admin+app] Geofence schema upgrade (`zone_geofence_settings`, `geofence_events`), default settings fallback for legacy zones, realtime publication for geofence tables, and create/edit geofence rule controls.*
 

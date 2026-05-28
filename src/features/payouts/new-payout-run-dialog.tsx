@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { Loader2 } from "lucide-react";
+import { useRouter } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
@@ -17,17 +18,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import {
+  defaultEndDate,
+  defaultFirstOfMonthYmd,
+} from "@/lib/date/kuwait-dates";
 import { useGeneratePayoutRun } from "./use-payouts";
-
-function defaultEndDate() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function defaultStartDate() {
-  const d = new Date();
-  d.setDate(1);
-  return d.toISOString().slice(0, 10);
-}
 
 export function NewPayoutRunDialog({
   open,
@@ -37,9 +32,10 @@ export function NewPayoutRunDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const t = useTranslations("pages.payouts");
+  const router = useRouter();
   const create = useGeneratePayoutRun();
   const [isPending, startTransition] = useTransition();
-  const [periodStart, setPeriodStart] = useState(defaultStartDate);
+  const [periodStart, setPeriodStart] = useState(defaultFirstOfMonthYmd);
   const [periodEnd, setPeriodEnd] = useState(defaultEndDate);
   const [notes, setNotes] = useState("");
   const [dateError, setDateError] = useState<string | null>(null);
@@ -51,7 +47,7 @@ export function NewPayoutRunDialog({
 
   useEffect(() => {
     if (!open) {
-      setPeriodStart(defaultStartDate());
+      setPeriodStart(defaultFirstOfMonthYmd());
       setPeriodEnd(defaultEndDate());
       setNotes("");
       setDateError(null);
@@ -81,6 +77,7 @@ export function NewPayoutRunDialog({
       }
       toast.success(t("runCreated"));
       onOpenChange(false);
+      router.push(`/payouts/${result.id}`);
     });
   };
 

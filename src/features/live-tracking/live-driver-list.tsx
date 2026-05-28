@@ -35,7 +35,7 @@ export function LiveDriverList({
 }: {
   drivers: DriverLiveLocation[];
   selectedId: string | null;
-  onSelect: (driverId: string) => void;
+  onSelect: (driverId: string | null) => void;
   avatarByDriverId?: Map<string, string | null>;
 }) {
   const t = useTranslations("pages.liveTracking");
@@ -54,7 +54,7 @@ export function LiveDriverList({
         <li key={loc.driverId}>
           <button
             type="button"
-            onClick={() => onSelect(loc.driverId)}
+            onClick={() => onSelect(selectedId === loc.driverId ? null : loc.driverId)}
             className={cn(
               "flex w-full cursor-pointer flex-col gap-2.5 px-4 py-3 text-start transition-all hover:bg-muted/40",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",

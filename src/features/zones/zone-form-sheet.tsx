@@ -28,6 +28,7 @@ import {
   MAX_RADIUS_METERS,
   MIN_RADIUS_METERS,
   suggestZoneCode,
+  zoneMapBoundsFromShape,
   type ZoneGeometryType,
   type ZoneGeoFeature,
 } from "@/lib/geo/zone-geometry";
@@ -74,6 +75,17 @@ function clampCircleRadiusMeters(radius: number) {
 }
 
 const DESCRIPTION_MAX = 150;
+
+function fitMapToGeometry(
+  adapter: ZoneMapAdapter,
+  zoneType: ZoneGeometryType,
+  geometry: ZoneGeoFeature,
+) {
+  const corners = zoneMapBoundsFromShape(zoneType, geometry);
+  if (!corners) return;
+  const [[south, west], [north, east]] = corners;
+  adapter.fitViewport({ west, south, east, north });
+}
 
 function zoneErrorToast(
   t: ReturnType<typeof useTranslations<"pages.zones">>,
@@ -183,22 +195,14 @@ export function ZoneFormBody({
       setMapAdapter(adapter);
       adapter.invalidateSize?.();
       if (isEdit && zone?.geometry) {
-        const viewport = zone.geometry.bbox;
-        if (viewport && viewport.length === 4) {
-          adapter.fitViewport({
-            west: viewport[0],
-            south: viewport[1],
-            east: viewport[2],
-            north: viewport[3],
-          });
-        }
+        fitMapToGeometry(adapter, zone.zone_type, zone.geometry);
         adapter.setEditing?.(true);
         adapter.setDrawMode?.(null);
       } else {
         adapter.setDrawMode?.(zoneType);
       }
     },
-    [isEdit, zone?.geometry, zoneType],
+    [isEdit, zone?.geometry, zone?.zone_type, zoneType],
   );
 
   const handlePlaceSelect = useCallback(
@@ -220,15 +224,7 @@ export function ZoneFormBody({
       if (!adapter) return;
       const target = existingZones.find((z) => z.id === zoneId);
       if (!target?.geometry) return;
-      const viewport = target.geometry.bbox;
-      if (viewport && viewport.length === 4) {
-        adapter.fitViewport({
-          west: viewport[0],
-          south: viewport[1],
-          east: viewport[2],
-          north: viewport[3],
-        });
-      }
+      fitMapToGeometry(adapter, target.zone_type, target.geometry);
     },
     [existingZones],
   );

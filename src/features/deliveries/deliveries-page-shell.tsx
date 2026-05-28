@@ -219,6 +219,7 @@ function DeliveriesPageContent() {
     return deliveries.filter((d) => {
       if (tabFilter === "active") return d.status === "in_transit";
       if (tabFilter === "pending") return d.status === "pending";
+      if (tabFilter === "under_review") return d.status === "under_review";
       if (tabFilter === "verified") return d.status === "verified";
       if (tabFilter === "rejected") return d.status === "rejected";
       if (tabFilter === "cancelled") return d.status === "cancelled";
@@ -251,21 +252,7 @@ function DeliveriesPageContent() {
     const pending = deliveries.filter((d) => d.status === "pending").length;
     const rejected = deliveries.filter((d) => d.status === "rejected").length;
     const active = deliveries.filter((d) => d.status === "in_transit").length;
-
-    const todayStr = new Intl.DateTimeFormat("en-CA", {
-      timeZone: "Asia/Kuwait",
-    }).format(new Date());
-    const cancelledToday = deliveries.filter((d) => {
-      if (d.status !== "cancelled" || !d.cancelled_at) return false;
-      try {
-        const dDate = new Intl.DateTimeFormat("en-CA", {
-          timeZone: "Asia/Kuwait",
-        }).format(new Date(d.cancelled_at));
-        return dDate === todayStr;
-      } catch {
-        return false;
-      }
-    }).length;
+    const cancelled = deliveries.filter((d) => d.status === "cancelled").length;
 
     return [
       { label: t("kpiTotal"), value: total },
@@ -273,7 +260,7 @@ function DeliveriesPageContent() {
       { label: t("kpiVerified"), value: verified },
       { label: t("kpiPending"), value: pending },
       { label: t("kpiRejected"), value: rejected },
-      { label: t("kpiCancelled"), value: cancelledToday },
+      { label: t("kpiCancelled"), value: cancelled },
     ];
   }, [deliveries, t]);
 
@@ -323,6 +310,7 @@ function DeliveriesPageContent() {
     { id: "all" as const, label: t("tabAll") },
     { id: "active" as const, label: t("tabActive") },
     { id: "pending" as const, label: t("tabPending") },
+    { id: "under_review" as const, label: t("tabUnderReview") },
     { id: "verified" as const, label: t("tabVerified") },
     { id: "rejected" as const, label: t("tabRejected") },
     { id: "cancelled" as const, label: t("tabCancelled") },
@@ -608,7 +596,13 @@ function DeliveriesPageContent() {
         delivery={selectedDelivery}
         open={selectedDelivery !== null}
         onClose={() => setSelectedDelivery(null)}
-        onUpdated={() => void refetch()}
+        onUpdated={async () => {
+          const { data } = await refetch();
+          if (selectedDelivery && data) {
+            const fresh = data.find((row) => row.id === selectedDelivery.id);
+            if (fresh) setSelectedDelivery(fresh);
+          }
+        }}
       />
     </AppPage>
   );

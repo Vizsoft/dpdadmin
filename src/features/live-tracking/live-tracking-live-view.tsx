@@ -162,7 +162,6 @@ export function LiveTrackingLiveView({
   );
 
   const selectedMeta = selectedDriver ? profileMeta.get(selectedDriver.driverId) : undefined;
-  const selectedIntakeId = selectedMeta?.intakeId ?? null;
 
   const avatarByDriverId = useMemo(() => {
     const map = new Map<string, string | null>();
@@ -175,7 +174,7 @@ export function LiveTrackingLiveView({
   }, [driversMeta]);
 
   const { data: selectedRestaurantPins = [] } = useQuery({
-    queryKey: ["live-tracking", "restaurant-pins", selectedId],
+    queryKey: queryKeys.liveTracking.restaurantPins(selectedId ?? ""),
     enabled: Boolean(selectedId),
     queryFn: () => fetchDriverAssignedRestaurantPins(selectedId!),
   });
@@ -192,12 +191,12 @@ export function LiveTrackingLiveView({
   );
 
   const { data: selectedRecentOrders = [] } = useQuery({
-    queryKey: ["live-tracking", "recent-deliveries", selectedIntakeId],
-    enabled: Boolean(selectedIntakeId),
+    queryKey: ["live-tracking", "recent-deliveries", selectedId],
+    enabled: Boolean(selectedId),
     queryFn: async () => {
-      if (!selectedIntakeId) return [];
+      if (!selectedId) return [];
       try {
-        const rows = await fetchRecentDeliveriesForDriver(selectedIntakeId, 1);
+        const rows = await fetchRecentDeliveriesForDriver(selectedId, 1);
         return rows.map<LiveRecentDelivery>((row) => ({
           id: row.id,
           driverId: row.driver_id,
@@ -213,7 +212,7 @@ export function LiveTrackingLiveView({
   });
 
   const alertsCount = useMemo(
-    () => liveDrivers.filter((l) => l.pinStatus === "alert").length,
+    () => liveDrivers.filter((l) => l.zoneStatus === "out_of_zone").length,
     [liveDrivers],
   );
 
@@ -295,7 +294,9 @@ export function LiveTrackingLiveView({
           alertsCount={alertsCount}
           drivers={filtered}
           selectedDriverId={selectedId}
-          onSelectDriver={setSelectedId}
+          onSelectDriver={(driverId) =>
+            setSelectedId((prev) => (prev === driverId ? null : driverId))
+          }
           avatarByDriverId={avatarByDriverId}
           filters={filters}
           onChange={setFilters}
@@ -329,7 +330,9 @@ export function LiveTrackingLiveView({
             geofenceOverlays={geofenceOverlays}
             fitToMarkers={filtered.length > 0}
             focusMarkerId={selectedId}
-            onMarkerSelect={setSelectedId}
+            onMarkerSelect={(markerId) =>
+              setSelectedId((prev) => (prev === markerId ? null : markerId))
+            }
             mapHeightClass="h-full min-h-0"
             frameless
             className="h-full rounded-none border-0"

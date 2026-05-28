@@ -6,6 +6,7 @@ import { Loader2 } from "lucide-react";
 import { StatusPill } from "@/components/dashboard/status-pill";
 import { haversineMeters } from "@/features/locations/location-status";
 import { fetchLocationEventByDeliveryId } from "@/features/locations/locations-actions";
+import { queryKeys } from "@/lib/query/query-keys";
 
 export function DeliveryGpsAuditPanel({
   deliveryId,
@@ -23,7 +24,7 @@ export function DeliveryGpsAuditPanel({
   const t = useTranslations("pages.deliveries.gpsAudit");
 
   const { data: event, isLoading } = useQuery({
-    queryKey: ["delivery-gps-audit", deliveryId],
+    queryKey: queryKeys.deliveries.deliveryGpsAudit(deliveryId),
     queryFn: () => fetchLocationEventByDeliveryId(deliveryId),
   });
 

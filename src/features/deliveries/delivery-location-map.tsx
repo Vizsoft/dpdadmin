@@ -102,6 +102,14 @@ export function DeliveryLocationMap({
           map,
           draggable: false,
           title: t(kindLabelKey(point.kind)),
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 8,
+            fillColor: MARKER_COLORS[point.kind],
+            fillOpacity: 1,
+            strokeColor: "#ffffff",
+            strokeWeight: 2,
+          },
         });
         overlaysRef.current.push(marker);
       }

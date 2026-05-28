@@ -482,16 +482,22 @@ export function RestaurantDetailPageShell({ id }: { id: string }) {
                 </tr>
               </thead>
               <tbody>
-                {(driversQuery.data ?? []).map((driver) => (
+                {(driversQuery.data ?? []).map((driver) => {
+                  const detailHref = driver.intake_id
+                    ? `/drivers/${driver.intake_id}`
+                    : driver.driver_id
+                      ? `/drivers/${driver.driver_id}`
+                      : null;
+                  return (
                   <tr
                     key={driver.id}
                     className={cn(
                       "border-b border-border hover:bg-muted/40",
-                      driver.driver_id && "cursor-pointer",
+                      detailHref && "cursor-pointer",
                     )}
                     onClick={() => {
-                      if (driver.driver_id) {
-                        router.push(`/drivers/${driver.driver_id}`);
+                      if (detailHref) {
+                        router.push(detailHref);
                       }
                     }}
                   >
@@ -522,7 +528,8 @@ export function RestaurantDetailPageShell({ id }: { id: string }) {
                       )}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           )}

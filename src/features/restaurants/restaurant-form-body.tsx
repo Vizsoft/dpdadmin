@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { ToggleChip } from "@/components/app/toggle-chip";
 import { useAuth } from "@/contexts/auth-context";
 import { canManageRestaurants } from "@/lib/auth/permissions";
 import { Button } from "@/components/ui/button";
@@ -464,37 +465,21 @@ export function RestaurantFormBody({
             <Label className="text-xs font-semibold text-foreground">
               {t("geofences.kindTitle")}
             </Label>
-            <div className="grid grid-cols-2 gap-2">
-              {kindItems.map(({ kind, Icon }) => {
-                const active = drawKind === kind;
-                return (
-                  <button
-                    key={kind}
-                    type="button"
-                    onClick={() => {
-                      setDrawKind(kind);
-                      setMapMode("draw");
-                      setActiveTool("draw");
-                    }}
-                    className={cn(
-                      "flex cursor-pointer flex-col items-start gap-1 rounded-lg border p-2.5 text-start transition-colors",
-                      active
-                        ? "border-primary bg-primary/5"
-                        : "border-border bg-card hover:border-primary/40",
-                    )}
-                  >
-                    <Icon
-                      className={cn(
-                        "h-4 w-4",
-                        active ? "text-primary" : "text-muted-foreground",
-                      )}
-                    />
-                    <span className="text-xs font-semibold">
-                      {t(`geofences.kind.${kind}`)}
-                    </span>
-                  </button>
-                );
-              })}
+            <div className="flex flex-wrap gap-2">
+              {kindItems.map(({ kind, Icon }) => (
+                <ToggleChip
+                  key={kind}
+                  selected={drawKind === kind}
+                  icon={Icon}
+                  onClick={() => {
+                    setDrawKind(kind);
+                    setMapMode("draw");
+                    setActiveTool("draw");
+                  }}
+                >
+                  {t(`geofences.kind.${kind}`)}
+                </ToggleChip>
+              ))}
             </div>
           </div>
 

@@ -38,6 +38,14 @@ function formatSeenAt(value: string | null): string {
   return new Date(value).toLocaleString();
 }
 
+function formatGraceRemaining(deadline: string | null): string | null {
+  if (!deadline) return null;
+  const ms = new Date(deadline).getTime() - Date.now();
+  if (ms <= 0) return null;
+  const mins = Math.ceil(ms / 60_000);
+  return `${mins}m`;
+}
+
 function truncateDeviceId(deviceId: string): string {
   if (deviceId.length <= 12) return deviceId;
   return `${deviceId.slice(0, 6)}…${deviceId.slice(-4)}`;
@@ -105,6 +113,17 @@ function ActiveDeviceCard({ session }: { session: DriverDeviceSessionRow }) {
           <dt className="text-muted-foreground">{t("colLastSeen")}</dt>
           <dd>{formatSeenAt(session.last_seen_at)}</dd>
         </div>
+        {session.flush_deadline_at && resolveDeviceSessionStatus(session) === "override_pending" ? (
+          <div className="sm:col-span-2">
+            <dt className="text-muted-foreground">{t("flushDeadline")}</dt>
+            <dd>
+              {formatSeenAt(session.flush_deadline_at)}
+              {formatGraceRemaining(session.flush_deadline_at)
+                ? ` (${t("graceRemaining", { time: formatGraceRemaining(session.flush_deadline_at)! })})`
+                : null}
+            </dd>
+          </div>
+        ) : null}
       </dl>
     </div>
   );
@@ -119,7 +138,8 @@ export function DriverDevicesTab({
 }) {
   const t = useTranslations("pages.driverDetail.devices");
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const { data: overview, isLoading, isFetching } = useDriverDeviceOverview(driverId);
+  const { data: overview, isLoading, isFetching, isError, refetch } =
+    useDriverDeviceOverview(driverId);
   const forceSignOut = useForceSignOutDriver();
 
   const hasActiveSession = Boolean(overview?.active_device_id);
@@ -139,6 +159,23 @@ export function DriverDevicesTab({
       toast.error(t("forceSignOutFailed"));
     }
   };
+
+  if (isError) {
+    return (
+      <TrackingGlassCard className="border-slate-200 bg-white p-4 dark:border-slate-700/80 dark:bg-slate-900">
+        <p className="text-sm text-destructive">{t("loadError")}</p>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="mt-3 h-9"
+          onClick={() => void refetch()}
+        >
+          {t("retry")}
+        </Button>
+      </TrackingGlassCard>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -223,6 +260,12 @@ export function DriverDevicesTab({
                     </TableCell>
                     <TableCell className="text-sm">
                       {formatSeenAt(session.last_seen_at)}
+                      {session.flush_deadline_at &&
+                      resolveDeviceSessionStatus(session) === "override_pending" ? (
+                        <p className="text-[10px] text-amber-700 dark:text-amber-400">
+                          {t("flushUntil", { time: formatSeenAt(session.flush_deadline_at) })}
+                        </p>
+                      ) : null}
                     </TableCell>
                     <TableCell>
                       <DeviceStatusPill session={session} />

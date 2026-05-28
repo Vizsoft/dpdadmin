@@ -6,6 +6,39 @@ import type {
   EarningsPreviewResult,
 } from "./types";
 
+type RuleScopeRow = {
+  zone_id: string | null;
+  partner_id: string | null;
+  restaurant_id: string | null;
+};
+
+type DeliveryRuleWithScopes = {
+  id: string;
+  name: string;
+  scope_type: "zone" | "partner" | "restaurant";
+  start_date: string;
+  end_date: string;
+  delivery_rule_scopes: RuleScopeRow[] | null;
+};
+
+function deliveryMatchesRuleScopes(
+  rule: DeliveryRuleWithScopes,
+  delivery: {
+    zone_id: string | null;
+    partner_id: string | null;
+    restaurant_id: string | null;
+  },
+): boolean {
+  const scopes = rule.delivery_rule_scopes ?? [];
+  return scopes.some(
+    (scope) =>
+      (rule.scope_type === "zone" && scope.zone_id === delivery.zone_id) ||
+      (rule.scope_type === "partner" && scope.partner_id === delivery.partner_id) ||
+      (rule.scope_type === "restaurant" &&
+        scope.restaurant_id === delivery.restaurant_id),
+  );
+}
+
 export async function validateDeliveryForRules(
   deliveryId: string,
 ): Promise<DeliveryValidationResult> {
@@ -33,9 +66,21 @@ export async function validateDeliveryForRules(
     };
   }
 
+  const deliverDate = delivery.delivered_at
+    ? new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Kuwait",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(new Date(delivery.delivered_at))
+    : null;
+
   const { data: matches, error: matchError } = await supabase.rpc(
     "delivery_matches_rules",
-    { p_delivery_id: deliveryId },
+    {
+      p_delivery_id: deliveryId,
+      p_on_date: deliverDate ?? undefined,
+    },
   );
 
   if (matchError) {
@@ -48,26 +93,27 @@ export async function validateDeliveryForRules(
 
   const { data: rules } = await supabase
     .from("delivery_rules")
-    .select("id, name, scope_type, zone_id, partner_id, restaurant_id")
+    .select(
+      "id, name, scope_type, start_date, end_date, delivery_rule_scopes (zone_id, partner_id, restaurant_id)",
+    )
     .eq("status", "active");
 
   const matchedRuleIds: string[] = [];
   const reasons: string[] = [];
 
-  if (matches) {
-    for (const rule of rules ?? []) {
-      const hit =
-        (rule.scope_type === "zone" && rule.zone_id === delivery.zone_id) ||
-        (rule.scope_type === "partner" &&
-          rule.partner_id === delivery.partner_id) ||
-        (rule.scope_type === "restaurant" &&
-          rule.restaurant_id === delivery.restaurant_id);
-      if (hit) matchedRuleIds.push(rule.id);
+  for (const rule of (rules ?? []) as DeliveryRuleWithScopes[]) {
+    if (
+      deliverDate &&
+      (deliverDate < rule.start_date || deliverDate > rule.end_date)
+    ) {
+      continue;
     }
-    if (matchedRuleIds.length === 0 && (rules?.length ?? 0) > 0) {
-      reasons.push("no_matching_scope");
+    if (deliveryMatchesRuleScopes(rule, delivery)) {
+      matchedRuleIds.push(rule.id);
     }
-  } else if ((rules?.length ?? 0) > 0) {
+  }
+
+  if (!matches && (rules?.length ?? 0) > 0) {
     reasons.push("no_matching_scope");
   }
 

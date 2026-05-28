@@ -80,6 +80,7 @@ export function LiveTrackingHistoryView({
   const locale = useLocale();
   const [driverId, setDriverId] = useState<string>("");
   const [date, setDate] = useState(kuwaitToday());
+  const [dateEnd, setDateEnd] = useState<string | null>(null);
   const [index, setIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);
@@ -107,7 +108,7 @@ export function LiveTrackingHistoryView({
 
   const driverSelectItems = useMemo(() => driverSearchOptions(linkedDrivers), [linkedDrivers]);
 
-  const { data: events = [], isLoading } = useLiveHistory(driverId || null, date);
+  const { data: events = [], isLoading } = useLiveHistory(driverId || null, date, dateEnd);
 
   const yearMonth = date.slice(0, 7);
   const [calendarMonth, setCalendarMonth] = useState(yearMonth);
@@ -125,7 +126,7 @@ export function LiveTrackingHistoryView({
   useEffect(() => {
     setIndex(0);
     setPlaying(false);
-  }, [driverId, date, sortedEvents.length]);
+  }, [driverId, date, dateEnd, sortedEvents.length]);
 
   const path = useMemo(
     () =>
@@ -231,7 +232,7 @@ export function LiveTrackingHistoryView({
   );
 
   const { data: historyRestaurantPins = [] } = useQuery({
-    queryKey: ["live-tracking", "history-restaurant-pins", driverId],
+    queryKey: queryKeys.liveTracking.restaurantPins(driverId),
     enabled: Boolean(driverId),
     queryFn: () => fetchDriverAssignedRestaurantPins(driverId),
   });
@@ -248,11 +249,18 @@ export function LiveTrackingHistoryView({
   );
 
   const quickRange = useMemo(() => {
-    if (date === kuwaitToday()) return "today";
-    if (date === kuwaitDateShift(1)) return "yesterday";
-    if (date === kuwaitDateShift(7)) return "last7";
+    if (dateEnd === kuwaitToday() && date === kuwaitDateShift(6)) return "last7";
+    if (!dateEnd && date === kuwaitToday()) return "today";
+    if (!dateEnd && date === kuwaitDateShift(1)) return "yesterday";
     return "custom";
-  }, [date]);
+  }, [date, dateEnd]);
+
+  const historyDateLabel = useMemo(() => {
+    if (dateEnd && dateEnd !== date) {
+      return `${formatDateLabel(date, locale)} – ${formatDateLabel(dateEnd, locale)}`;
+    }
+    return formatDateLabel(date, locale);
+  }, [date, dateEnd, locale]);
 
   return (
     <div className="space-y-2">
@@ -282,7 +290,10 @@ export function LiveTrackingHistoryView({
                   <Label className="text-xs text-muted-foreground">{t("historyDate")}</Label>
                   <HistoryDatePicker
                     value={date}
-                    onChange={setDate}
+                    onChange={(nextDate) => {
+                      setDate(nextDate);
+                      setDateEnd(null);
+                    }}
                     activeDates={activeDates}
                     disabled={!driverId}
                     locale={locale}
@@ -290,13 +301,31 @@ export function LiveTrackingHistoryView({
                   />
                 </div>
                 <div className="flex flex-wrap gap-1.5">
-                  <ToggleChip selected={quickRange === "today"} onClick={() => setDate(kuwaitToday())}>
+                  <ToggleChip
+                    selected={quickRange === "today"}
+                    onClick={() => {
+                      setDate(kuwaitToday());
+                      setDateEnd(null);
+                    }}
+                  >
                     {t("historyToday")}
                   </ToggleChip>
-                  <ToggleChip selected={quickRange === "yesterday"} onClick={() => setDate(kuwaitDateShift(1))}>
+                  <ToggleChip
+                    selected={quickRange === "yesterday"}
+                    onClick={() => {
+                      setDate(kuwaitDateShift(1));
+                      setDateEnd(null);
+                    }}
+                  >
                     {t("historyYesterday")}
                   </ToggleChip>
-                  <ToggleChip selected={quickRange === "last7"} onClick={() => setDate(kuwaitDateShift(7))}>
+                  <ToggleChip
+                    selected={quickRange === "last7"}
+                    onClick={() => {
+                      setDate(kuwaitDateShift(6));
+                      setDateEnd(kuwaitToday());
+                    }}
+                  >
                     {t("historyLast7Days")}
                   </ToggleChip>
                 </div>
@@ -340,9 +369,15 @@ export function LiveTrackingHistoryView({
               </div>
             ) : sortedEvents.length === 0 ? (
               <NoDataForDateEmpty
-                dateLabel={formatDateLabel(date, locale)}
-                onPickYesterday={() => setDate(kuwaitDateShift(1))}
-                onPickLast7Days={() => setDate(kuwaitDateShift(7))}
+                dateLabel={historyDateLabel}
+                onPickYesterday={() => {
+                  setDate(kuwaitDateShift(1));
+                  setDateEnd(null);
+                }}
+                onPickLast7Days={() => {
+                  setDate(kuwaitDateShift(6));
+                  setDateEnd(kuwaitToday());
+                }}
               />
             ) : (
               <>
@@ -363,7 +398,7 @@ export function LiveTrackingHistoryView({
                         code={selectedDriverMeta.driver_code}
                         zoneName={selectedDriverMeta.zone_name}
                         isOnDuty={selectedDriverMeta.is_on_duty}
-                        dateLabel={formatDateLabel(date, locale)}
+                        dateLabel={historyDateLabel}
                         avatarUrl={selectedDriverMeta.avatar_display_url}
                       />
                     </div>

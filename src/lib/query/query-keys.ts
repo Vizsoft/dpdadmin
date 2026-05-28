@@ -24,8 +24,12 @@ export const queryKeys = {
     all: () => ["live-tracking"] as const,
     history: (driverId: string, date: string) =>
       ["live-tracking", "history", driverId, date] as const,
+    historyRange: (driverId: string, fromDate: string, toDate: string) =>
+      ["live-tracking", "history", driverId, fromDate, toDate] as const,
     historyActiveDates: (driverId: string, yearMonth: string) =>
       ["live-tracking", "history-active-dates", driverId, yearMonth] as const,
+    restaurantPins: (driverId: string) =>
+      ["live-tracking", "restaurant-pins", driverId] as const,
   },
   partners: {
     all: () => ["partners"] as const,
@@ -55,6 +59,10 @@ export const queryKeys = {
     list: (filters: Record<string, unknown> = {}) => ["deliveries", "list", filters] as const,
     detail: (id: string) => ["deliveries", "detail", id] as const,
     live: (zoneId?: string) => ["deliveries", "live", zoneId ?? "all"] as const,
+    deliveryGpsAudit: (deliveryId: string) =>
+      ["deliveries", "gps-audit", deliveryId] as const,
+    deliveryLiveLocation: (deliveryId: string) =>
+      ["deliveries", "live-location", deliveryId] as const,
   },
   verifications: {
     all: () => ["verifications"] as const,

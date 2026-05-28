@@ -3,6 +3,7 @@ export const PARTNER_ERROR_KEYS = [
   "missing_fields",
   "slug_exists",
   "has_drivers",
+  "has_restaurants",
   "missing_file",
   "file_too_large",
   "invalid_type",

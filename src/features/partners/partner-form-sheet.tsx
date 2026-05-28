@@ -2,9 +2,11 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
+import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/auth-context";
+import { queryKeys } from "@/lib/query/query-keys";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -47,6 +49,7 @@ function PartnerFormBody({
   const t = useTranslations("pages.partners");
   const { can } = useAuth();
   const canManage = can("partners.manage");
+  const queryClient = useQueryClient();
   const isEdit = Boolean(partner);
   const [isPending, startTransition] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -95,6 +98,15 @@ function PartnerFormBody({
       }
 
       toast.success(isEdit ? t("updated") : t("created"));
+
+      const nameChanged = isEdit && partner && name.trim() !== partner.name;
+      if (nameChanged) {
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.restaurants.partnerOptions(),
+        });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.restaurants.list() });
+      }
+
       onClose();
       onSaved();
     });

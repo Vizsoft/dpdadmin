@@ -107,6 +107,23 @@ function notify() {
   }
 }
 
+function patchDriverDuty(driverId: string, isOnDuty: boolean) {
+  const meta = nameCache.get(driverId);
+  if (meta) {
+    nameCache.set(driverId, { ...meta, isOnDuty });
+  }
+
+  const idx = cache.findIndex((loc) => loc.driverId === driverId);
+  if (idx < 0) return;
+
+  cache = [
+    ...cache.slice(0, idx),
+    { ...cache[idx]!, isOnDuty },
+    ...cache.slice(idx + 1),
+  ];
+  notify();
+}
+
 async function loadInitial() {
   const supabase = createClient();
   const { data, error } = await supabase
@@ -173,6 +190,16 @@ function ensureChannel() {
           payload.new as LiveRow | null,
           payload.old as { driver_id: string } | null,
         );
+      },
+    )
+    .on(
+      "postgres_changes",
+      { event: "UPDATE", schema: "public", table: "drivers" },
+      (payload) => {
+        const row = payload.new as { id?: string; is_on_duty?: boolean } | null;
+        if (row?.id && typeof row.is_on_duty === "boolean") {
+          patchDriverDuty(row.id, row.is_on_duty);
+        }
       },
     )
     .subscribe();

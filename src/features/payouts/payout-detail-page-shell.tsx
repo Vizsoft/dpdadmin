@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { AppPage } from "@/components/app/app-page";
@@ -16,12 +16,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useAuth } from "@/contexts/auth-context";
 import { useApprovePayoutRun, useMarkPayoutRunPaid, usePayoutRunDetail, useVoidPayoutRun } from "./use-payouts";
 import { PayoutLineDetailDialog } from "./payout-line-detail-dialog";
 import type { DriverPayoutLine } from "./types";
 
 export function PayoutDetailPageShell({ runId }: { runId: string }) {
   const t = useTranslations("pages.payouts");
+  const { can } = useAuth();
+  const canManage = can("earnings.manage");
   const detailQuery = usePayoutRunDetail(runId);
   const approve = useApprovePayoutRun();
   const markPaid = useMarkPayoutRunPaid();
@@ -87,16 +90,20 @@ export function PayoutDetailPageShell({ runId }: { runId: string }) {
             {String(run.period_start ?? "—")} - {String(run.period_end ?? "—")}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        {canManage ? (
+          <div className="flex items-center gap-2">
+            <StatusPill variant="neutral">{status}</StatusPill>
+            {status === "draft" ? <Button onClick={onApprove}>{t("approveRun")}</Button> : null}
+            {status === "approved" ? <Button onClick={onMarkPaid}>{t("markPaid")}</Button> : null}
+            {status !== "voided" ? (
+              <Button variant="outline" onClick={onVoid}>
+                {t("voidRun")}
+              </Button>
+            ) : null}
+          </div>
+        ) : (
           <StatusPill variant="neutral">{status}</StatusPill>
-          {status === "draft" ? <Button onClick={onApprove}>{t("approveRun")}</Button> : null}
-          {status === "approved" ? <Button onClick={onMarkPaid}>{t("markPaid")}</Button> : null}
-          {status !== "voided" ? (
-            <Button variant="outline" onClick={onVoid}>
-              {t("voidRun")}
-            </Button>
-          ) : null}
-        </div>
+        )}
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">

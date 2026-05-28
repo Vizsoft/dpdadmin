@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { ChevronDown, Filter, Loader2, Plus, Search } from "lucide-react";
+import { ChevronDown, Loader2, Plus, Search } from "lucide-react";
 import { AppPage } from "@/components/app/app-page";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -138,15 +138,6 @@ function ZonesPageContent() {
               />
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 flex-1 cursor-pointer rounded-lg border-slate-200 text-xs dark:border-slate-700"
-              >
-                <Filter className="me-1.5 h-3.5 w-3.5" />
-                {t("geofence.filters")}
-              </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger className="inline-flex h-8 flex-1 cursor-pointer items-center justify-center rounded-lg border border-slate-200 bg-white px-2 text-xs font-medium shadow-xs hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800">
                   {t("geofence.bulkActions")}
