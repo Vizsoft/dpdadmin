@@ -525,6 +525,46 @@ export async function fetchDriversForAdmin(options?: {
     }
   >();
   const deliveryCountByDriverId = new Map<string, number>();
+  const restaurantNamesByIntakeId = new Map<string, string[]>();
+  const restaurantNamesByDriverId = new Map<string, string[]>();
+
+  const intakeIds = rows.map((r) => r.id);
+  if (intakeIds.length > 0) {
+    const [{ data: intakeRestRows }, { data: driverRestRows }] = await Promise.all([
+      supabase
+        .from("driver_intake_restaurants")
+        .select("intake_id, restaurants (id, name)")
+        .in("intake_id", intakeIds),
+      linkedIds.length > 0
+        ? supabase
+            .from("driver_restaurants")
+            .select("driver_id, restaurants (id, name)")
+            .in("driver_id", linkedIds)
+        : Promise.resolve({ data: [] as never[] }),
+    ]);
+
+    for (const link of (intakeRestRows ?? []) as Array<{
+      intake_id: string;
+      restaurants: { id: string; name: string } | { id: string; name: string }[] | null;
+    }>) {
+      const rel = Array.isArray(link.restaurants) ? link.restaurants[0] : link.restaurants;
+      if (!rel?.name) continue;
+      const list = restaurantNamesByIntakeId.get(link.intake_id) ?? [];
+      list.push(rel.name);
+      restaurantNamesByIntakeId.set(link.intake_id, list);
+    }
+
+    for (const link of (driverRestRows ?? []) as Array<{
+      driver_id: string;
+      restaurants: { id: string; name: string } | { id: string; name: string }[] | null;
+    }>) {
+      const rel = Array.isArray(link.restaurants) ? link.restaurants[0] : link.restaurants;
+      if (!rel?.name) continue;
+      const list = restaurantNamesByDriverId.get(link.driver_id) ?? [];
+      list.push(rel.name);
+      restaurantNamesByDriverId.set(link.driver_id, list);
+    }
+  }
 
   if (linkedIds.length > 0) {
     const [{ data: driverRows }, { data: deliveryRows }] = await Promise.all([
@@ -617,6 +657,11 @@ export async function fetchDriversForAdmin(options?: {
         partner_logo_url,
         zone_id: row.zone_id,
         zone_name: zoneRow?.name ?? "—",
+        restaurant_names: row.linked_profile_id
+          ? (restaurantNamesByDriverId.get(row.linked_profile_id) ??
+              restaurantNamesByIntakeId.get(row.id) ??
+              [])
+          : (restaurantNamesByIntakeId.get(row.id) ?? []),
         workflow_status: row.workflow_status,
         linked: row.linked,
         linked_profile_id: row.linked_profile_id,

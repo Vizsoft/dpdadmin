@@ -52,7 +52,7 @@ export default async function DashboardLayout({
           <SidebarProvider className="flex h-svh w-full overflow-hidden">
             <AppSidebar />
             <SidebarInset className="flex h-svh min-w-0 flex-1 flex-col overflow-hidden bg-muted/30">
-              <div className="flex h-full min-h-0 overflow-hidden bg-sidebar">
+              <div className="flex h-full min-h-0 overflow-hidden bg-muted/30">
                 <AppSecondaryNav />
                 <main className={cn("flex-1 overflow-auto bg-muted/30", LAYOUT.commandPageInset)}>
                   {children}

@@ -66,8 +66,8 @@ import {
   AttendancePill,
   formatDriverCodeDisplay,
   formatPhoneInternational,
-  PartnerCell,
   PasscodeCell,
+  RestaurantsCell,
 } from "./driver-list-ui";
 import { DriverFormSheet } from "./driver-form-sheet";
 import { DriversKpiStrip } from "./drivers-kpi-strip";
@@ -401,7 +401,7 @@ function DriversPageContent() {
       { id: "employeeId", label: t("colEmployeeId"), className: "hidden lg:table-cell" },
       { id: "name", label: t("colName") },
       { id: "phone", label: t("colPhone"), className: "hidden md:table-cell" },
-      { id: "partner", label: t("colPartner") },
+      { id: "restaurants", label: t("colRestaurants") },
       { id: "zone", label: t("colZone") },
       { id: "todayDeliveries", label: t("colTodayDeliveries"), className: "hidden sm:table-cell" },
       { id: "status", label: t("colStatus") },
@@ -696,10 +696,7 @@ function DriversPageContent() {
                           {formatPhoneInternational(driver.phone)}
                         </TableCell>
                         <TableCell>
-                          <PartnerCell
-                            name={driver.partner_name}
-                            logoUrl={driver.partner_logo_url}
-                          />
+                          <RestaurantsCell names={driver.restaurant_names} />
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {driver.zone_name}

@@ -587,6 +587,7 @@
       "colName": "Name",
       "colPhone": "Phone",
       "colPartner": "Partner",
+      "colRestaurants": "Restaurants",
       "colZone": "Zone",
       "colTodayDeliveries": "Today Deliveries",
       "colStatus": "Status",

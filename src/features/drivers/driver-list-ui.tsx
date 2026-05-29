@@ -138,3 +138,32 @@ export function PartnerCell({
     </div>
   );
 }
+
+export function RestaurantsCell({ names }: { names: string[] }) {
+  if (!names || names.length === 0) {
+    return <span className="text-sm text-muted-foreground">—</span>;
+  }
+  const visible = names.slice(0, 2);
+  const extra = names.length - visible.length;
+  const tooltipText = names.join(", ");
+  return (
+    <div
+      className="flex min-w-0 max-w-[220px] flex-wrap items-center gap-1"
+      title={tooltipText}
+    >
+      {visible.map((name) => (
+        <span
+          key={name}
+          className="inline-flex max-w-full items-center truncate rounded-md border border-border bg-muted/40 px-1.5 py-0.5 text-xs text-foreground"
+        >
+          {name}
+        </span>
+      ))}
+      {extra > 0 ? (
+        <span className="inline-flex shrink-0 items-center rounded-md border border-border bg-muted/40 px-1.5 py-0.5 text-xs text-muted-foreground">
+          +{extra}
+        </span>
+      ) : null}
+    </div>
+  );
+}

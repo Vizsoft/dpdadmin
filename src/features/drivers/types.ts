@@ -131,6 +131,7 @@ export type DriverListRow = {
   partner_logo_url: string | null;
   zone_id: string;
   zone_name: string;
+  restaurant_names: string[];
   workflow_status: DriverWorkflowStatus;
   linked: boolean;
   linked_profile_id: string | null;
