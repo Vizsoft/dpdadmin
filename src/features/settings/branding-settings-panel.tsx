@@ -13,9 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ThemeSettingsSection } from "@/features/settings/theme-settings-section";
-
+import { AppFormSection } from "@/components/app";
 export function BrandingSettingsPanel() {
   const t = useTranslations("pages.settings.branding");
   const locale = useLocale();
@@ -48,13 +46,8 @@ export function BrandingSettingsPanel() {
 
   return (
     <div className="space-y-6">
-      <ThemeSettingsSection />
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">{t("title")}</CardTitle>
-        <CardDescription>{t("subtitle")}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
+    <AppFormSection title={t("title")} description={t("subtitle")}>
+      <div className="space-y-6">
         <form
           className="grid gap-4 sm:grid-cols-2"
           action={(formData) => {
@@ -209,8 +202,8 @@ export function BrandingSettingsPanel() {
             {errorMessage}
           </p>
         ) : null}
-      </CardContent>
-    </Card>
+      </div>
+    </AppFormSection>
     </div>
   );
 }

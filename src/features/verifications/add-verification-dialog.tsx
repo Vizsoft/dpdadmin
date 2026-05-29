@@ -5,7 +5,6 @@ import { useTranslations } from "next-intl";
 import {
   Calendar,
   Check,
-  ClipboardCheck,
   Loader2,
   Search,
   Sparkles,
@@ -14,15 +13,9 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { AppModalFooter } from "@/components/app/app-modal-footer";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SearchSelect } from "@/components/ui/search-select";
@@ -186,22 +179,12 @@ export function AddVerificationDialog({
         onOpenChange(v);
       }}
     >
-      <DialogContent className="flex max-h-[min(90vh,720px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
-        <DialogHeader className="border-b border-border px-5 py-4 pe-12">
-          <div className="flex items-start gap-3 pe-6">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <ClipboardCheck className="size-4" aria-hidden />
-            </div>
-            <div>
-              <DialogTitle>{t("addVerification")}</DialogTitle>
-              <DialogDescription className="mt-0.5 text-xs">
-                {t("createSubtitle")}
-              </DialogDescription>
-            </div>
-          </div>
-        </DialogHeader>
-
-        <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
+      <DialogContent
+        className="flex max-h-[min(90vh,720px)] flex-col gap-0 overflow-visible rounded-xl p-0 sm:max-w-lg"
+        showCloseButton
+        closeOutside
+      >
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 pt-4 pb-3">
           <div className="space-y-1.5">
             <Label>{t("fieldDriver")}</Label>
             {selectedDriver ? (
@@ -441,37 +424,42 @@ export function AddVerificationDialog({
           </div>
         </div>
 
-        <DialogFooter className="flex-row flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-3">
-          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Sparkles className="size-3.5 shrink-0 text-primary" aria-hidden />
-            {t("autoReconcileHint")}
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              className="cursor-pointer rounded-lg"
-              onClick={() => onOpenChange(false)}
-            >
-              {t("cancel")}
-            </Button>
-            <Button
-              type="button"
-              className="cursor-pointer rounded-lg"
-              disabled={isPending}
-              onClick={handleSubmit}
-            >
-              {isPending ? (
-                <>
-                  <Loader2 className="me-1.5 size-4 animate-spin" />
-                  {t("save")}
-                </>
-              ) : (
-                t("save")
-              )}
-            </Button>
-          </div>
-        </DialogFooter>
+        <AppModalFooter
+          title={t("addVerification")}
+          subtitle={t("createSubtitle")}
+          meta={
+            <span className="inline-flex items-center gap-1.5">
+              <Sparkles className="size-3.5 shrink-0 text-primary" aria-hidden />
+              {t("autoReconcileHint")}
+            </span>
+          }
+        >
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-9 cursor-pointer rounded-md"
+            onClick={() => onOpenChange(false)}
+          >
+            {t("cancel")}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            className="h-9 cursor-pointer rounded-md px-4"
+            disabled={isPending}
+            onClick={handleSubmit}
+          >
+            {isPending ? (
+              <>
+                <Loader2 className="me-1.5 size-4 animate-spin" />
+                {t("save")}
+              </>
+            ) : (
+              t("save")
+            )}
+          </Button>
+        </AppModalFooter>
       </DialogContent>
     </Dialog>
   );

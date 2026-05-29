@@ -9,7 +9,7 @@ import { updatePassword } from "@/features/auth/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { AppFormSection } from "@/components/app";
 import { LocaleSwitcher } from "@/components/layout/locale-switcher";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 
@@ -28,12 +28,7 @@ export function ProfileSettingsPanel({ profile }: { profile: ProfileData }) {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{t("profile.title")}</CardTitle>
-          <CardDescription>{t("profile.subtitle")}</CardDescription>
-        </CardHeader>
-        <CardContent>
+      <AppFormSection title={t("profile.title")} description={t("profile.subtitle")}>
           <form
             className="grid gap-4 sm:grid-cols-2"
             action={(formData) => {
@@ -91,15 +86,12 @@ export function ProfileSettingsPanel({ profile }: { profile: ProfileData }) {
               </Button>
             </div>
           </form>
-        </CardContent>
-      </Card>
+      </AppFormSection>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{t("profile.changePassword")}</CardTitle>
-          <CardDescription>{t("profile.changePasswordHint")}</CardDescription>
-        </CardHeader>
-        <CardContent>
+      <AppFormSection
+        title={t("profile.changePassword")}
+        description={t("profile.changePasswordHint")}
+      >
           <form
             className="grid gap-4 sm:grid-cols-2"
             action={(formData) => {
@@ -151,26 +143,15 @@ export function ProfileSettingsPanel({ profile }: { profile: ProfileData }) {
               </Button>
             </div>
           </form>
-        </CardContent>
-      </Card>
+      </AppFormSection>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">{t("localeLabel")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <LocaleSwitcher />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">{t("themeLabel")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ThemeToggle />
-          </CardContent>
-        </Card>
+        <AppFormSection title={t("localeLabel")}>
+          <LocaleSwitcher />
+        </AppFormSection>
+        <AppFormSection title={t("themeLabel")}>
+          <ThemeToggle />
+        </AppFormSection>
       </div>
     </div>
   );

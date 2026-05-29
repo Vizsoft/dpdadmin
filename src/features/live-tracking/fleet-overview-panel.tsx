@@ -12,7 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { ToggleChip } from "@/components/app/toggle-chip";
 import { Badge } from "@/components/ui/badge";
-import { MetricTile } from "@/components/ui/metric-tile";
+import { MetricTile, type Tone } from "@/components/ui/metric-tile";
 import type { DriverLiveLocation } from "@/features/locations/types";
 import { SearchSelect } from "@/components/ui/search-select";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -71,33 +71,39 @@ export function FleetOverviewPanel({
   const selectedChipCount = filters.statusChips.length;
 
   const stats = useMemo(
-    () => [
+    (): Array<{
+      id: string;
+      label: string;
+      value: string;
+      tone: Tone;
+      icon: typeof Users;
+    }> => [
       {
         id: "total",
         label: t("metricTotalDrivers"),
         value: totalDrivers.toLocaleString(),
-        tone: "blue" as const,
+        tone: "primary",
         icon: Users,
       },
       {
         id: "active",
         label: t("metricActiveTracked"),
         value: trackedCount.toLocaleString(),
-        tone: "emerald" as const,
+        tone: "success",
         icon: UserCheck,
       },
       {
         id: "progress",
         label: t("metricInProgress"),
         value: inProgressCount.toLocaleString(),
-        tone: "indigo" as const,
+        tone: "primary",
         icon: Package,
       },
       {
         id: "sos",
         label: t("metricGpsAlerts"),
         value: alertsCount.toLocaleString(),
-        tone: "rose" as const,
+        tone: "danger",
         icon: AlertTriangle,
       },
     ],

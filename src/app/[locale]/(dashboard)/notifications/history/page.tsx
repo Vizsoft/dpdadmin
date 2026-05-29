@@ -1,6 +1,4 @@
-import { setRequestLocale } from "next-intl/server";
-import { requirePermission } from "@/lib/auth/require-permission";
-import { NotificationHistoryPageShell } from "@/features/notifications/history-page-shell";
+import { redirect } from "next/navigation";
 
 export default async function NotificationHistoryPage({
   params,
@@ -8,7 +6,5 @@ export default async function NotificationHistoryPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  setRequestLocale(locale);
-  await requirePermission(locale, "notifications.view");
-  return <NotificationHistoryPageShell />;
+  redirect(`/${locale}/notifications`);
 }

@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Pill } from "@/components/ui/metric-tile";
+import { Pill, type Tone } from "@/components/ui/metric-tile";
 import type { DriverLocationEvent } from "@/features/locations/types";
 import { formatBatteryPct, formatSpeedMps } from "@/features/locations/location-status";
 import { TrackingGlassCard } from "./tracking-shell";
@@ -37,14 +37,14 @@ export function HistoryEventsTable({
     return t("statusIdle");
   };
 
-  const statusTone = (status: DriverLocationEvent["trackingStatus"]) =>
-    status === "delivery_submit" ? "blue" : status === "moving" ? "emerald" : "slate";
+  const statusTone = (status: DriverLocationEvent["trackingStatus"]): Tone =>
+    status === "delivery_submit" ? "primary" : status === "moving" ? "success" : "neutral";
 
   return (
     <TrackingGlassCard className="overflow-hidden border-border bg-card">
       <div className="flex items-center justify-between border-b border-border px-3 py-2">
         <h3 className="text-sm font-semibold text-foreground">{t("tabHistory")}</h3>
-        <Pill tone="slate">{t("historyEventsCount", { count: events.length })}</Pill>
+        <Pill tone="neutral">{t("historyEventsCount", { count: events.length })}</Pill>
       </div>
       <div className="max-h-[280px] overflow-auto">
         <Table>

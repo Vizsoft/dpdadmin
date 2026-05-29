@@ -1,10 +1,15 @@
 "use client";
 
+import { useMemo } from "react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { Bell, Copy, Loader2, Plus, RefreshCw, Send } from "lucide-react";
-import { TABLE_HEAD_CLASS } from "@/components/app/constants";
 import { AppListCard } from "@/components/app/app-list-card";
+import {
+  AppDataTable,
+  AppDataTableRow,
+  TableCell,
+} from "@/components/app/app-data-table";
 import { AppPage } from "@/components/app/app-page";
 import { AppPageHeader } from "@/components/app/app-page-header";
 import { AppEmptyState } from "@/components/app/app-empty-state";
@@ -12,32 +17,11 @@ import { KpiGrid } from "@/components/dashboard/kpi-grid";
 import { StatusPill } from "@/components/dashboard/status-pill";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { useAuth } from "@/contexts/auth-context";
 import { cloneNotificationCampaign } from "./notifications-actions";
 import { NotificationsTabBar } from "./notifications-tab-bar";
 import { useNotificationCampaigns, useNotificationDashboard } from "./use-notifications";
-import type { NotificationCampaignStatus } from "./types";
-
-function statusVariant(
-  status: NotificationCampaignStatus,
-): "success" | "warning" | "danger" | "neutral" {
-  if (status === "sent" || status === "delivered" || status === "opened" || status === "clicked") {
-    return "success";
-  }
-  if (status === "failed" || status === "cancelled" || status === "expired") return "danger";
-  if (status === "pending_approval" || status === "scheduled" || status === "queued") {
-    return "warning";
-  }
-  return "neutral";
-}
+import { resolveStatusVariant } from "@/lib/ui/resolve-status-variant";
 
 function formatDateTime(iso: string | null): string {
   if (!iso) return "—";
@@ -60,6 +44,18 @@ export function NotificationsPageShell() {
 
   const { data: kpis, isLoading: kpisLoading, refetch: refetchKpis } = useNotificationDashboard();
   const { data: campaigns, isLoading, refetch } = useNotificationCampaigns({});
+
+  const tableColumns = useMemo(
+    () => [
+      { id: "title", label: t("colTitle") },
+      { id: "category", label: t("colCategory") },
+      { id: "audience", label: t("colAudience") },
+      { id: "status", label: t("colStatus") },
+      { id: "sent", label: t("colSent") },
+      { id: "actions", label: t("colActions") },
+    ],
+    [t],
+  );
 
   return (
     <AppPage>
@@ -128,20 +124,9 @@ export function NotificationsPageShell() {
           ) : !campaigns?.length ? (
             <AppEmptyState title={t("emptyTitle")} description={t("emptyDescription")} />
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className={TABLE_HEAD_CLASS}>{t("colTitle")}</TableHead>
-                  <TableHead className={TABLE_HEAD_CLASS}>{t("colCategory")}</TableHead>
-                  <TableHead className={TABLE_HEAD_CLASS}>{t("colAudience")}</TableHead>
-                  <TableHead className={TABLE_HEAD_CLASS}>{t("colStatus")}</TableHead>
-                  <TableHead className={TABLE_HEAD_CLASS}>{t("colSent")}</TableHead>
-                  <TableHead className={TABLE_HEAD_CLASS}>{t("colActions")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {campaigns.slice(0, 20).map((row) => (
-                  <TableRow key={row.id}>
+            <AppDataTable columns={tableColumns}>
+              {campaigns.slice(0, 20).map((row) => (
+                  <AppDataTableRow key={row.id}>
                     <TableCell>
                       <Link
                         href={`/${locale}/notifications/${row.id}`}
@@ -154,7 +139,7 @@ export function NotificationsPageShell() {
                     <TableCell className="capitalize">{row.category.replace("_", " ")}</TableCell>
                     <TableCell>{row.estimated_audience_count || row.recipient_count || 0}</TableCell>
                     <TableCell>
-                      <StatusPill variant={statusVariant(row.status)}>
+                      <StatusPill variant={resolveStatusVariant(row.status)}>
                         {row.status.replace("_", " ")}
                       </StatusPill>
                     </TableCell>
@@ -181,10 +166,9 @@ export function NotificationsPageShell() {
                         ) : null}
                       </div>
                     </TableCell>
-                  </TableRow>
+                  </AppDataTableRow>
                 ))}
-              </TableBody>
-            </Table>
+            </AppDataTable>
           )}
         </CardContent>
       </AppListCard>

@@ -5,6 +5,7 @@ import { Copy, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { StatusPill } from "@/components/dashboard/status-pill";
+import { resolveStatusVariant } from "@/lib/ui/resolve-status-variant";
 import {
   formatPhoneDisplay,
   isValidKuwaitPhoneDigits,
@@ -23,20 +24,6 @@ export function formatPhoneInternational(stored: string): string {
   return `+965 ${digits.slice(0, 4)} ${digits.slice(4)}`;
 }
 
-export function accountStatusVariant(
-  status: DriverAccountStatus,
-): "success" | "warning" | "danger" | "neutral" {
-  switch (status) {
-    case "active":
-      return "success";
-    case "suspended":
-      return "danger";
-    case "pending":
-    default:
-      return "warning";
-  }
-}
-
 export function AccountStatusPill({
   status,
   label,
@@ -45,7 +32,7 @@ export function AccountStatusPill({
   label: string;
 }) {
   return (
-    <StatusPill variant={accountStatusVariant(status)} dot={false}>
+    <StatusPill variant={resolveStatusVariant(status)} dot={false}>
       {label}
     </StatusPill>
   );

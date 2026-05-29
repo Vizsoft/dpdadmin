@@ -1,18 +1,10 @@
+import {
+  DEFAULT_PIN_FILL,
+  DEFAULT_PIN_RING,
+  PIN_STATUS_FILL,
+  PIN_STATUS_RING,
+} from "@/lib/ui/map-colors";
 import type { PinStatus } from "./types";
-
-const STATUS_FILL: Record<PinStatus, string> = {
-  active: "#10b981",
-  idle: "#f59e0b",
-  alert: "#ef4444",
-};
-
-const STATUS_RING: Record<PinStatus, string> = {
-  active: "#34d399",
-  idle: "#fbbf24",
-  alert: "#fb7185",
-};
-
-const DEFAULT_FILL = "#6366f1";
 
 type VehicleType = "bike" | "car";
 
@@ -51,8 +43,8 @@ export function createFleetMarkerIcon(opts?: {
   vehicle?: VehicleType;
 }) {
   const pinStatus = opts?.pinStatus ?? null;
-  const fill = (pinStatus && STATUS_FILL[pinStatus]) || DEFAULT_FILL;
-  const ring = (pinStatus && STATUS_RING[pinStatus]) || "#818cf8";
+  const fill = (pinStatus && PIN_STATUS_FILL[pinStatus]) || DEFAULT_PIN_FILL;
+  const ring = (pinStatus && PIN_STATUS_RING[pinStatus]) || DEFAULT_PIN_RING;
   const svg = markerSvg({
     fill,
     ring,

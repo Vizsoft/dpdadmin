@@ -12,7 +12,7 @@ import {
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FormSectionCard } from "@/components/form-section-card";
+import { AppFormSection } from "@/components/app";
 import {
   getStorageOverview,
   testStorageConnection,
@@ -179,7 +179,7 @@ export function StorageSettingsPanel() {
         </p>
       ) : null}
 
-      <FormSectionCard
+      <AppFormSection
         title={t("connection.title")}
         description={t("connection.description")}
       >
@@ -230,7 +230,7 @@ export function StorageSettingsPanel() {
             {t("probeResult", { key: lastProbeKey })}
           </p>
         ) : null}
-      </FormSectionCard>
+      </AppFormSection>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-xl border border-border/60 bg-card p-4">
@@ -302,7 +302,7 @@ export function StorageSettingsPanel() {
       ) : null}
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <FormSectionCard title={t("breakdown.byType")} description="">
+        <AppFormSection title={t("breakdown.byType")} description="">
           {stats?.byExtension.length ? (
             <ul className="space-y-2">
               {stats.byExtension.map((row) => (
@@ -327,9 +327,9 @@ export function StorageSettingsPanel() {
           ) : (
             <p className="text-sm text-muted-foreground">{t("breakdown.empty")}</p>
           )}
-        </FormSectionCard>
+        </AppFormSection>
 
-        <FormSectionCard title={t("breakdown.byPrefix")} description="">
+        <AppFormSection title={t("breakdown.byPrefix")} description="">
           {stats?.byPrefix.length ? (
             <ul className="space-y-2">
               {stats.byPrefix.map((row) => (
@@ -354,11 +354,11 @@ export function StorageSettingsPanel() {
           ) : (
             <p className="text-sm text-muted-foreground">{t("breakdown.empty")}</p>
           )}
-        </FormSectionCard>
+        </AppFormSection>
       </div>
 
       {analytics?.available && analytics.dailySeries.length > 0 ? (
-        <FormSectionCard title={t("chart.title")} description={t("chart.description")}>
+        <AppFormSection title={t("chart.title")} description={t("chart.description")}>
           <div className="flex h-32 items-end gap-1">
             {analytics.dailySeries.map((point) => (
               <div
@@ -375,10 +375,10 @@ export function StorageSettingsPanel() {
               </div>
             ))}
           </div>
-        </FormSectionCard>
+        </AppFormSection>
       ) : null}
 
-      <FormSectionCard
+      <AppFormSection
         title={t("recent.title")}
         description={t("recent.description")}
       >
@@ -436,9 +436,9 @@ export function StorageSettingsPanel() {
         ) : (
           <p className="text-sm text-muted-foreground">{t("recent.empty")}</p>
         )}
-      </FormSectionCard>
+      </AppFormSection>
 
-      <FormSectionCard
+      <AppFormSection
         title={t("driverApi.title")}
         description={t("driverApi.description")}
       >
@@ -448,7 +448,7 @@ export function StorageSettingsPanel() {
           <li>{t("driverApi.mine")}</li>
         </ul>
         <p className="mt-3 text-xs text-muted-foreground">{t("driverApi.handoff")}</p>
-      </FormSectionCard>
+      </AppFormSection>
     </div>
   );
 }

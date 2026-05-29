@@ -223,6 +223,7 @@
       "statusDeliverySubmit": "تسليم طلب",
       "onDuty": "في الخدمة",
       "offDuty": "خارج الخدمة",
+      "gpsLost": "فقدان GPS",
       "trackedCount": "{count} سائق متتبع",
       "noDrivers": "لا يوجد سائقون يطابقون الفلاتر.",
       "noLiveData": "لا يوجد سائقون يرسلون الموقع حالياً.",
@@ -260,6 +261,7 @@
       "aiInsights": "رؤى الأسطول",
       "insightDelays": "خارج المنطقة",
       "insightOutOfZone": "خارج المنطقة",
+      "insightOffline": "GPS غير متصل",
       "insightOverspeed": "تجاوز السرعة",
       "insightIdle": "مركبات خاملة",
       "insightBattery": "بطارية منخفضة",
@@ -2703,6 +2705,76 @@
       "sectionAction": "الإجراء",
       "sectionSchedule": "الجدولة",
       "sectionPreview": "معاينة",
+      "wizardSteps": {
+        "audience": "الجمهور",
+        "content": "المحتوى",
+        "action": "الإجراء",
+        "delivery": "التسليم",
+        "review": "مراجعة وإرسال"
+      },
+      "automationWizardSteps": {
+        "trigger": "المُشغّل",
+        "audience": "الجمهور",
+        "content": "المحتوى",
+        "limits": "الحدود",
+        "review": "مراجعة"
+      },
+      "wizardBack": "رجوع",
+      "wizardNext": "التالي",
+      "approvalNotice": "يتطلب هذا الإرسال موافقة المدير (بث عام، أولوية عالية/حرجة، أو فئة طوارئ).",
+      "scheduleFutureHint": "اختر تاريخاً ووقتاً في المستقبل.",
+      "actionStepHint": "اختياري. يحدد ما يحدث عند نقر السائق على الإشعار.",
+      "fieldActionScreen": "الشاشة",
+      "fieldActionModule": "الوحدة",
+      "fieldActionRecordId": "معرّف السجل",
+      "fieldActionWorkflow": "سير العمل",
+      "fieldActionUrl": "الرابط",
+      "fieldActionTrigger": "مفتاح التحديث الصامت",
+      "actionScreens": {
+        "home": "الرئيسية",
+        "deliveries": "التوصيلات",
+        "earnings": "الأرباح",
+        "profile": "الملف",
+        "notifications": "صندوق الإشعارات"
+      },
+      "actionModules": {
+        "deliveries": "التوصيلات",
+        "earnings": "الأرباح",
+        "attendance": "الحضور",
+        "documents": "المستندات",
+        "support": "الدعم"
+      },
+      "driverStatuses": {
+        "active": "نشط",
+        "onboarding": "قيد الإعداد",
+        "suspended": "موقوف",
+        "inactive": "غير نشط"
+      },
+      "triggerInactivityDays": "غير نشط لمدة (أيام)",
+      "triggerInactivityHint": "إشعار السائقين بدون نشاط توصيل خلال هذه الفترة.",
+      "triggerDaysBeforeExpiry": "أيام قبل الانتهاء",
+      "triggerDocumentExpiryHint": "إشعار عند اقتراب انتهاء مستند السائق.",
+      "triggerShiftTime": "وقت التذكير",
+      "triggerShiftWeekdays": "أيام الأسبوع",
+      "triggerCron": "جدولة Cron",
+      "triggerCronHint": "تعبير cron قياسي (UTC). مثال: 0 8 * * * يومياً الساعة 08:00 UTC.",
+      "triggerMinDeliveries": "الحد الأدنى للتوصيلات",
+      "triggerPeriodDays": "الفترة (أيام)",
+      "triggerHoursAfterShift": "ساعات بعد نهاية الوردية",
+      "triggerEventHint": {
+        "attendance_approved": "يُطلق تلقائياً عند الموافقة على حضور السائق.",
+        "salary_processed": "يُطلق تلقائياً عند تأكيد دفع الراتب.",
+        "incentive_unlocked": "يُطلق عند فتح السائق لعتبة حافز."
+      },
+      "weekdays": {
+        "mon": "إث",
+        "tue": "ثل",
+        "wed": "أر",
+        "thu": "خم",
+        "fri": "جم",
+        "sat": "سب",
+        "sun": "أح"
+      },
       "targetMode": "وضع الاستهداف",
       "targetModes": {
         "all": "جميع السائقين",
@@ -2800,7 +2872,8 @@
         "invalid_input": "أكمل جميع الحقول المطلوبة.",
         "missing_content": "أضف عنواناً ورسالة في تبويب المحتوى قبل الإرسال.",
         "empty_recipients": "اختر مستلماً واحداً على الأقل لهذا النوع من الاستهداف.",
-        "invalid_json": "JSON غير صالح. تحقق من حقول الإعداد."
+        "invalid_json": "JSON غير صالح. تحقق من حقول الإعداد.",
+        "automationNotReady": "أكمل جميع الحقول المطلوبة قبل تفعيل هذا الأتمتة."
       },
       "mediaErrors": {
         "file_too_large": "يجب أن يكون حجم الصورة 2 ميجابايت أو أقل.",

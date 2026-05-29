@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { Activity, MapPinned, ShieldAlert, ShieldCheck } from "lucide-react";
-import { MetricTile } from "@/components/ui/metric-tile";
+import { MetricTile, type Tone } from "@/components/ui/metric-tile";
 import { cn } from "@/lib/utils";
 import type { GeofenceKind, ZoneRow } from "./types";
 
@@ -23,29 +23,34 @@ export function ZoneGeofencesSummary({
     return { total: zones.length, active, inclusion, exclusion };
   }, [zones]);
 
-  const cards = [
+  const cards: Array<{
+    label: string;
+    value: number;
+    tone: Tone;
+    icon: typeof MapPinned;
+  }> = [
     {
       label: t("geofence.summaryTotal"),
       value: stats.total,
-      tone: "blue" as const,
+      tone: "primary",
       icon: MapPinned,
     },
     {
       label: t("geofence.summaryActive"),
       value: stats.active,
-      tone: "emerald" as const,
+      tone: "success",
       icon: Activity,
     },
     {
       label: t("geofence.summaryInclusion"),
       value: stats.inclusion,
-      tone: "emerald" as const,
+      tone: "success",
       icon: ShieldCheck,
     },
     {
       label: t("geofence.summaryExclusion"),
       value: stats.exclusion,
-      tone: "rose" as const,
+      tone: "danger",
       icon: ShieldAlert,
     },
   ];

@@ -5,14 +5,9 @@ import { useTranslations } from "next-intl";
 import { useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { AppModalFooter } from "@/components/app/app-modal-footer";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -120,11 +115,12 @@ export function RuleFormSheet({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[min(90vh,720px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl">
-        <DialogHeader className="border-b border-border px-6 py-4">
-          <DialogTitle>{title}</DialogTitle>
-        </DialogHeader>
-        <div className="flex-1 space-y-4 overflow-y-auto px-6 py-4">
+      <DialogContent
+        className="flex max-h-[min(90vh,720px)] flex-col gap-0 overflow-visible rounded-xl p-0 sm:max-w-2xl"
+        showCloseButton
+        closeOutside
+      >
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 pt-4 pb-3">
           <div className="space-y-1.5">
             <Label htmlFor="rule-name">{t("fields.ruleName")}</Label>
             <Input
@@ -206,11 +202,12 @@ export function RuleFormSheet({
             />
           </div>
         </div>
-        <DialogFooter className="border-t border-border px-6 py-4">
+        <AppModalFooter title={title} subtitle={t("fields.ruleName")}>
           <Button
             type="button"
             variant="outline"
-            className="cursor-pointer rounded-lg"
+            size="sm"
+            className="h-9 cursor-pointer rounded-md"
             onClick={() => onOpenChange(false)}
             disabled={isPending}
           >
@@ -218,13 +215,14 @@ export function RuleFormSheet({
           </Button>
           <Button
             type="button"
-            className="cursor-pointer rounded-lg"
+            size="sm"
+            className="h-9 cursor-pointer rounded-md px-4"
             onClick={handleSave}
             disabled={isPending}
           >
             {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : t("save")}
           </Button>
-        </DialogFooter>
+        </AppModalFooter>
       </DialogContent>
     </Dialog>
   );

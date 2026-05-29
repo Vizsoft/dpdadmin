@@ -12,9 +12,7 @@ import {
   Upload,
 } from "lucide-react";
 import { toast } from "sonner";
-import { AppPage } from "@/components/app/app-page";
-import { AppListCard } from "@/components/app/app-list-card";
-import { AppEmptyState } from "@/components/app/app-empty-state";
+import { AppEmptyState, AppListCard, AppPage, AppPageHeader } from "@/components/app";
 import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -159,54 +157,60 @@ export function AppReleasesPageShell() {
 
   return (
     <AppPage>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
-          <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Select
-            value={channel}
-            onValueChange={(value) => setChannel(value as AppReleaseChannel)}
-          >
-            <SelectTrigger className="w-[160px] rounded-lg">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="production">{t("channels.production")}</SelectItem>
-              <SelectItem value="beta">{t("channels.beta")}</SelectItem>
-              <SelectItem value="internal">{t("channels.internal")}</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button
-            variant="outline"
-            className="cursor-pointer rounded-lg"
-            onClick={() => void refetch()}
-            disabled={isBusy}
-          >
-            <RefreshCw className="mr-2 h-4 w-4" />
-            {t("refresh")}
-          </Button>
-          <Button
-            variant="outline"
-            className="cursor-pointer rounded-lg"
-            onClick={() => void handleConfigureCors()}
-            disabled={isConfiguringCors}
-            title={t("configureStorageHint")}
-          >
-            {isConfiguringCors ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <SettingsIcon className="mr-2 h-4 w-4" />
-            )}
-            {t("configureStorage")}
-          </Button>
-          <Button className="cursor-pointer rounded-lg" onClick={() => setUploadOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            {t("uploadButton")}
-          </Button>
-        </div>
-      </div>
+      <AppPageHeader
+        title={t("title")}
+        description={t("subtitle")}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <Select
+              value={channel}
+              onValueChange={(value) => setChannel(value as AppReleaseChannel)}
+            >
+              <SelectTrigger className="h-9 w-[160px] rounded-lg">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="production">{t("channels.production")}</SelectItem>
+                <SelectItem value="beta">{t("channels.beta")}</SelectItem>
+                <SelectItem value="internal">{t("channels.internal")}</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 cursor-pointer rounded-lg"
+              onClick={() => void refetch()}
+              disabled={isBusy}
+            >
+              <RefreshCw className="mr-2 h-4 w-4" />
+              {t("refresh")}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 cursor-pointer rounded-lg"
+              onClick={() => void handleConfigureCors()}
+              disabled={isConfiguringCors}
+              title={t("configureStorageHint")}
+            >
+              {isConfiguringCors ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <SettingsIcon className="mr-2 h-4 w-4" />
+              )}
+              {t("configureStorage")}
+            </Button>
+            <Button
+              size="sm"
+              className="h-9 cursor-pointer rounded-lg"
+              onClick={() => setUploadOpen(true)}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              {t("uploadButton")}
+            </Button>
+          </div>
+        }
+      />
 
       <Tabs defaultValue="releases" className="space-y-4">
         <TabsList className="rounded-xl bg-muted/50 p-1">

@@ -13,8 +13,13 @@ import {
   Search,
   X,
 } from "lucide-react";
-import { TABLE_HEAD_CLASS } from "@/components/app/constants";
-import { AppListCard } from "@/components/app/app-list-card";
+import { AppListCard, AppPage, AppPageHeader } from "@/components/app";
+import {
+  AppDataTable,
+  AppDataTableEmpty,
+  AppDataTableRow,
+  TableCell,
+} from "@/components/app/app-data-table";
 import { AppEmptyState } from "@/components/app/app-empty-state";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,14 +34,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { useAuth } from "@/contexts/auth-context";
 import { useHasMounted } from "@/hooks/use-has-mounted";
 import { queryKeys } from "@/lib/query/query-keys";
@@ -201,6 +198,20 @@ function PartnersPageContent() {
     !isLoading && partners.length > 0 && visible.length === 0;
   const showEmptyAll = !isLoading && partners.length === 0;
 
+  const tableColumns = useMemo(() => {
+    const cols = [
+      { id: "logo", label: t("colLogo"), className: "w-14" },
+      { id: "partner", label: t("colPartner") },
+      { id: "description", label: t("colDescription"), className: "hidden md:table-cell" },
+      { id: "drivers", label: t("colDrivers") },
+      { id: "created", label: t("colCreated"), className: "hidden sm:table-cell" },
+    ];
+    if (canManage) {
+      cols.push({ id: "actions", label: t("colActions"), className: "w-12 text-end" });
+    }
+    return cols;
+  }, [canManage, t]);
+
   const countLabel =
     visible.length !== partners.length
       ? `${t("totalPartners", { count: visible.length })} ${t("ofTotal", { total: partners.length })}`
@@ -262,11 +273,11 @@ function PartnersPageContent() {
   );
 
   return (
-    <>
-      <AppListCard
+    <AppPage>
+      <AppPageHeader
         title={t("title")}
         description={t("subtitle")}
-        headerActions={
+        actions={
             <div className="flex shrink-0 flex-wrap items-center gap-2">
               <Button
                 type="button"
@@ -305,6 +316,8 @@ function PartnersPageContent() {
               ) : null}
             </div>
         }
+      />
+      <AppListCard
         toolbar={
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="relative min-w-0 flex-1">
@@ -401,50 +414,26 @@ function PartnersPageContent() {
           </div>
         ) : (
           <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/30 hover:bg-muted/30">
-                  <TableHead className={cn("w-14", TABLE_HEAD_CLASS)}>
-                    {t("colLogo")}
-                  </TableHead>
-                  <TableHead className={TABLE_HEAD_CLASS}>{t("colPartner")}</TableHead>
-                  <TableHead className={cn("hidden md:table-cell", TABLE_HEAD_CLASS)}>
-                    {t("colDescription")}
-                  </TableHead>
-                  <TableHead className={TABLE_HEAD_CLASS}>{t("colDrivers")}</TableHead>
-                  <TableHead className={cn("hidden sm:table-cell", TABLE_HEAD_CLASS)}>
-                    {t("colCreated")}
-                  </TableHead>
-                  {canManage ? (
-                    <TableHead className={cn("w-12 text-end", TABLE_HEAD_CLASS)}>
-                      {t("colActions")}
-                    </TableHead>
-                  ) : null}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {showEmptySearch ? (
-                  <TableRow className="hover:bg-transparent">
-                    <TableCell
-                      colSpan={canManage ? 6 : 5}
-                      className="border-t border-border py-12"
-                    >
-                      <AppEmptyState
-                        title={t("emptySearchTitle")}
-                        description={t("emptySearchDescription")}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  visible.map((partner) => (
-                    <TableRow
+            <AppDataTable
+              columns={tableColumns}
+              empty={
+                showEmptySearch ? (
+                  <AppDataTableEmpty>
+                    <AppEmptyState
+                      title={t("emptySearchTitle")}
+                      description={t("emptySearchDescription")}
+                    />
+                  </AppDataTableEmpty>
+                ) : undefined
+              }
+            >
+              {!showEmptySearch
+                ? visible.map((partner) => (
+                    <AppDataTableRow
                       key={partner.id}
                       role={canManage ? "button" : undefined}
                       tabIndex={canManage ? 0 : undefined}
-                      className={cn(
-                        "hover:bg-muted/40",
-                        canManage && "cursor-pointer",
-                      )}
+                      className={cn(canManage && "cursor-pointer")}
                       onClick={() => canManage && handleEdit(partner)}
                       onKeyDown={(e) => {
                         if (
@@ -516,11 +505,10 @@ function PartnersPageContent() {
                           </Button>
                         </TableCell>
                       ) : null}
-                    </TableRow>
+                    </AppDataTableRow>
                   ))
-                )}
-              </TableBody>
-            </Table>
+                : null}
+            </AppDataTable>
           </CardContent>
         )}
       </AppListCard>
@@ -532,7 +520,7 @@ function PartnersPageContent() {
         onSaved={invalidatePartners}
         onDeleted={invalidatePartners}
       />
-    </>
+    </AppPage>
   );
 }
 

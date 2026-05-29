@@ -5,14 +5,9 @@ import { useTranslations } from "next-intl";
 import { Loader2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/auth-context";
+import { AppModalFooter } from "@/components/app/app-modal-footer";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -138,13 +133,11 @@ function AssetFormBody({
     });
   };
 
+  const title = isEdit ? t("editAssetTitle") : t("addAssetTitle");
+
   return (
     <>
-      <DialogHeader className="shrink-0 border-b border-border px-6 py-4 pe-14">
-        <DialogTitle>{isEdit ? t("editAssetTitle") : t("addAssetTitle")}</DialogTitle>
-      </DialogHeader>
-
-      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 pt-4 pb-3">
         <div className="space-y-1.5">
           <Label htmlFor="asset-name">{t("fieldName")}</Label>
           <Input
@@ -293,11 +286,12 @@ function AssetFormBody({
         </div>
       </div>
 
-      <DialogFooter className="shrink-0 border-t border-border px-6 py-4">
+      <AppModalFooter title={title} subtitle={t("nameHint")}>
         <Button
           type="button"
           variant="outline"
-          className="cursor-pointer rounded-lg"
+          size="sm"
+          className="h-9 cursor-pointer rounded-md"
           onClick={onClose}
           disabled={isPending}
         >
@@ -306,7 +300,8 @@ function AssetFormBody({
         {canManage ? (
           <Button
             type="button"
-            className="cursor-pointer rounded-lg"
+            size="sm"
+            className="h-9 cursor-pointer rounded-md px-4"
             onClick={handleSave}
             disabled={isPending || !name.trim()}
           >
@@ -319,7 +314,7 @@ function AssetFormBody({
             )}
           </Button>
         ) : null}
-      </DialogFooter>
+      </AppModalFooter>
     </>
   );
 }
@@ -338,8 +333,9 @@ export function AssetFormSheet({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="flex max-h-[min(90vh,720px)] max-w-lg flex-col gap-0 overflow-hidden p-0"
+        className="flex max-h-[min(90vh,720px)] max-w-lg flex-col gap-0 overflow-visible rounded-xl p-0"
         showCloseButton
+        closeOutside
       >
         {open ? (
           <AssetFormBody

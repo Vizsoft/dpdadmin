@@ -17,9 +17,13 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { TABLE_HEAD_CLASS } from "@/components/app/constants";
-import { AppListCard } from "@/components/app/app-list-card";
-import { AppPage } from "@/components/app/app-page";
+import { AppListCard, AppPage, AppPageHeader } from "@/components/app";
+import {
+  AppDataTable,
+  AppDataTableEmpty,
+  AppDataTableRow,
+  TableCell,
+} from "@/components/app/app-data-table";
 import { AppEmptyState } from "@/components/app/app-empty-state";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -39,14 +43,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { partnerSearchOptions, zoneSearchOptions } from "@/lib/search-options";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { useHasMounted } from "@/hooks/use-has-mounted";
 import { cn } from "@/lib/utils";
 import { useDriverFormOptions } from "./use-driver-form-options";
@@ -387,6 +383,35 @@ function DriversPageContent() {
     });
   };
 
+  const tableColumns = useMemo(
+    () => [
+      {
+        id: "select",
+        label: (
+          <Checkbox
+            checked={allVisibleSelected}
+            onCheckedChange={toggleSelectAll}
+            aria-label={t("selectAll")}
+            className="cursor-pointer"
+          />
+        ),
+        className: "w-10",
+      },
+      { id: "driverId", label: t("colDriverId") },
+      { id: "employeeId", label: t("colEmployeeId"), className: "hidden lg:table-cell" },
+      { id: "name", label: t("colName") },
+      { id: "phone", label: t("colPhone"), className: "hidden md:table-cell" },
+      { id: "partner", label: t("colPartner") },
+      { id: "zone", label: t("colZone") },
+      { id: "todayDeliveries", label: t("colTodayDeliveries"), className: "hidden sm:table-cell" },
+      { id: "status", label: t("colStatus") },
+      { id: "attendance", label: t("colAttendance") },
+      { id: "passcode", label: t("colPasscode"), className: "hidden lg:table-cell" },
+      { id: "actions", label: t("colActions"), className: "w-[88px] text-end" },
+    ],
+    [allVisibleSelected, t, toggleSelectAll],
+  );
+
   const tabSelectItems = useMemo(
     () => [
       { value: "all" as const, label: t("tabAll") },
@@ -400,6 +425,7 @@ function DriversPageContent() {
 
   return (
     <AppPage className="space-y-4">
+      <AppPageHeader title={t("title")} description={t("subtitle")} />
       <DriversKpiStrip
         {...kpiCounts}
         labels={{
@@ -601,57 +627,26 @@ function DriversPageContent() {
           </div>
         ) : (
           <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-primary/5 hover:bg-primary/5">
-                  <TableHead className={cn("w-10", TABLE_HEAD_CLASS)}>
-                    <Checkbox
-                      checked={allVisibleSelected}
-                      onCheckedChange={toggleSelectAll}
-                      aria-label={t("selectAll")}
-                      className="cursor-pointer"
+            <AppDataTable
+              columns={tableColumns}
+              headerRowClassName="bg-primary/5 hover:bg-primary/5"
+              empty={
+                showEmptySearch ? (
+                  <AppDataTableEmpty>
+                    <AppEmptyState
+                      title={t("emptySearchTitle")}
+                      description={t("emptySearchDescription")}
                     />
-                  </TableHead>
-                  <TableHead className={TABLE_HEAD_CLASS}>{t("colDriverId")}</TableHead>
-                  <TableHead className={cn("hidden lg:table-cell", TABLE_HEAD_CLASS)}>
-                    {t("colEmployeeId")}
-                  </TableHead>
-                  <TableHead className={TABLE_HEAD_CLASS}>{t("colName")}</TableHead>
-                  <TableHead className={cn("hidden md:table-cell", TABLE_HEAD_CLASS)}>
-                    {t("colPhone")}
-                  </TableHead>
-                  <TableHead className={TABLE_HEAD_CLASS}>{t("colPartner")}</TableHead>
-                  <TableHead className={TABLE_HEAD_CLASS}>{t("colZone")}</TableHead>
-                  <TableHead className={cn("hidden sm:table-cell", TABLE_HEAD_CLASS)}>
-                    {t("colTodayDeliveries")}
-                  </TableHead>
-                  <TableHead className={TABLE_HEAD_CLASS}>{t("colStatus")}</TableHead>
-                  <TableHead className={TABLE_HEAD_CLASS}>{t("colAttendance")}</TableHead>
-                  <TableHead className={cn("hidden lg:table-cell", TABLE_HEAD_CLASS)}>
-                    {t("colPasscode")}
-                  </TableHead>
-                  <TableHead className={cn("w-[88px] text-end", TABLE_HEAD_CLASS)}>
-                    {t("colActions")}
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {showEmptySearch ? (
-                  <TableRow className="hover:bg-transparent">
-                    <TableCell colSpan={12} className="border-t border-border py-12">
-                      <AppEmptyState
-                        title={t("emptySearchTitle")}
-                        description={t("emptySearchDescription")}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  <>
-                    {visible.map((driver) => (
-                      <TableRow
+                  </AppDataTableEmpty>
+                ) : undefined
+              }
+            >
+              {!showEmptySearch ? (
+                <>
+                  {visible.map((driver) => (
+                      <AppDataTableRow
                         key={driver.id}
                         className={cn(
-                          "cursor-pointer hover:bg-muted/40",
                           selectedIds.has(driver.id) && "bg-muted/20",
                         )}
                         onClick={(event) => {
@@ -828,22 +823,21 @@ function DriversPageContent() {
                             </Tooltip>
                           </div>
                         </TableCell>
-                      </TableRow>
+                      </AppDataTableRow>
                     ))}
                     {hasMore ? (
-                      <TableRow ref={loadMoreRef} className="hover:bg-transparent">
+                      <AppDataTableRow ref={loadMoreRef} className="hover:bg-transparent">
                         <TableCell colSpan={12} className="border-t border-border py-4 text-center">
                           <span className="inline-flex items-center gap-2 text-xs text-muted-foreground">
                             <Loader2 className="h-3.5 w-3.5 animate-spin" />
                             {t("loadMore")}
                           </span>
                         </TableCell>
-                      </TableRow>
+                      </AppDataTableRow>
                     ) : null}
-                  </>
-                )}
-              </TableBody>
-            </Table>
+                </>
+              ) : null}
+            </AppDataTable>
           </CardContent>
         )}
       </AppListCard>

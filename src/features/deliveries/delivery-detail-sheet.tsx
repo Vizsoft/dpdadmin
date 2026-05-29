@@ -15,12 +15,10 @@ import { useAuth } from "@/contexts/auth-context";
 import { hasPermissionInSet } from "@/lib/auth/permissions";
 import { proofFilenameFromKey } from "@/lib/storage/order-proof-url";
 import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
+import { AppModalFooter } from "@/components/app/app-modal-footer";
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -49,28 +47,11 @@ import {
   parseCancelReason,
 } from "./parse-cancel-reason";
 import { useDeleteDelivery, useUpdateDeliveryStatus } from "./use-deliveries";
+import { resolveStatusVariant } from "@/lib/ui/resolve-status-variant";
 import type { DeliveryListRow, DeliveryMapPoint, DeliveryStatus } from "./types";
 import { REVIEWABLE_DELIVERY_STATUSES, type ReviewableDeliveryStatus } from "./types";
 
 type ProofTab = "pickup" | "delivered" | "cancelled";
-
-function deliveryStatusVariant(
-  status: DeliveryStatus,
-): "success" | "warning" | "danger" | "neutral" {
-  switch (status) {
-    case "verified":
-      return "success";
-    case "rejected":
-    case "cancelled":
-      return "danger";
-    case "under_review":
-    case "in_transit":
-      return "neutral";
-    case "pending":
-    default:
-      return "warning";
-  }
-}
 
 function statusMessageKey(status: DeliveryStatus) {
   switch (status) {
@@ -422,23 +403,12 @@ export function DeliveryDetailSheet({
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent
         showCloseButton
-        className="flex max-h-[min(92vh,900px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-5xl"
+        closeOutside
+        className="flex max-h-[min(92vh,900px)] flex-col gap-0 overflow-visible p-0 sm:max-w-5xl"
       >
         <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
           <div className="order-2 flex min-h-0 w-full shrink-0 flex-col lg:order-1 lg:w-[min(420px,42%)] lg:max-w-[420px]">
-            <DialogHeader className="shrink-0 border-b border-border px-6 py-4 pe-14">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <DialogTitle className="text-lg">{t("detailTitle")}</DialogTitle>
-                <StatusPill variant={deliveryStatusVariant(delivery.status)} dot>
-                  {statusLabel}
-                </StatusPill>
-              </div>
-              <p className="mt-1 font-mono text-sm text-muted-foreground">
-                #{delivery.short_id}
-              </p>
-            </DialogHeader>
-
-            <div className="flex-1 space-y-5 overflow-y-auto px-6 py-4">
+            <div className="flex-1 space-y-5 overflow-y-auto px-6 pt-4 pb-4">
               <section>
                 <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   {t("sectionDelivery")}
@@ -448,7 +418,7 @@ export function DeliveryDetailSheet({
                   <DetailRow
                     label={t("colStatus")}
                     value={
-                      <StatusPill variant={deliveryStatusVariant(delivery.status)} dot>
+                      <StatusPill variant={resolveStatusVariant(delivery.status)} dot>
                         {statusLabel}
                       </StatusPill>
                     }
@@ -655,25 +625,33 @@ export function DeliveryDetailSheet({
             </div>
 
             {canManage || isSuperAdmin ? (
-              <DialogFooter className="shrink-0 flex-row items-center justify-between gap-2 border-t border-border px-6 py-4">
+              <AppModalFooter
+                title={t("detailTitle")}
+                subtitle={`#${delivery.short_id}`}
+                meta={
+                  <StatusPill variant={resolveStatusVariant(delivery.status)} dot>
+                    {statusLabel}
+                  </StatusPill>
+                }
+              >
                 {isSuperAdmin ? (
                   <Button
                     type="button"
                     variant="outline"
-                    className="cursor-pointer rounded-lg border-destructive/40 text-destructive hover:bg-destructive/10"
+                    size="sm"
+                    className="h-9 cursor-pointer rounded-lg border-destructive/40 text-destructive hover:bg-destructive/10"
                     onClick={() => setDeleteOpen(true)}
                     disabled={isBusy}
                   >
                     <Trash2 className="me-2 h-3.5 w-3.5" />
                     {t("deleteDelivery")}
                   </Button>
-                ) : (
-                  <span />
-                )}
+                ) : null}
                 {canManage && !isReadOnlyStatus ? (
                   <Button
                     type="button"
-                    className="cursor-pointer rounded-lg"
+                    size="sm"
+                    className="h-9 cursor-pointer rounded-lg"
                     onClick={() => void handleSaveStatus()}
                     disabled={
                       isBusy ||
@@ -688,7 +666,7 @@ export function DeliveryDetailSheet({
                     )}
                   </Button>
                 ) : null}
-              </DialogFooter>
+              </AppModalFooter>
             ) : null}
           </div>
 

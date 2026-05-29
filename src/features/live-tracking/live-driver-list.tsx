@@ -56,7 +56,7 @@ export function LiveDriverList({
             type="button"
             onClick={() => onSelect(selectedId === loc.driverId ? null : loc.driverId)}
             className={cn(
-              "flex w-full cursor-pointer flex-col gap-2.5 px-4 py-3 text-start transition-all hover:bg-muted/40",
+              "flex w-full cursor-pointer flex-col gap-2.5 px-4 py-3 text-start transition-colors duration-150 ease-out hover:bg-muted/40",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
               selectedId === loc.driverId &&
                 "bg-primary/[0.08] shadow-[inset_2px_0_0_0_var(--color-primary)]",

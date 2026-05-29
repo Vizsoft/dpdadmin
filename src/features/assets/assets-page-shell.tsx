@@ -15,7 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { TABLE_HEAD_CLASS } from "@/components/app/constants";
-import { AppListCard } from "@/components/app/app-list-card";
+import { AppListCard, AppPage, AppPageHeader } from "@/components/app";
 import { AppEmptyState } from "@/components/app/app-empty-state";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -201,31 +201,11 @@ function AssetsPageContent() {
       : t("totalAssets", { count: visible.length });
 
   return (
-    <>
-      <div className="space-y-3">
-        <AssetsKpiStrip
-          kpis={kpis}
-          labels={{
-            skus: t("kpiSkus"),
-            units: t("kpiUnits"),
-            assigned: t("kpiAssigned"),
-            available: t("kpiAvailable"),
-            lowStock: t("kpiLowStock"),
-          }}
-        />
-
-        {kpis.low_stock_count > 0 ? (
-          <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100">
-            <AlertTriangle className="h-4 w-4 shrink-0" />
-            {t("lowStockBanner", { count: kpis.low_stock_count })}
-          </div>
-        ) : null}
-      </div>
-
-      <AppListCard
+    <AppPage>
+      <AppPageHeader
         title={t("title")}
         description={t("subtitle")}
-        headerActions={
+        actions={
           <div className="flex shrink-0 flex-wrap items-center gap-2">
             <Button
               type="button"
@@ -264,6 +244,29 @@ function AssetsPageContent() {
             ) : null}
           </div>
         }
+      />
+
+      <div className="space-y-3">
+        <AssetsKpiStrip
+          kpis={kpis}
+          labels={{
+            skus: t("kpiSkus"),
+            units: t("kpiUnits"),
+            assigned: t("kpiAssigned"),
+            available: t("kpiAvailable"),
+            lowStock: t("kpiLowStock"),
+          }}
+        />
+
+        {kpis.low_stock_count > 0 ? (
+          <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            {t("lowStockBanner", { count: kpis.low_stock_count })}
+          </div>
+        ) : null}
+      </div>
+
+      <AppListCard
         toolbar={
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <div className="relative min-w-0 flex-1">
@@ -481,7 +484,7 @@ function AssetsPageContent() {
           handleEdit(asset);
         }}
       />
-    </>
+    </AppPage>
   );
 }
 

@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Link } from "@/i18n/navigation";
 import { avatarTintFromName } from "@/features/drivers/form/driver-form-primitives";
 import type { DriverLiveLocation } from "@/features/locations/types";
+import { isGpsLive } from "@/features/locations/location-status";
 import { formatDistanceMeters } from "@/features/locations/location-status";
 import {
   formatAccuracyMeters,
@@ -66,9 +67,13 @@ export function LiveDriverDetailsPanel({
     gpsQuality === "excellent" ? 4 : gpsQuality === "good" ? 3 : gpsQuality === "weak" ? 2 : 1;
   const latestOrder = recentOrders[0] ?? null;
 
+  const gpsLive = isGpsLive(driver.lastSeenAt);
+  const dutyLabel = !gpsLive ? t("gpsLost") : driver.isOnDuty ? t("onDuty") : t("offDuty");
+  const dutyTone = !gpsLive ? "neutral" : driver.isOnDuty ? "success" : "neutral";
+
   if (variant === "stacked") {
     return (
-      <TrackingGlassCard className="relative w-full overflow-hidden rounded-xl border-slate-200 bg-white/95 shadow-xl backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/95">
+      <TrackingGlassCard className="relative w-full overflow-hidden">
         {onClose ? (
           <button
             type="button"
@@ -95,8 +100,8 @@ export function LiveDriverDetailsPanel({
                 <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
                   {driver.driverName}
                 </p>
-                <Pill tone={driver.isOnDuty ? "emerald" : "slate"} variant="solid" className="text-[9px]">
-                  {driver.isOnDuty ? t("onDuty") : t("offDuty")}
+                <Pill tone={dutyTone} variant="solid" className="text-[9px]">
+                  {dutyLabel}
                 </Pill>
               </div>
               <p className="truncate text-[11px] text-slate-500 dark:text-slate-300">
@@ -172,9 +177,7 @@ export function LiveDriverDetailsPanel({
   }
 
   return (
-    <TrackingGlassCard
-      className="relative flex min-h-0 flex-col overflow-hidden border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"
-    >
+    <TrackingGlassCard className="relative flex min-h-0 flex-col overflow-hidden">
       {onClose ? (
         <button
           type="button"
@@ -201,8 +204,8 @@ export function LiveDriverDetailsPanel({
                 <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
                   {driver.driverName}
                 </p>
-                <Pill tone={driver.isOnDuty ? "emerald" : "slate"} variant="solid">
-                  {driver.isOnDuty ? t("onDuty") : t("offDuty")}
+                <Pill tone={dutyTone} variant="solid">
+                  {dutyLabel}
                 </Pill>
               </div>
               <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-300">
@@ -259,10 +262,10 @@ export function LiveDriverDetailsPanel({
             <StatusDot
               tone={
                 driver.pinStatus === "alert"
-                  ? "rose"
+                  ? "danger"
                   : driver.pinStatus === "active"
-                    ? "emerald"
-                    : "amber"
+                    ? "success"
+                    : "warning"
               }
             />
             <span>{t("liveMetrics")}</span>
@@ -399,15 +402,15 @@ function deliveryStatusLabel(status: LiveRecentDelivery["status"]): string {
 function deliveryStatusTone(status: LiveRecentDelivery["status"]): Tone {
   switch (status) {
     case "verified":
-      return "emerald";
+      return "success";
     case "pending":
-      return "amber";
+      return "warning";
     case "rejected":
     case "cancelled":
-      return "rose";
+      return "danger";
     case "in_transit":
-      return "blue";
+      return "primary";
     default:
-      return "blue";
+      return "primary";
   }
 }

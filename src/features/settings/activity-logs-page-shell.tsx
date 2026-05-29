@@ -4,8 +4,7 @@ import { useCallback, useMemo, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { Download, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { AppPage } from "@/components/app/app-page";
-import { AppListCard } from "@/components/app/app-list-card";
+import { AppListCard, AppPage, AppPageHeader } from "@/components/app";
 import {
   AppDataTable,
   AppDataTableEmpty,
@@ -116,10 +115,10 @@ export function ActivityLogsPageShell() {
 
   return (
     <AppPage>
-      <AppListCard
+      <AppPageHeader
         title={t("title")}
         description={t("subtitle")}
-        headerActions={
+        actions={
           <div className="flex gap-2">
             <Button
               type="button"
@@ -141,7 +140,8 @@ export function ActivityLogsPageShell() {
             </Button>
           </div>
         }
-      >
+      />
+      <AppListCard>
         <div className="space-y-4 p-4">
           <div className="flex flex-wrap items-end gap-3">
             <div className="space-y-1.5">

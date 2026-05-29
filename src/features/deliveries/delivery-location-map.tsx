@@ -6,14 +6,10 @@ import { Loader2 } from "lucide-react";
 import { loadGoogleMaps } from "@/lib/google-maps/load";
 import { GoogleMapsStatusBanner } from "@/features/restaurants/google-maps-status-banner";
 import { cn } from "@/lib/utils";
+import { DELIVERY_MARKER_COLORS, MAP_COLORS } from "@/lib/ui/map-colors";
 import type { DeliveryMapPoint, DeliveryMapPointKind } from "./types";
 
-const MARKER_COLORS: Record<DeliveryMapPointKind, string> = {
-  pickup: "#2563eb",
-  delivered: "#16a34a",
-  cancelled: "#dc2626",
-  live: "#ea580c",
-};
+const MARKER_COLORS: Record<DeliveryMapPointKind, string> = DELIVERY_MARKER_COLORS;
 
 function kindLabelKey(kind: DeliveryMapPointKind): string {
   switch (kind) {
@@ -107,7 +103,7 @@ export function DeliveryLocationMap({
             scale: 8,
             fillColor: MARKER_COLORS[point.kind],
             fillOpacity: 1,
-            strokeColor: "#ffffff",
+            strokeColor: MAP_COLORS.markerStroke,
             strokeWeight: 2,
           },
         });
@@ -130,7 +126,7 @@ export function DeliveryLocationMap({
         const polyline = new Polyline({
           path: routePoints.map((p) => ({ lat: p.lat, lng: p.lng })),
           geodesic: true,
-          strokeColor: "#64748b",
+          strokeColor: MAP_COLORS.routeStroke,
           strokeOpacity: 0.8,
           strokeWeight: 2,
         });

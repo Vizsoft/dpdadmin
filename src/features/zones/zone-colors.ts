@@ -1,14 +1,9 @@
-/** Preset swatches shown in the zone color picker */
-export const ZONE_COLOR_PALETTE = [
-  "#EF5B4D",
-  "#3B82F6",
-  "#10B981",
-  "#F59E0B",
-  "#8B5CF6",
-  "#EC4899",
-] as const;
+import { DEFAULT_ZONE_COLOR, MAP_COLORS } from "@/lib/ui/map-colors";
 
-export const DEFAULT_ZONE_COLOR = ZONE_COLOR_PALETTE[0];
+/** Preset swatches shown in the zone color picker */
+export const ZONE_COLOR_PALETTE = [...MAP_COLORS.zonePalette] as const;
+
+export { DEFAULT_ZONE_COLOR };
 
 const HEX_COLOR_RE = /^#[0-9A-Fa-f]{6}$/;
 

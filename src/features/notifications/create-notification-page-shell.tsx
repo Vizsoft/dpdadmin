@@ -4,14 +4,14 @@ import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { Loader2, Save, Send } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, ArrowRight, Loader2, Save, Send } from "lucide-react";
 import { AppPage } from "@/components/app/app-page";
 import { AppPageHeader } from "@/components/app/app-page-header";
 import { AppModalFooter } from "@/components/app/app-modal-footer";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { AppFormSection } from "@/components/app";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -20,16 +20,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { TabBar } from "@/components/dashboard/tab-bar";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/auth-context";
 import {
-  NOTIFICATION_ACTION_TYPES,
   NOTIFICATION_CATEGORIES,
   NOTIFICATION_PRIORITIES,
-  NOTIFICATION_TARGET_MODES,
-  requiresApproval,
 } from "./constants";
 import { previewPayloadSchema, buildActionPayload } from "./payload-contract";
 import {
@@ -38,22 +33,39 @@ import {
 } from "./notification-media-fields";
 import {
   dispatchNotificationCampaign,
-  estimateNotificationAudience,
   saveNotificationCampaign,
   scheduleNotificationCampaign,
   submitNotificationForApproval,
 } from "./notifications-actions";
-import { useNotificationTargetingOptions } from "./use-notifications";
+import {
+  buildActionParams,
+  NotificationActionFields,
+  parseActionFields,
+} from "./notification-action-fields";
+import { RequiredLabel } from "./notification-form-primitives";
+import { NotificationTargetingFields } from "./notification-targeting-fields";
+import { NotificationWizardStepper } from "./notification-wizard-stepper";
+import { invalidateNotificationCaches } from "./invalidate-notification-caches";
+import {
+  buildTargetSpec,
+  campaignNeedsApproval,
+  isActionStepValid,
+  isAudienceStepValid,
+  isContentStepValid,
+  isDeliveryStepValid,
+  type WizardStepId,
+} from "./notification-validation";
 import type { NotificationActionType, NotificationCategory, NotificationPriority, TargetSpec } from "./types";
 
-type SectionId = "recipients" | "content" | "action" | "schedule" | "preview";
+const STEPS: WizardStepId[] = ["audience", "content", "action", "delivery", "review"];
 
 export function CreateNotificationPageShell() {
   const t = useTranslations("pages.notifications");
   const locale = useLocale();
   const router = useRouter();
   const auth = useAuth();
-  const [section, setSection] = useState<SectionId>("recipients");
+  const queryClient = useQueryClient();
+  const [step, setStep] = useState<WizardStepId>("audience");
   const [pending, startTransition] = useTransition();
 
   const [title, setTitle] = useState("");
@@ -64,8 +76,9 @@ export function CreateNotificationPageShell() {
   const [zoneIds, setZoneIds] = useState<string[]>([]);
   const [partnerIds, setPartnerIds] = useState<string[]>([]);
   const [driverIds, setDriverIds] = useState<string[]>([]);
+  const [statuses, setStatuses] = useState<string[]>([]);
   const [actionType, setActionType] = useState<NotificationActionType>("open_screen");
-  const [actionParamsJson, setActionParamsJson] = useState('{"screen":"home"}');
+  const [actionFields, setActionFields] = useState<Record<string, string>>({ screen: "home" });
   const [scheduleMode, setScheduleMode] = useState<"now" | "later">("now");
   const [scheduledFor, setScheduledFor] = useState("");
   const [audienceCount, setAudienceCount] = useState<number | null>(null);
@@ -77,22 +90,18 @@ export function CreateNotificationPageShell() {
     [bannerObjectKey, pushImageObjectKey],
   );
 
-  const { data: targeting } = useNotificationTargetingOptions();
-
-  const targetSpec = useMemo<TargetSpec>(() => {
-    if (targetMode === "zone") return { mode: "zone", zone_ids: zoneIds };
-    if (targetMode === "partner") return { mode: "partner", partner_ids: partnerIds };
-    if (targetMode === "custom") return { mode: "custom", driver_ids: driverIds };
-    return { mode: targetMode };
-  }, [targetMode, zoneIds, partnerIds, driverIds]);
+  const targetSpec = useMemo(
+    () => buildTargetSpec({ targetMode, zoneIds, partnerIds, driverIds, statuses }),
+    [targetMode, zoneIds, partnerIds, driverIds, statuses],
+  );
 
   const actionParams = useMemo(() => {
     try {
-      return JSON.parse(actionParamsJson) as Record<string, unknown>;
+      return buildActionParams(actionType, actionFields);
     } catch {
       return {};
     }
-  }, [actionParamsJson]);
+  }, [actionType, actionFields]);
 
   const payloadPreview = useMemo(
     () =>
@@ -103,14 +112,61 @@ export function CreateNotificationPageShell() {
     [actionType, actionParams, campaignMedia],
   );
 
-  async function refreshAudience() {
-    try {
-      const count = await estimateNotificationAudience(targetSpec);
-      setAudienceCount(count);
-    } catch {
-      toast.error(t("errors.audienceEstimateFailed"));
+  const needsApproval = campaignNeedsApproval({ category, priority, targetMode });
+
+  const completedSteps = useMemo(() => {
+    const done: WizardStepId[] = [];
+    if (
+      isAudienceStepValid({
+        targetMode,
+        zoneIds,
+        partnerIds,
+        driverIds,
+        statuses,
+        audienceCount,
+      })
+    ) {
+      done.push("audience");
     }
-  }
+    if (isContentStepValid(title, body)) done.push("content");
+    if (isActionStepValid()) done.push("action");
+    if (isDeliveryStepValid(scheduleMode, scheduledFor)) done.push("delivery");
+    return done;
+  }, [
+    targetMode,
+    zoneIds,
+    partnerIds,
+    driverIds,
+    statuses,
+    audienceCount,
+    title,
+    body,
+    scheduleMode,
+    scheduledFor,
+  ]);
+
+  const canProceed =
+    step === "audience"
+      ? isAudienceStepValid({
+          targetMode,
+          zoneIds,
+          partnerIds,
+          driverIds,
+          statuses,
+          audienceCount,
+        })
+      : step === "content"
+        ? isContentStepValid(title, body)
+        : step === "action"
+          ? isActionStepValid()
+          : step === "delivery"
+            ? isDeliveryStepValid(scheduleMode, scheduledFor)
+            : true;
+
+  const canSubmit =
+    completedSteps.includes("audience") &&
+    completedSteps.includes("content") &&
+    completedSteps.includes("delivery");
 
   function buildInput() {
     const scheduledIso =
@@ -149,69 +205,46 @@ export function CreateNotificationPageShell() {
     }
   }
 
-  function validateBeforeSave(): { error: string; section: SectionId } | null {
-    if (!title.trim() || !body.trim()) {
-      return { error: "missing_content", section: "content" };
-    }
-    if (targetMode === "custom" && driverIds.length === 0) {
-      return { error: "empty_recipients", section: "recipients" };
-    }
-    if (targetMode === "zone" && zoneIds.length === 0) {
-      return { error: "empty_recipients", section: "recipients" };
-    }
-    if (targetMode === "partner" && partnerIds.length === 0) {
-      return { error: "empty_recipients", section: "recipients" };
-    }
-    return null;
+  function goNext() {
+    if (!canProceed) return;
+    const idx = STEPS.indexOf(step);
+    if (idx < STEPS.length - 1) setStep(STEPS[idx + 1]!);
+  }
+
+  function goBack() {
+    const idx = STEPS.indexOf(step);
+    if (idx > 0) setStep(STEPS[idx - 1]!);
   }
 
   function handleSaveDraft() {
-    const validation = validateBeforeSave();
-    if (validation) {
-      toast.error(resolveErrorMessage(validation.error));
-      setSection(validation.section);
+    if (!isContentStepValid(title, body)) {
+      toast.error(t("errors.missing_content"));
+      setStep("content");
       return;
     }
     startTransition(async () => {
       const result = await saveNotificationCampaign(buildInput());
       if ("error" in result) {
         toast.error(resolveErrorMessage(result.error));
-        if (result.error === "invalid_input") setSection("content");
-        if (result.error === "empty_recipients") setSection("recipients");
         return;
       }
+      await invalidateNotificationCaches(queryClient, { campaignId: result.id });
       toast.success(t("savedDraft"));
       router.push(`/${locale}/notifications/${result.id}`);
     });
   }
 
   function handleSubmit() {
-    if (scheduleMode === "later" && !scheduledFor.trim()) {
-      toast.error(t("errors.invalid_schedule"));
-      setSection("schedule");
-      return;
-    }
-    const validation = validateBeforeSave();
-    if (validation) {
-      toast.error(resolveErrorMessage(validation.error));
-      setSection(validation.section);
-      return;
-    }
+    if (!canSubmit) return;
     startTransition(async () => {
       const input = buildInput();
       const saved = await saveNotificationCampaign(input);
       if ("error" in saved) {
         toast.error(resolveErrorMessage(saved.error));
-        if (saved.error === "invalid_input") setSection("content");
-        if (saved.error === "empty_recipients") setSection("recipients");
         return;
       }
+      await invalidateNotificationCaches(queryClient, { campaignId: saved.id });
       if (scheduleMode === "now") {
-        const needsApproval = requiresApproval({
-          category: input.category,
-          priority: input.priority,
-          targetMode: input.targetSpec.mode,
-        });
         if (needsApproval && !auth.can("notifications.approve")) {
           const submitted = await submitNotificationForApproval(saved.id);
           if ("error" in submitted) {
@@ -229,6 +262,7 @@ export function CreateNotificationPageShell() {
           router.push(`/${locale}/notifications/${saved.id}`);
           return;
         }
+        await invalidateNotificationCaches(queryClient, { campaignId: saved.id });
         toast.success(t("sentSuccess", { sent: sent.sent, failed: sent.failed }));
       } else {
         const scheduled = await scheduleNotificationCampaign(saved.id);
@@ -237,11 +271,17 @@ export function CreateNotificationPageShell() {
           router.push(`/${locale}/notifications/${saved.id}`);
           return;
         }
+        await invalidateNotificationCaches(queryClient, { campaignId: saved.id });
         toast.success(t("scheduledSuccess"));
       }
       router.push(`/${locale}/notifications/${saved.id}`);
     });
   }
+
+  const wizardSteps = STEPS.map((id) => ({
+    id,
+    label: t(`wizardSteps.${id}`),
+  }));
 
   return (
     <AppPage narrow>
@@ -254,106 +294,35 @@ export function CreateNotificationPageShell() {
         ]}
       />
 
-      <TabBar
-        items={[
-          { id: "recipients", label: t("sectionRecipients") },
-          { id: "content", label: t("sectionContent") },
-          { id: "action", label: t("sectionAction") },
-          { id: "schedule", label: t("sectionSchedule") },
-          { id: "preview", label: t("sectionPreview") },
-        ]}
-        activeId={section}
-        onSelect={(id) => setSection(id as SectionId)}
+      <NotificationWizardStepper
+        steps={wizardSteps}
+        currentStepId={step}
+        completedStepIds={completedSteps}
       />
 
-      <Card className="rounded-xl border-border shadow-sm">
-        <CardContent className="space-y-3 p-4">
-          {section === "recipients" ? (
-            <>
-              <div className="space-y-1">
-                <Label>{t("targetMode")}</Label>
-                <Select value={targetMode} onValueChange={(v) => setTargetMode(v as TargetSpec["mode"])}>
-                  <SelectTrigger className="h-9">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {NOTIFICATION_TARGET_MODES.map((mode) => (
-                      <SelectItem key={mode} value={mode}>
-                        {t(`targetModes.${mode}`)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              {targetMode === "zone" ? (
-                <div className="max-h-48 space-y-2 overflow-y-auto rounded-lg border border-border p-3">
-                  {(targeting?.zones ?? []).map((z) => (
-                    <label key={z.id} className="flex items-center gap-2 text-sm">
-                      <Checkbox
-                        checked={zoneIds.includes(z.id)}
-                        onCheckedChange={(checked) =>
-                          setZoneIds((prev) =>
-                            checked ? [...prev, z.id] : prev.filter((id) => id !== z.id),
-                          )
-                        }
-                      />
-                      {z.name}
-                    </label>
-                  ))}
-                </div>
-              ) : null}
-              {targetMode === "partner" ? (
-                <div className="max-h-48 space-y-2 overflow-y-auto rounded-lg border border-border p-3">
-                  {(targeting?.partners ?? []).map((p) => (
-                    <label key={p.id} className="flex items-center gap-2 text-sm">
-                      <Checkbox
-                        checked={partnerIds.includes(p.id)}
-                        onCheckedChange={(checked) =>
-                          setPartnerIds((prev) =>
-                            checked ? [...prev, p.id] : prev.filter((id) => id !== p.id),
-                          )
-                        }
-                      />
-                      {p.name}
-                    </label>
-                  ))}
-                </div>
-              ) : null}
-              {targetMode === "custom" ? (
-                <div className="max-h-48 space-y-2 overflow-y-auto rounded-lg border border-border p-3">
-                  {(targeting?.drivers ?? []).map((d) => (
-                    <label key={d.id} className="flex items-center gap-2 text-sm">
-                      <Checkbox
-                        checked={driverIds.includes(d.id)}
-                        onCheckedChange={(checked) =>
-                          setDriverIds((prev) =>
-                            checked ? [...prev, d.id] : prev.filter((id) => id !== d.id),
-                          )
-                        }
-                      />
-                      {d.label}
-                    </label>
-                  ))}
-                </div>
-              ) : null}
-              <div className="flex items-center justify-between rounded-lg border border-border bg-muted/20 px-3 py-2">
-                <p className="text-sm text-muted-foreground">
-                  {audienceCount == null
-                    ? t("audienceEstimateHint")
-                    : t("audienceEstimate", { count: audienceCount })}
-                </p>
-                <Button variant="outline" size="sm" className="h-9 cursor-pointer" onClick={() => void refreshAudience()}>
-                  {t("estimateAudience")}
-                </Button>
-              </div>
-            </>
+      <AppFormSection title={t(`wizardSteps.${step}`)} className="mt-4">
+        <div className="space-y-4">
+          {step === "audience" ? (
+            <NotificationTargetingFields
+              targetMode={targetMode}
+              zoneIds={zoneIds}
+              partnerIds={partnerIds}
+              driverIds={driverIds}
+              statuses={statuses}
+              onTargetModeChange={setTargetMode}
+              onZoneIdsChange={setZoneIds}
+              onPartnerIdsChange={setPartnerIds}
+              onDriverIdsChange={setDriverIds}
+              onStatusesChange={setStatuses}
+              onAudienceCountChange={setAudienceCount}
+            />
           ) : null}
 
-          {section === "content" ? (
+          {step === "content" ? (
             <>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1">
-                  <Label>{t("fieldCategory")}</Label>
+                  <RequiredLabel>{t("fieldCategory")}</RequiredLabel>
                   <Select value={category} onValueChange={(v) => setCategory(v as NotificationCategory)}>
                     <SelectTrigger className="h-9">
                       <SelectValue />
@@ -368,7 +337,7 @@ export function CreateNotificationPageShell() {
                   </Select>
                 </div>
                 <div className="space-y-1">
-                  <Label>{t("fieldPriority")}</Label>
+                  <RequiredLabel>{t("fieldPriority")}</RequiredLabel>
                   <Select value={priority} onValueChange={(v) => setPriority(v as NotificationPriority)}>
                     <SelectTrigger className="h-9">
                       <SelectValue />
@@ -384,11 +353,11 @@ export function CreateNotificationPageShell() {
                 </div>
               </div>
               <div className="space-y-1">
-                <Label>{t("fieldTitle")}</Label>
+                <RequiredLabel required>{t("fieldTitle")}</RequiredLabel>
                 <Input className="h-9" value={title} onChange={(e) => setTitle(e.target.value)} />
               </div>
               <div className="space-y-1">
-                <Label>{t("fieldBody")}</Label>
+                <RequiredLabel required>{t("fieldBody")}</RequiredLabel>
                 <Textarea rows={4} value={body} onChange={(e) => setBody(e.target.value)} />
               </div>
               <NotificationMediaFields
@@ -400,39 +369,24 @@ export function CreateNotificationPageShell() {
             </>
           ) : null}
 
-          {section === "action" ? (
-            <>
-              <div className="space-y-1">
-                <Label>{t("fieldActionType")}</Label>
-                <Select value={actionType} onValueChange={(v) => setActionType(v as NotificationActionType)}>
-                  <SelectTrigger className="h-9">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {NOTIFICATION_ACTION_TYPES.map((item) => (
-                      <SelectItem key={item} value={item}>
-                        {t(`actionTypes.${item}`)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <Label>{t("fieldActionParams")}</Label>
-                <Textarea
-                  rows={6}
-                  className="font-mono text-xs"
-                  value={actionParamsJson}
-                  onChange={(e) => setActionParamsJson(e.target.value)}
-                />
-              </div>
-            </>
+          {step === "action" ? (
+            <NotificationActionFields
+              actionType={actionType}
+              fields={actionFields}
+              onActionTypeChange={(next) => {
+                setActionType(next);
+                setActionFields(parseActionFields(next, {}));
+              }}
+              onFieldChange={(key, value) =>
+                setActionFields((prev) => ({ ...prev, [key]: value }))
+              }
+            />
           ) : null}
 
-          {section === "schedule" ? (
+          {step === "delivery" ? (
             <>
               <div className="space-y-1">
-                <Label>{t("fieldScheduleMode")}</Label>
+                <RequiredLabel required>{t("fieldScheduleMode")}</RequiredLabel>
                 <Select value={scheduleMode} onValueChange={(v) => setScheduleMode(v as "now" | "later")}>
                   <SelectTrigger className="h-9">
                     <SelectValue />
@@ -445,27 +399,45 @@ export function CreateNotificationPageShell() {
               </div>
               {scheduleMode === "later" ? (
                 <div className="space-y-1">
-                  <Label>{t("fieldScheduledFor")}</Label>
+                  <RequiredLabel required>{t("fieldScheduledFor")}</RequiredLabel>
                   <Input
                     className="h-9"
                     type="datetime-local"
                     value={scheduledFor}
                     onChange={(e) => setScheduledFor(e.target.value)}
                   />
+                  <p className="text-xs text-muted-foreground">{t("scheduleFutureHint")}</p>
                 </div>
+              ) : null}
+              {needsApproval ? (
+                <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-100">
+                  {t("approvalNotice")}
+                </p>
               ) : null}
             </>
           ) : null}
 
-          {section === "preview" ? (
+          {step === "review" ? (
             <div className="space-y-3">
+              <div className="rounded-lg border border-border bg-muted/20 p-3 text-sm">
+                <p>
+                  <span className="font-medium">{t("targetMode")}:</span>{" "}
+                  {t(`targetModes.${targetMode}`)}
+                </p>
+                <p>
+                  <span className="font-medium">{t("fieldScheduleMode")}:</span>{" "}
+                  {scheduleMode === "now" ? t("scheduleNow") : t("scheduleLater")}
+                </p>
+                {scheduleMode === "later" ? (
+                  <p>
+                    <span className="font-medium">{t("fieldScheduledFor")}:</span> {scheduledFor}
+                  </p>
+                ) : null}
+              </div>
               <div className="rounded-lg border border-border bg-muted/20 p-3">
                 <p className="text-xs font-semibold text-accent">{t("previewMessage")}</p>
-                {bannerObjectKey ? (
-                  <p className="mt-2 text-xs text-muted-foreground">{t("previewBannerAttached")}</p>
-                ) : null}
-                <p className="mt-1 text-sm font-semibold">{title || t("previewTitlePlaceholder")}</p>
-                <p className="text-sm text-muted-foreground">{body || t("previewBodyPlaceholder")}</p>
+                <p className="mt-1 text-sm font-semibold">{title}</p>
+                <p className="text-sm text-muted-foreground">{body}</p>
               </div>
               <div className="rounded-lg border border-border bg-muted/20 p-3">
                 <p className="text-xs font-semibold text-accent">{t("previewPayload")}</p>
@@ -473,8 +445,8 @@ export function CreateNotificationPageShell() {
               </div>
             </div>
           ) : null}
-        </CardContent>
-      </Card>
+        </div>
+      </AppFormSection>
 
       <AppModalFooter asPage title={t("createTitle")} subtitle={t("createFooterHint")}>
         <Link
@@ -483,14 +455,38 @@ export function CreateNotificationPageShell() {
         >
           {t("cancel")}
         </Link>
-        <Button variant="outline" className="h-9 cursor-pointer" disabled={pending} onClick={handleSaveDraft}>
-          {pending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-          {t("saveDraft")}
-        </Button>
-        <Button className="h-9 cursor-pointer" disabled={pending} onClick={handleSubmit}>
-          {pending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
-          {scheduleMode === "now" ? t("sendNow") : t("scheduleSend")}
-        </Button>
+        {step !== "audience" ? (
+          <Button variant="outline" className="h-9 cursor-pointer" disabled={pending} onClick={goBack}>
+            <ArrowLeft className="size-4" />
+            {t("wizardBack")}
+          </Button>
+        ) : null}
+        {step !== "review" ? (
+          <Button className="h-9 cursor-pointer" disabled={pending || !canProceed} onClick={goNext}>
+            {t("wizardNext")}
+            <ArrowRight className="size-4" />
+          </Button>
+        ) : (
+          <>
+            <Button
+              variant="outline"
+              className="h-9 cursor-pointer"
+              disabled={pending || !canSubmit}
+              onClick={handleSaveDraft}
+            >
+              {pending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+              {t("saveDraft")}
+            </Button>
+            <Button
+              className="h-9 cursor-pointer"
+              disabled={pending || !canSubmit}
+              onClick={handleSubmit}
+            >
+              {pending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+              {scheduleMode === "now" ? t("sendNow") : t("scheduleSend")}
+            </Button>
+          </>
+        )}
       </AppModalFooter>
     </AppPage>
   );

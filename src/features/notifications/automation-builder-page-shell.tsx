@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { Loader2, Pause, Play, Save } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, ArrowRight, Loader2, Pause, Play, Save } from "lucide-react";
 import { AppModalFooter } from "@/components/app/app-modal-footer";
 import { AppListCard } from "@/components/app/app-list-card";
 import { AppPage } from "@/components/app/app-page";
@@ -13,7 +14,6 @@ import { StatusPill } from "@/components/dashboard/status-pill";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -22,7 +22,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { TabBar } from "@/components/dashboard/tab-bar";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/auth-context";
 import {
@@ -31,7 +30,25 @@ import {
   NOTIFICATION_CATEGORIES,
   NOTIFICATION_PRIORITIES,
 } from "./constants";
+import {
+  buildActionParams,
+  NotificationActionFields,
+  parseActionFields,
+} from "./notification-action-fields";
+import { RequiredLabel } from "./notification-form-primitives";
 import { NotificationTargetingFields } from "./notification-targeting-fields";
+import {
+  defaultTriggerConfig,
+  NotificationTriggerFields,
+} from "./notification-trigger-fields";
+import { NotificationWizardStepper } from "./notification-wizard-stepper";
+import { invalidateNotificationCaches } from "./invalidate-notification-caches";
+import {
+  buildTargetSpec,
+  isAutomationContentValid,
+  validateAutomationBeforeActivate,
+  validateTriggerConfig,
+} from "./notification-validation";
 import {
   saveNotificationAutomation,
   setNotificationAutomationStatus,
@@ -50,16 +67,18 @@ import type {
   TargetSpec,
 } from "./types";
 
-type SectionId = "trigger" | "conditions" | "audience" | "content" | "throttle" | "review";
+type StepId = "trigger" | "audience" | "content" | "limits" | "review";
+const STEPS: StepId[] = ["trigger", "audience", "content", "limits", "review"];
 
 export function AutomationBuilderPageShell({ automationId }: { automationId?: string }) {
   const t = useTranslations("pages.notifications");
   const locale = useLocale();
   const router = useRouter();
   const auth = useAuth();
+  const queryClient = useQueryClient();
   const canManage = auth.can("notifications.manage");
   const isEdit = Boolean(automationId);
-  const [section, setSection] = useState<SectionId>("trigger");
+  const [step, setStep] = useState<StepId>("trigger");
   const [pending, startTransition] = useTransition();
 
   const { data: existing, isLoading, refetch } = useNotificationAutomation(automationId ?? null);
@@ -69,12 +88,12 @@ export function AutomationBuilderPageShell({ automationId }: { automationId?: st
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [triggerType, setTriggerType] = useState<NotificationAutomationTrigger>("inactivity");
-  const [triggerConfigJson, setTriggerConfigJson] = useState("{}");
-  const [conditionSpecJson, setConditionSpecJson] = useState("{}");
+  const [triggerConfig, setTriggerConfig] = useState<Record<string, unknown>>({ inactivity_days: 7 });
   const [targetMode, setTargetMode] = useState<TargetSpec["mode"]>("all");
   const [zoneIds, setZoneIds] = useState<string[]>([]);
   const [partnerIds, setPartnerIds] = useState<string[]>([]);
   const [driverIds, setDriverIds] = useState<string[]>([]);
+  const [statuses, setStatuses] = useState<string[]>([]);
   const [contentMode, setContentMode] = useState<"template" | "inline">("inline");
   const [templateId, setTemplateId] = useState<string>("");
   const [titleTemplate, setTitleTemplate] = useState("");
@@ -82,7 +101,7 @@ export function AutomationBuilderPageShell({ automationId }: { automationId?: st
   const [category, setCategory] = useState<NotificationCategory>("reminder");
   const [priority, setPriority] = useState<NotificationPriority>("normal");
   const [actionType, setActionType] = useState<NotificationActionType>("open_screen");
-  const [actionParamsJson, setActionParamsJson] = useState('{"screen":"home"}');
+  const [actionFields, setActionFields] = useState<Record<string, string>>({ screen: "home" });
   const [throttleMinutes, setThrottleMinutes] = useState("60");
   const [cooldownMinutes, setCooldownMinutes] = useState("1440");
   const [maxRetries, setMaxRetries] = useState("3");
@@ -92,13 +111,13 @@ export function AutomationBuilderPageShell({ automationId }: { automationId?: st
     setName(existing.name);
     setDescription(existing.description ?? "");
     setTriggerType(existing.trigger_type);
-    setTriggerConfigJson(JSON.stringify(existing.trigger_config ?? {}, null, 2));
-    setConditionSpecJson(JSON.stringify(existing.condition_spec ?? {}, null, 2));
+    setTriggerConfig(existing.trigger_config ?? {});
     const spec = existing.target_spec ?? { mode: "all" };
     setTargetMode(spec.mode ?? "all");
     setZoneIds(spec.zone_ids ?? []);
     setPartnerIds(spec.partner_ids ?? []);
     setDriverIds(spec.driver_ids ?? []);
+    setStatuses(spec.statuses ?? []);
     if (existing.template_id) {
       setContentMode("template");
       setTemplateId(existing.template_id);
@@ -110,66 +129,109 @@ export function AutomationBuilderPageShell({ automationId }: { automationId?: st
     setCategory(existing.category);
     setPriority(existing.priority);
     setActionType(existing.action_type);
-    setActionParamsJson(JSON.stringify(existing.action_params ?? {}, null, 2));
+    setActionFields(parseActionFields(existing.action_type, existing.action_params ?? {}));
     setThrottleMinutes(String(existing.throttle_minutes));
     setCooldownMinutes(String(existing.cooldown_minutes));
     setMaxRetries(String(existing.max_retries));
   }, [existing]);
 
-  const targetSpec = useMemo<TargetSpec>(() => {
-    if (targetMode === "zone") return { mode: "zone", zone_ids: zoneIds };
-    if (targetMode === "partner") return { mode: "partner", partner_ids: partnerIds };
-    if (targetMode === "custom") return { mode: "custom", driver_ids: driverIds };
-    return { mode: targetMode };
-  }, [targetMode, zoneIds, partnerIds, driverIds]);
+  const targetSpec = useMemo(
+    () => buildTargetSpec({ targetMode, zoneIds, partnerIds, driverIds, statuses }),
+    [targetMode, zoneIds, partnerIds, driverIds, statuses],
+  );
 
-  function buildInput() {
-    let triggerConfig: Record<string, unknown> = {};
-    let conditionSpec: Record<string, unknown> = {};
-    let actionParams: Record<string, unknown> = {};
-    try {
-      triggerConfig = JSON.parse(triggerConfigJson) as Record<string, unknown>;
-      conditionSpec = JSON.parse(conditionSpecJson) as Record<string, unknown>;
-      actionParams = JSON.parse(actionParamsJson) as Record<string, unknown>;
-    } catch {
-      throw new Error("invalid_json");
+  const buildInput = () => ({
+    name,
+    description: description || null,
+    triggerType,
+    triggerConfig,
+    conditionSpec: {},
+    targetSpec,
+    templateId: contentMode === "template" && templateId ? templateId : null,
+    titleTemplate: contentMode === "inline" ? titleTemplate : null,
+    bodyTemplate: contentMode === "inline" ? bodyTemplate : null,
+    category,
+    priority,
+    actionType,
+    actionParams: buildActionParams(actionType, actionFields),
+    throttleMinutes: Number(throttleMinutes) || 60,
+    cooldownMinutes: Number(cooldownMinutes) || 1440,
+    maxRetries: Number(maxRetries) || 3,
+  });
+
+  const completedSteps = useMemo(() => {
+    const done: StepId[] = [];
+    if (name.trim() && validateTriggerConfig(triggerType, triggerConfig)) done.push("trigger");
+    if (
+      (targetMode === "all" ||
+        (targetMode === "zone" && zoneIds.length > 0) ||
+        (targetMode === "partner" && partnerIds.length > 0) ||
+        (targetMode === "custom" && driverIds.length > 0) ||
+        (targetMode === "status" && statuses.length > 0))
+    ) {
+      done.push("audience");
     }
+    if (
+      isAutomationContentValid({
+        contentMode,
+        templateId,
+        titleTemplate,
+        bodyTemplate,
+      })
+    ) {
+      done.push("content");
+    }
+    if (Number(throttleMinutes) > 0 && Number(cooldownMinutes) > 0) done.push("limits");
+    return done;
+  }, [
+    name,
+    triggerType,
+    triggerConfig,
+    targetMode,
+    zoneIds,
+    partnerIds,
+    driverIds,
+    statuses,
+    contentMode,
+    templateId,
+    titleTemplate,
+    bodyTemplate,
+    throttleMinutes,
+    cooldownMinutes,
+  ]);
 
-    return {
-      name,
-      description: description || null,
-      triggerType,
-      triggerConfig,
-      conditionSpec,
-      targetSpec,
-      templateId: contentMode === "template" && templateId ? templateId : null,
-      titleTemplate: contentMode === "inline" ? titleTemplate : null,
-      bodyTemplate: contentMode === "inline" ? bodyTemplate : null,
-      category,
-      priority,
-      actionType,
-      actionParams,
-      throttleMinutes: Number(throttleMinutes) || 60,
-      cooldownMinutes: Number(cooldownMinutes) || 1440,
-      maxRetries: Number(maxRetries) || 3,
-    };
+  const canProceed =
+    step === "trigger"
+      ? Boolean(name.trim()) && validateTriggerConfig(triggerType, triggerConfig)
+      : step === "audience"
+        ? completedSteps.includes("audience")
+        : step === "content"
+          ? completedSteps.includes("content")
+          : step === "limits"
+            ? completedSteps.includes("limits")
+            : true;
+
+  const canActivate = validateAutomationBeforeActivate(buildInput());
+
+  function goNext() {
+    if (!canProceed) return;
+    const idx = STEPS.indexOf(step);
+    if (idx < STEPS.length - 1) setStep(STEPS[idx + 1]!);
+  }
+
+  function goBack() {
+    const idx = STEPS.indexOf(step);
+    if (idx > 0) setStep(STEPS[idx - 1]!);
   }
 
   function handleSave() {
     if (!name.trim()) {
       toast.error(t("errors.invalid_input"));
-      setSection("trigger");
+      setStep("trigger");
       return;
     }
-    let input;
-    try {
-      input = buildInput();
-    } catch {
-      toast.error(t("errors.invalid_json"));
-      return;
-    }
-
     startTransition(async () => {
+      const input = buildInput();
       const result = isEdit
         ? await updateNotificationAutomation(automationId!, input)
         : await saveNotificationAutomation(input);
@@ -177,6 +239,7 @@ export function AutomationBuilderPageShell({ automationId }: { automationId?: st
         toast.error(t("errors.saveFailed"));
         return;
       }
+      await invalidateNotificationCaches(queryClient, { automationId: result.id });
       toast.success(isEdit ? t("automationUpdated") : t("automationCreated"));
       router.push(`/${locale}/notifications/automations/${result.id}`);
     });
@@ -184,12 +247,17 @@ export function AutomationBuilderPageShell({ automationId }: { automationId?: st
 
   function handleStatusChange(status: "active" | "paused" | "draft") {
     if (!automationId) return;
+    if (status === "active" && !canActivate) {
+      toast.error(t("errors.automationNotReady"));
+      return;
+    }
     startTransition(async () => {
       const result = await setNotificationAutomationStatus(automationId, status);
       if ("error" in result) {
         toast.error(t("errors.saveFailed"));
         return;
       }
+      await invalidateNotificationCaches(queryClient, { automationId });
       toast.success(t("automationStatusUpdated"));
       void refetch();
     });
@@ -208,6 +276,8 @@ export function AutomationBuilderPageShell({ automationId }: { automationId?: st
       <p className="py-12 text-center text-sm text-muted-foreground">{t("automationNotFound")}</p>
     );
   }
+
+  const wizardSteps = STEPS.map((id) => ({ id, label: t(`automationWizardSteps.${id}`) }));
 
   return (
     <AppPage narrow>
@@ -236,36 +306,33 @@ export function AutomationBuilderPageShell({ automationId }: { automationId?: st
         }
       />
 
-      <TabBar
-        items={[
-          { id: "trigger", label: t("sectionTrigger") },
-          { id: "conditions", label: t("sectionConditions") },
-          { id: "audience", label: t("sectionRecipients") },
-          { id: "content", label: t("sectionContent") },
-          { id: "throttle", label: t("sectionThrottle") },
-          { id: "review", label: t("sectionReview") },
-        ]}
-        activeId={section}
-        onSelect={(id) => setSection(id as SectionId)}
+      <NotificationWizardStepper
+        steps={wizardSteps}
+        currentStepId={step}
+        completedStepIds={completedSteps}
       />
 
-      <Card className="rounded-xl border-border shadow-sm">
+      <Card className="mt-4 rounded-xl border-border shadow-sm">
         <CardContent className="space-y-3 p-4">
-          {section === "trigger" ? (
+          {step === "trigger" ? (
             <>
               <div className="space-y-1">
-                <Label>{t("fieldName")}</Label>
+                <RequiredLabel required>{t("fieldName")}</RequiredLabel>
                 <Input className="h-9" value={name} onChange={(e) => setName(e.target.value)} />
               </div>
               <div className="space-y-1">
-                <Label>{t("fieldDescription")}</Label>
+                <RequiredLabel>{t("fieldDescription")}</RequiredLabel>
                 <Textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
               </div>
               <div className="space-y-1">
-                <Label>{t("fieldTrigger")}</Label>
+                <RequiredLabel required>{t("fieldTrigger")}</RequiredLabel>
                 <Select
                   value={triggerType}
-                  onValueChange={(v) => setTriggerType(v as NotificationAutomationTrigger)}
+                  onValueChange={(v) => {
+                    const next = v as NotificationAutomationTrigger;
+                    setTriggerType(next);
+                    setTriggerConfig(defaultTriggerConfig(next));
+                  }}
                 >
                   <SelectTrigger className="h-9">
                     <SelectValue />
@@ -279,51 +346,33 @@ export function AutomationBuilderPageShell({ automationId }: { automationId?: st
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1">
-                <Label>{t("fieldTriggerConfig")}</Label>
-                <Textarea
-                  rows={6}
-                  className="font-mono text-xs"
-                  value={triggerConfigJson}
-                  onChange={(e) => setTriggerConfigJson(e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">{t("triggerConfigHint")}</p>
-              </div>
+              <NotificationTriggerFields
+                triggerType={triggerType}
+                config={triggerConfig}
+                onChange={setTriggerConfig}
+              />
             </>
           ) : null}
 
-          {section === "conditions" ? (
-            <>
-              <p className="text-sm text-muted-foreground">{t("conditionsHint")}</p>
-              <div className="space-y-1">
-                <Label>{t("fieldConditionSpec")}</Label>
-                <Textarea
-                  rows={10}
-                  className="font-mono text-xs"
-                  value={conditionSpecJson}
-                  onChange={(e) => setConditionSpecJson(e.target.value)}
-                />
-              </div>
-            </>
-          ) : null}
-
-          {section === "audience" ? (
+          {step === "audience" ? (
             <NotificationTargetingFields
               targetMode={targetMode}
               zoneIds={zoneIds}
               partnerIds={partnerIds}
               driverIds={driverIds}
+              statuses={statuses}
               onTargetModeChange={setTargetMode}
               onZoneIdsChange={setZoneIds}
               onPartnerIdsChange={setPartnerIds}
               onDriverIdsChange={setDriverIds}
+              onStatusesChange={setStatuses}
             />
           ) : null}
 
-          {section === "content" ? (
+          {step === "content" ? (
             <>
               <div className="space-y-1">
-                <Label>{t("fieldContentSource")}</Label>
+                <RequiredLabel required>{t("fieldContentSource")}</RequiredLabel>
                 <Select value={contentMode} onValueChange={(v) => setContentMode(v as "template" | "inline")}>
                   <SelectTrigger className="h-9">
                     <SelectValue />
@@ -336,7 +385,7 @@ export function AutomationBuilderPageShell({ automationId }: { automationId?: st
               </div>
               {contentMode === "template" ? (
                 <div className="space-y-1">
-                  <Label>{t("fieldLinkedTemplate")}</Label>
+                  <RequiredLabel required>{t("fieldLinkedTemplate")}</RequiredLabel>
                   <Select value={templateId} onValueChange={(v) => setTemplateId(v ?? "")}>
                     <SelectTrigger className="h-9">
                       <SelectValue placeholder={t("selectTemplate")} />
@@ -354,7 +403,7 @@ export function AutomationBuilderPageShell({ automationId }: { automationId?: st
                 <>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="space-y-1">
-                      <Label>{t("fieldCategory")}</Label>
+                      <RequiredLabel>{t("fieldCategory")}</RequiredLabel>
                       <Select value={category} onValueChange={(v) => setCategory(v as NotificationCategory)}>
                         <SelectTrigger className="h-9">
                           <SelectValue />
@@ -369,7 +418,7 @@ export function AutomationBuilderPageShell({ automationId }: { automationId?: st
                       </Select>
                     </div>
                     <div className="space-y-1">
-                      <Label>{t("fieldPriority")}</Label>
+                      <RequiredLabel>{t("fieldPriority")}</RequiredLabel>
                       <Select value={priority} onValueChange={(v) => setPriority(v as NotificationPriority)}>
                         <SelectTrigger className="h-9">
                           <SelectValue />
@@ -385,46 +434,33 @@ export function AutomationBuilderPageShell({ automationId }: { automationId?: st
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <Label>{t("fieldTitleTemplate")}</Label>
+                    <RequiredLabel required>{t("fieldTitleTemplate")}</RequiredLabel>
                     <Input className="h-9" value={titleTemplate} onChange={(e) => setTitleTemplate(e.target.value)} />
                   </div>
                   <div className="space-y-1">
-                    <Label>{t("fieldBodyTemplate")}</Label>
+                    <RequiredLabel required>{t("fieldBodyTemplate")}</RequiredLabel>
                     <Textarea rows={4} value={bodyTemplate} onChange={(e) => setBodyTemplate(e.target.value)} />
                   </div>
-                  <div className="space-y-1">
-                    <Label>{t("fieldActionType")}</Label>
-                    <Select value={actionType} onValueChange={(v) => setActionType(v as NotificationActionType)}>
-                      <SelectTrigger className="h-9">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {NOTIFICATION_ACTION_TYPES.map((item) => (
-                          <SelectItem key={item} value={item}>
-                            {t(`actionTypes.${item}`)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label>{t("fieldActionParams")}</Label>
-                    <Textarea
-                      rows={4}
-                      className="font-mono text-xs"
-                      value={actionParamsJson}
-                      onChange={(e) => setActionParamsJson(e.target.value)}
-                    />
-                  </div>
+                  <NotificationActionFields
+                    actionType={actionType}
+                    fields={actionFields}
+                    onActionTypeChange={(next) => {
+                      setActionType(next);
+                      setActionFields(parseActionFields(next, {}));
+                    }}
+                    onFieldChange={(key, value) =>
+                      setActionFields((prev) => ({ ...prev, [key]: value }))
+                    }
+                  />
                 </>
               )}
             </>
           ) : null}
 
-          {section === "throttle" ? (
+          {step === "limits" ? (
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="space-y-1">
-                <Label>{t("fieldThrottleMinutes")}</Label>
+                <RequiredLabel required>{t("fieldThrottleMinutes")}</RequiredLabel>
                 <Input
                   className="h-9"
                   type="number"
@@ -434,7 +470,7 @@ export function AutomationBuilderPageShell({ automationId }: { automationId?: st
                 />
               </div>
               <div className="space-y-1">
-                <Label>{t("fieldCooldownMinutes")}</Label>
+                <RequiredLabel required>{t("fieldCooldownMinutes")}</RequiredLabel>
                 <Input
                   className="h-9"
                   type="number"
@@ -444,7 +480,7 @@ export function AutomationBuilderPageShell({ automationId }: { automationId?: st
                 />
               </div>
               <div className="space-y-1">
-                <Label>{t("fieldMaxRetries")}</Label>
+                <RequiredLabel>{t("fieldMaxRetries")}</RequiredLabel>
                 <Input
                   className="h-9"
                   type="number"
@@ -456,7 +492,7 @@ export function AutomationBuilderPageShell({ automationId }: { automationId?: st
             </div>
           ) : null}
 
-          {section === "review" ? (
+          {step === "review" ? (
             <div className="space-y-3 text-sm">
               <div className="rounded-lg border border-border bg-muted/20 p-3">
                 <p className="font-semibold">{name || "—"}</p>
@@ -465,21 +501,16 @@ export function AutomationBuilderPageShell({ automationId }: { automationId?: st
               <dl className="grid gap-2 sm:grid-cols-2">
                 <div>
                   <dt className="text-xs text-muted-foreground">{t("fieldTrigger")}</dt>
-                  <dd className="capitalize">{t(`automationTriggers.${triggerType}`)}</dd>
+                  <dd>{t(`automationTriggers.${triggerType}`)}</dd>
                 </div>
                 <div>
                   <dt className="text-xs text-muted-foreground">{t("targetMode")}</dt>
                   <dd>{t(`targetModes.${targetMode}`)}</dd>
                 </div>
-                <div>
-                  <dt className="text-xs text-muted-foreground">{t("fieldThrottleMinutes")}</dt>
-                  <dd>{throttleMinutes}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-muted-foreground">{t("fieldCooldownMinutes")}</dt>
-                  <dd>{cooldownMinutes}</dd>
-                </div>
               </dl>
+              {!canActivate ? (
+                <p className="text-sm text-destructive">{t("errors.automationNotReady")}</p>
+              ) : null}
             </div>
           ) : null}
         </CardContent>
@@ -515,11 +546,23 @@ export function AutomationBuilderPageShell({ automationId }: { automationId?: st
         >
           {t("cancel")}
         </Link>
+        {step !== "trigger" ? (
+          <Button variant="outline" className="h-9 cursor-pointer" disabled={pending} onClick={goBack}>
+            <ArrowLeft className="size-4" />
+            {t("wizardBack")}
+          </Button>
+        ) : null}
+        {step !== "review" ? (
+          <Button className="h-9 cursor-pointer" disabled={pending || !canProceed} onClick={goNext}>
+            {t("wizardNext")}
+            <ArrowRight className="size-4" />
+          </Button>
+        ) : null}
         {canManage && isEdit && existing?.status !== "active" ? (
           <Button
             variant="outline"
             className="h-9 cursor-pointer"
-            disabled={pending}
+            disabled={pending || !canActivate}
             onClick={() => handleStatusChange("active")}
           >
             <Play className="size-4" />

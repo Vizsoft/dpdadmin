@@ -86,7 +86,7 @@ export function HistoryRecentStops({
                 {stop.title}
               </p>
               <Pill
-                tone={stop.type === "delivery" ? "blue" : stop.type === "idle" ? "slate" : "emerald"}
+                tone={stop.type === "delivery" ? "primary" : stop.type === "idle" ? "neutral" : "success"}
                 className={compact ? "text-[9px]" : undefined}
               >
                 {stop.type === "delivery" ? "Delivery" : stop.type === "idle" ? "Idle" : "Moving"}

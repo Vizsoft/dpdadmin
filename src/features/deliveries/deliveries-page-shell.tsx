@@ -12,8 +12,13 @@ import {
   Search,
   X,
 } from "lucide-react";
-import { TABLE_HEAD_CLASS } from "@/components/app/constants";
 import { AppListCard } from "@/components/app/app-list-card";
+import {
+  AppDataTable,
+  AppDataTableEmpty,
+  AppDataTableRow,
+  TableCell,
+} from "@/components/app/app-data-table";
 import { AppPage } from "@/components/app/app-page";
 import { AppPageHeader } from "@/components/app/app-page-header";
 import { AppEmptyState } from "@/components/app/app-empty-state";
@@ -30,14 +35,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { useHasMounted } from "@/hooks/use-has-mounted";
 import { cn } from "@/lib/utils";
 import { queryKeys } from "@/lib/query/query-keys";
@@ -50,25 +47,8 @@ import {
   type CancelReasonCode,
 } from "./parse-cancel-reason";
 import { formatRelativeMinutesAgo } from "./delivery-sort-utils";
+import { resolveStatusVariant } from "@/lib/ui/resolve-status-variant";
 import type { DeliveryListRow, DeliveryStatus } from "./types";
-
-function deliveryStatusVariant(
-  status: DeliveryStatus,
-): "success" | "warning" | "danger" | "neutral" {
-  switch (status) {
-    case "verified":
-      return "success";
-    case "rejected":
-    case "cancelled":
-      return "danger";
-    case "under_review":
-    case "in_transit":
-      return "neutral";
-    case "pending":
-    default:
-      return "warning";
-  }
-}
 
 function statusMessageKey(status: DeliveryStatus) {
   switch (status) {
@@ -306,6 +286,20 @@ function DeliveriesPageContent() {
     !isLoading && deliveries.length > 0 && visible.length === 0;
   const showEmptyAll = !isLoading && deliveries.length === 0;
 
+  const tableColumns = useMemo(
+    () => [
+      { id: "deliveryId", label: t("colDeliveryId") },
+      { id: "driver", label: t("colDriver") },
+      { id: "partner", label: t("colPartner"), className: "hidden md:table-cell" },
+      { id: "zone", label: t("colZone"), className: "hidden sm:table-cell" },
+      { id: "status", label: t("colStatus"), className: "text-end" },
+      { id: "orderId", label: t("colOrderId"), className: "hidden lg:table-cell" },
+      { id: "when", label: t("colWhen"), className: "hidden sm:table-cell" },
+      { id: "actions", label: t("colActions"), className: "w-12 text-end" },
+    ],
+    [t],
+  );
+
   const tabItems = [
     { id: "all" as const, label: t("tabAll") },
     { id: "active" as const, label: t("tabActive") },
@@ -455,46 +449,24 @@ function DeliveriesPageContent() {
           </div>
         ) : (
           <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-primary/5 hover:bg-primary/5">
-                  <TableHead className={TABLE_HEAD_CLASS}>{t("colDeliveryId")}</TableHead>
-                  <TableHead className={TABLE_HEAD_CLASS}>{t("colDriver")}</TableHead>
-                  <TableHead className={cn("hidden md:table-cell", TABLE_HEAD_CLASS)}>
-                    {t("colPartner")}
-                  </TableHead>
-                  <TableHead className={cn("hidden sm:table-cell", TABLE_HEAD_CLASS)}>
-                    {t("colZone")}
-                  </TableHead>
-                  <TableHead className={cn("text-end", TABLE_HEAD_CLASS)}>
-                    {t("colStatus")}
-                  </TableHead>
-                  <TableHead className={cn("hidden lg:table-cell", TABLE_HEAD_CLASS)}>
-                    {t("colOrderId")}
-                  </TableHead>
-                  <TableHead className={cn("hidden sm:table-cell", TABLE_HEAD_CLASS)}>
-                    {t("colWhen")}
-                  </TableHead>
-                  <TableHead className={cn("w-12 text-end", TABLE_HEAD_CLASS)}>
-                    {t("colActions")}
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {showEmptySearch ? (
-                  <TableRow className="hover:bg-transparent">
-                    <TableCell colSpan={8} className="border-t border-border py-12">
-                      <AppEmptyState
-                        title={t("emptySearchTitle")}
-                        description={t("emptySearchDescription")}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  visible.map((delivery) => (
-                    <TableRow
+            <AppDataTable
+              columns={tableColumns}
+              headerRowClassName="bg-primary/5 hover:bg-primary/5"
+              empty={
+                showEmptySearch ? (
+                  <AppDataTableEmpty>
+                    <AppEmptyState
+                      title={t("emptySearchTitle")}
+                      description={t("emptySearchDescription")}
+                    />
+                  </AppDataTableEmpty>
+                ) : undefined
+              }
+            >
+              {!showEmptySearch
+                ? visible.map((delivery) => (
+                    <AppDataTableRow
                       key={delivery.id}
-                      className="cursor-pointer hover:bg-muted/40"
                       onClick={() => setSelectedDelivery(delivery)}
                     >
                       <TableCell className="font-mono text-sm tabular-nums text-muted-foreground">
@@ -553,7 +525,7 @@ function DeliveriesPageContent() {
                         {delivery.zone_name}
                       </TableCell>
                       <TableCell className="text-end">
-                        <StatusPill variant={deliveryStatusVariant(delivery.status)} dot>
+                        <StatusPill variant={resolveStatusVariant(delivery.status)} dot>
                           {t(statusMessageKey(delivery.status))}
                         </StatusPill>
                       </TableCell>
@@ -583,11 +555,10 @@ function DeliveriesPageContent() {
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
-                    </TableRow>
+                    </AppDataTableRow>
                   ))
-                )}
-              </TableBody>
-            </Table>
+                : null}
+            </AppDataTable>
           </CardContent>
         )}
       </AppListCard>

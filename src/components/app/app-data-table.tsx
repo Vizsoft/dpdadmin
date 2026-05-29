@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import {
   Table,
   TableBody,
@@ -18,7 +18,7 @@ export function AppDataTable({
   className,
   headerRowClassName,
 }: {
-  columns: { id: string; label: string; className?: string }[];
+  columns: { id: string; label: ReactNode; className?: string }[];
   children: ReactNode;
   empty?: ReactNode;
   footer?: ReactNode;
@@ -73,11 +73,8 @@ export function AppDataTableRow({
   children,
   onClick,
   className,
-}: {
-  children: ReactNode;
-  onClick?: () => void;
-  className?: string;
-}) {
+  ...props
+}: ComponentProps<typeof TableRow>) {
   return (
     <TableRow
       className={cn(
@@ -85,6 +82,7 @@ export function AppDataTableRow({
         className,
       )}
       onClick={onClick}
+      {...props}
     >
       {children}
     </TableRow>

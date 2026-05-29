@@ -4,14 +4,9 @@ import { useCallback, useMemo, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { Download, Loader2, Upload } from "lucide-react";
 import { toast } from "sonner";
+import { AppModalFooter } from "@/components/app/app-modal-footer";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -175,11 +170,12 @@ export function DriverBulkImportDialog({
         onOpenChange(v);
       }}
     >
-      <DialogContent className="flex max-h-[min(92vh,880px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl">
-        <DialogHeader className="border-b border-border px-5 py-3">
-          <DialogTitle>{t("title")}</DialogTitle>
-        </DialogHeader>
-        <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
+      <DialogContent
+        className="flex max-h-[min(92vh,880px)] flex-col gap-0 overflow-visible rounded-xl p-0 sm:max-w-3xl"
+        showCloseButton
+        closeOutside
+      >
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 pt-4 pb-3">
           {step === "upload" ? (
             <>
               <div className="flex justify-end">
@@ -301,56 +297,75 @@ export function DriverBulkImportDialog({
             </>
           ) : null}
         </div>
-        <DialogFooter className="border-t border-border px-5 py-3">
-          {step === "map" ? (
-            <>
-              <Button
-                type="button"
-                variant="outline"
-                className="cursor-pointer rounded-lg"
-                onClick={() => setStep("upload")}
-              >
-                {t("back")}
-              </Button>
-              <Button
-                type="button"
-                className="cursor-pointer rounded-lg"
-                disabled={isPending}
-                onClick={goPreview}
-              >
-                {isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  t("preview")
-                )}
-              </Button>
-            </>
-          ) : null}
-          {step === "preview" ? (
-            <>
-              <Button
-                type="button"
-                variant="outline"
-                className="cursor-pointer rounded-lg"
-                onClick={() => setStep("map")}
-              >
-                {t("back")}
-              </Button>
-              <Button
-                type="button"
-                className="cursor-pointer rounded-lg"
-                disabled={isPending || summary.ready === 0}
-                onClick={handleImport}
-              >
-                {isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  t("import", { count: summary.ready })
-                )}
-              </Button>
-            </>
-          ) : null}
-        </DialogFooter>
+        {step !== "upload" ? (
+          <AppModalFooter
+            title={t("title")}
+            subtitle={
+              step === "map"
+                ? t("dropHint")
+                : t("previewSummary", {
+                    ready: summary.ready,
+                    duplicate: summary.duplicate,
+                    invalid: summary.invalid,
+                  })
+            }
+          >
+            {step === "map" ? (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-9 cursor-pointer rounded-md"
+                  onClick={() => setStep("upload")}
+                >
+                  {t("back")}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-9 cursor-pointer rounded-md px-4"
+                  disabled={isPending}
+                  onClick={goPreview}
+                >
+                  {isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    t("preview")
+                  )}
+                </Button>
+              </>
+            ) : null}
+            {step === "preview" ? (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-9 cursor-pointer rounded-md"
+                  onClick={() => setStep("map")}
+                >
+                  {t("back")}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-9 cursor-pointer rounded-md px-4"
+                  disabled={isPending || summary.ready === 0}
+                  onClick={handleImport}
+                >
+                  {isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    t("import", { count: summary.ready })
+                  )}
+                </Button>
+              </>
+            ) : null}
+          </AppModalFooter>
+        ) : (
+          <AppModalFooter title={t("title")} subtitle={t("formats")} />
+        )}
       </DialogContent>
     </Dialog>
   );

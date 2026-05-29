@@ -1300,10 +1300,18 @@ export async function setNotificationAutomationStatus(
   if (!session) return { error: "not_authorized" };
 
   const supabase = await notificationsDb();
-  const { error } = await supabase
-    .from("notification_automations")
-    .update({ status, updated_at: new Date().toISOString() })
-    .eq("id", id);
+  const patch: Record<string, unknown> = {
+    status,
+    updated_at: new Date().toISOString(),
+  };
+  if (status === "active") {
+    patch.next_run_at = new Date().toISOString();
+  }
+  if (status === "paused" || status === "draft") {
+    patch.next_run_at = null;
+  }
+
+  const { error } = await supabase.from("notification_automations").update(patch).eq("id", id);
   if (error) return { error: "save_failed" };
 
   await logAdminMutation({
@@ -1424,4 +1432,367 @@ export async function runNotificationWorkerNow(
     failed: result.errors.length,
     provider: "firebase_fcm",
   };
+}
+
+export async function enqueueNotificationAutomationEvent(input: {
+  triggerType: SaveAutomationInput["triggerType"];
+  driverId?: string | null;
+  payload?: Record<string, unknown>;
+}): Promise<{ id: string } | { error: NotificationActionError }> {
+  const service = notificationsAdminDb();
+  const { data, error } = await service.rpc("enqueue_notification_automation_event", {
+    p_trigger_type: input.triggerType,
+    p_driver_id: input.driverId ?? null,
+    p_payload: input.payload ?? {},
+  });
+  if (error) {
+    console.error("[notifications] enqueue automation event failed:", error.message);
+    return { error: "save_failed" };
+  }
+  return { id: String(data) };
+}
+
+function interpolateTemplate(template: string, vars: Record<string, string>): string {
+  return template.replace(/\{\{\s*(\w+)\s*\}\}/g, (_, key: string) => vars[key] ?? "");
+}
+
+async function resolveAutomationContent(
+  service: ReturnType<typeof notificationsAdminDb>,
+  automation: NotificationAutomationRow,
+  driverId?: string,
+): Promise<{ title: string; body: string; actionType: string; actionParams: Record<string, unknown> } | null> {
+  const vars: Record<string, string> = {
+    driver_name: "Driver",
+    driver_id: driverId ?? "",
+  };
+  if (automation.template_id) {
+    const { data: tpl } = await service
+      .from("notification_templates")
+      .select("*")
+      .eq("id", automation.template_id)
+      .maybeSingle();
+    if (!tpl) return null;
+    return {
+      title: interpolateTemplate(String(tpl.title_template ?? ""), vars),
+      body: interpolateTemplate(String(tpl.body_template ?? ""), vars),
+      actionType: tpl.action_type,
+      actionParams: (tpl.action_params ?? {}) as Record<string, unknown>,
+    };
+  }
+  if (!automation.title_template?.trim() || !automation.body_template?.trim()) return null;
+  return {
+    title: interpolateTemplate(automation.title_template, vars),
+    body: interpolateTemplate(automation.body_template, vars),
+    actionType: automation.action_type,
+    actionParams: (automation.action_params ?? {}) as Record<string, unknown>,
+  };
+}
+
+async function isDedupBlocked(
+  service: ReturnType<typeof notificationsAdminDb>,
+  automationId: string,
+  driverId: string,
+  cooldownMinutes: number,
+): Promise<boolean> {
+  const dedupKey = `automation:${automationId}:driver:${driverId}`;
+  const { data } = await service
+    .from("notification_dedup_keys")
+    .select("id")
+    .eq("dedup_key", dedupKey)
+    .gt("expires_at", new Date().toISOString())
+    .maybeSingle();
+  if (data) return true;
+  await service.from("notification_dedup_keys").upsert(
+    {
+      dedup_key: dedupKey,
+      automation_id: automationId,
+      driver_id: driverId,
+      expires_at: new Date(Date.now() + cooldownMinutes * 60_000).toISOString(),
+    },
+    { onConflict: "dedup_key" },
+  );
+  return false;
+}
+
+async function matchScheduledAutomationDrivers(
+  service: ReturnType<typeof notificationsAdminDb>,
+  automation: NotificationAutomationRow,
+): Promise<string[]> {
+  const config = automation.trigger_config ?? {};
+  const trigger = automation.trigger_type;
+
+  if (trigger === "inactivity") {
+    const days = Number(config.inactivity_days ?? 7);
+    const since = new Date(Date.now() - days * 86_400_000).toISOString();
+    const { data: recent } = await service
+      .from("deliveries")
+      .select("driver_id")
+      .gte("created_at", since);
+    const activeSet = new Set(
+      (recent ?? []).map((r: { driver_id: string }) => r.driver_id),
+    );
+    const { data: allDrivers } = await service
+      .from("drivers")
+      .select("id")
+      .is("archived_at", null);
+    return (allDrivers ?? [])
+      .map((r: { id: string }) => r.id)
+      .filter((id: string) => !activeSet.has(id));
+  }
+
+  if (trigger === "document_expiry") {
+    const daysBefore = Number(config.days_before_expiry ?? 14);
+    const targetDate = new Date(Date.now() + daysBefore * 86_400_000).toISOString().slice(0, 10);
+    const { data } = await service
+      .from("driver_documents")
+      .select("driver_id")
+      .gte("expires_at", `${targetDate}T00:00:00`)
+      .lte("expires_at", `${targetDate}T23:59:59`);
+    const ids = (data ?? []).map((r: { driver_id: string }) => r.driver_id);
+    return [...new Set(ids)] as string[];
+  }
+
+  if (trigger === "low_performance") {
+    const minDeliveries = Number(config.min_deliveries ?? 5);
+    const periodDays = Number(config.period_days ?? 7);
+    const since = new Date(Date.now() - periodDays * 86_400_000).toISOString();
+    const { data: counts } = await service
+      .from("deliveries")
+      .select("driver_id")
+      .gte("created_at", since)
+      .eq("status", "verified");
+    const byDriver = new Map<string, number>();
+    for (const row of counts ?? []) {
+      const id = (row as { driver_id: string }).driver_id;
+      byDriver.set(id, (byDriver.get(id) ?? 0) + 1);
+    }
+    return [...byDriver.entries()].filter(([, c]) => c < minDeliveries).map(([id]) => id);
+  }
+
+  if (trigger === "shift_reminder" || trigger === "schedule") {
+    const { data: audienceIds } = await service.rpc("compile_notification_audience_ids", {
+      p_target_spec: automation.target_spec ?? { mode: "all" },
+      p_exclusion_spec: automation.exclusion_spec ?? {},
+    });
+    return (audienceIds ?? []) as string[];
+  }
+
+  return [];
+}
+
+async function filterAudience(
+  service: ReturnType<typeof notificationsAdminDb>,
+  automation: NotificationAutomationRow,
+  candidateIds: string[],
+): Promise<string[]> {
+  const { data: audienceIds } = await service.rpc("compile_notification_audience_ids", {
+    p_target_spec: automation.target_spec ?? { mode: "all" },
+    p_exclusion_spec: automation.exclusion_spec ?? {},
+  });
+  const allowed = new Set((audienceIds ?? []) as string[]);
+  return candidateIds.filter((id) => allowed.has(id));
+}
+
+async function runAutomationForDrivers(
+  service: ReturnType<typeof notificationsAdminDb>,
+  automation: NotificationAutomationRow,
+  driverIds: string[],
+): Promise<{ matched: number; sent: number; failed: number; campaignId: string | null }> {
+  if (driverIds.length === 0) {
+    return { matched: 0, sent: 0, failed: 0, campaignId: null };
+  }
+
+  const content = await resolveAutomationContent(service, automation);
+  if (!content) {
+    return { matched: driverIds.length, sent: 0, failed: driverIds.length, campaignId: null };
+  }
+
+  const eligible: string[] = [];
+  for (const driverId of driverIds) {
+    const blocked = await isDedupBlocked(
+      service,
+      automation.id,
+      driverId,
+      automation.cooldown_minutes,
+    );
+    if (!blocked) eligible.push(driverId);
+  }
+  if (eligible.length === 0) {
+    return { matched: driverIds.length, sent: 0, failed: 0, campaignId: null };
+  }
+
+  const targetSpec: TargetSpec = { mode: "custom", driver_ids: eligible };
+  const { data: campaign, error: campaignError } = await service
+    .from("notification_campaigns")
+    .insert({
+      title: content.title,
+      body: content.body,
+      category: automation.category,
+      priority: automation.priority,
+      template_id: automation.template_id,
+      target_spec: targetSpec,
+      exclusion_spec: automation.exclusion_spec ?? {},
+      action_type: content.actionType,
+      action_params: content.actionParams,
+      payload_version: PAYLOAD_VERSION,
+      media: [],
+      schedule_spec: { mode: "now" },
+      timezone: KUWAIT_TZ,
+      requires_approval: false,
+      estimated_audience_count: eligible.length,
+      status: "queued",
+      approved_at: new Date().toISOString(),
+    })
+    .select("id")
+    .single();
+  if (campaignError || !campaign) {
+    return { matched: driverIds.length, sent: 0, failed: eligible.length, campaignId: null };
+  }
+
+  const dispatch = await executeNotificationDispatch(campaign.id, null);
+  if ("error" in dispatch) {
+    return {
+      matched: driverIds.length,
+      sent: 0,
+      failed: eligible.length,
+      campaignId: campaign.id,
+    };
+  }
+  return {
+    matched: driverIds.length,
+    sent: dispatch.sent,
+    failed: dispatch.failed,
+    campaignId: campaign.id,
+  };
+}
+
+async function processAutomationRow(
+  service: ReturnType<typeof notificationsAdminDb>,
+  automation: NotificationAutomationRow,
+  forcedDriverIds?: string[],
+): Promise<void> {
+  const { data: run } = await service
+    .from("notification_automation_runs")
+    .insert({
+      automation_id: automation.id,
+      status: "running",
+      started_at: new Date().toISOString(),
+    })
+    .select("id")
+    .single();
+
+  let matched = 0;
+  let sent = 0;
+  let failed = 0;
+  let campaignId: string | null = null;
+  let errorSummary: string | null = null;
+
+  try {
+    const candidates =
+      forcedDriverIds ??
+      (await matchScheduledAutomationDrivers(service, automation));
+    const driverIds = await filterAudience(service, automation, candidates);
+    matched = driverIds.length;
+    const result = await runAutomationForDrivers(service, automation, driverIds);
+    sent = result.sent;
+    failed = result.failed;
+    campaignId = result.campaignId;
+  } catch (e) {
+    errorSummary = e instanceof Error ? e.message : "automation_failed";
+  }
+
+  if (run?.id) {
+    await service
+      .from("notification_automation_runs")
+      .update({
+        status: errorSummary ? "failed" : "completed",
+        matched_count: matched,
+        sent_count: sent,
+        failed_count: failed,
+        campaign_id: campaignId,
+        error_summary: errorSummary,
+        finished_at: new Date().toISOString(),
+      })
+      .eq("id", run.id);
+  }
+
+  const nextRun = new Date(Date.now() + automation.throttle_minutes * 60_000).toISOString();
+  await service
+    .from("notification_automations")
+    .update({
+      last_run_at: new Date().toISOString(),
+      next_run_at: nextRun,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", automation.id);
+}
+
+export async function processDueAutomations(): Promise<{
+  processed: number;
+  eventsProcessed: number;
+  errors: string[];
+}> {
+  const service = notificationsAdminDb();
+  const now = new Date().toISOString();
+  let processed = 0;
+  let eventsProcessed = 0;
+  const errors: string[] = [];
+
+  const { data: dueAutomations } = await service
+    .from("notification_automations")
+    .select("*")
+    .eq("status", "active")
+    .or(`next_run_at.is.null,next_run_at.lte.${now}`)
+    .limit(10);
+
+  for (const automation of (dueAutomations ?? []) as NotificationAutomationRow[]) {
+    if (["attendance_approved", "salary_processed", "incentive_unlocked", "missed_submission"].includes(
+      automation.trigger_type,
+    )) {
+      continue;
+    }
+    try {
+      await processAutomationRow(service, automation);
+      processed += 1;
+    } catch (e) {
+      errors.push(`${automation.id}:${e instanceof Error ? e.message : "failed"}`);
+    }
+  }
+
+  const { data: pendingEvents } = await service
+    .from("notification_automation_events")
+    .select("*")
+    .is("processed_at", null)
+    .order("created_at", { ascending: true })
+    .limit(50);
+
+  for (const event of pendingEvents ?? []) {
+    const triggerType = event.trigger_type as SaveAutomationInput["triggerType"];
+    const driverId = event.driver_id as string | null;
+    const { data: automations } = await service
+      .from("notification_automations")
+      .select("*")
+      .eq("status", "active")
+      .eq("trigger_type", triggerType);
+
+    for (const automation of (automations ?? []) as NotificationAutomationRow[]) {
+      try {
+        const candidates = driverId ? [driverId] : [];
+        const driverIds = await filterAudience(service, automation, candidates);
+        if (driverIds.length === 0) continue;
+        await processAutomationRow(service, automation, driverIds);
+        processed += 1;
+      } catch (e) {
+        errors.push(`${automation.id}:${e instanceof Error ? e.message : "event_failed"}`);
+      }
+    }
+
+    await service
+      .from("notification_automation_events")
+      .update({ processed_at: new Date().toISOString() })
+      .eq("id", event.id);
+    eventsProcessed += 1;
+  }
+
+  return { processed, eventsProcessed, errors };
 }

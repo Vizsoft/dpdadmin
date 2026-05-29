@@ -15,8 +15,7 @@ export function TrackingGlassCard({
   return (
     <div
       className={cn(
-        "rounded-xl border border-border bg-card/95 shadow-sm backdrop-blur-sm transition-colors",
-        "dark:border-slate-700/80 dark:bg-slate-900/90",
+        "rounded-xl border border-border bg-card shadow-sm",
         className,
       )}
     >
@@ -185,12 +184,12 @@ export function TrackingMetricTile({
       value={value}
       tone={
         accent === "success"
-          ? "emerald"
+          ? "success"
           : accent === "warning"
-            ? "amber"
+            ? "warning"
             : accent === "danger"
-              ? "rose"
-              : "slate"
+              ? "danger"
+              : "neutral"
       }
       hint={hint}
       className={cn("min-h-[90px]", accentClass)}

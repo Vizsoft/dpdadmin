@@ -2,14 +2,14 @@
 
 import { Clock, UserPlus } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { Pill } from "@/components/ui/metric-tile";
+import { Pill, type Tone } from "@/components/ui/metric-tile";
 import type { AccessRequestRow } from "../types";
 import { DashboardWidget } from "./dashboard-widget";
 
-function ageTone(bucket: AccessRequestRow["ageBucket"]) {
-  if (bucket === "stale") return "rose" as const;
-  if (bucket === "waiting") return "amber" as const;
-  return "blue" as const;
+function ageTone(bucket: AccessRequestRow["ageBucket"]): Tone {
+  if (bucket === "stale") return "danger";
+  if (bucket === "waiting") return "warning";
+  return "primary";
 }
 
 export function AccessRequestsWidget({

@@ -18,7 +18,7 @@ import { AppPage } from "@/components/app/app-page";
 import { AppPageHeader } from "@/components/app/app-page-header";
 import { AppEmptyState } from "@/components/app/app-empty-state";
 import { StatusPill } from "@/components/dashboard/status-pill";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CardContent } from "@/components/ui/card";
 import {
@@ -52,22 +52,7 @@ import {
   type VerificationListRow,
   type VerificationStatus,
 } from "./types";
-
-function statusVariant(
-  status: VerificationStatus,
-): "success" | "warning" | "danger" | "neutral" {
-  switch (status) {
-    case "matched":
-      return "success";
-    case "surplus":
-    case "deficit":
-      return "warning";
-    case "conflict":
-      return "danger";
-    default:
-      return "neutral";
-  }
-}
+import { resolveStatusVariant } from "@/lib/ui/resolve-status-variant";
 
 function formatDate(iso: string): string {
   try {
@@ -287,7 +272,8 @@ export function VerificationsPageShell() {
             <DropdownMenu>
               <DropdownMenuTrigger
                 className={cn(
-                  "inline-flex h-8 items-center justify-center rounded-lg border border-input bg-background px-3 text-sm font-medium shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50",
+                  buttonVariants({ variant: "outline", size: "sm" }),
+                  "h-8 cursor-pointer rounded-lg",
                 )}
                 disabled={isExporting}
               >
@@ -464,7 +450,7 @@ export function VerificationsPageShell() {
                   <span className="font-medium">{row.matched_count}</span>
                   <span className="text-muted-foreground"> / {row.reported_count}</span>
                 </div>
-                <StatusPill variant={statusVariant(row.status)} dot={false}>
+                <StatusPill variant={resolveStatusVariant(row.status)} dot={false}>
                   {t(`status.${row.status}`)}
                 </StatusPill>
               </button>

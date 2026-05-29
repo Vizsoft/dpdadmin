@@ -6,9 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
-import { AppPage } from "@/components/app/app-page";
-import { AppEmptyState } from "@/components/app/app-empty-state";
-import { AppListCard } from "@/components/app/app-list-card";
+import { AppEmptyState, AppListCard, AppPage, AppPageHeader } from "@/components/app";
 import { TABLE_HEAD_CLASS } from "@/components/app/constants";
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
@@ -30,6 +28,7 @@ import { useDeliveryRules, useDpdScopeOptions } from "./use-dpd";
 
 export function DeliveryRulesPageShell() {
   const t = useTranslations("pages.dpd");
+  const tPage = useTranslations("pages.deliveryRules");
   const { can } = useAuth();
   const canManage = can("earnings.manage");
   const queryClient = useQueryClient();
@@ -62,8 +61,10 @@ export function DeliveryRulesPageShell() {
 
   return (
     <AppPage>
-      <AppListCard
-        headerActions={
+      <AppPageHeader
+        title={tPage("title")}
+        description={tPage("subtitle")}
+        actions={
           canManage ? (
             <Button
               type="button"
@@ -76,7 +77,8 @@ export function DeliveryRulesPageShell() {
             </Button>
           ) : null
         }
-      >
+      />
+      <AppListCard>
         {isLoading ? (
           <div className="flex h-32 items-center justify-center">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />

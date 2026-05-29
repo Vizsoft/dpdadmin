@@ -13,45 +13,14 @@ export type FleetStatusKey =
   | "alert"
   | "cluster";
 
-const STATUS_STYLES: Record<
-  FleetStatusKey,
-  { dot: string; pill: string; tone: Tone; labelKey?: string }
-> = {
-  available: {
-    dot: "bg-emerald-500",
-    pill: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-    tone: "emerald",
-  },
-  delivering: {
-    dot: "bg-sky-500",
-    pill: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
-    tone: "blue",
-  },
-  idle: {
-    dot: "bg-amber-500",
-    pill: "bg-amber-500/10 text-amber-800 dark:text-amber-300",
-    tone: "amber",
-  },
-  break: {
-    dot: "bg-violet-500",
-    pill: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
-    tone: "indigo",
-  },
-  offline: {
-    dot: "bg-slate-400",
-    pill: "bg-slate-500/10 text-slate-600 dark:text-slate-300",
-    tone: "slate",
-  },
-  alert: {
-    dot: "bg-rose-500",
-    pill: "bg-rose-500/10 text-rose-700 dark:text-rose-300",
-    tone: "rose",
-  },
-  cluster: {
-    dot: "bg-indigo-500",
-    pill: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300",
-    tone: "indigo",
-  },
+const STATUS_TONES: Record<FleetStatusKey, Tone> = {
+  available: "success",
+  delivering: "primary",
+  idle: "warning",
+  break: "primary",
+  offline: "neutral",
+  alert: "danger",
+  cluster: "primary",
 };
 
 export function fleetStatusFromLocation(input: {
@@ -76,10 +45,9 @@ export function TrackingStatusDot({
   className?: string;
   pulse?: boolean;
 }) {
-  const style = STATUS_STYLES[status];
   return (
     <StatusDot
-      tone={style.tone}
+      tone={STATUS_TONES[status]}
       className={cn(pulse && status === "alert" && "animate-pulse", className)}
     />
   );
@@ -94,9 +62,8 @@ export function TrackingStatusPill({
   label: string;
   className?: string;
 }) {
-  const style = STATUS_STYLES[status];
   return (
-    <Pill tone={style.tone} className={cn(style.pill, className)}>
+    <Pill tone={STATUS_TONES[status]} className={className}>
       <TrackingStatusDot status={status} />
       {label}
     </Pill>

@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/auth/get-session";
 import { hasPermissionInSet } from "@/lib/auth/permissions";
+import { enqueueNotificationAutomationEvent } from "@/features/notifications/notifications-actions";
 import type { PayoutRunDetail, PayoutRunRow } from "./types";
 
 async function requireEarningsView() {
@@ -87,6 +88,19 @@ export async function markPayoutRunPaid(
     p_reference: reference ?? null,
   });
   if (error) return { error: error.message ?? "save_failed" };
+
+  const { data: payoutLines } = await (supabase as any)
+    .from("driver_payouts")
+    .select("driver_id")
+    .eq("run_id", id);
+  for (const line of payoutLines ?? []) {
+    void enqueueNotificationAutomationEvent({
+      triggerType: "salary_processed",
+      driverId: line.driver_id as string,
+      payload: { run_id: id },
+    });
+  }
+
   return { ok: true };
 }
 

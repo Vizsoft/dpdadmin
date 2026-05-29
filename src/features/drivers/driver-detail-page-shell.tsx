@@ -35,10 +35,9 @@ import { AppPage } from "@/components/app/app-page";
 import { AppEmptyState } from "@/components/app/app-empty-state";
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
-import { MetricTile } from "@/components/ui/metric-tile";
+import { MetricTile, type Tone } from "@/components/ui/metric-tile";
 import { Link, useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
-import { TrackingGlassCard } from "@/features/live-tracking/tracking-shell";
 import { DriverAccountStatusEditor } from "./driver-account-status-editor";
 import { DriverBlockEditor } from "./driver-block-editor";
 import { DriverDocumentsTab } from "./driver-documents-tab";
@@ -154,7 +153,7 @@ function PasscodeCard({
   };
 
   return (
-    <TrackingGlassCard className="overflow-hidden border-slate-200 bg-white dark:border-slate-700/80 dark:bg-slate-900">
+    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
       <div className="border-b border-border px-4 py-3">
         <p className="text-sm font-semibold text-foreground">{t("title")}</p>
       </div>
@@ -223,7 +222,7 @@ function PasscodeCard({
           </>
         )}
       </div>
-    </TrackingGlassCard>
+    </div>
   );
 }
 
@@ -389,14 +388,14 @@ function DriverDetailContent({ id }: { id: string }) {
 
     if (activeTab === "attendance") {
       return (
-        <TrackingGlassCard className="border-slate-200 bg-white dark:border-slate-700/80 dark:bg-slate-900">
+        <div className="rounded-xl border border-border bg-card shadow-sm">
           <div className="py-12">
             <AppEmptyState
               title={t("attendanceNeedsLinkTitle")}
               description={t("attendanceNeedsLinkDescription")}
             />
           </div>
-        </TrackingGlassCard>
+        </div>
       );
     }
 
@@ -422,21 +421,21 @@ function DriverDetailContent({ id }: { id: string }) {
 
     if (activeTab === "devices") {
       return (
-        <TrackingGlassCard className="border-slate-200 bg-white dark:border-slate-700/80 dark:bg-slate-900">
+        <div className="rounded-xl border border-border bg-card shadow-sm">
           <div className="py-12">
             <AppEmptyState
               title={t("devicesNeedsLinkTitle")}
               description={t("devicesNeedsLinkDescription")}
             />
           </div>
-        </TrackingGlassCard>
+        </div>
       );
     }
 
     if (activeTab === "assets") {
       const assigned = driver.assigned_assets ?? [];
       return (
-        <TrackingGlassCard className="border-slate-200 bg-white p-4 dark:border-slate-700/80 dark:bg-slate-900">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
           <div className="mb-3 flex items-center justify-between gap-2">
             <p className="text-sm font-semibold text-foreground">{t("assetsTitle")}</p>
             <Link
@@ -469,12 +468,12 @@ function DriverDetailContent({ id }: { id: string }) {
                 ))}
             </div>
           )}
-        </TrackingGlassCard>
+        </div>
       );
     }
 
     return (
-      <TrackingGlassCard className="border-slate-200 bg-white dark:border-slate-700/80 dark:bg-slate-900">
+      <div className="rounded-xl border border-border bg-card shadow-sm">
         <div className="flex flex-col items-center gap-2 py-12">
           <StatusPill variant="warning" dot={false}>
             {t("comingSoon")}
@@ -483,7 +482,7 @@ function DriverDetailContent({ id }: { id: string }) {
             {t("emptyTabDescription")}
           </p>
         </div>
-      </TrackingGlassCard>
+      </div>
     );
   };
 
@@ -516,7 +515,7 @@ function DriverDetailContent({ id }: { id: string }) {
         <span className="text-sm text-muted-foreground">{t("backToList")}</span>
       </div>
 
-      <TrackingGlassCard className="overflow-hidden border-slate-200 bg-white dark:border-slate-700/80 dark:bg-slate-900">
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         <div className="flex flex-col gap-4 border-b border-border p-4 sm:flex-row sm:items-start sm:justify-between sm:p-5">
             <div className="flex gap-4">
               <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-muted/30">
@@ -672,7 +671,7 @@ function DriverDetailContent({ id }: { id: string }) {
               </div>
             ))}
           </div>
-      </TrackingGlassCard>
+      </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
         <div className="min-w-0 space-y-3">
@@ -693,7 +692,7 @@ function DriverDetailContent({ id }: { id: string }) {
 
         <aside className="space-y-3">
           {driver.linked_profile_id && !isArchived && canManage ? (
-            <TrackingGlassCard className="border-slate-200 bg-white dark:border-slate-700/80 dark:bg-slate-900">
+            <div className="rounded-xl border border-border bg-card shadow-sm">
               <div className="border-b border-border px-4 py-3">
                 <p className="text-sm font-semibold text-foreground">{tBlock("title")}</p>
               </div>
@@ -707,10 +706,10 @@ function DriverDetailContent({ id }: { id: string }) {
                   canManage={canManage}
                 />
               </div>
-            </TrackingGlassCard>
+            </div>
           ) : null}
           {!isArchived && canManage ? (
-            <TrackingGlassCard className="border-slate-200 bg-white dark:border-slate-700/80 dark:bg-slate-900">
+            <div className="rounded-xl border border-border bg-card shadow-sm">
               <div className="border-b border-border px-4 py-3">
                 <p className="text-sm font-semibold text-foreground">{t("accountStatus.title")}</p>
               </div>
@@ -727,7 +726,7 @@ function DriverDetailContent({ id }: { id: string }) {
                   <p className="text-sm text-muted-foreground">{t("approvePendingHint")}</p>
                 )}
               </div>
-            </TrackingGlassCard>
+            </div>
           ) : null}
           {!isArchived ? (
             <PasscodeCard
@@ -738,17 +737,24 @@ function DriverDetailContent({ id }: { id: string }) {
               canManage={canManage && Boolean(driver.linked_profile_id)}
             />
           ) : null}
-          <TrackingGlassCard className="border-slate-200 bg-white dark:border-slate-700/80 dark:bg-slate-900">
+          <div className="rounded-xl border border-border bg-card shadow-sm">
             <div className="border-b border-border px-4 py-3">
               <p className="text-sm font-semibold text-foreground">{t("quickStats")}</p>
             </div>
             <div className="grid grid-cols-2 gap-2 p-3">
-              {[
-                { label: t("statAttendance"), value: "—", tone: "emerald" as const, icon: CalendarClock },
-                { label: t("statDeliveriesToday"), value: "—", tone: "blue" as const, icon: Package },
-                { label: t("statDeliveriesWeek"), value: "—", tone: "indigo" as const, icon: Bike },
-                { label: t("statEarnings"), value: "—", tone: "amber" as const, icon: Wallet },
-              ].map((stat) => (
+              {(
+                [
+                  { label: t("statAttendance"), value: "—", tone: "success", icon: CalendarClock },
+                  { label: t("statDeliveriesToday"), value: "—", tone: "primary", icon: Package },
+                  { label: t("statDeliveriesWeek"), value: "—", tone: "primary", icon: Bike },
+                  { label: t("statEarnings"), value: "—", tone: "warning", icon: Wallet },
+                ] satisfies Array<{
+                  label: string;
+                  value: string;
+                  tone: Tone;
+                  icon: typeof CalendarClock;
+                }>
+              ).map((stat) => (
                 <MetricTile
                   key={stat.label}
                   label={stat.label}
@@ -759,7 +765,7 @@ function DriverDetailContent({ id }: { id: string }) {
                 />
               ))}
             </div>
-          </TrackingGlassCard>
+          </div>
         </aside>
       </div>
     </AppPage>

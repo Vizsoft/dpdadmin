@@ -383,3 +383,13 @@ export async function fetchDriverAssignedRestaurantPins(
       map_link: r.map_link,
     }));
 }
+
+/** Cron: delete driver_locations rows with GPS older than 10 minutes. */
+export async function cleanupStaleDriverLocations(): Promise<number> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase.rpc("cleanup_stale_driver_locations", {
+    p_max_age: "10 minutes",
+  });
+  if (error) throw error;
+  return typeof data === "number" ? data : 0;
+}

@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { AppFormSection } from "@/components/app";
 import {
   MAX_DELIVERY_PROXIMITY_METERS,
   MIN_DELIVERY_PROXIMITY_METERS,
@@ -160,12 +160,7 @@ export function DriverAppSettingsPanel({
     <div className="space-y-4">
       <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
         {/* Left column — branding & launch assets */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">{t("brandingTitle")}</CardTitle>
-            <CardDescription>{t("brandingSubtitle")}</CardDescription>
-          </CardHeader>
-          <CardContent>
+        <AppFormSection title={t("brandingTitle")} description={t("brandingSubtitle")}>
             <form
               className="space-y-5"
               action={(formData) => {
@@ -321,17 +316,14 @@ export function DriverAppSettingsPanel({
                 </Button>
               </div>
             </form>
-          </CardContent>
-        </Card>
+        </AppFormSection>
 
         {/* Right column — runtime rules & availability */}
         <div className="space-y-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">{t("deliveryProximityTitle")}</CardTitle>
-              <CardDescription>{t("deliveryProximitySubtitle")}</CardDescription>
-            </CardHeader>
-            <CardContent>
+          <AppFormSection
+            title={t("deliveryProximityTitle")}
+            description={t("deliveryProximitySubtitle")}
+          >
               <form
                 className="space-y-4"
                 onSubmit={(e) => {
@@ -384,15 +376,10 @@ export function DriverAppSettingsPanel({
                   </Button>
                 </div>
               </form>
-            </CardContent>
-          </Card>
+          </AppFormSection>
 
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">{t("maintenanceTitle")}</CardTitle>
-              <CardDescription>{t("maintenanceSubtitle")}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
+          <AppFormSection title={t("maintenanceTitle")} description={t("maintenanceSubtitle")}>
+            <div className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/10 p-3">
                 <div className="space-y-1">
                   <span
@@ -474,8 +461,8 @@ export function DriverAppSettingsPanel({
                   {isPending ? t("saving") : t("saveMessage")}
                 </Button>
               </form>
-            </CardContent>
-          </Card>
+            </div>
+          </AppFormSection>
         </div>
       </div>
 

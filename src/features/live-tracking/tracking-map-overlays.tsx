@@ -14,7 +14,7 @@ import {
   Plus,
 } from "lucide-react";
 import { ToggleChip } from "@/components/app/toggle-chip";
-import { Pill, SignalBars, StatusDot } from "@/components/ui/metric-tile";
+import { Pill, SignalBars, StatusDot, type Tone } from "@/components/ui/metric-tile";
 import { cn } from "@/lib/utils";
 import type { DriverLiveLocation } from "@/features/locations/types";
 import {
@@ -168,17 +168,14 @@ export function TrackingMapLegend({
 }) {
   const t = useTranslations("pages.liveTracking");
 
-  const toneByStatus: Record<
-    FleetStatusKey,
-    "emerald" | "blue" | "amber" | "indigo" | "slate" | "rose"
-  > = {
-    available: "emerald",
-    delivering: "blue",
-    idle: "amber",
-    break: "indigo",
-    offline: "slate",
-    alert: "rose",
-    cluster: "blue",
+  const toneByStatus: Record<FleetStatusKey, Tone> = {
+    available: "success",
+    delivering: "primary",
+    idle: "warning",
+    break: "primary",
+    offline: "neutral",
+    alert: "danger",
+    cluster: "primary",
   };
 
   return (
@@ -237,17 +234,14 @@ export function TrackingSelectedDriverPopup({
   const speed = formatSpeedKmh(driver.speedMps);
   const gpsQuality = gpsQualityFromAccuracy(driver.accuracyMeters);
 
-  const toneByStatus: Record<
-    FleetStatusKey,
-    "emerald" | "blue" | "amber" | "indigo" | "slate" | "rose"
-  > = {
-    available: "emerald",
-    delivering: "blue",
-    idle: "amber",
-    break: "indigo",
-    offline: "slate",
-    alert: "rose",
-    cluster: "blue",
+  const toneByStatus: Record<FleetStatusKey, Tone> = {
+    available: "success",
+    delivering: "primary",
+    idle: "warning",
+    break: "primary",
+    offline: "neutral",
+    alert: "danger",
+    cluster: "primary",
   };
 
   return (
@@ -271,7 +265,7 @@ export function TrackingSelectedDriverPopup({
             <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
               {driver.driverName}
             </p>
-            <Pill tone={driver.isOnDuty ? "emerald" : "slate"} variant="solid">
+            <Pill tone={driver.isOnDuty ? "success" : "neutral"} variant="solid">
               {driver.isOnDuty ? t("onDuty") : t("offDuty")}
             </Pill>
           </div>

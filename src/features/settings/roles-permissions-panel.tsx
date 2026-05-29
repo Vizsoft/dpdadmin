@@ -49,7 +49,8 @@ import type { AdminRoleRow } from "@/lib/auth/get-role-permissions";
 import { isValidRoleSlug, slugifyRoleName } from "@/lib/auth/permission-catalog";
 import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { AppFormSection } from "@/components/app";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -759,15 +760,9 @@ export function RolesPermissionsPanel({
 
   if (editableRoles.length === 0) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{t("title")}</CardTitle>
-          <CardDescription>{t("subtitle")}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">{t("selectRole")}</p>
-        </CardContent>
-      </Card>
+      <AppFormSection title={t("title")} description={t("subtitle")}>
+        <p className="text-sm text-muted-foreground">{t("selectRole")}</p>
+      </AppFormSection>
     );
   }
 
@@ -796,7 +791,7 @@ export function RolesPermissionsPanel({
           onNew={openNewDialog}
         />
 
-        <Card className="w-full min-w-0 overflow-hidden">
+        <Card className="w-full min-w-0 overflow-hidden rounded-xl border-border shadow-sm">
           <CardContent className="flex flex-col p-0">
             <MatrixColumnHeader
               roles={editableRoles}

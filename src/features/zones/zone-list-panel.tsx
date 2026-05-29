@@ -154,7 +154,7 @@ export function ZoneListPanel({
                   const areaLabel = formatZoneArea(zoneAreaSqKm(zone.zone_type, zone.geometry));
                   const created = formatCreatedAt(zone.created_at, locale);
                   const selected = selectedId === zone.id;
-                  const typeTone = zone.geofence_kind === "inclusion" ? "emerald" : "rose";
+                  const typeTone = zone.geofence_kind === "inclusion" ? "success" : "danger";
 
                   return (
                     <TableRow
@@ -187,7 +187,7 @@ export function ZoneListPanel({
                         {areaLabel}
                       </TableCell>
                       <TableCell>
-                        <Pill tone={zone.status === "active" ? "emerald" : "slate"}>
+                        <Pill tone={zone.status === "active" ? "success" : "neutral"}>
                           {t(`geofence.status.${zone.status}`)}
                         </Pill>
                       </TableCell>

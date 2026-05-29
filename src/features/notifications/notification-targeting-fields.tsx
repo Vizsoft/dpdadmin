@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -13,21 +12,27 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { NOTIFICATION_TARGET_MODES } from "./constants";
+import { NOTIFICATION_SUPPORTED_TARGET_MODES } from "./constants";
+import { RequiredLabel } from "./notification-form-primitives";
 import { estimateNotificationAudience } from "./notifications-actions";
 import { useNotificationTargetingOptions } from "./use-notifications";
 import type { TargetSpec } from "./types";
+
+const DRIVER_STATUSES = ["active", "onboarding", "suspended", "inactive"] as const;
 
 type Props = {
   targetMode: TargetSpec["mode"];
   zoneIds: string[];
   partnerIds: string[];
   driverIds: string[];
+  statuses: string[];
   onTargetModeChange: (mode: TargetSpec["mode"]) => void;
   onZoneIdsChange: (ids: string[]) => void;
   onPartnerIdsChange: (ids: string[]) => void;
   onDriverIdsChange: (ids: string[]) => void;
+  onStatusesChange: (statuses: string[]) => void;
   showEstimate?: boolean;
+  onAudienceCountChange?: (count: number | null) => void;
 };
 
 export function NotificationTargetingFields({
@@ -35,11 +40,14 @@ export function NotificationTargetingFields({
   zoneIds,
   partnerIds,
   driverIds,
+  statuses,
   onTargetModeChange,
   onZoneIdsChange,
   onPartnerIdsChange,
   onDriverIdsChange,
+  onStatusesChange,
   showEstimate = true,
+  onAudienceCountChange,
 }: Props) {
   const t = useTranslations("pages.notifications");
   const { data: targeting } = useNotificationTargetingOptions();
@@ -49,13 +57,15 @@ export function NotificationTargetingFields({
     if (targetMode === "zone") return { mode: "zone", zone_ids: zoneIds };
     if (targetMode === "partner") return { mode: "partner", partner_ids: partnerIds };
     if (targetMode === "custom") return { mode: "custom", driver_ids: driverIds };
+    if (targetMode === "status") return { mode: "status", statuses };
     return { mode: targetMode };
-  }, [targetMode, zoneIds, partnerIds, driverIds]);
+  }, [targetMode, zoneIds, partnerIds, driverIds, statuses]);
 
   async function refreshAudience() {
     try {
       const count = await estimateNotificationAudience(targetSpec);
       setAudienceCount(count);
+      onAudienceCountChange?.(count);
     } catch {
       toast.error(t("errors.audienceEstimateFailed"));
     }
@@ -64,13 +74,13 @@ export function NotificationTargetingFields({
   return (
     <div className="space-y-3">
       <div className="space-y-1">
-        <Label>{t("targetMode")}</Label>
+        <RequiredLabel required>{t("targetMode")}</RequiredLabel>
         <Select value={targetMode} onValueChange={(v) => onTargetModeChange(v as TargetSpec["mode"])}>
           <SelectTrigger className="h-9">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {NOTIFICATION_TARGET_MODES.map((mode) => (
+            {NOTIFICATION_SUPPORTED_TARGET_MODES.map((mode) => (
               <SelectItem key={mode} value={mode}>
                 {t(`targetModes.${mode}`)}
               </SelectItem>
@@ -106,6 +116,23 @@ export function NotificationTargetingFields({
                 }
               />
               {p.name}
+            </label>
+          ))}
+        </div>
+      ) : null}
+      {targetMode === "status" ? (
+        <div className="space-y-2 rounded-lg border border-border p-3">
+          {DRIVER_STATUSES.map((status) => (
+            <label key={status} className="flex items-center gap-2 text-sm">
+              <Checkbox
+                checked={statuses.includes(status)}
+                onCheckedChange={(checked) =>
+                  onStatusesChange(
+                    checked ? [...statuses, status] : statuses.filter((s) => s !== status),
+                  )
+                }
+              />
+              {t(`driverStatuses.${status}`)}
             </label>
           ))}
         </div>

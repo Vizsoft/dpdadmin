@@ -21,16 +21,8 @@ import {
 } from "@/components/ui/table";
 import { useAuth } from "@/contexts/auth-context";
 import { NotificationsTabBar } from "./notifications-tab-bar";
+import { resolveStatusVariant } from "@/lib/ui/resolve-status-variant";
 import { useNotificationAutomations } from "./use-notifications";
-
-function automationStatusVariant(
-  status: string,
-): "success" | "warning" | "danger" | "neutral" {
-  if (status === "active") return "success";
-  if (status === "paused") return "warning";
-  if (status === "archived") return "danger";
-  return "neutral";
-}
 
 export function AutomationsListPageShell() {
   const t = useTranslations("pages.notifications");
@@ -95,7 +87,7 @@ export function AutomationsListPageShell() {
                       {t(`automationTriggers.${row.trigger_type}`)}
                     </TableCell>
                     <TableCell>
-                      <StatusPill variant={automationStatusVariant(row.status)}>
+                      <StatusPill variant={resolveStatusVariant(row.status)}>
                         {t(`automationStatuses.${row.status}`)}
                       </StatusPill>
                     </TableCell>

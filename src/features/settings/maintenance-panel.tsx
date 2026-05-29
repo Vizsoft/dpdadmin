@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { setMaintenanceMode } from "@/features/settings/access-requests-actions";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { AppFormSection } from "@/components/app";
 
 export function MaintenancePanel({ maintenanceMode }: { maintenanceMode: boolean }) {
   const t = useTranslations("pages.settings.maintenance");
@@ -14,12 +14,8 @@ export function MaintenancePanel({ maintenanceMode }: { maintenanceMode: boolean
   const [isPending, startTransition] = useTransition();
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">{t("title")}</CardTitle>
-        <CardDescription>{t("subtitle")}</CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-wrap items-center justify-between gap-4">
+    <AppFormSection title={t("title")} description={t("subtitle")}>
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <p className="text-sm text-muted-foreground">
           {maintenanceMode ? t("enabled") : t("disabled")}
         </p>
@@ -41,7 +37,7 @@ export function MaintenancePanel({ maintenanceMode }: { maintenanceMode: boolean
         >
           {maintenanceMode ? t("disable") : t("enable")}
         </Button>
-      </CardContent>
-    </Card>
+      </div>
+    </AppFormSection>
   );
 }

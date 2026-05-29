@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { approveUser, rejectUser } from "@/features/settings/access-requests-actions";
 import type { AdminRoleRow } from "@/lib/auth/get-role-permissions";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { AppFormSection } from "@/components/app";
 import {
   Table,
   TableBody,
@@ -38,25 +38,14 @@ export function AccessRequestsPanel({
 
   if (pendingUsers.length === 0) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{t("title")}</CardTitle>
-          <CardDescription>{t("subtitle")}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">{t("empty")}</p>
-        </CardContent>
-      </Card>
+      <AppFormSection title={t("title")} description={t("subtitle")}>
+        <p className="text-sm text-muted-foreground">{t("empty")}</p>
+      </AppFormSection>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">{t("title")}</CardTitle>
-        <CardDescription>{t("subtitle")}</CardDescription>
-      </CardHeader>
-      <CardContent>
+    <AppFormSection title={t("title")} description={t("subtitle")}>
         <Table>
           <TableHeader>
             <TableRow>
@@ -132,7 +121,6 @@ export function AccessRequestsPanel({
             ))}
           </TableBody>
         </Table>
-      </CardContent>
-    </Card>
+    </AppFormSection>
   );
 }

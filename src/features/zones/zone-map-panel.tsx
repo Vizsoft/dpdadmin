@@ -80,9 +80,9 @@ export function ZoneMapPanel({
             {t("geofence.zoneLegend")}
           </span>
           <div className="flex flex-wrap items-center gap-1.5">
-            <Pill tone="emerald">{t("geofence.kind.inclusion")}</Pill>
-            <Pill tone="rose">{t("geofence.kind.exclusion")}</Pill>
-            <Pill tone="slate">{t("geofence.inactiveZone")}</Pill>
+            <Pill tone="success">{t("geofence.kind.inclusion")}</Pill>
+            <Pill tone="danger">{t("geofence.kind.exclusion")}</Pill>
+            <Pill tone="neutral">{t("geofence.inactiveZone")}</Pill>
           </div>
           <button type="button" className="cursor-pointer text-start text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400">
             {t("viewAll", { count: zones.length })}

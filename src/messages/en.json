@@ -223,6 +223,7 @@
       "statusDeliverySubmit": "Delivery submit",
       "onDuty": "On duty",
       "offDuty": "Off duty",
+      "gpsLost": "GPS lost",
       "trackedCount": "{count} drivers tracked",
       "noDrivers": "No drivers match your filters.",
       "noLiveData": "No drivers reporting location right now.",
@@ -262,6 +263,7 @@
       "aiInsights": "Fleet insights",
       "insightDelays": "Out of zone",
       "insightOutOfZone": "Out of zone",
+      "insightOffline": "GPS offline",
       "insightOverspeed": "Overspeed",
       "insightIdle": "Idle vehicles",
       "insightBattery": "Low battery",
@@ -2725,6 +2727,76 @@
       "sectionAction": "Action",
       "sectionSchedule": "Schedule",
       "sectionPreview": "Preview",
+      "wizardSteps": {
+        "audience": "Audience",
+        "content": "Content",
+        "action": "Action",
+        "delivery": "Delivery",
+        "review": "Review & send"
+      },
+      "automationWizardSteps": {
+        "trigger": "Trigger",
+        "audience": "Audience",
+        "content": "Content",
+        "limits": "Limits",
+        "review": "Review"
+      },
+      "wizardBack": "Back",
+      "wizardNext": "Next",
+      "approvalNotice": "This send requires manager approval before delivery (broadcast, high/critical priority, or emergency category).",
+      "scheduleFutureHint": "Choose a date and time in the future.",
+      "actionStepHint": "Optional. Controls what happens when the driver taps the notification.",
+      "fieldActionScreen": "Screen",
+      "fieldActionModule": "Module",
+      "fieldActionRecordId": "Record ID",
+      "fieldActionWorkflow": "Workflow",
+      "fieldActionUrl": "URL",
+      "fieldActionTrigger": "Silent trigger key",
+      "actionScreens": {
+        "home": "Home",
+        "deliveries": "Deliveries",
+        "earnings": "Earnings",
+        "profile": "Profile",
+        "notifications": "Notifications inbox"
+      },
+      "actionModules": {
+        "deliveries": "Deliveries",
+        "earnings": "Earnings",
+        "attendance": "Attendance",
+        "documents": "Documents",
+        "support": "Support"
+      },
+      "driverStatuses": {
+        "active": "Active",
+        "onboarding": "Onboarding",
+        "suspended": "Suspended",
+        "inactive": "Inactive"
+      },
+      "triggerInactivityDays": "Inactive for (days)",
+      "triggerInactivityHint": "Notify drivers with no delivery activity in this period.",
+      "triggerDaysBeforeExpiry": "Days before expiry",
+      "triggerDocumentExpiryHint": "Notify when a driver document expires within this window.",
+      "triggerShiftTime": "Reminder time",
+      "triggerShiftWeekdays": "Weekdays",
+      "triggerCron": "Cron schedule",
+      "triggerCronHint": "Standard cron expression (UTC). Example: 0 8 * * * for daily at 08:00 UTC.",
+      "triggerMinDeliveries": "Minimum deliveries",
+      "triggerPeriodDays": "Period (days)",
+      "triggerHoursAfterShift": "Hours after shift end",
+      "triggerEventHint": {
+        "attendance_approved": "Fires automatically when attendance is approved for a driver.",
+        "salary_processed": "Fires automatically when a payout is marked paid.",
+        "incentive_unlocked": "Fires when a driver unlocks an incentive threshold."
+      },
+      "weekdays": {
+        "mon": "Mon",
+        "tue": "Tue",
+        "wed": "Wed",
+        "thu": "Thu",
+        "fri": "Fri",
+        "sat": "Sat",
+        "sun": "Sun"
+      },
       "targetMode": "Target mode",
       "targetModes": {
         "all": "All drivers",
@@ -2822,7 +2894,8 @@
         "invalid_input": "Please complete all required fields.",
         "missing_content": "Add a title and message on the Content tab before sending.",
         "empty_recipients": "Select at least one recipient for this target mode.",
-        "invalid_json": "Invalid JSON. Check your config fields."
+        "invalid_json": "Invalid JSON. Check your config fields.",
+        "automationNotReady": "Complete all required fields before activating this automation."
       },
       "mediaErrors": {
         "file_too_large": "Image must be 2 MB or smaller.",

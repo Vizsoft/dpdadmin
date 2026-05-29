@@ -13,7 +13,7 @@ export function AppModalFooter({
   title: string;
   subtitle?: string;
   meta?: ReactNode;
-  children: ReactNode;
+  children?: ReactNode;
   /** Use on full pages — DialogTitle/Description require a Dialog ancestor */
   asPage?: boolean;
 }) {
@@ -44,7 +44,9 @@ export function AppModalFooter({
           )}
           {meta ? <div className="mt-1 text-[11px] text-muted-foreground">{meta}</div> : null}
         </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-2">{children}</div>
+        {children ? (
+          <div className="flex shrink-0 flex-wrap items-center gap-2">{children}</div>
+        ) : null}
       </div>
     </div>
   );

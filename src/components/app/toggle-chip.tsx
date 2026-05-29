@@ -35,7 +35,7 @@ export function ToggleChip({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        "inline-flex cursor-pointer items-center rounded-md border font-semibold transition-all",
+        "inline-flex cursor-pointer items-center rounded-md border font-semibold transition-[color,background-color,border-color,box-shadow] duration-150 ease-out",
         sizeClass,
         selected
           ? "border-emerald-500 bg-emerald-100 text-emerald-900 shadow-sm ring-1 ring-emerald-400/50"
@@ -83,7 +83,7 @@ export function SegmentOption({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        "inline-flex h-8 cursor-pointer items-center justify-center gap-1 rounded-md border text-xs font-semibold transition-all",
+        "inline-flex h-8 cursor-pointer items-center justify-center gap-1 rounded-md border text-xs font-semibold transition-[color,background-color,border-color,box-shadow] duration-150 ease-out",
         selected && variant === "success"
           ? "border-emerald-500 bg-emerald-100 text-emerald-900 shadow-sm ring-1 ring-emerald-400/50"
           : selected

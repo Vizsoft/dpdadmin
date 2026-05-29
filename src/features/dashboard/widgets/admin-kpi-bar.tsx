@@ -9,48 +9,53 @@ import {
   Wallet,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { MetricTile } from "@/components/ui/metric-tile";
+import { MetricTile, type Tone } from "@/components/ui/metric-tile";
 import type { DashboardKpis } from "../types";
 
 export function AdminKpiBar({ kpis }: { kpis: DashboardKpis }) {
   const t = useTranslations("pages.dashboard");
 
-  const items = [
+  const items: Array<{
+    label: string;
+    value: number;
+    icon: typeof UserPlus;
+    tone: Tone;
+  }> = [
     {
       label: t("kpiPendingAccess"),
       value: kpis.pendingAccessRequests,
       icon: UserPlus,
-      tone: kpis.pendingAccessRequests > 0 ? ("amber" as const) : ("slate" as const),
+      tone: kpis.pendingAccessRequests > 0 ? "warning" : "neutral",
     },
     {
       label: t("kpiVerificationBacklog"),
       value: kpis.verificationBacklog,
       icon: ClipboardX,
-      tone: kpis.verificationBacklog > 0 ? ("amber" as const) : ("slate" as const),
+      tone: kpis.verificationBacklog > 0 ? "warning" : "neutral",
     },
     {
       label: t("kpiDeliveryReview"),
       value: kpis.deliveryReviewPending,
       icon: ShieldAlert,
-      tone: kpis.deliveryReviewPending > 0 ? ("rose" as const) : ("slate" as const),
+      tone: kpis.deliveryReviewPending > 0 ? "danger" : "neutral",
     },
     {
       label: t("kpiPayrollBlockers"),
       value: kpis.payrollBlockers,
       icon: Wallet,
-      tone: kpis.payrollBlockers > 0 ? ("rose" as const) : ("emerald" as const),
+      tone: kpis.payrollBlockers > 0 ? "danger" : "success",
     },
     {
       label: t("kpiDriverExceptions"),
       value: kpis.driverExceptions,
       icon: AlertTriangle,
-      tone: kpis.driverExceptions > 0 ? ("amber" as const) : ("emerald" as const),
+      tone: kpis.driverExceptions > 0 ? "warning" : "success",
     },
     {
       label: t("kpiAbsentToday"),
       value: kpis.absentToday,
       icon: UserMinus,
-      tone: kpis.absentToday > 0 ? ("rose" as const) : ("emerald" as const),
+      tone: kpis.absentToday > 0 ? "danger" : "success",
     },
   ];
 

@@ -32,7 +32,7 @@ export function DriverFormDocumentsGrid({
 
   return (
     <section className="space-y-2.5 rounded-lg border border-border bg-card p-4">
-      <SectionHeading icon={FileText} accent="emerald">
+      <SectionHeading icon={FileText} accent="success">
         {sectionLabel}
       </SectionHeading>
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">

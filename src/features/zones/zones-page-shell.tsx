@@ -154,7 +154,7 @@ function ZonesPageContent() {
                 <Button
                   type="button"
                   size="sm"
-                  className="h-8 w-full cursor-pointer rounded-lg bg-blue-600 text-sm text-white hover:bg-blue-700 sm:w-auto sm:min-w-[9.5rem]"
+                  className="h-8 w-full cursor-pointer rounded-lg sm:w-auto sm:min-w-[9.5rem]"
                   onClick={handleAdd}
                 >
                   <Plus className="me-1.5 h-3.5 w-3.5" />

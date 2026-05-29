@@ -13,8 +13,13 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { TABLE_HEAD_CLASS } from "@/components/app/constants";
-import { AppListCard } from "@/components/app/app-list-card";
+import { AppListCard, AppPage, AppPageHeader } from "@/components/app";
+import {
+  AppDataTable,
+  AppDataTableEmpty,
+  AppDataTableRow,
+  TableCell,
+} from "@/components/app/app-data-table";
 import { AppEmptyState } from "@/components/app/app-empty-state";
 import { TabBar } from "@/components/dashboard/tab-bar";
 import { Button } from "@/components/ui/button";
@@ -22,14 +27,6 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { CardContent } from "@/components/ui/card";
 import { SearchSelect } from "@/components/ui/search-select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { useAuth } from "@/contexts/auth-context";
 import { canManageRestaurants, hasPermissionInSet } from "@/lib/auth/permissions";
 import { useHasMounted } from "@/hooks/use-has-mounted";
@@ -288,6 +285,23 @@ function RestaurantsPageContent() {
     !isLoading && restaurants.length > 0 && visible.length === 0;
   const showEmptyAll = !isLoading && restaurants.length === 0;
 
+  const tableColumns = useMemo(() => {
+    const cols = [
+      { id: "restaurant", label: t("colRestaurant") },
+      { id: "partner", label: t("colPartner") },
+      { id: "zone", label: t("colZone"), className: "hidden lg:table-cell" },
+      { id: "externalId", label: t("colExternalId"), className: "hidden md:table-cell" },
+      { id: "status", label: t("colStatus") },
+      { id: "drivers", label: t("colDrivers") },
+      { id: "activeDeliveries", label: t("colActiveDeliveries"), className: "hidden xl:table-cell" },
+      { id: "created", label: t("colCreated"), className: "hidden sm:table-cell" },
+    ];
+    if (canManage || canAssignDrivers) {
+      cols.push({ id: "actions", label: t("colActions"), className: "w-20 text-end" });
+    }
+    return cols;
+  }, [canAssignDrivers, canManage, t]);
+
   const statusTabs = [
     { id: "all", label: t("filterStatusAll") },
     { id: "draft", label: t("filterDraft") },
@@ -296,11 +310,11 @@ function RestaurantsPageContent() {
   ];
 
   return (
-    <>
-      <AppListCard
+    <AppPage>
+      <AppPageHeader
         title={t("title")}
         description={t("subtitle")}
-        headerActions={
+        actions={
           <div className="flex shrink-0 flex-wrap items-center gap-2">
             <Button
               type="button"
@@ -339,6 +353,8 @@ function RestaurantsPageContent() {
             ) : null}
           </div>
         }
+      />
+      <AppListCard
         toolbar={
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
@@ -552,52 +568,25 @@ function RestaurantsPageContent() {
           </div>
         ) : (
           <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/30 hover:bg-muted/30">
-                  <TableHead className={TABLE_HEAD_CLASS}>{t("colRestaurant")}</TableHead>
-                  <TableHead className={TABLE_HEAD_CLASS}>{t("colPartner")}</TableHead>
-                  <TableHead className={cn("hidden lg:table-cell", TABLE_HEAD_CLASS)}>
-                    {t("colZone")}
-                  </TableHead>
-                  <TableHead className={cn("hidden md:table-cell", TABLE_HEAD_CLASS)}>
-                    {t("colExternalId")}
-                  </TableHead>
-                  <TableHead className={TABLE_HEAD_CLASS}>{t("colStatus")}</TableHead>
-                  <TableHead className={TABLE_HEAD_CLASS}>{t("colDrivers")}</TableHead>
-                  <TableHead className={cn("hidden xl:table-cell", TABLE_HEAD_CLASS)}>
-                    {t("colActiveDeliveries")}
-                  </TableHead>
-                  <TableHead className={cn("hidden sm:table-cell", TABLE_HEAD_CLASS)}>
-                    {t("colCreated")}
-                  </TableHead>
-                  {canManage || canAssignDrivers ? (
-                    <TableHead className={cn("w-20 text-end", TABLE_HEAD_CLASS)}>
-                      {t("colActions")}
-                    </TableHead>
-                  ) : null}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {showEmptySearch ? (
-                  <TableRow className="hover:bg-transparent">
-                    <TableCell
-                      colSpan={canManage || canAssignDrivers ? 9 : 8}
-                      className="border-t border-border py-12"
-                    >
-                      <AppEmptyState
-                        title={t("emptySearchTitle")}
-                        description={t("emptySearchDescription")}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  visible.map((row) => (
-                    <TableRow
+            <AppDataTable
+              columns={tableColumns}
+              empty={
+                showEmptySearch ? (
+                  <AppDataTableEmpty>
+                    <AppEmptyState
+                      title={t("emptySearchTitle")}
+                      description={t("emptySearchDescription")}
+                    />
+                  </AppDataTableEmpty>
+                ) : undefined
+              }
+            >
+              {!showEmptySearch
+                ? visible.map((row) => (
+                    <AppDataTableRow
                       key={row.id}
                       role="button"
                       tabIndex={0}
-                      className="cursor-pointer hover:bg-muted/40"
                       onClick={() => handleRowClick(row)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
@@ -693,11 +682,10 @@ function RestaurantsPageContent() {
                           </div>
                         </TableCell>
                       ) : null}
-                    </TableRow>
+                    </AppDataTableRow>
                   ))
-                )}
-              </TableBody>
-            </Table>
+                : null}
+            </AppDataTable>
           </CardContent>
         )}
       </AppListCard>
@@ -711,7 +699,7 @@ function RestaurantsPageContent() {
           defaultZoneId={assignRestaurant.zone_id}
         />
       ) : null}
-    </>
+    </AppPage>
   );
 }
 

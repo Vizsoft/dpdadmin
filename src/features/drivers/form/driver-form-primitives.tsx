@@ -5,13 +5,13 @@ import type { ReactNode } from "react";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
-export type SectionAccent = "primary" | "violet" | "amber" | "emerald";
+export type SectionAccent = "primary" | "success" | "warning" | "neutral";
 
 const ACCENT_CHIP: Record<SectionAccent, string> = {
   primary: "bg-primary/10 text-primary",
-  violet: "bg-violet-500/10 text-violet-700 dark:text-violet-400",
-  amber: "bg-amber-500/10 text-amber-700 dark:text-amber-400",
-  emerald: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+  success: "bg-success-bg text-success",
+  warning: "bg-warning-bg text-warning",
+  neutral: "bg-muted text-muted-foreground",
 };
 
 export function SectionHeading({
@@ -94,10 +94,10 @@ export function MetadataBadge({
 export function avatarTintFromName(name: string): string {
   const tints = [
     "bg-primary/15 text-primary",
-    "bg-violet-500/15 text-violet-700 dark:text-violet-300",
-    "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
-    "bg-amber-500/15 text-amber-700 dark:text-amber-300",
-    "bg-sky-500/15 text-sky-700 dark:text-sky-300",
+    "bg-success-bg text-success",
+    "bg-warning-bg text-warning",
+    "bg-muted text-muted-foreground",
+    "bg-accent text-accent-foreground",
   ];
   let hash = 0;
   for (let i = 0; i < name.length; i += 1) {

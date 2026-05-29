@@ -11,24 +11,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { TABLE_HEAD_CLASS } from "@/components/app/constants";
-import type { WorkforceQueueRow, WorkforceStatus } from "../types";
+import { resolveStatusVariant } from "@/lib/ui/resolve-status-variant";
+import type { WorkforceQueueRow } from "../types";
 import { DashboardWidget } from "./dashboard-widget";
-
-function statusVariant(status: WorkforceStatus) {
-  switch (status) {
-    case "online":
-    case "working":
-      return "success" as const;
-    case "silent":
-    case "missing":
-    case "awaiting_verification":
-      return "warning" as const;
-    case "suspended":
-      return "danger" as const;
-    default:
-      return "neutral" as const;
-  }
-}
 
 export function WorkforceQueueWidget({
   rows,
@@ -66,7 +51,7 @@ export function WorkforceQueueWidget({
                   <p className="text-muted-foreground">{row.restaurantName}</p>
                 </TableCell>
                 <TableCell>
-                  <StatusPill variant={statusVariant(row.status)} dot>
+                  <StatusPill variant={resolveStatusVariant(row.status)} dot>
                     {t(`workforceStatus.${row.status}`)}
                   </StatusPill>
                 </TableCell>

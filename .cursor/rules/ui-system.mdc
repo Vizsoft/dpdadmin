@@ -16,8 +16,9 @@ Target: **14" laptop (~1366×768)**. Feel like Linear / Stripe / Ramp — dense,
 - **Styling**: shadcn semantic tokens + `@/components/ui/*`.
 - **Product layout**: `@/components/app/*` (`AppPage`, `AppListCard`, `AppModalFooter`, …).
 - **Polaris**: information architecture only. Never for colors or typography.
-- **Cards**: `rounded-xl border-border shadow-sm`.
-- **Tables**: `TABLE_HEAD_CLASS` on every `TableHead`.
+- **Theme**: single locked Shopify-style shell — navy sidebar (light mode), green primary, flat neutral cards. No theme picker.
+- **Cards**: `rounded-xl border-border bg-card shadow-sm`.
+- **Tables**: `AppDataTable` + `TABLE_HEAD_CLASS` on every `TableHead`.
 
 ---
 
@@ -58,7 +59,7 @@ Footer ≈ 72px + 14" usable ≈ 720px ⇒ body must fit in **≈ 648px**. **Inn
 ## 4. Iconography
 
 - Lucide icon on every chip, toggle, and semantic field label.
-- Section headers: **`SectionHeading`** with tinted icon chip (Identity=primary, Assignment=violet, Operations=amber, Documents=emerald).
+- Section headers: **`SectionHeading`** with semantic icon chip tints (Identity=primary, Assignment=primary, Operations=warning, Documents=success).
 
 ---
 
@@ -164,6 +165,7 @@ Match density, column count, and architecture from user-provided screenshots. As
 - [ ] Add via `?add=1` modal on list
 - [ ] **Map above fold:** if any widgets/tables/actions sit below the map, use `TrackingMapStage` + `LAYOUT.mapAboveFoldHeight` — map must not overlap footer content
 - [ ] Map markers and zones follow §12, including deselect paths
+- [ ] Motion follows §14: no `transition-all`, durations ≤300ms, origin-aware popovers, reduced-motion respected
 
 ---
 
@@ -204,3 +206,41 @@ If **anything** renders below the map — insights panels, quick actions, event 
   - a `recentsKey` so the last 5-10 picks appear first on open,
   - contextual search placeholder text.
 - Do not allow raw IDs in dropdown triggers. Triggers must always display a human-readable label.
+
+---
+
+## 14. Motion & animation
+
+Reference: [`docs/DESIGN_SYSTEM.md` § Motion & Animation](../../docs/DESIGN_SYSTEM.md#motion--animation), [`docs/UI_MOTION_AUDIT.md`](../../docs/UI_MOTION_AUDIT.md). For polish reviews, invoke the on-demand skill [`.cursor/skills/emil-design-eng/SKILL.md`](../skills/emil-design-eng/SKILL.md).
+
+### Tokens & timing
+
+- Use easing tokens from `globals.css` — never raw `ease-in` on UI enter animations.
+- UI interactions stay **under 300ms** (buttons 100–160ms, dropdowns/tooltips 125–200ms, modals/sheets 200–250ms).
+- **Never `transition-all`.** Specify exact properties (`transition-colors`, `transition-transform`, etc.).
+
+### Origin & entry
+
+- **Popovers, dropdowns, tooltips, selects:** `origin-(--transform-origin)` — scale from trigger, not center.
+- **Modals / dialogs / sheets:** center origin is correct; enter with `scale-95` + opacity — never `scale(0)`.
+
+### Frequency rules
+
+| Frequency | Examples | Rule |
+|-----------|----------|------|
+| 100+/day | Sidebar nav, keyboard list nav, SearchSelect | **No animation** |
+| Tens/day | Filter dropdowns, tab switches, row hover | Color/opacity only, ≤150ms |
+| Occasional | Modals, sheets, toasts, wizard steps | Standard enter/exit, ease-out |
+| Rare | Onboarding, empty states | Stagger optional (30–80ms between items) |
+
+- **Never animate keyboard-initiated actions.**
+
+### Accessibility
+
+- Respect `prefers-reduced-motion`: keep opacity/color transitions; remove transform-based motion.
+- Gate hover transforms behind `@media (hover: hover) and (pointer: fine)`.
+
+### Press feedback
+
+- Pressable controls should feel responsive (`active:scale-[0.97]` or existing `translate-y-px` on buttons is acceptable).
+- Only animate **transform** and **opacity** for motion — not width, height, margin, or padding.

@@ -15,13 +15,8 @@ import {
   Wallet,
   XCircle,
 } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { AppModalFooter } from "@/components/app/app-modal-footer";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -111,30 +106,28 @@ export function EarningsDetailDialog({
 
   const heading = driverLabel?.trim() || (driverId ? driverId.slice(0, 8) : "—");
 
+  const footerMeta = (
+    <span className="inline-flex flex-wrap items-center gap-2">
+      <span className="inline-flex items-center gap-1">
+        <CalendarDays className="h-3.5 w-3.5" aria-hidden />
+        {formatLongDate(earnDate, locale)}
+      </span>
+      {detail?.wallet?.status === "approved" ? (
+        <StatusPill variant="success" dot>
+          {t("walletApproved")}
+        </StatusPill>
+      ) : null}
+    </span>
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl">
-        <DialogHeader className="space-y-1 border-b border-border bg-card/60 px-5 py-4">
-          <DialogTitle className="flex items-center gap-2 text-base font-semibold">
-            <Coins className="h-4 w-4 text-primary" aria-hidden />
-            {t("detailTitle")}
-          </DialogTitle>
-          <DialogDescription className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <span className="font-medium text-foreground">{heading}</span>
-            <span aria-hidden>·</span>
-            <span className="inline-flex items-center gap-1">
-              <CalendarDays className="h-3.5 w-3.5" aria-hidden />
-              {formatLongDate(earnDate, locale)}
-            </span>
-            {detail?.wallet?.status === "approved" ? (
-              <StatusPill variant="success" dot>
-                {t("walletApproved")}
-              </StatusPill>
-            ) : null}
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
+      <DialogContent
+        className="flex max-h-[90vh] flex-col gap-0 overflow-visible rounded-xl p-0 sm:max-w-3xl"
+        showCloseButton
+        closeOutside
+      >
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 pt-4 pb-3">
           {isPending ? (
             <div className="flex items-center justify-center py-16">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-hidden />
@@ -149,26 +142,26 @@ export function EarningsDetailDialog({
                   label={t("colBase")}
                   value={`${formatKwd(daily?.base_kwd)} KWD`}
                   icon={Wallet}
-                  tone="slate"
+                  tone="neutral"
                 />
                 <MetricTile
                   label={t("colIncentive")}
                   value={`${formatKwd(daily?.incentive_kwd)} KWD`}
                   icon={Sparkles}
-                  tone="indigo"
+                  tone="primary"
                 />
                 <MetricTile
                   label={t("colDeliveries")}
                   value={`${eligibleDeliveries} / ${totalDeliveries}`}
                   icon={Package}
-                  tone="blue"
+                  tone="primary"
                   hint={t("eligibleCount", { count: eligibleDeliveries })}
                 />
                 <MetricTile
                   label={t("colNet")}
                   value={`${formatKwd(daily?.net_kwd)} KWD`}
                   icon={Coins}
-                  tone="emerald"
+                  tone="success"
                 />
               </section>
 
@@ -189,7 +182,7 @@ export function EarningsDetailDialog({
                     {t("rulesApplied")}
                   </h3>
                   {detail.rules.length > 0 ? (
-                    <Pill tone="slate">
+                    <Pill tone="neutral">
                       {detail.rules.length === 1
                         ? "1 rule"
                         : `${detail.rules.length} rules`}
@@ -214,7 +207,7 @@ export function EarningsDetailDialog({
                             </p>
                             <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
                               {rule.period ? (
-                                <Pill tone="blue" variant="soft">
+                                <Pill tone="primary" variant="soft">
                                   {rule.period}
                                 </Pill>
                               ) : null}
@@ -241,7 +234,7 @@ export function EarningsDetailDialog({
                     <ShieldCheck className="h-3.5 w-3.5 text-primary" aria-hidden />
                     {t("ordersTitle")}
                   </h3>
-                  <Pill tone="slate">
+                  <Pill tone="neutral">
                     {`${eligibleDeliveries} / ${totalDeliveries}`}
                   </Pill>
                 </div>
@@ -312,6 +305,11 @@ export function EarningsDetailDialog({
             </div>
           )}
         </div>
+        <AppModalFooter
+          title={`${t("detailTitle")} · ${heading}`}
+          subtitle={formatLongDate(earnDate, locale)}
+          meta={footerMeta}
+        />
       </DialogContent>
     </Dialog>
   );

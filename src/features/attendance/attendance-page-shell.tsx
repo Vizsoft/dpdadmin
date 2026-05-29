@@ -54,6 +54,7 @@ import { AttendanceCorrectionSheet } from "./attendance-correction-sheet";
 import { queryKeys } from "@/lib/query/query-keys";
 import { useRealtimeInvalidator } from "@/lib/realtime/use-realtime-invalidator";
 import { useAttendanceList } from "./use-attendance";
+import { resolveStatusVariant } from "@/lib/ui/resolve-status-variant";
 import type { AttendanceListRow, AttendanceStatus, AttendanceTabFilter } from "./types";
 
 function kuwaitToday(): string {
@@ -64,22 +65,6 @@ function addDays(isoDate: string, days: number): string {
   const d = new Date(`${isoDate}T12:00:00`);
   d.setDate(d.getDate() + days);
   return d.toISOString().slice(0, 10);
-}
-
-function attendanceStatusVariant(
-  status: AttendanceStatus,
-): "success" | "warning" | "danger" | "neutral" {
-  switch (status) {
-    case "present":
-      return "success";
-    case "late":
-      return "warning";
-    case "on_leave":
-      return "neutral";
-    case "absent":
-    default:
-      return "danger";
-  }
 }
 
 function formatDateTime(iso: string | null): string {
@@ -419,7 +404,7 @@ function AttendancePageContent() {
                       {formatDateTime(row.check_out_at)}
                     </TableCell>
                     <TableCell>
-                      <StatusPill variant={attendanceStatusVariant(row.status)} dot>
+                      <StatusPill variant={resolveStatusVariant(row.status)} dot>
                         {t(`status.${row.status}`)}
                       </StatusPill>
                     </TableCell>

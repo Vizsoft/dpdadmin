@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { AppPage } from "./app-page";
+import { AppPageHeader } from "./app-page-header";
 import { AppListCard } from "./app-list-card";
 import { AppListToolbar } from "./app-list-toolbar";
 import {
@@ -47,11 +48,11 @@ export function ModuleIndexPage({
 
   return (
     <AppPage>
-      {actions && (
-        <div className="flex items-center justify-end gap-2">
-          {actions}
-        </div>
-      )}
+      <AppPageHeader
+        title={title}
+        description={subtitle}
+        actions={actions}
+      />
       {tabs && activeTabId && (
         <TabBar
           items={tabs}

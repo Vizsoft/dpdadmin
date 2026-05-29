@@ -56,7 +56,7 @@ export function DriverFormAssignmentCard({
 }) {
   return (
     <section className="flex h-full flex-col space-y-3 rounded-lg border border-border bg-card p-4">
-      <SectionHeading icon={Briefcase} accent="violet">
+      <SectionHeading icon={Briefcase} accent="primary">
         {labels.section}
       </SectionHeading>
       <div className="grid gap-2.5 sm:grid-cols-2">

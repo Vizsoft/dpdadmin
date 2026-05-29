@@ -37,6 +37,7 @@ import {
   useRestaurantDeliveries,
   useRestaurantDetail,
 } from "./use-restaurants";
+import { resolveStatusVariant } from "@/lib/ui/resolve-status-variant";
 import type { RestaurantActivityKind } from "./types";
 
 type DetailTabId = "overview" | "drivers" | "deliveries" | "activity";
@@ -58,24 +59,6 @@ function DetailSkeleton() {
       </div>
     </AppPage>
   );
-}
-
-function deliveryStatusVariant(
-  status: DeliveryStatus,
-): "success" | "warning" | "danger" | "neutral" {
-  switch (status) {
-    case "verified":
-      return "success";
-    case "rejected":
-    case "cancelled":
-      return "danger";
-    case "under_review":
-    case "in_transit":
-      return "neutral";
-    case "pending":
-    default:
-      return "warning";
-  }
 }
 
 function formatDateTime(iso: string, locale: string): string {
@@ -597,7 +580,7 @@ export function RestaurantDetailPageShell({ id }: { id: string }) {
                           </p>
                         </td>
                         <td className="p-3">
-                          <StatusPill variant={deliveryStatusVariant(row.status)}>
+                          <StatusPill variant={resolveStatusVariant(row.status)}>
                             {deliveryStatusLabel(row.status)}
                           </StatusPill>
                         </td>

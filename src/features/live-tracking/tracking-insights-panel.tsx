@@ -11,9 +11,11 @@ const OVERSPEED_KMH = 80;
 
 export function TrackingInsightsPanel({
   drivers,
+  staleOnDutyCount = 0,
   className,
 }: {
   drivers: DriverLiveLocation[];
+  staleOnDutyCount?: number;
   className?: string;
 }) {
   const t = useTranslations("pages.liveTracking");
@@ -30,6 +32,13 @@ export function TrackingInsightsPanel({
     const outOfZone = drivers.filter((d) => d.zoneStatus === "out_of_zone").length;
 
     return [
+      {
+        id: "offline",
+        icon: Timer,
+        label: t("insightOffline"),
+        count: staleOnDutyCount,
+        tone: "text-slate-600 dark:text-slate-400",
+      },
       {
         id: "outOfZone",
         icon: Timer,
@@ -66,7 +75,7 @@ export function TrackingInsightsPanel({
         tone: "text-rose-600 dark:text-rose-400",
       },
     ];
-  }, [drivers, t]);
+  }, [drivers, staleOnDutyCount, t]);
 
   return (
     <TrackingGlassCard
@@ -80,7 +89,7 @@ export function TrackingInsightsPanel({
           {t("aiInsights")}
         </h3>
       </div>
-      <ul className="grid grid-cols-5 gap-1.5">
+      <ul className="grid grid-cols-6 gap-1.5">
         {insights.map((item) => (
           <li
             key={item.id}

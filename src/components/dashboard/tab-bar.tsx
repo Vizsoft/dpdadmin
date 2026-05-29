@@ -1,6 +1,7 @@
 "use client";
 
 import type { ComponentType } from "react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export type TabItem = {
@@ -25,15 +26,16 @@ export function TabBar({
       {items.map((item) => {
         const isActive = item.id === activeId;
         return (
-          <button
+          <Button
             key={item.id}
             type="button"
+            variant="ghost"
             id={`tab-${item.id}`}
             role="tab"
             aria-selected={isActive}
             aria-controls={`tabpanel-${item.id}`}
             className={cn(
-              "inline-flex cursor-pointer items-center gap-1.5 border-b-2 pb-3 text-sm font-semibold transition-colors",
+              "h-auto cursor-pointer rounded-none border-b-2 px-0 pb-3 text-sm font-semibold hover:bg-transparent",
               isActive
                 ? "border-primary text-foreground"
                 : "border-transparent text-muted-foreground hover:text-foreground",
@@ -42,7 +44,7 @@ export function TabBar({
           >
             {item.icon ? <item.icon className="h-3.5 w-3.5 shrink-0" /> : null}
             {item.label}
-          </button>
+          </Button>
         );
       })}
     </div>

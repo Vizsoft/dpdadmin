@@ -82,7 +82,7 @@ export function ZoneDetailPageShell({ id }: { id: string }) {
   }
 
   const areaLabel = formatZoneArea(zoneAreaSqKm(zone.zone_type, zone.geometry));
-  const typeTone = zone.geofence_kind === "inclusion" ? "emerald" : "rose";
+  const typeTone = zone.geofence_kind === "inclusion" ? "success" : "danger";
 
   return (
     <AppPage className="space-y-4">
@@ -113,7 +113,7 @@ export function ZoneDetailPageShell({ id }: { id: string }) {
           </div>
           <div className="flex flex-wrap gap-2">
             <Pill tone={typeTone}>{t(`geofence.kind.${zone.geofence_kind}`)}</Pill>
-            <Pill tone={zone.status === "active" ? "emerald" : "slate"}>
+            <Pill tone={zone.status === "active" ? "success" : "neutral"}>
               {t(`geofence.status.${zone.status}`)}
             </Pill>
           </div>
@@ -135,13 +135,13 @@ export function ZoneDetailPageShell({ id }: { id: string }) {
             <MetricTile
               label={t("geofence.colDrivers")}
               value={zone.driver_count.toLocaleString()}
-              tone="blue"
+              tone="primary"
               icon={Users}
             />
             <MetricTile
               label={t("geofence.colArea")}
               value={areaLabel}
-              tone="indigo"
+              tone="primary"
             />
           </div>
 

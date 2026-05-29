@@ -3,15 +3,9 @@
 import { useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { Loader2 } from "lucide-react";
+import { AppModalFooter } from "@/components/app/app-modal-footer";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 export type SimpleConfirmDialogProps = {
   open: boolean;
@@ -52,16 +46,17 @@ export function SimpleConfirmDialog({
         onOpenChange(next);
       }}
     >
-      <DialogContent className="max-w-md gap-0" showCloseButton={!busy}>
-        <DialogHeader className="border-b border-border px-6 py-4">
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription className="pt-1 text-start">{description}</DialogDescription>
-        </DialogHeader>
-        <DialogFooter className="flex-row justify-end gap-2 border-t border-border px-6 py-4">
+      <DialogContent
+        className="flex max-w-md flex-col gap-0 overflow-visible rounded-xl p-0"
+        showCloseButton={!busy}
+        closeOutside
+      >
+        <AppModalFooter title={title} subtitle={description}>
           <Button
             type="button"
             variant="outline"
-            className="cursor-pointer rounded-lg"
+            size="sm"
+            className="h-9 cursor-pointer rounded-md"
             onClick={() => onOpenChange(false)}
             disabled={busy}
           >
@@ -70,7 +65,8 @@ export function SimpleConfirmDialog({
           <Button
             type="button"
             variant="destructive"
-            className="cursor-pointer rounded-lg"
+            size="sm"
+            className="h-9 cursor-pointer rounded-md px-4"
             onClick={handleConfirm}
             disabled={busy}
           >
@@ -80,7 +76,7 @@ export function SimpleConfirmDialog({
               (confirmLabel ?? t("confirmDelete.confirmButton"))
             )}
           </Button>
-        </DialogFooter>
+        </AppModalFooter>
       </DialogContent>
     </Dialog>
   );

@@ -24,23 +24,8 @@ import {
   useUpdateVerification,
   useVerificationDetail,
 } from "./use-verifications";
+import { resolveStatusVariant } from "@/lib/ui/resolve-status-variant";
 import type { VerificationListRow, VerificationStatus } from "./types";
-
-function statusVariant(
-  status: VerificationStatus,
-): "success" | "warning" | "danger" | "neutral" {
-  switch (status) {
-    case "matched":
-      return "success";
-    case "surplus":
-    case "deficit":
-      return "warning";
-    case "conflict":
-      return "danger";
-    default:
-      return "neutral";
-  }
-}
 
 function formatKuwaitDate(iso: string): string {
   try {
@@ -159,7 +144,7 @@ export function VerificationDetailSheet({
           <SheetHeader>
             <SheetTitle>{t("detailTitle")}</SheetTitle>
             <div className="flex flex-wrap items-center gap-2 pt-1">
-              <StatusPill variant={statusVariant(display.status)} dot={false}>
+              <StatusPill variant={resolveStatusVariant(display.status)} dot={false}>
                 {t(`status.${display.status}`)}
               </StatusPill>
               <span className="text-sm text-muted-foreground">

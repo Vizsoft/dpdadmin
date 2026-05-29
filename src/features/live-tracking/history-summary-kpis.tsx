@@ -139,7 +139,7 @@ export function HistorySummaryKpis({
         label={t("historyTotalDistance")}
         value={loading ? "..." : valueOrDash(summary.totalDistanceKm, (n) => `${n.toFixed(1)} km`)}
         icon={Route}
-        tone="blue"
+        tone="primary"
       />
       <MetricTile
         label={t("historyDuration")}
@@ -149,7 +149,7 @@ export function HistorySummaryKpis({
             : valueOrDash(summary.durationMins, (n) => (n > 0 ? formatHistoryDurationMins(n) : "—"))
         }
         icon={Timer}
-        tone="indigo"
+        tone="primary"
       />
       <MetricTile
         label={t("historyAvgSpeed")}
@@ -159,13 +159,13 @@ export function HistorySummaryKpis({
             : valueOrDash(summary.avgSpeedKmh, (n) => (n > 0 ? `${n.toFixed(1)} km/h` : "—"))
         }
         icon={Gauge}
-        tone="emerald"
+        tone="success"
       />
       <MetricTile
         label={t("historyMaxSpeed")}
         value={loading ? "..." : valueOrDash(summary.maxSpeedKmh, (n) => `${n.toFixed(1)} km/h`)}
         icon={MapPinned}
-        tone="amber"
+        tone="warning"
       />
       <MetricTile
         label={t("historyIdleMinutes")}
@@ -175,7 +175,7 @@ export function HistorySummaryKpis({
             : valueOrDash(summary.idleMinutes, (n) => formatHistoryDurationMins(n))
         }
         icon={PauseCircle}
-        tone="slate"
+        tone="neutral"
       />
       <MetricTile
         label={t("historyMovingMinutes")}
@@ -185,19 +185,19 @@ export function HistorySummaryKpis({
             : valueOrDash(summary.movingMinutes, (n) => formatHistoryDurationMins(n))
         }
         icon={Gauge}
-        tone="emerald"
+        tone="success"
       />
       <MetricTile
         label={t("historyStops")}
         value={loading ? "..." : valueOrDash(summary.stops, (n) => `${n}`)}
         icon={PauseCircle}
-        tone="slate"
+        tone="neutral"
       />
       <MetricTile
         label={t("historyDeliveries")}
         value={loading ? "..." : valueOrDash(summary.deliveries, (n) => `${n}`)}
         icon={Truck}
-        tone="rose"
+        tone="danger"
       />
     </div>
   );

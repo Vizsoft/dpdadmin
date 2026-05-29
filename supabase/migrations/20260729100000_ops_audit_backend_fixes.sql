@@ -129,7 +129,7 @@ $$;
 -- ---------------------------------------------------------------------------
 -- Idempotent complete / cancel + drop pre-device-guard overloads
 -- ---------------------------------------------------------------------------
-DROP FUNCTION IF EXISTS public.driver_create_pickup(uuid, uuid, text, text, numeric, numeric);
+DROP FUNCTION IF EXISTS public.driver_create_pickup(text, text, numeric, numeric);
 DROP FUNCTION IF EXISTS public.driver_complete_delivery(uuid, text, numeric, numeric);
 DROP FUNCTION IF EXISTS public.driver_cancel_delivery(uuid, text, text, numeric, numeric);
 
@@ -277,7 +277,7 @@ $function$;
 
 GRANT EXECUTE ON FUNCTION public.driver_complete_delivery(uuid, text, numeric, numeric, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.driver_cancel_delivery(uuid, text, text, numeric, numeric, text) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.driver_create_pickup(uuid, uuid, text, text, numeric, numeric, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.driver_create_pickup(text, text, numeric, numeric, text) TO authenticated;
 
 -- ---------------------------------------------------------------------------
 -- Recalculate earnings: weekly/monthly incentives accrue once per period

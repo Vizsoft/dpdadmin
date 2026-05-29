@@ -26,21 +26,21 @@ export function PayrollReadinessWidget({
           label={t("payrollReady")}
           value={summary.readyCount}
           icon={CheckCircle2}
-          tone="emerald"
+          tone="success"
           className="p-2.5"
         />
         <MetricTile
           label={t("payrollBlocked")}
           value={summary.blockedCount}
           icon={AlertTriangle}
-          tone={summary.blockedCount > 0 ? "rose" : "slate"}
+          tone={summary.blockedCount > 0 ? "danger" : "neutral"}
           className="p-2.5"
         />
         <MetricTile
           label={t("payrollEstimated")}
           value={`${summary.totalEstimatedKwd.toFixed(3)}`}
           icon={Wallet}
-          tone="indigo"
+          tone="primary"
           className="col-span-2 p-2.5 sm:col-span-1"
         />
       </div>
@@ -61,7 +61,7 @@ export function PayrollReadinessWidget({
                     {row.anomalies.map((a) => t(`earningsAnomaly.${a}`)).join(" · ")}
                   </p>
                 </div>
-                <span className="shrink-0 text-xs font-medium tabular-nums text-rose-600">
+                <span className="shrink-0 text-xs font-medium tabular-nums text-danger">
                   {row.estimatedKwd.toFixed(3)} KWD
                 </span>
               </li>

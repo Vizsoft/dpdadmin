@@ -4,6 +4,7 @@ import { useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
+import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, Copy, Send, ShieldCheck, ShieldX, XCircle } from "lucide-react";
 import { AppPage } from "@/components/app/app-page";
 import { AppPageHeader } from "@/components/app/app-page-header";
@@ -24,12 +25,14 @@ import { useNotificationCampaign, useNotificationDispatchItems } from "./use-not
 import { previewPayloadSchema, buildActionPayload } from "./payload-contract";
 import { pickNotificationMediaByRole } from "./notification-media";
 import { NotificationMediaPreview } from "./notification-media-preview";
+import { invalidateNotificationCaches } from "./invalidate-notification-caches";
 
 export function NotificationDetailPageShell({ campaignId }: { campaignId: string }) {
   const t = useTranslations("pages.notifications");
   const locale = useLocale();
   const router = useRouter();
   const auth = useAuth();
+  const queryClient = useQueryClient();
   const [pending, startTransition] = useTransition();
   const { data: campaign, isLoading, refetch } = useNotificationCampaign(campaignId);
   const { data: dispatchItems, refetch: refetchDispatch } = useNotificationDispatchItems(campaignId);
@@ -90,6 +93,7 @@ export function NotificationDetailPageShell({ campaignId }: { campaignId: string
                       if ("error" in result) toast.error(t("errors.saveFailed"));
                       else {
                         toast.success(t("approvedSuccess"));
+                        await invalidateNotificationCaches(queryClient, { campaignId: campaign.id });
                         void refetch();
                       }
                     })
@@ -108,6 +112,7 @@ export function NotificationDetailPageShell({ campaignId }: { campaignId: string
                       if ("error" in result) toast.error(t("errors.saveFailed"));
                       else {
                         toast.success(t("rejectedSuccess"));
+                        await invalidateNotificationCaches(queryClient, { campaignId: campaign.id });
                         void refetch();
                       }
                     })
@@ -128,6 +133,7 @@ export function NotificationDetailPageShell({ campaignId }: { campaignId: string
                     if ("error" in result) toast.error(t(`errors.${result.error}`));
                     else {
                       toast.success(t("sentSuccess", { sent: result.sent, failed: result.failed }));
+                      await invalidateNotificationCaches(queryClient, { campaignId: campaign.id });
                       void refetch();
                       void refetchDispatch();
                     }
@@ -150,6 +156,7 @@ export function NotificationDetailPageShell({ campaignId }: { campaignId: string
                       if ("error" in result) toast.error(t("errors.saveFailed"));
                       else {
                         toast.success(t("clonedSuccess"));
+                        await invalidateNotificationCaches(queryClient, { campaignId: result.id });
                         router.push(`/${locale}/notifications/${result.id}`);
                       }
                     })
@@ -169,6 +176,7 @@ export function NotificationDetailPageShell({ campaignId }: { campaignId: string
                         if ("error" in result) toast.error(t("errors.saveFailed"));
                         else {
                           toast.success(t("cancelledSuccess"));
+                          await invalidateNotificationCaches(queryClient, { campaignId: campaign.id });
                           void refetch();
                         }
                       })

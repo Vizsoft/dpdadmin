@@ -6,9 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
-import { AppPage } from "@/components/app/app-page";
-import { AppEmptyState } from "@/components/app/app-empty-state";
-import { AppListCard } from "@/components/app/app-list-card";
+import { AppEmptyState, AppListCard, AppPage, AppPageHeader } from "@/components/app";
 import { TABLE_HEAD_CLASS } from "@/components/app/constants";
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
@@ -34,6 +32,7 @@ import { useDpdScopeOptions, useIncentiveRules } from "./use-dpd";
 
 export function IncentiveRulesPageShell() {
   const t = useTranslations("pages.dpd");
+  const tPage = useTranslations("pages.incentiveRules");
   const { can } = useAuth();
   const canManage = can("earnings.manage");
   const queryClient = useQueryClient();
@@ -66,10 +65,10 @@ export function IncentiveRulesPageShell() {
 
   return (
     <AppPage>
-      <p className="text-sm text-muted-foreground">{t("stackingHint")}</p>
-
-      <AppListCard
-        headerActions={
+      <AppPageHeader
+        title={tPage("title")}
+        description={tPage("subtitle")}
+        actions={
           canManage ? (
             <Button
               type="button"
@@ -82,7 +81,10 @@ export function IncentiveRulesPageShell() {
             </Button>
           ) : null
         }
-      >
+      />
+      <p className="text-sm text-muted-foreground">{t("stackingHint")}</p>
+
+      <AppListCard>
         {isLoading ? (
           <div className="flex h-32 items-center justify-center">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />

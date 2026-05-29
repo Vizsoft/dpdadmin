@@ -2,6 +2,8 @@ import type { DriverLiveLocation, PinStatus, TrackingStatus, ZoneStatus } from "
 
 const MOVING_STALE_MS = 2 * 60 * 1000;
 const IDLE_STALE_MS = 5 * 60 * 1000;
+/** Drivers with GPS older than this are excluded from the live map and counts. */
+export const LIVE_GPS_MAX_AGE_MS = 10 * 60 * 1000;
 
 export function parseTrackingStatus(value: string): TrackingStatus {
   if (value === "moving" || value === "delivery_submit") return value;
@@ -11,6 +13,11 @@ export function parseTrackingStatus(value: string): TrackingStatus {
 export function parseZoneStatus(value: string | null): ZoneStatus | null {
   if (value === "in_zone" || value === "out_of_zone" || value === "unknown") return value;
   return null;
+}
+
+export function isGpsLive(lastSeenAt: string, now = Date.now()): boolean {
+  const age = now - new Date(lastSeenAt).getTime();
+  return age <= LIVE_GPS_MAX_AGE_MS;
 }
 
 export function isGpsStale(

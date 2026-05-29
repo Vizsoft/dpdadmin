@@ -33,6 +33,15 @@ export const NOTIFICATION_TARGET_MODES = [
   "dynamic",
 ] as const;
 
+/** Target modes with working admin UI + audience RPC support. */
+export const NOTIFICATION_SUPPORTED_TARGET_MODES = [
+  "all",
+  "zone",
+  "partner",
+  "status",
+  "custom",
+] as const;
+
 export const NOTIFICATION_CAMPAIGN_STATUSES = [
   "draft",
   "pending_approval",

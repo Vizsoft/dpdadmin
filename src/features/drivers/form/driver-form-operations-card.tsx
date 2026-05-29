@@ -49,7 +49,7 @@ export function DriverFormOperationsCard({
 
   return (
     <section className="flex h-full flex-col space-y-3 rounded-lg border border-border bg-card p-4">
-      <SectionHeading icon={Activity} accent="amber">
+      <SectionHeading icon={Activity} accent="warning">
         {labels.section}
       </SectionHeading>
 

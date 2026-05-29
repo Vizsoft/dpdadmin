@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { DriverLocationsMap } from "@/features/locations/driver-locations-map";
 import { useDriverLocationsRealtime } from "@/features/locations/use-driver-locations-realtime";
+import { isGpsLive } from "@/features/locations/location-status";
 import { fetchDriversForAdmin } from "@/features/drivers/drivers-actions";
 import { fetchRecentDeliveriesForDriver } from "@/features/deliveries/deliveries-actions";
 import { fetchDriverAssignedRestaurantPins } from "@/features/locations/locations-actions";
@@ -74,9 +75,16 @@ export function LiveTrackingLiveView({
     zoomIn: () => void;
     zoomOut: () => void;
   } | null>(null);
+  /** Re-evaluate GPS freshness every 30s so stale drivers drop off the map. */
+  const [nowTick, setNowTick] = useState(() => Date.now());
 
   useEffect(() => {
     setMapPrefs(loadTrackingMapPrefs());
+  }, []);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNowTick(Date.now()), 30_000);
+    return () => window.clearInterval(id);
   }, []);
 
   const { data: driversMeta = [] } = useQuery({
@@ -127,7 +135,7 @@ export function LiveTrackingLiveView({
     return map;
   }, [driversMeta]);
 
-  const liveDrivers = useMemo(() => {
+  const enrichedLocations = useMemo(() => {
     return locations.map((loc) => {
       const meta = profileMeta.get(loc.driverId);
       const fallbackShortId = loc.driverId.slice(0, 8);
@@ -139,6 +147,20 @@ export function LiveTrackingLiveView({
       };
     });
   }, [locations, profileMeta]);
+
+  /** Only drivers with GPS updated within the last 10 minutes appear on the live map. */
+  const liveDrivers = useMemo(
+    () => enrichedLocations.filter((loc) => isGpsLive(loc.lastSeenAt, nowTick)),
+    [enrichedLocations, nowTick],
+  );
+
+  const staleOnDutyCount = useMemo(
+    () =>
+      enrichedLocations.filter(
+        (loc) => !isGpsLive(loc.lastSeenAt, nowTick) && loc.isOnDuty,
+      ).length,
+    [enrichedLocations, nowTick],
+  );
 
   const filtered = useMemo(() => {
     return liveDrivers.filter((loc) => {
@@ -154,12 +176,15 @@ export function LiveTrackingLiveView({
   }, [liveDrivers, filters, profileMeta, visibleStatuses]);
 
   const selectedDriver = useMemo(
-    () =>
-      filtered.find((d) => d.driverId === selectedId) ??
-      liveDrivers.find((d) => d.driverId === selectedId) ??
-      null,
-    [filtered, liveDrivers, selectedId],
+    () => filtered.find((d) => d.driverId === selectedId) ?? null,
+    [filtered, selectedId],
   );
+
+  useEffect(() => {
+    if (selectedId && !liveDrivers.some((d) => d.driverId === selectedId)) {
+      setSelectedId(null);
+    }
+  }, [selectedId, liveDrivers]);
 
   const selectedMeta = selectedDriver ? profileMeta.get(selectedDriver.driverId) : undefined;
 
@@ -309,7 +334,7 @@ export function LiveTrackingLiveView({
       footer={
         !fullscreen && !mapOnlyFullscreen ? (
           <div className="grid gap-2 md:grid-cols-[minmax(0,1.6fr)_minmax(220px,1fr)]">
-            <TrackingInsightsPanel drivers={liveDrivers} />
+            <TrackingInsightsPanel drivers={liveDrivers} staleOnDutyCount={staleOnDutyCount} />
             <TrackingQuickActions />
           </div>
         ) : undefined

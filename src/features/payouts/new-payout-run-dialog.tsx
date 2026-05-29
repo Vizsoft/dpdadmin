@@ -5,14 +5,8 @@ import { Loader2 } from "lucide-react";
 import { useRouter } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { AppModalFooter } from "@/components/app/app-modal-footer";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -83,14 +77,12 @@ export function NewPayoutRunDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[min(92vh,760px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl">
-        <DialogHeader>
-          <div className="border-b border-border px-5 py-4">
-            <DialogTitle>{t("newRunTitle")}</DialogTitle>
-            <DialogDescription className="mt-1">{t("newRunDescription")}</DialogDescription>
-          </div>
-        </DialogHeader>
-        <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
+      <DialogContent
+        className="flex max-h-[min(92vh,760px)] flex-col gap-0 overflow-visible rounded-xl p-0 sm:max-w-xl"
+        showCloseButton
+        closeOutside
+      >
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 pt-4 pb-3">
           <div className="grid gap-3 md:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="payout-start">{t("periodStart")}</Label>
@@ -139,11 +131,24 @@ export function NewPayoutRunDialog({
             />
           </div>
         </div>
-        <DialogFooter className="border-t border-border px-5 py-3">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
+        <AppModalFooter title={t("newRunTitle")} subtitle={t("newRunDescription")}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-9 cursor-pointer rounded-md"
+            onClick={() => onOpenChange(false)}
+            disabled={isPending}
+          >
             {t("cancel")}
           </Button>
-          <Button onClick={onSubmit} disabled={isPending || !isDateRangeValid}>
+          <Button
+            type="button"
+            size="sm"
+            className="h-9 cursor-pointer rounded-md px-4"
+            onClick={onSubmit}
+            disabled={isPending || !isDateRangeValid}
+          >
             {isPending ? (
               <>
                 <Loader2 className="me-2 h-4 w-4 animate-spin" />
@@ -153,7 +158,7 @@ export function NewPayoutRunDialog({
               t("createRun")
             )}
           </Button>
-        </DialogFooter>
+        </AppModalFooter>
       </DialogContent>
     </Dialog>
   );

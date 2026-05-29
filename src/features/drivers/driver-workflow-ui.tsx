@@ -2,21 +2,8 @@
 
 import { StatusPill } from "@/components/dashboard/status-pill";
 import { Badge } from "@/components/ui/badge";
+import { resolveStatusVariant } from "@/lib/ui/resolve-status-variant";
 import type { DriverWorkflowStatus } from "./types";
-
-export function workflowStatusVariant(
-  status: DriverWorkflowStatus,
-): "success" | "warning" | "danger" | "neutral" {
-  switch (status) {
-    case "approved":
-      return "success";
-    case "pending":
-      return "warning";
-    case "draft":
-    default:
-      return "neutral";
-  }
-}
 
 export function WorkflowStatusPill({
   status,
@@ -26,7 +13,7 @@ export function WorkflowStatusPill({
   label: string;
 }) {
   return (
-    <StatusPill variant={workflowStatusVariant(status)} dot>
+    <StatusPill variant={resolveStatusVariant(status)} dot>
       {label}
     </StatusPill>
   );

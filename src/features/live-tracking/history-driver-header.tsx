@@ -51,7 +51,7 @@ export function HistoryDriverHeader({
           <Bike className="h-3 w-3" />
           Bike
         </span>
-        <Pill tone={isOnDuty ? "emerald" : "slate"}>{isOnDuty ? t("onDuty") : t("offDuty")}</Pill>
+        <Pill tone={isOnDuty ? "success" : "neutral"}>{isOnDuty ? t("onDuty") : t("offDuty")}</Pill>
       </div>
       <p className="mt-2 text-[10px] text-muted-foreground">{dateLabel}</p>
     </div>

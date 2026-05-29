@@ -4,7 +4,6 @@ import { useTranslations } from "next-intl";
 import {
   BarChart3,
   Bell,
-  History,
   Sparkles,
   Workflow,
 } from "lucide-react";
@@ -13,7 +12,6 @@ import { TabBar, type TabItem } from "@/components/dashboard/tab-bar";
 
 const TAB_ROUTES = [
   { id: "overview", href: "/notifications" },
-  { id: "history", href: "/notifications/history" },
   { id: "templates", href: "/notifications/templates" },
   { id: "automations", href: "/notifications/automations" },
   { id: "analytics", href: "/notifications/analytics" },
@@ -26,7 +24,6 @@ function activeTabFromPath(pathname: string): (typeof TAB_ROUTES)[number]["id"] 
   ) {
     return "overview";
   }
-  if (pathname.includes("/notifications/history")) return "history";
   if (pathname.includes("/notifications/templates")) return "templates";
   if (pathname.includes("/notifications/automations")) return "automations";
   if (pathname.includes("/notifications/analytics")) return "analytics";
@@ -41,7 +38,6 @@ export function NotificationsTabBar() {
 
   const items: TabItem[] = [
     { id: "overview", label: t("title"), icon: Bell },
-    { id: "history", label: t("navHistory"), icon: History },
     { id: "templates", label: t("navTemplates"), icon: Sparkles },
     { id: "automations", label: t("navAutomations"), icon: Workflow },
     { id: "analytics", label: t("navAnalytics"), icon: BarChart3 },

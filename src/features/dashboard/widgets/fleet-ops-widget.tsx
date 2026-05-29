@@ -6,7 +6,6 @@ import { useTranslations } from "next-intl";
 import { Radar, Timer, UserCheck, AlertTriangle } from "lucide-react";
 import { MetricTile } from "@/components/ui/metric-tile";
 import { fetchFleetOpsCounts } from "@/features/driver-tracking/tracking-read-actions";
-import { TrackingGlassCard } from "@/features/live-tracking/tracking-shell";
 
 export function FleetOpsWidget() {
   const t = useTranslations("pages.dashboard.fleetOps");
@@ -24,7 +23,7 @@ export function FleetOpsWidget() {
   };
 
   return (
-    <TrackingGlassCard className="border-slate-200 bg-white p-4 dark:border-slate-700/80 dark:bg-slate-900">
+    <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
       <div className="mb-3 flex items-center justify-between gap-2">
         <p className="text-sm font-semibold text-foreground">{t("title")}</p>
         <Link href="/live-tracking" className="text-xs font-medium text-primary hover:underline">
@@ -36,25 +35,25 @@ export function FleetOpsWidget() {
           label={t("onDuty")}
           value={isLoading ? "…" : String(counts.on_duty)}
           icon={UserCheck}
-          tone="emerald"
+          tone="success"
         />
         <MetricTile
           label={t("online")}
           value={isLoading ? "…" : String(counts.online_sessions)}
           icon={Timer}
-          tone="blue"
+          tone="primary"
         />
         <MetricTile
           label={t("unvalidated")}
           value={isLoading ? "…" : String(counts.unvalidated_today)}
           icon={AlertTriangle}
-          tone="amber"
+          tone="warning"
         />
         <MetricTile
           label={t("outOfZone")}
           value={isLoading ? "…" : String(counts.out_of_zone)}
           icon={Radar}
-          tone="rose"
+          tone="danger"
         />
       </div>
       <div className="mt-3 flex flex-wrap gap-2 text-xs">
@@ -68,6 +67,6 @@ export function FleetOpsWidget() {
           {t("linkShifts")}
         </Link>
       </div>
-    </TrackingGlassCard>
+    </div>
   );
 }

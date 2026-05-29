@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/tooltip";
 import { TABLE_HEAD_CLASS } from "@/components/app/constants";
 import { StatusPill } from "@/components/dashboard/status-pill";
+import { resolveStatusVariant } from "@/lib/ui/resolve-status-variant";
 import { SimpleConfirmDialog } from "@/components/simple-confirm-dialog";
 import { TrackingGlassCard } from "@/features/live-tracking/tracking-shell";
 import { cn } from "@/lib/utils";
@@ -51,21 +52,6 @@ function truncateDeviceId(deviceId: string): string {
   return `${deviceId.slice(0, 6)}…${deviceId.slice(-4)}`;
 }
 
-function statusVariant(status: DeviceSessionStatus) {
-  switch (status) {
-    case "active":
-      return "success" as const;
-    case "override_pending":
-      return "warning" as const;
-    case "admin_forced":
-      return "danger" as const;
-    case "signed_out":
-      return "neutral" as const;
-    default:
-      return "neutral" as const;
-  }
-}
-
 function DeviceStatusPill({ session }: { session: DriverDeviceSessionRow }) {
   const t = useTranslations("pages.driverDetail.devices");
   const status = resolveDeviceSessionStatus(session);
@@ -78,7 +64,7 @@ function DeviceStatusPill({ session }: { session: DriverDeviceSessionRow }) {
   }[status] as "statusActive";
 
   return (
-    <StatusPill variant={statusVariant(status)} dot={false}>
+    <StatusPill variant={resolveStatusVariant(status)} dot={false}>
       {t(labelKey)}
     </StatusPill>
   );

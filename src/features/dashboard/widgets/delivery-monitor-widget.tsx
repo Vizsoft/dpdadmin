@@ -32,34 +32,34 @@ export function DeliveryMonitorWidget({
           label={t("metricSubmitted")}
           value={metrics.submittedToday}
           icon={Package}
-          tone="blue"
+          tone="primary"
           className="p-2.5"
         />
         <MetricTile
           label={t("metricPending")}
           value={metrics.pending}
           icon={Clock}
-          tone={metrics.pending > 0 ? "amber" : "slate"}
+          tone={metrics.pending > 0 ? "warning" : "neutral"}
           className="p-2.5"
         />
         <MetricTile
           label={t("metricVerified")}
           value={metrics.verified}
           icon={CheckCircle2}
-          tone="emerald"
+          tone="success"
           className="p-2.5"
         />
         <MetricTile
           label={t("metricRejected")}
           value={metrics.rejected}
           icon={XCircle}
-          tone={metrics.rejected > 0 ? "rose" : "slate"}
+          tone={metrics.rejected > 0 ? "danger" : "neutral"}
           className="p-2.5"
         />
       </div>
       {metrics.underReview > 0 ? (
         <div className="flex items-center gap-2 border-b border-border px-4 py-2 text-xs">
-          <ShieldAlert className="size-3.5 text-amber-600" />
+          <ShieldAlert className="size-3.5 text-warning" />
           <span className="font-medium">{metrics.underReview}</span>
           <span className="text-muted-foreground">{t("metricUnderReview")}</span>
         </div>
