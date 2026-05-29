@@ -32,6 +32,8 @@ export type DeliveryListRow = {
   partner_id: string | null;
   partner_name: string;
   partner_logo_url: string | null;
+  restaurant_id: string | null;
+  restaurant_name: string | null;
   zone_id: string | null;
   zone_name: string;
   status: DeliveryStatus;

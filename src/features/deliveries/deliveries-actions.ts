@@ -283,6 +283,7 @@ type DeliveryDbRow = {
   id: string;
   driver_id: string;
   partner_id: string | null;
+  restaurant_id: string | null;
   zone_id: string | null;
   external_order_id: string | null;
   order_proof_url: string | null;
@@ -309,6 +310,7 @@ type DeliveryDbRow = {
     profiles: { full_name: string | null; phone: string | null } | { full_name: string | null; phone: string | null }[] | null;
   }[] | null;
   partners: { name: string; logo_url: string | null } | { name: string; logo_url: string | null }[] | null;
+  restaurants: { id: string; name: string } | { id: string; name: string }[] | null;
   zones: { name: string } | { name: string }[] | null;
 };
 
@@ -441,6 +443,7 @@ export async function fetchDeliveriesForAdmin(): Promise<DeliveryListRow[]> {
       id,
       driver_id,
       partner_id,
+      restaurant_id,
       zone_id,
       external_order_id,
       order_proof_url,
@@ -461,6 +464,7 @@ export async function fetchDeliveriesForAdmin(): Promise<DeliveryListRow[]> {
       created_at,
       drivers (driver_code, profiles (full_name, phone)),
       partners (name, logo_url),
+      restaurants (id, name),
       zones (name)
     `,
     )
@@ -515,6 +519,11 @@ export async function fetchDeliveriesForAdmin(): Promise<DeliveryListRow[]> {
         partner_id: row.partner_id,
         partner_name: relName(row.partners),
         partner_logo_url,
+        restaurant_id: row.restaurant_id,
+        restaurant_name: (() => {
+          const rel = Array.isArray(row.restaurants) ? row.restaurants[0] : row.restaurants;
+          return rel?.name ?? null;
+        })(),
         zone_id: row.zone_id,
         zone_name: relName(row.zones),
         status: row.status,

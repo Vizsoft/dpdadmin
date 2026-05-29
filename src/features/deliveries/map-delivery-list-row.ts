@@ -60,6 +60,10 @@ export type DeliveryDbRowForList = {
     | { name: string; logo_url: string | null }
     | { name: string; logo_url: string | null }[]
     | null;
+  restaurants?:
+    | { id: string; name: string }
+    | { id: string; name: string }[]
+    | null;
   zones: { name: string } | { name: string }[] | null;
 };
 
@@ -129,6 +133,11 @@ export async function mapDeliveryDbRowsToListRows(
         partner_id: row.partner_id,
         partner_name: relName(row.partners),
         partner_logo_url,
+        restaurant_id: row.restaurant_id ?? null,
+        restaurant_name: (() => {
+          const rel = Array.isArray(row.restaurants) ? row.restaurants[0] : row.restaurants;
+          return rel?.name ?? null;
+        })(),
         zone_id: row.zone_id,
         zone_name: relName(row.zones),
         status: row.status,

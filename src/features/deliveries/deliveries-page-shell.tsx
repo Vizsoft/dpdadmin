@@ -85,7 +85,7 @@ function exportDeliveriesCsv(rows: DeliveryListRow[]) {
     "id",
     "driver_name",
     "driver_code",
-    "partner",
+    "restaurant",
     "zone",
     "status",
     "external_order_id",
@@ -107,7 +107,7 @@ function exportDeliveriesCsv(rows: DeliveryListRow[]) {
         r.short_id,
         r.driver_name,
         r.driver_code,
-        r.partner_name,
+        r.restaurant_name ?? "",
         r.zone_name,
         r.status,
         r.external_order_id ?? "",
@@ -290,7 +290,7 @@ function DeliveriesPageContent() {
     () => [
       { id: "deliveryId", label: t("colDeliveryId") },
       { id: "driver", label: t("colDriver") },
-      { id: "partner", label: t("colPartner"), className: "hidden md:table-cell" },
+      { id: "restaurant", label: t("colRestaurant"), className: "hidden md:table-cell" },
       { id: "zone", label: t("colZone"), className: "hidden sm:table-cell" },
       { id: "status", label: t("colStatus"), className: "text-end" },
       { id: "orderId", label: t("colOrderId"), className: "hidden lg:table-cell" },
@@ -501,25 +501,13 @@ function DeliveriesPageContent() {
                         </div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
-                        <div className="flex min-w-0 items-center gap-2">
-                          <div className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted/30">
-                            {delivery.partner_logo_url ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={delivery.partner_logo_url}
-                                alt=""
-                                className="h-full w-full object-contain p-0.5"
-                              />
-                            ) : (
-                              <span className="text-xs font-semibold text-muted-foreground">
-                                {delivery.partner_name.charAt(0).toUpperCase()}
-                              </span>
-                            )}
-                          </div>
+                        {delivery.restaurant_name ? (
                           <span className="truncate text-sm text-foreground">
-                            {delivery.partner_name}
+                            {delivery.restaurant_name}
                           </span>
-                        </div>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">—</span>
+                        )}
                       </TableCell>
                       <TableCell className="hidden text-sm text-muted-foreground sm:table-cell">
                         {delivery.zone_name}
